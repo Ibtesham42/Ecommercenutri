@@ -6,12 +6,12 @@ _Last updated: 2026-06-25 · Auto-maintained. Update at the end of every milesto
 
 | Item                | Status                                                          |
 | ------------------- | -------------------------------------------------------------- |
-| Build               | ✅ passing (`next build`, 36 routes)                            |
+| Build               | ✅ passing (`next build`, 48 routes)                            |
 | TypeScript          | ✅ `tsc --noEmit` clean                                         |
 | ESLint              | ✅ clean                                                        |
-| Runtime smoke       | ✅ stories rail renders; admin upload pages 200; Cloudinary active |
+| Runtime smoke       | ✅ SEO/PWA endpoints 200; structured data present; AI streams; rate-limit no-op without Redis |
 | Database (Neon)     | ✅ live, migrated, seeded                                       |
-| Current milestone   | **M6 — SEO / PWA / Analytics / Deploy** (next up)              |
+| Current milestone   | **All milestones (M0–M6) complete — production-ready**         |
 
 ## Milestones
 
@@ -23,38 +23,43 @@ _Last updated: 2026-06-25 · Auto-maintained. Update at the end of every milesto
 | M3        | Admin panel                                          | ✅ Complete    |
 | M4        | AI (Groq): assistant, product chat, search, recs     | ✅ Complete    |
 | M5        | Stories viewer, Cloudinary uploads, image optimization | ✅ Complete  |
-| M6        | SEO, PWA, analytics, email, notifications, deploy    | ⏳ Next        |
+| M6        | SEO, PWA, analytics, notifications, deploy            | ✅ Complete    |
 
-## M5 deliverables (this session)
-- **Stories viewer** (`components/storefront/stories-viewer.tsx`): full-screen
-  overlay, segmented progress, auto-advance (images 5 s / video on end), tap +
-  keyboard nav, product CTA, tab-hidden pause, scroll lock. The storefront rail
-  (`stories-rail.tsx`) opens it; `lib/actions/stories.ts#recordStoryView` tracks views.
-- **Cloudinary uploads**: `lib/actions/admin/upload.ts` (signed, server-side) +
-  `components/admin/image-upload-field.tsx` (file upload when configured, URL paste
-  fallback). Wired into product/category/story admin forms (`cloudinaryReady` passed
-  from the pages). `next.config.ts` body limit raised to 12 MB.
-- **Image optimization**: `lib/cld.ts#cldUrl` injects `f_auto,q_auto` (+ resize) into
-  Cloudinary URLs; no-op for other hosts.
+## M6 deliverables (this session)
+- **SEO**: `app/sitemap.ts` (static + products + categories), `app/robots.ts`,
+  Organization + WebSite (SearchAction) JSON-LD in root layout, BreadcrumbList on
+  product + category pages (`lib/seo.ts` helpers).
+- **Images**: generated `app/icon.tsx`, `app/apple-icon.tsx`, `app/opengraph-image.tsx`
+  via `next/og`; `siteConfig.ogImage` → `/opengraph-image`.
+- **PWA**: `app/manifest.ts`, `public/sw.js` (conservative network-first SW),
+  `components/service-worker-register.tsx` (prod only), `app/offline/page.tsx`.
+- **Analytics**: `components/analytics.tsx` (pluggable, no-op fallback) + env wiring.
+- **Notifications**: `orderStatusEmail` (shipped/delivered/cancelled/refunded) sent
+  from the admin `updateOrderStatus` action (best-effort, reuses Resend infra).
+- **Hardening**: `/api/ai/chat` rate-limited via `limiters.ai` (Upstash, fail-open).
+- **Docs**: `DEPLOYMENT.md` (Vercel + Neon + integrations + hardening checklist).
 
-## Pending credentials (optional — app runs without them)
-| Integration | Env keys                                  | Effect if blank                  |
-| ----------- | ----------------------------------------- | -------------------------------- |
-| Cloudinary  | `CLOUDINARY_*`                            | ✅ configured — uploads live; else URL paste |
-| Groq        | `GROQ_API_KEY`                            | ✅ configured — AI live; else friendly fallback |
-| Razorpay    | `RAZORPAY_KEY_ID/SECRET/WEBHOOK_SECRET`   | Checkout uses mock-success flow  |
-| Resend      | `RESEND_API_KEY`                          | Emails logged to console (set a key to send live) |
-| Google OAuth| `AUTH_GOOGLE_ID/SECRET`                   | Only credentials login shown     |
-| Upstash     | `UPSTASH_REDIS_REST_URL/TOKEN`            | Cache / rate-limit are no-ops    |
+## Integrations (all optional; fallbacks active)
+| Integration | Status in this env | Effect if blank                  |
+| ----------- | ------------------ | -------------------------------- |
+| Database (Neon) | ✅ live          | required                         |
+| Groq        | ✅ configured       | AI shows friendly fallback       |
+| Cloudinary  | ✅ configured       | admin images become URL-paste    |
+| Razorpay    | set as needed       | checkout uses mock-success flow  |
+| Resend      | set as needed       | emails logged to console         |
+| Google OAuth| set as needed       | only credentials login shown     |
+| Upstash     | set as needed       | cache + rate-limit are no-ops    |
+| Analytics   | optional            | no script injected               |
 
-## Risks / blockers
-- **Node 21.1.0 (EOL)** pins Prisma to 6. Move to Node 20/22 LTS, then bump Prisma 7.
+## Risks / notes
+- **Node 21.1.0 (EOL)** pins Prisma to 6. Use Node 20/22 LTS in production, then
+  optionally bump Prisma 7.
 - Neon **cold start** (`P1001`) on first connect after idle — retry once.
-- `/api/ai/chat` is **not yet rate-limited** — add Upstash limiting before public launch.
-- Stories viewer interactivity (auto-advance/tap) is client-only — not covered by the
-  headless smoke test; verify visually in a browser.
+- Service worker interactivity (install/offline) is client-only — verify visually.
+- Local smoke shows `localhost:3000` in sitemap/OG; production derives URLs from
+  `NEXT_PUBLIC_APP_URL` — set it to the real domain on deploy.
 
-## Next recommended task
-**Start M6:** sitemap.xml + robots.txt, structured data (Organization/Website/Breadcrumb
-in addition to existing Product JSON-LD), OG image route, PWA manifest + service worker,
-analytics, and Vercel deployment config + production hardening (incl. AI rate limiting).
+## Next (operational, post-feature-complete)
+Deploy to Vercel per `DEPLOYMENT.md`. Future iterations: real RAG (vector retrieval
+behind the existing `lib/ai/retrieval.ts` seam), richer analytics/funnels, A/B tests,
+more transactional notifications.

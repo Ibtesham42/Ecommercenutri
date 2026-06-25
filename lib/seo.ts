@@ -52,3 +52,49 @@ export function jsonLd(data: Record<string, unknown>) {
     __html: JSON.stringify(data),
   };
 }
+
+/** Organization schema for brand knowledge-panel eligibility. */
+export function organizationSchema() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: siteConfig.name,
+    url: siteConfig.url,
+    logo: new URL(siteConfig.ogImage, siteConfig.url).toString(),
+    description: siteConfig.description,
+    email: siteConfig.contact.email,
+    sameAs: Object.values(siteConfig.social),
+  };
+}
+
+/** WebSite schema with a sitelinks search box pointing at /search. */
+export function websiteSchema() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: siteConfig.name,
+    url: siteConfig.url,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${siteConfig.url}/search?q={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
+  };
+}
+
+/** BreadcrumbList schema from ordered { name, path } crumbs. */
+export function breadcrumbSchema(items: { name: string; path: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: item.name,
+      item: new URL(item.path, siteConfig.url).toString(),
+    })),
+  };
+}

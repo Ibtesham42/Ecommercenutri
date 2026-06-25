@@ -104,3 +104,54 @@ export function orderConfirmationEmail(order: OrderEmailData): Email {
     text: `Order #${order.orderNumber} confirmed. Total ${formatPrice(order.total)}. View it: ${url}`,
   };
 }
+
+type OrderStatus =
+  | "PENDING"
+  | "PAID"
+  | "PROCESSING"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "CANCELLED"
+  | "REFUNDED";
+
+const STATUS_COPY: Partial<Record<OrderStatus, { heading: string; intro: string }>> = {
+  SHIPPED: {
+    heading: "Your order is on its way! 📦",
+    intro: "Good news — your order has shipped and is heading to you.",
+  },
+  DELIVERED: {
+    heading: "Delivered — enjoy! 🌿",
+    intro: "Your order has been delivered. We hope you love it!",
+  },
+  CANCELLED: {
+    heading: "Your order was cancelled",
+    intro:
+      "Your order has been cancelled. If this was paid for, a refund has been initiated.",
+  },
+  REFUNDED: {
+    heading: "Your refund is on the way",
+    intro: "We've processed a refund for your order. It may take a few days to reflect.",
+  },
+};
+
+/** Notification when an order's fulfillment status changes. Returns null for
+ *  statuses that don't warrant a customer email (e.g. internal PROCESSING). */
+export function orderStatusEmail(order: {
+  orderNumber: string;
+  status: OrderStatus;
+  name?: string | null;
+}): Email | null {
+  const copy = STATUS_COPY[order.status];
+  if (!copy) return null;
+  const url = `${siteConfig.url}/account/orders/${order.orderNumber}`;
+  return {
+    subject: `Order #${order.orderNumber} — ${order.status.toLowerCase()} · ${siteConfig.name}`,
+    html: shell({
+      heading: copy.heading,
+      intro: `Hi${order.name ? ` ${order.name}` : ""}, ${copy.intro} (Order <strong>#${order.orderNumber}</strong>.)`,
+      ctaLabel: "Track your order",
+      ctaUrl: url,
+    }),
+    text: `Order #${order.orderNumber} is now ${order.status}. Track it: ${url}`,
+  };
+}

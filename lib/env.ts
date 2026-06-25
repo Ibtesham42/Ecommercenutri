@@ -33,6 +33,10 @@ export const env = {
 
   upstashUrl: process.env.UPSTASH_REDIS_REST_URL ?? "",
   upstashToken: process.env.UPSTASH_REDIS_REST_TOKEN ?? "",
+
+  // Privacy-friendly analytics (Plausible / Umami-compatible). All optional.
+  analyticsSrc: process.env.NEXT_PUBLIC_ANALYTICS_SRC ?? "",
+  analyticsDomain: process.env.NEXT_PUBLIC_ANALYTICS_DOMAIN ?? "",
 };
 
 export const isConfigured = {
@@ -45,4 +49,5 @@ export const isConfigured = {
     ),
   groq: () => Boolean(env.groqApiKey),
   redis: () => Boolean(env.upstashUrl && env.upstashToken),
+  analytics: () => Boolean(env.analyticsSrc && env.analyticsDomain),
 };

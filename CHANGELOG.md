@@ -3,6 +3,35 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [M6] — SEO, PWA, Analytics, Notifications, Deploy — 2026-06-25
+
+### Added
+- **SEO**: dynamic `app/sitemap.ts` (static pages + active products + categories) and
+  `app/robots.ts` (disallows private/transactional areas, links the sitemap).
+  Structured data helpers in `lib/seo.ts` — Organization + WebSite (with SearchAction)
+  in the root layout, BreadcrumbList on product and category pages (Product JSON-LD
+  already existed).
+- **Generated images** via `next/og`: `app/icon.tsx`, `app/apple-icon.tsx`,
+  `app/opengraph-image.tsx` (brand-green). `siteConfig.ogImage` now points at the
+  generated OG route.
+- **PWA**: `app/manifest.ts`, a conservative service worker (`public/sw.js` —
+  network-first navigations with an `/offline` fallback, cache-first static assets,
+  never intercepts api/admin/account/checkout/auth), a production-only registrar
+  (`components/service-worker-register.tsx`), and `app/offline/page.tsx`.
+- **Analytics**: `components/analytics.tsx` — injects a Plausible/Umami-style script
+  only when `NEXT_PUBLIC_ANALYTICS_SRC` + `_DOMAIN` are set; renders nothing otherwise.
+- **Order notifications**: `orderStatusEmail` (shipped/delivered/cancelled/refunded)
+  sent from the admin `updateOrderStatus` action (best-effort, reuses Resend infra).
+- **Hardening**: `/api/ai/chat` rate-limited via the existing `limiters.ai` (Upstash,
+  fail-open; 429 + friendly message when exceeded). The chat client renders
+  `X-AI-Fallback` responses inline.
+- **`DEPLOYMENT.md`**: Vercel + Neon + integration setup + production hardening checklist.
+
+### Notes
+- Icons/OG need no binary assets (generated at the edge). SW registers in production
+  only. Quality gates: typecheck, ESLint, production build (48 routes), runtime smoke
+  (SEO/PWA endpoints, structured data, AI streaming, rate-limit no-op) — all green.
+
 ## [M5] — Stories Viewer + Cloudinary Uploads — 2026-06-25
 
 ### Added

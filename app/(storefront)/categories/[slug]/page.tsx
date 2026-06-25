@@ -6,7 +6,7 @@ import { getWishlistProductIds } from "@/lib/queries/wishlist";
 import { ProductGrid } from "@/components/storefront/product-card";
 import { SortSelect } from "@/components/storefront/sort-select";
 import { PaginationBar } from "@/components/storefront/pagination-bar";
-import { buildMetadata } from "@/lib/seo";
+import { buildMetadata, breadcrumbSchema, jsonLd } from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -45,6 +45,16 @@ export default async function CategoryPage({
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLd(
+          breadcrumbSchema([
+            { name: "Home", path: "/" },
+            { name: "Categories", path: "/categories" },
+            { name: category.name, path: `/categories/${slug}` },
+          ]),
+        )}
+      />
       <header className="mb-6 rounded-2xl bg-gradient-to-r from-accent/50 to-secondary p-8">
         <h1 className="text-2xl font-bold sm:text-3xl">{category.name}</h1>
         {category.description && (

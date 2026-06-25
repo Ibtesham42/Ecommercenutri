@@ -5,10 +5,11 @@ decisions only** — see `CLAUDE.md` for the full guide, `PROGRESS.md` for the t
 `CHANGELOG.md` for history. Do not duplicate those here.
 
 ## Current milestone
-**M6 — SEO / PWA / Analytics / Deploy.** M0–M5 complete (foundation,
-storefront/auth, checkout/payments, admin panel, AI, stories + Cloudinary uploads).
-Build/typecheck/lint green; DB live and seeded; AI verified with/without a Groq key;
-Cloudinary configured so admin image uploads are live.
+**Feature-complete (M0–M6).** All milestones done: foundation, storefront/auth,
+checkout/payments, admin, AI, stories + Cloudinary, and M6 (SEO, PWA, analytics,
+notifications, deploy hardening). Build/typecheck/lint green (48 routes); DB live +
+seeded; Groq + Cloudinary configured. Remaining work is operational — deploy per
+`DEPLOYMENT.md`. Future: real RAG behind the `lib/ai/retrieval.ts` seam.
 
 ## Architecture decisions that bite if forgotten
 - **Money = integer paise** everywhere. UI collects rupees and converts at the edge
@@ -35,6 +36,12 @@ Cloudinary configured so admin image uploads are live.
   `lib/cloudinary.ts`); `ImageUploadField` falls back to a pasted URL when Cloudinary
   is unconfigured. Optimize delivery with `cldUrl()` (`lib/cld.ts`); story media uses
   plain `<img>` (arbitrary hosts) so it bypasses `next/image` remotePatterns.
+- **SEO/PWA/icons are file-convention + generated**: `app/sitemap.ts`, `robots.ts`,
+  `manifest.ts`, and `next/og` `icon.tsx`/`apple-icon.tsx`/`opengraph-image.tsx` (no
+  binary assets). Structured-data helpers in `lib/seo.ts`. Service worker
+  (`public/sw.js`) is conservative + prod-only; never caches api/admin/account/checkout.
+- **Rate limiting fails open** (`lib/rate-limit.ts`); `/api/ai/chat` uses `limiters.ai`.
+  Analytics is pluggable/no-op. Both run only when their env keys are set.
 
 ## Pending integrations (all optional; fallbacks active)
 - **Groq** (`GROQ_API_KEY`) — a live key is set; AI is fully working. Toggles +

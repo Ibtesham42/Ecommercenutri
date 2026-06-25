@@ -76,6 +76,10 @@ app/
     auth/[...nextauth] NextAuth handler
     ai/chat            Streaming AI chat (text stream; general + per-product)
     webhooks/razorpay  Razorpay webhook (signature-verified, idempotent)
+  sitemap.ts / robots.ts          SEO (dynamic, DB-driven sitemap)
+  manifest.ts                     PWA web manifest
+  icon.tsx / apple-icon.tsx / opengraph-image.tsx   Generated images (next/og)
+  offline/             PWA offline fallback page (service worker in public/sw.js)
 components/
   ui/                  shadcn primitives (do not hand-edit lightly)
   storefront/          Storefront components (product-card, cart-view, checkout-client, …)
@@ -341,9 +345,15 @@ Groups: **App** (`NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SITE_NAME`) · **DB**
   paste fallback otherwise) for product/category/story media; Cloudinary delivery
   optimization via `lib/cld.ts` (`f_auto,q_auto`).
 
-**Current**
-- **M6 — SEO / PWA / Analytics / Deploy:** full SEO (sitemap, structured data, OG),
-  PWA/offline, analytics, notifications, Vercel deploy + production hardening.
+- **M6 — SEO / PWA / Analytics / Notifications / Deploy:** dynamic `sitemap.xml` +
+  `robots.txt`; Organization/WebSite/Breadcrumb JSON-LD (plus existing Product);
+  generated `icon`/`apple-icon`/`opengraph-image` via `next/og`; PWA `manifest` +
+  conservative service worker + `/offline`; pluggable privacy-analytics (no-op
+  fallback); order status-change emails; AI chat rate-limiting (Upstash, fail-open);
+  `DEPLOYMENT.md`. **All M0–M6 complete — production-ready.**
+
+**Status: feature-complete (M0–M6).** Next work is operational: deploy to Vercel per
+`DEPLOYMENT.md`, then iterate (RAG, more analytics, A/B, etc.).
 
 See `PROGRESS.md` for the live tracker (status, blockers, next task).
 
@@ -386,7 +396,20 @@ See `PROGRESS.md` for the live tracker (status, blockers, next task).
   defensive JSON parse for structured search instead — also keeps us model/provider
   agnostic. Don't reintroduce `generateObject` without checking model support.
 - Chat streams as **plain text** (`toTextStreamResponse`) consumed via `fetch`, not
-  the `useChat`/UIMessage protocol — robust across AI SDK versions.
+  the `useChat`/UIMessage protocol — robust across AI SDK versions. Friendly
+  fallbacks/limits carry an `X-AI-Fallback: 1` header so the client renders their
+  message inline instead of erroring.
+- **Icons/OG are generated at the edge** via `next/og` `ImageResponse` (`app/icon.tsx`,
+  `apple-icon.tsx`, `opengraph-image.tsx`) — no binary asset files. `siteConfig.ogImage`
+  points at the generated `/opengraph-image` route.
+- **Service worker is intentionally conservative** (`public/sw.js`): network-first for
+  navigations with an `/offline` fallback, cache-first for static assets, and it
+  **never** intercepts `/api`, `/admin`, `/account`, `/checkout`, or auth. Registered
+  in **production only** (`components/service-worker-register.tsx`).
+- **Analytics is dependency-free + pluggable**: a `<Script>` is injected only when
+  `NEXT_PUBLIC_ANALYTICS_SRC` + `_DOMAIN` are set (Plausible/Umami-style), else nothing.
+- **Rate limiting** uses `lib/rate-limit.ts` (Upstash) and **fails open** — wired into
+  `/api/ai/chat` (429 + friendly message when exceeded; no-op without Redis).
 
 ---
 

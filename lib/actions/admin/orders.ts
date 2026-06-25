@@ -5,6 +5,8 @@ import type { OrderStatus, PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { orderStatusSchema } from "@/lib/validations/admin";
+import { orderStatusEmail } from "@/lib/emails";
+import { sendEmail } from "@/lib/email";
 import type { AdminResult } from "@/lib/actions/admin/types";
 
 const CLOSED: OrderStatus[] = ["CANCELLED", "REFUNDED"];
@@ -21,9 +23,10 @@ export async function updateOrderStatus(input: unknown): Promise<AdminResult> {
 
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    include: { items: true },
+    include: { items: true, user: { select: { email: true, name: true } } },
   });
   if (!order) return { ok: false, error: "Order not found." };
+  const statusChanged = order.status !== status;
 
   // Derive the payment status implied by the new fulfillment status.
   let paymentStatus: PaymentStatus = order.paymentStatus;
@@ -57,6 +60,22 @@ export async function updateOrderStatus(input: unknown): Promise<AdminResult> {
       data: { status, paymentStatus },
     });
   });
+
+  // Notify the customer about meaningful status changes (best-effort).
+  if (statusChanged && order.user?.email) {
+    const mail = orderStatusEmail({
+      orderNumber: order.orderNumber,
+      status,
+      name: order.user.name,
+    });
+    if (mail) {
+      try {
+        await sendEmail({ to: order.user.email, ...mail });
+      } catch (err) {
+        console.error("[admin] order status email failed:", err);
+      }
+    }
+  }
 
   revalidatePath("/admin/orders");
   revalidatePath(`/admin/orders/${order.orderNumber}`);

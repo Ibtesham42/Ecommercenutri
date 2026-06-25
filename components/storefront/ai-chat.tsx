@@ -58,9 +58,20 @@ export function AiChat({
         }),
       });
 
-      if (!res.ok || !res.body) {
-        throw new Error("Request failed");
+      // Friendly fallbacks (disabled / rate-limited) come back as plain text;
+      // render their message inline instead of a generic error.
+      if (!res.ok || res.headers.get("X-AI-Fallback") === "1") {
+        const text = (await res.text()).trim();
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === assistantId
+              ? { ...msg, content: text || "Something went wrong. Please try again." }
+              : msg,
+          ),
+        );
+        return;
       }
+      if (!res.body) throw new Error("No response body");
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();

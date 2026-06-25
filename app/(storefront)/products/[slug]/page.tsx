@@ -7,7 +7,7 @@ import {
   minVariantPrice,
 } from "@/lib/queries/products";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
-import { buildMetadata } from "@/lib/seo";
+import { buildMetadata, breadcrumbSchema, jsonLd } from "@/lib/seo";
 import { ProductGallery } from "@/components/storefront/product-gallery";
 import { ProductPurchase } from "@/components/storefront/product-purchase";
 import { NutritionFacts } from "@/components/storefront/nutrition-facts";
@@ -103,6 +103,16 @@ export default async function ProductPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLd(
+          breadcrumbSchema([
+            { name: "Home", path: "/" },
+            { name: product.category.name, path: `/categories/${product.category.slug}` },
+            { name: product.name, path: `/products/${product.slug}` },
+          ]),
+        )}
       />
 
       <Breadcrumb className="mb-6">

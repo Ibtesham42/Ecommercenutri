@@ -16,7 +16,7 @@ export const siteConfig = {
     "nutrition",
     "Nutriyet",
   ],
-  ogImage: "/og.png",
+  ogImage: "/opengraph-image",
   contact: {
     email: "support@nutriyet.in",
     phone: "+91 90000 00000",
