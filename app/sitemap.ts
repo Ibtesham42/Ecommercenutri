@@ -2,6 +2,10 @@ import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { siteConfig } from "@/config/site";
 
+// Generated at request time so it always reflects the live catalog and never
+// needs database access during the build.
+export const dynamic = "force-dynamic";
+
 /** Dynamic sitemap: static pages + all active products and categories. */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteConfig.url;

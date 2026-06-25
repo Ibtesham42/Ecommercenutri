@@ -15,6 +15,10 @@ import { getCategories, getPublishedStories } from "@/lib/queries/catalog";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
 import { getCurrentUser } from "@/lib/auth";
 
+// Personalized + catalog-driven, so render at request time. This also keeps the
+// database out of the build step (it's only needed at runtime).
+export const dynamic = "force-dynamic";
+
 const valueProps = [
   { icon: Leaf, title: "100% Natural", desc: "Clean-label products with no artificial preservatives." },
   { icon: ShieldCheck, title: "Lab Tested", desc: "Every batch quality-checked for purity and nutrition." },

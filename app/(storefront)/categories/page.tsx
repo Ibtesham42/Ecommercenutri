@@ -4,6 +4,10 @@ import type { Metadata } from "next";
 import { getCategories } from "@/lib/queries/catalog";
 import { buildMetadata } from "@/lib/seo";
 
+// Catalog data lives in the database, so render at request time rather than
+// prerendering at build — the DB is only reachable (and needed) at runtime.
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = buildMetadata({
   title: "Shop by category",
   description: "Explore Nutriyet product categories.",
