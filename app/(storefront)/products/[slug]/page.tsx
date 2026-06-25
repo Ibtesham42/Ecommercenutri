@@ -99,7 +99,7 @@ export default async function ProductPage({
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-8">
+    <div className="mx-auto w-full max-w-7xl px-4 pt-8 pb-28 lg:pb-8">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }}
@@ -176,6 +176,7 @@ export default async function ProductPage({
               stock: v.stock,
             }))}
             wishlisted={wishlistIds.has(product.id)}
+            highlights={facts.slice(0, 3)}
           />
 
           <ProductAiAssistant productId={product.id} productName={product.name} />

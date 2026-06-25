@@ -14,12 +14,16 @@ _Last updated: 2026-06-25 · Auto-maintained. Update at the end of every milesto
 | Current milestone   | **M0–M6 + RBAC + CMS Phase 1 (Hero Slider) — production-ready** |
 
 ## CMS roadmap (WordPress-style admin management; one phase per turn)
-✅ **Phase 1 — Hero Slider Manager** (this turn): `HeroSlide` model + `/admin/hero`
-(drag-drop reorder, duplicate, schedule, publish, live preview) + premium storefront
-slider after Stories. Gated by new `appearance` permission.
-⏳ Backlog: 2) Product-page UX redesign + mobile polish · 3) Appearance & Website Settings
-· 4) Homepage Section Builder · 5) Banner Manager · 6) Navigation Builder · 7) Footer
-Builder · 8) Media Library · 9) Content/popups/ads.
+✅ **Phase 1 — Hero Slider Manager**: `HeroSlide` model + `/admin/hero` (drag-drop reorder,
+duplicate, schedule, publish, live preview) + premium storefront slider after Stories.
+Gated by `appearance` permission.
+✅ **Phase 2 — Product page UX redesign + mobile**: redesigned `product-purchase.tsx`
+(savings price block, nutrition highlight chips, larger variant pills + per-variant price,
+44px quantity stepper, Buy-now-primary hierarchy, delivery estimate, free-shipping progress,
+trust badges, **sticky mobile add-to-cart bar** via IntersectionObserver); polished reviews
+(distribution bars, Verified badge). Frontend-only.
+⏳ Backlog: 3) Appearance & Website Settings · 4) Homepage Section Builder · 5) Banner
+Manager · 6) Navigation Builder · 7) Footer Builder · 8) Media Library · 9) Content/popups/ads.
 
 ## Latest: Admin RBAC (sub-admins, permissions, store settings)
 Roles `SUPER_ADMIN`/`ADMIN` with per-section `User.permissions`; new `StoreSetting`.

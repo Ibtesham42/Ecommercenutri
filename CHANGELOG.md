@@ -3,6 +3,30 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [CMS Phase 2] — Product page UX redesign + mobile — 2026-06-25
+
+Premium, mobile-first redesign of the product detail purchase experience.
+Frontend-only; no schema or API changes.
+
+### Changed
+- **`components/storefront/product-purchase.tsx`** redesigned: clearer price block with
+  savings ("You save ₹X") and tax note; nutrition **highlight chips**; larger
+  **variant pills** (≥52px) showing per-variant price + sold-out state; bigger
+  **quantity stepper** (44px targets); stronger **button hierarchy** (Buy now primary,
+  Add to cart secondary, icon wishlist); **delivery estimate** (date-fns, 3–5 days);
+  **free-shipping** progress (reuses `FREE_SHIPPING_THRESHOLD`); a row of **trust badges**;
+  and a **sticky mobile add-to-cart bar** that appears (via IntersectionObserver) once the
+  inline CTAs scroll off-screen, with safe-area inset padding.
+- **`components/storefront/product-reviews.tsx`**: added a **rating-distribution** bar
+  chart, a **Verified** buyer badge, roomier cards, and a nicer empty state.
+- **Product page** (`app/(storefront)/products/[slug]/page.tsx`): passes top-3 nutrition
+  facts as highlights and adds mobile bottom padding so the sticky bar never overlaps content.
+
+### Notes
+- No new dependencies (reuses `date-fns`, `lib/shipping.ts`, `lib/format.ts`, existing UI).
+- Verified: all new elements render; existing tabs/nutrition/related/JSON-LD intact; no
+  regressions on other pages. Typecheck/lint/build green.
+
 ## [CMS Phase 1] — Homepage Hero Slider Manager — 2026-06-25
 
 First phase of the WordPress-style CMS: admins can manage the homepage hero slider
