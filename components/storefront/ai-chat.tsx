@@ -1,0 +1,199 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { nanoid } from "nanoid";
+import { Sparkles, Send, Loader2, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+type Msg = { id: string; role: "user" | "assistant"; content: string };
+
+export function AiChat({
+  productId,
+  greeting,
+  suggestions = [],
+  initialQuestion,
+  className,
+  heightClass = "h-[60vh]",
+}: {
+  productId?: string;
+  greeting?: string;
+  suggestions?: string[];
+  initialQuestion?: string;
+  className?: string;
+  heightClass?: string;
+}) {
+  const [sessionId] = useState(() => nanoid());
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [input, setInput] = useState("");
+  const [streaming, setStreaming] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sentInitial = useRef(false);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages]);
+
+  async function send(text: string) {
+    const content = text.trim();
+    if (!content || streaming) return;
+
+    const userMsg: Msg = { id: nanoid(), role: "user", content };
+    const history = [...messages, userMsg];
+    setMessages(history);
+    setInput("");
+    setStreaming(true);
+
+    const assistantId = nanoid();
+    setMessages((m) => [...m, { id: assistantId, role: "assistant", content: "" }]);
+
+    try {
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          productId: productId ?? null,
+          messages: history.map((m) => ({ role: m.role, content: m.content })),
+        }),
+      });
+
+      if (!res.ok || !res.body) {
+        throw new Error("Request failed");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let acc = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        acc += decoder.decode(value, { stream: true });
+        setMessages((m) =>
+          m.map((msg) => (msg.id === assistantId ? { ...msg, content: acc } : msg)),
+        );
+      }
+      if (!acc.trim()) {
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === assistantId
+              ? { ...msg, content: "Sorry, I couldn't generate a response. Please try again." }
+              : msg,
+          ),
+        );
+      }
+    } catch {
+      setMessages((m) =>
+        m.map((msg) =>
+          msg.id === assistantId
+            ? {
+                ...msg,
+                content:
+                  "Something went wrong reaching the assistant. Please try again in a moment.",
+              }
+            : msg,
+        ),
+      );
+    } finally {
+      setStreaming(false);
+    }
+  }
+
+  // Auto-send a deep-linked question (e.g. from "Ask AI about this product").
+  useEffect(() => {
+    if (initialQuestion && !sentInitial.current) {
+      sentInitial.current = true;
+      void send(initialQuestion);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuestion]);
+
+  const empty = messages.length === 0;
+
+  return (
+    <div className={cn("flex flex-col rounded-2xl border bg-background", className)}>
+      <div ref={scrollRef} className={cn("flex-1 space-y-4 overflow-y-auto p-4", heightClass)} aria-live="polite">
+        {empty && (
+          <div className="flex h-full flex-col items-center justify-center text-center">
+            <span className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
+              <Sparkles className="size-6" />
+            </span>
+            <p className="mt-3 max-w-sm text-sm text-muted-foreground">
+              {greeting ?? "Ask me anything about nutrition or our products."}
+            </p>
+          </div>
+        )}
+
+        {messages.map((m) => (
+          <div
+            key={m.id}
+            className={cn("flex gap-3", m.role === "user" && "flex-row-reverse")}
+          >
+            <span
+              className={cn(
+                "grid size-8 shrink-0 place-items-center rounded-full",
+                m.role === "user" ? "bg-secondary" : "bg-primary/10 text-primary",
+              )}
+            >
+              {m.role === "user" ? <User className="size-4" /> : <Sparkles className="size-4" />}
+            </span>
+            <div
+              className={cn(
+                "max-w-[80%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm",
+                m.role === "user"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted",
+              )}
+            >
+              {m.content || (streaming ? <TypingDots /> : "")}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {empty && suggestions.length > 0 && (
+        <div className="flex flex-wrap gap-2 border-t p-3">
+          {suggestions.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => send(s)}
+              className="rounded-full border bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary/40 hover:text-primary"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          send(input);
+        }}
+        className="flex items-center gap-2 border-t p-3"
+      >
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask about nutrition or products…"
+          className="h-10 flex-1 rounded-lg border bg-transparent px-3 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+          disabled={streaming}
+        />
+        <Button type="submit" size="icon" disabled={streaming || !input.trim()} aria-label="Send">
+          {streaming ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+        </Button>
+      </form>
+    </div>
+  );
+}
+
+function TypingDots() {
+  return (
+    <span className="inline-flex gap-1">
+      <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.3s]" />
+      <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/50 [animation-delay:-0.15s]" />
+      <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground/50" />
+    </span>
+  );
+}
