@@ -3,6 +3,33 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [CMS Phase 3] — Appearance & Website Settings — 2026-06-25
+
+Admins can now manage the storefront's branding, theme, announcement bar, contact
+details and SEO defaults without code, from `/admin/appearance`. Additive; every value
+falls back to `config/site.ts`.
+
+### Added
+- **Schema** (additive migration `appearance_settings`): extended `StoreSetting` with
+  siteName, tagline, logo, logoDark, favicon, primaryColor, secondaryColor,
+  announcement(+active+link), whatsapp, businessHours, mapsEmbedUrl, metaTitle,
+  metaDescription, ogImage.
+- **Admin** `/admin/appearance` (gated by `appearance` permission): `appearance-form.tsx`
+  with Branding / Theme / Announcement / Contact / Social / SEO sections, color pickers,
+  and `ImageUploadField` for logo/dark-logo/favicon/OG. `updateStoreSettings` now uses
+  `requirePermission("appearance")`. New nav item; `/admin/settings` links here (the old
+  inline store form was removed).
+- **Storefront wiring**: `AnnouncementBar` (top promo bar) + floating `WhatsAppButton`;
+  admin **theme colors** injected as `--primary`/`--secondary` CSS-var overrides; uploaded
+  **logo** in header + footer; **business hours/address** in the footer; and **SEO defaults
+  + favicon** wired into the root layout's `generateMetadata()` (config fallback).
+
+### Notes
+- `getStoreSettings()` extended with config fallbacks; no new dependencies.
+- Verified live: setting announcement/color/WhatsApp/hours/meta-title reflects on the
+  storefront; super admin + appearance sub-admin can manage it; other-section access still
+  blocked. Test values reset afterward. Typecheck/lint/build green (51 routes).
+
 ## [CMS Phase 2] — Product page UX redesign + mobile — 2026-06-25
 
 Premium, mobile-first redesign of the product detail purchase experience.

@@ -1,0 +1,16 @@
+-- AlterTable
+ALTER TABLE "StoreSetting" ADD COLUMN     "announcementActive" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "announcementLink" TEXT,
+ADD COLUMN     "businessHours" TEXT,
+ADD COLUMN     "favicon" TEXT,
+ADD COLUMN     "logo" TEXT,
+ADD COLUMN     "logoDark" TEXT,
+ADD COLUMN     "mapsEmbedUrl" TEXT,
+ADD COLUMN     "metaDescription" TEXT,
+ADD COLUMN     "metaTitle" TEXT,
+ADD COLUMN     "ogImage" TEXT,
+ADD COLUMN     "primaryColor" TEXT,
+ADD COLUMN     "secondaryColor" TEXT,
+ADD COLUMN     "siteName" TEXT,
+ADD COLUMN     "tagline" TEXT,
+ADD COLUMN     "whatsapp" TEXT;

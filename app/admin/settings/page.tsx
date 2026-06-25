@@ -1,20 +1,17 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { CheckCircle2, MinusCircle } from "lucide-react";
+import { CheckCircle2, MinusCircle, Palette, ArrowRight } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   ChangeEmailForm,
   ChangePasswordForm,
 } from "@/components/admin/account-forms";
-import {
-  StoreSettingsForm,
-  type StoreSettingsValues,
-} from "@/components/admin/store-settings-form";
 import { siteConfig } from "@/config/site";
 import { env, isConfigured } from "@/lib/env";
 import { getAdminUser } from "@/lib/auth";
-import { getStoreSettings } from "@/lib/queries/settings";
 
 export const metadata: Metadata = { title: "Settings", robots: { index: false } };
 
@@ -32,24 +29,14 @@ export default async function AdminSettingsPage() {
   const admin = await getAdminUser();
   if (!admin) redirect("/admin");
   const isSuper = admin.role === "SUPER_ADMIN";
-
-  const store = await getStoreSettings();
-  const storeInitial: StoreSettingsValues = {
-    supportEmail: store.supportEmail,
-    supportPhone: store.supportPhone,
-    address: store.address ?? "",
-    announcement: store.announcement ?? "",
-    instagram: store.instagram,
-    facebook: store.facebook,
-    twitter: store.twitter,
-    youtube: store.youtube,
-  };
+  const canAppearance =
+    isSuper || admin.permissions.includes("appearance");
 
   return (
     <div className="max-w-3xl">
       <PageHeader
         title="Settings"
-        description={isSuper ? "Your account, store details and integrations." : "Your account."}
+        description={isSuper ? "Your account and integrations." : "Your account."}
       />
 
       <div className="space-y-6">
@@ -65,17 +52,26 @@ export default async function AdminSettingsPage() {
           </div>
         </section>
 
-        {/* Store settings — main admin only */}
-        {isSuper && (
-          <section className="rounded-xl border bg-background p-5">
-            <h2 className="font-semibold">Store details</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Contact details and social links shown across the storefront. Blank
-              fields fall back to the values in <code>config/site.ts</code>.
-            </p>
-            <div className="mt-4">
-              <StoreSettingsForm initial={storeInitial} />
+        {/* Store appearance — managed on its own page */}
+        {canAppearance && (
+          <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-background p-5">
+            <div className="flex items-start gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                <Palette className="size-5" />
+              </span>
+              <div>
+                <h2 className="font-semibold">Appearance &amp; branding</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Logo, theme colors, announcement bar, contact details, social links
+                  and SEO defaults.
+                </p>
+              </div>
             </div>
+            <Button asChild className="gap-1.5">
+              <Link href="/admin/appearance">
+                Manage appearance <ArrowRight className="size-4" />
+              </Link>
+            </Button>
           </section>
         )}
 

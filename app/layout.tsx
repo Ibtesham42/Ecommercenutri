@@ -4,6 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { siteConfig } from "@/config/site";
 import { organizationSchema, websiteSchema, jsonLd } from "@/lib/seo";
+import { getStoreSettings } from "@/lib/queries/settings";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@/components/analytics";
@@ -17,33 +18,44 @@ const fontHeading = Plus_Jakarta_Sans({
   weight: ["500", "600", "700", "800"],
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteConfig.url),
-  title: {
-    default: `${siteConfig.name} — ${siteConfig.tagline}`,
-    template: `%s | ${siteConfig.name}`,
-  },
-  description: siteConfig.description,
-  keywords: [...siteConfig.keywords],
-  applicationName: siteConfig.name,
-  authors: [{ name: siteConfig.name, url: siteConfig.url }],
-  creator: siteConfig.name,
-  openGraph: {
-    type: "website",
-    locale: "en_IN",
-    url: siteConfig.url,
-    title: `${siteConfig.name} — ${siteConfig.tagline}`,
-    description: siteConfig.description,
-    siteName: siteConfig.name,
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: `${siteConfig.name} — ${siteConfig.tagline}`,
-    description: siteConfig.description,
-  },
-  icons: { icon: "/favicon.ico" },
-  robots: { index: true, follow: true },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  // SEO defaults are admin-editable (Appearance settings) with config fallback.
+  const store = await getStoreSettings();
+  const name = store.siteName;
+  const title = store.metaTitle || `${name} — ${store.tagline}`;
+  const description = store.metaDescription || siteConfig.description;
+  const ogImages = store.ogImage ? [{ url: store.ogImage }] : undefined;
+
+  return {
+    metadataBase: new URL(siteConfig.url),
+    title: {
+      default: title,
+      template: `%s | ${name}`,
+    },
+    description,
+    keywords: [...siteConfig.keywords],
+    applicationName: name,
+    authors: [{ name, url: siteConfig.url }],
+    creator: name,
+    openGraph: {
+      type: "website",
+      locale: "en_IN",
+      url: siteConfig.url,
+      title,
+      description,
+      siteName: name,
+      ...(ogImages ? { images: ogImages } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      ...(store.ogImage ? { images: [store.ogImage] } : {}),
+    },
+    icons: store.favicon ? { icon: store.favicon } : { icon: "/favicon.ico" },
+    robots: { index: true, follow: true },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: [

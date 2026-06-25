@@ -44,10 +44,16 @@ export async function SiteFooter() {
     <footer className="mt-16 border-t bg-muted/30">
       <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 md:grid-cols-[1.5fr_repeat(3,1fr)]">
         <div className="space-y-4">
-          <Logo />
+          <Logo logoUrl={store.logo} name={store.siteName} />
           <p className="max-w-xs text-sm text-muted-foreground">
             {siteConfig.description}
           </p>
+          {(store.businessHours || store.address) && (
+            <div className="space-y-1 text-sm text-muted-foreground">
+              {store.address && <p>{store.address}</p>}
+              {store.businessHours && <p>{store.businessHours}</p>}
+            </div>
+          )}
           <div className="flex items-center gap-3">
             <a
               href={store.instagram}
@@ -95,7 +101,7 @@ export async function SiteFooter() {
       <div className="border-t">
         <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-2 px-4 py-5 text-sm text-muted-foreground sm:flex-row">
           <p>
-            © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
+            © {new Date().getFullYear()} {store.siteName}. All rights reserved.
           </p>
           <p>
             Made with care for your health · {store.supportEmail}

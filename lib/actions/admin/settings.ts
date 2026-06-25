@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin, requireSuperAdmin } from "@/lib/auth";
+import { requireAdmin, requirePermission } from "@/lib/auth";
 import {
   ownEmailSchema,
   ownPasswordSchema,
@@ -61,10 +61,10 @@ export async function updateOwnPassword(input: unknown): Promise<AdminResult> {
   return { ok: true };
 }
 
-// --- Store settings (main admin only) ---------------------------------------
+// --- Store / appearance settings (appearance permission) --------------------
 
 export async function updateStoreSettings(input: unknown): Promise<AdminResult> {
-  await requireSuperAdmin();
+  await requirePermission("appearance");
 
   const parsed = storeSettingsSchema.safeParse(input);
   if (!parsed.success) {
@@ -73,14 +73,29 @@ export async function updateStoreSettings(input: unknown): Promise<AdminResult> 
   const d = parsed.data;
 
   const data = {
+    siteName: d.siteName || null,
+    tagline: d.tagline || null,
+    logo: d.logo || null,
+    logoDark: d.logoDark || null,
+    favicon: d.favicon || null,
+    primaryColor: d.primaryColor || null,
+    secondaryColor: d.secondaryColor || null,
+    announcement: d.announcement || null,
+    announcementActive: d.announcementActive,
+    announcementLink: d.announcementLink || null,
     supportEmail: d.supportEmail || null,
     supportPhone: d.supportPhone || null,
+    whatsapp: d.whatsapp || null,
     address: d.address || null,
-    announcement: d.announcement || null,
+    businessHours: d.businessHours || null,
+    mapsEmbedUrl: d.mapsEmbedUrl || null,
     instagram: d.instagram || null,
     facebook: d.facebook || null,
     twitter: d.twitter || null,
     youtube: d.youtube || null,
+    metaTitle: d.metaTitle || null,
+    metaDescription: d.metaDescription || null,
+    ogImage: d.ogImage || null,
   };
 
   await prisma.storeSetting.upsert({
@@ -89,7 +104,7 @@ export async function updateStoreSettings(input: unknown): Promise<AdminResult> 
     create: { id: "singleton", ...data },
   });
 
-  revalidatePath("/admin/settings");
-  revalidatePath("/", "layout"); // footer reads store settings
+  revalidatePath("/admin/appearance");
+  revalidatePath("/", "layout"); // header/footer/announcement read store settings
   return { ok: true };
 }

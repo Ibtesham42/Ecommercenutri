@@ -65,15 +65,46 @@ const optUrl = z
   .nullable()
   .optional();
 
+const optImage = z
+  .union([z.string().url("Enter a valid image URL"), z.literal("")])
+  .nullable()
+  .optional();
+
+const optHex = z
+  .union([z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Enter a hex color"), z.literal("")])
+  .nullable()
+  .optional();
+
 export const storeSettingsSchema = z.object({
+  // Branding
+  siteName: z.string().max(60).nullable().optional(),
+  tagline: z.string().max(120).nullable().optional(),
+  logo: optImage,
+  logoDark: optImage,
+  favicon: optImage,
+  // Theme
+  primaryColor: optHex,
+  secondaryColor: optHex,
+  // Announcement
+  announcement: z.string().max(200).nullable().optional(),
+  announcementActive: z.boolean().default(false),
+  announcementLink: optUrl,
+  // Contact
   supportEmail: optionalEmail,
   supportPhone: z.string().max(40).nullable().optional(),
+  whatsapp: z.string().max(20).nullable().optional(),
   address: z.string().max(200).nullable().optional(),
-  announcement: z.string().max(200).nullable().optional(),
+  businessHours: z.string().max(120).nullable().optional(),
+  mapsEmbedUrl: optUrl,
+  // Social
   instagram: optUrl,
   facebook: optUrl,
   twitter: optUrl,
   youtube: optUrl,
+  // SEO
+  metaTitle: z.string().max(70).nullable().optional(),
+  metaDescription: z.string().max(160).nullable().optional(),
+  ogImage: optImage,
 });
 
 export type AdminCreateInput = z.infer<typeof adminCreateSchema>;

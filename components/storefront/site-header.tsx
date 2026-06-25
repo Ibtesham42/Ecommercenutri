@@ -16,7 +16,13 @@ import { Logo } from "@/components/storefront/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CartCount } from "@/components/storefront/cart-count";
 
-export function SiteHeader() {
+export function SiteHeader({
+  logoUrl,
+  siteName,
+}: {
+  logoUrl?: string | null;
+  siteName?: string;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -36,7 +42,7 @@ export function SiteHeader() {
           <SheetContent side="left" className="w-72 p-0">
             <SheetHeader className="border-b p-4">
               <SheetTitle asChild>
-                <Logo />
+                <Logo logoUrl={logoUrl} name={siteName} />
               </SheetTitle>
             </SheetHeader>
             <nav className="flex flex-col gap-1 p-3">
@@ -54,7 +60,7 @@ export function SiteHeader() {
           </SheetContent>
         </Sheet>
 
-        <Logo />
+        <Logo logoUrl={logoUrl} name={siteName} />
 
         <nav className="ml-6 hidden items-center gap-1 md:flex">
           {siteConfig.mainNav.map((item) => (

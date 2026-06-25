@@ -515,19 +515,41 @@ model AIMessage {
   @@index([chatId])
 }
 
-// Single-row, editable store details (contact + socials). Read with a fallback
-// to `config/site.ts`, so the storefront works before any values are set.
+// Single-row, editable store details (branding, contact, socials, SEO). Read
+// with a fallback to `config/site.ts`, so the storefront works before any
+// values are set. Managed from /admin/appearance.
 model StoreSetting {
   id           String   @id @default("singleton")
+  // Branding
+  siteName     String?
+  tagline      String?
+  logo         String? // light logo image URL
+  logoDark     String? // optional dark-mode logo
+  favicon      String?
+  // Theme
+  primaryColor   String? // hex override for --primary
+  secondaryColor String? // hex override for --secondary
+  // Announcement bar
+  announcement       String? // banner text
+  announcementActive Boolean @default(false)
+  announcementLink   String?
+  // Contact
   supportEmail String?
   supportPhone String?
+  whatsapp     String? // digits for wa.me link
   address      String?
-  instagram    String?
-  facebook     String?
-  twitter      String?
-  youtube      String?
-  announcement String? // optional storefront banner text
-  updatedAt    DateTime @updatedAt
+  businessHours String?
+  mapsEmbedUrl String? // Google Maps embed src
+  // Social
+  instagram String?
+  facebook  String?
+  twitter   String?
+  youtube   String?
+  // SEO defaults
+  metaTitle       String?
+  metaDescription String?
+  ogImage         String?
+  updatedAt       DateTime @updatedAt
 }
 
 // Single-row settings table. The Groq API key itself is NEVER stored here —

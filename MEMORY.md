@@ -7,11 +7,12 @@ decisions only** — see `CLAUDE.md` for the full guide, `PROGRESS.md` for the t
 ## Current milestone
 **Feature-complete (M0–M6) + Admin RBAC + CMS Phase 1.** All milestones done plus
 sub-admin RBAC and the **Homepage Hero Slider Manager** (first WordPress-style CMS phase).
-Plus **CMS Phase 2 (product-page UX redesign)**. Build/typecheck/lint green (50 routes);
-DB live + migrated (`admin_rbac`, `hero_slides`); Groq + Cloudinary configured. **Active CMS
-roadmap** (one phase per turn): ✅1 hero slider · ✅2 product-page UX · 3 appearance/settings ·
-4 section builder · 5 banners · 6 navigation · 7 footer · 8 media library · 9 content.
-Remaining ops: deploy per `DEPLOYMENT.md`.
+Plus **CMS Phases 2–3** (product-page UX redesign; Appearance & Website Settings).
+Build/typecheck/lint green (51 routes); DB live + migrated (`admin_rbac`, `hero_slides`,
+`appearance_settings`); Groq + Cloudinary configured. **Active CMS roadmap** (one phase per
+turn): ✅1 hero slider · ✅2 product-page UX · ✅3 appearance/settings · 4 section builder ·
+5 banners · 6 navigation · 7 footer · 8 media library · 9 content. Remaining ops: deploy
+per `DEPLOYMENT.md`.
 
 ## Architecture decisions that bite if forgotten
 - **Money = integer paise** everywhere. UI collects rupees and converts at the edge
@@ -43,6 +44,11 @@ Remaining ops: deploy per `DEPLOYMENT.md`.
   when data exists**, so the homepage degrades to its current form otherwise. Reordering
   uses native HTML5 DnD + a `reorder(ids[])` server action (no DnD library). Reuse
   `HeroSlideContent` from `hero-slider.tsx` for the admin live preview.
+- **Site-wide singletons live in `StoreSetting`** (one row, id "singleton"), edited at
+  `/admin/appearance`, read via `getStoreSettings()` with `config/site.ts` fallback.
+  Theme colors are injected as `--primary`/`--secondary` CSS-var overrides in the
+  storefront layout; SEO defaults/favicon flow through the root `generateMetadata()`.
+  **Appearance edits hit the LIVE DB** — when testing, reset test values afterward.
 - **SEO/PWA/icons are file-convention + generated**: `app/sitemap.ts`, `robots.ts`,
   `manifest.ts`, and `next/og` `icon.tsx`/`apple-icon.tsx`/`opengraph-image.tsx` (no
   binary assets). Structured-data helpers in `lib/seo.ts`. Service worker
