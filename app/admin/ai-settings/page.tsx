@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/admin/page-header";
+import { guardSection } from "@/lib/admin-guard";
 import {
   AISettingsForm,
   type AISettingsValues,
@@ -12,6 +13,7 @@ export const metadata: Metadata = { title: "AI Settings", robots: { index: false
 const numberFmt = new Intl.NumberFormat("en-IN");
 
 export default async function AISettingsPage() {
+  await guardSection("ai");
   const setting = await prisma.aISetting.findUnique({ where: { id: "singleton" } });
 
   const initial: AISettingsValues = {

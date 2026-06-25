@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/admin/page-header";
+import { guardSection } from "@/lib/admin-guard";
 import { ProductForm, productToFormValues } from "@/components/admin/product-form";
 import { prisma } from "@/lib/prisma";
 import { isConfigured } from "@/lib/env";
@@ -12,6 +13,7 @@ export default async function EditProductPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await guardSection("products");
   const { id } = await params;
 
   const [product, categories, brands] = await Promise.all([

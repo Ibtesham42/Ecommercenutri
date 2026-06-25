@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
+import { guardSection } from "@/lib/admin-guard";
 import { ProductRowActions } from "@/components/admin/product-row-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export default async function AdminProductsPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  await guardSection("products");
   const { q = "" } = await searchParams;
 
   const where: Prisma.ProductWhereInput = q

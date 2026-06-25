@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/admin/page-header";
+import { guardSection } from "@/lib/admin-guard";
 import { StoryManager, type StoryRow } from "@/components/admin/story-manager";
 import { prisma } from "@/lib/prisma";
 import { isConfigured } from "@/lib/env";
@@ -7,6 +8,7 @@ import { isConfigured } from "@/lib/env";
 export const metadata: Metadata = { title: "Stories", robots: { index: false } };
 
 export default async function AdminStoriesPage() {
+  await guardSection("stories");
   const [stories, products] = await Promise.all([
     prisma.story.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }] }),
     prisma.product.findMany({

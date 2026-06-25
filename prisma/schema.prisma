@@ -21,7 +21,8 @@ datasource db {
 
 enum Role {
   USER
-  ADMIN
+  ADMIN // sub-admin: access limited by `permissions`
+  SUPER_ADMIN // main admin: full access, manages admins + store settings
 }
 
 enum AddressType {
@@ -76,6 +77,12 @@ model User {
   image         String?
   phone         String?
   role          Role      @default(USER)
+  // For sub-admins (role ADMIN): allowed admin section keys, e.g. ["products","stories"].
+  // Ignored for SUPER_ADMIN (full access) and USER.
+  permissions   String[]  @default([])
+  contactEmail  String? // optional admin contact, distinct from login email
+  address       String? // optional admin address
+  isActive      Boolean   @default(true) // deactivated admins/users cannot sign in
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -473,6 +480,21 @@ model AIMessage {
   chat AIChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
 
   @@index([chatId])
+}
+
+// Single-row, editable store details (contact + socials). Read with a fallback
+// to `config/site.ts`, so the storefront works before any values are set.
+model StoreSetting {
+  id           String   @id @default("singleton")
+  supportEmail String?
+  supportPhone String?
+  address      String?
+  instagram    String?
+  facebook     String?
+  twitter      String?
+  youtube      String?
+  announcement String? // optional storefront banner text
+  updatedAt    DateTime @updatedAt
 }
 
 // Single-row settings table. The Groq API key itself is NEVER stored here —

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { OrderStatus, PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { orderStatusSchema } from "@/lib/validations/admin";
 import { orderStatusEmail } from "@/lib/emails";
 import { sendEmail } from "@/lib/email";
@@ -13,7 +13,7 @@ const CLOSED: OrderStatus[] = ["CANCELLED", "REFUNDED"];
 
 /** Update an order's fulfillment status, with sensible payment/stock side-effects. */
 export async function updateOrderStatus(input: unknown): Promise<AdminResult> {
-  await requireAdmin();
+  await requirePermission("orders");
 
   const parsed = orderStatusSchema.safeParse(input);
   if (!parsed.success) {

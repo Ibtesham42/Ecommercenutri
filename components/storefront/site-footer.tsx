@@ -6,6 +6,7 @@ import {
   YoutubeIcon,
 } from "@/components/storefront/social-icons";
 import { siteConfig } from "@/config/site";
+import { getStoreSettings } from "@/lib/queries/settings";
 
 const footerCols = [
   {
@@ -37,7 +38,8 @@ const footerCols = [
   },
 ];
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const store = await getStoreSettings();
   return (
     <footer className="mt-16 border-t bg-muted/30">
       <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 md:grid-cols-[1.5fr_repeat(3,1fr)]">
@@ -48,21 +50,21 @@ export function SiteFooter() {
           </p>
           <div className="flex items-center gap-3">
             <a
-              href={siteConfig.social.instagram}
+              href={store.instagram}
               aria-label="Instagram"
               className="text-muted-foreground transition-colors hover:text-primary"
             >
               <InstagramIcon className="size-5" />
             </a>
             <a
-              href={siteConfig.social.facebook}
+              href={store.facebook}
               aria-label="Facebook"
               className="text-muted-foreground transition-colors hover:text-primary"
             >
               <FacebookIcon className="size-5" />
             </a>
             <a
-              href={siteConfig.social.youtube}
+              href={store.youtube}
               aria-label="YouTube"
               className="text-muted-foreground transition-colors hover:text-primary"
             >
@@ -96,7 +98,7 @@ export function SiteFooter() {
             © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
           </p>
           <p>
-            Made with care for your health · {siteConfig.contact.email}
+            Made with care for your health · {store.supportEmail}
           </p>
         </div>
       </div>

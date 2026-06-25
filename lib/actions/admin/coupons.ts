@@ -2,12 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { couponInputSchema } from "@/lib/validations/admin";
 import type { AdminResult } from "@/lib/actions/admin/types";
 
 export async function saveCoupon(input: unknown): Promise<AdminResult> {
-  await requireAdmin();
+  await requirePermission("coupons");
 
   const parsed = couponInputSchema.safeParse(input);
   if (!parsed.success) {
@@ -46,14 +46,14 @@ export async function saveCoupon(input: unknown): Promise<AdminResult> {
 }
 
 export async function toggleCoupon(id: string, isActive: boolean): Promise<AdminResult> {
-  await requireAdmin();
+  await requirePermission("coupons");
   await prisma.coupon.update({ where: { id }, data: { isActive } });
   revalidatePath("/admin/coupons");
   return { ok: true };
 }
 
 export async function deleteCoupon(id: string): Promise<AdminResult> {
-  await requireAdmin();
+  await requirePermission("coupons");
   const used = await prisma.order.count({ where: { couponId: id } });
   if (used > 0) {
     // Keep referential history — deactivate instead of deleting.

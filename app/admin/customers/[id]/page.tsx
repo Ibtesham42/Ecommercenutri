@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowLeft, Mail, Phone, MapPin } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
+import { guardSection } from "@/lib/admin-guard";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -22,6 +23,7 @@ export default async function CustomerDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await guardSection("customers");
   const { id } = await params;
   const user = await prisma.user.findUnique({
     where: { id },

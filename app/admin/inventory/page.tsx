@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { PageHeader } from "@/components/admin/page-header";
+import { guardSection } from "@/lib/admin-guard";
 import { InventoryStockInput } from "@/components/admin/inventory-stock-input";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ export default async function InventoryPage({
 }: {
   searchParams: Promise<{ q?: string; low?: string }>;
 }) {
+  await guardSection("inventory");
   const { q = "", low = "" } = await searchParams;
 
   const where: Prisma.ProductVariantWhereInput = {

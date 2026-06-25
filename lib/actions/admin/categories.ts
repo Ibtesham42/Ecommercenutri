@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { categoryInputSchema } from "@/lib/validations/admin";
 import type { AdminResult } from "@/lib/actions/admin/types";
 
@@ -13,7 +13,7 @@ function revalidate() {
 }
 
 export async function saveCategory(input: unknown): Promise<AdminResult> {
-  await requireAdmin();
+  await requirePermission("categories");
 
   const parsed = categoryInputSchema.safeParse(input);
   if (!parsed.success) {
@@ -53,7 +53,7 @@ export async function saveCategory(input: unknown): Promise<AdminResult> {
 }
 
 export async function deleteCategory(id: string): Promise<AdminResult> {
-  await requireAdmin();
+  await requirePermission("categories");
   const count = await prisma.product.count({ where: { categoryId: id } });
   if (count > 0) {
     return {

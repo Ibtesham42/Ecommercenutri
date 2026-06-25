@@ -25,14 +25,15 @@ export default auth((req) => {
   const isLoggedIn = Boolean(req.auth);
   const role = req.auth?.user?.role;
 
-  // Admin area — must be a logged-in ADMIN.
+  // Admin area — must be a logged-in admin (sub-admin or main admin).
+  // Per-section permissions are enforced server-side (layout + pages + actions).
   if (path.startsWith("/admin")) {
     if (!isLoggedIn) {
       const url = new URL("/login", nextUrl);
       url.searchParams.set("callbackUrl", path);
       return withSecurityHeaders(NextResponse.redirect(url));
     }
-    if (role !== "ADMIN") {
+    if (role !== "ADMIN" && role !== "SUPER_ADMIN") {
       return withSecurityHeaders(NextResponse.redirect(new URL("/", nextUrl)));
     }
   }

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import {
   productInputSchema,
   type ProductInput,
@@ -56,7 +56,7 @@ function revalidateCatalog(slug?: string) {
 }
 
 export async function saveProduct(input: unknown): Promise<AdminResult<{ id: string }>> {
-  await requireAdmin();
+  await requirePermission("products");
 
   const parsed = productInputSchema.safeParse(input);
   if (!parsed.success) {
@@ -156,7 +156,7 @@ export async function saveProduct(input: unknown): Promise<AdminResult<{ id: str
 }
 
 export async function deleteProduct(id: string): Promise<AdminResult> {
-  await requireAdmin();
+  await requirePermission("products");
   try {
     const product = await prisma.product.delete({
       where: { id },
@@ -177,7 +177,7 @@ export async function toggleProductFlag(
   flag: ProductFlag,
   value: boolean,
 ): Promise<AdminResult> {
-  await requireAdmin();
+  await requirePermission("products");
   const product = await prisma.product.update({
     where: { id },
     data: { [flag]: value },
@@ -192,7 +192,7 @@ export async function updateVariantStock(
   variantId: string,
   stock: number,
 ): Promise<AdminResult> {
-  await requireAdmin();
+  await requirePermission("inventory");
   if (!Number.isInteger(stock) || stock < 0) {
     return { ok: false, error: "Stock must be a non-negative whole number." };
   }

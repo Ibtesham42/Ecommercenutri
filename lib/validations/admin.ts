@@ -1,4 +1,84 @@
 import { z } from "zod";
+import { ADMIN_PERMISSIONS } from "@/lib/permissions";
+
+// Admins (sub-admin management by a super admin) -----------------------------
+
+const permissionSchema = z.enum(ADMIN_PERMISSIONS);
+
+const optionalEmail = z
+  .union([z.string().email("Enter a valid email"), z.literal("")])
+  .nullable()
+  .optional();
+
+export const adminCreateSchema = z.object({
+  name: z.string().min(2, "Enter a name").max(80),
+  email: z.string().email("Enter a valid login email"),
+  password: z.string().min(8, "Password must be at least 8 characters").max(100),
+  phone: z.string().max(20).nullable().optional(),
+  contactEmail: optionalEmail,
+  address: z.string().max(200).nullable().optional(),
+  image: z
+    .union([z.string().url("Enter a valid image URL"), z.literal("")])
+    .nullable()
+    .optional(),
+  permissions: z.array(permissionSchema).default([]),
+});
+
+export const adminUpdateSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(2, "Enter a name").max(80),
+  // New password is optional on edit; blank means "leave unchanged".
+  password: z
+    .union([z.string().min(8, "Password must be at least 8 characters").max(100), z.literal("")])
+    .optional(),
+  phone: z.string().max(20).nullable().optional(),
+  contactEmail: optionalEmail,
+  address: z.string().max(200).nullable().optional(),
+  image: z
+    .union([z.string().url("Enter a valid image URL"), z.literal("")])
+    .nullable()
+    .optional(),
+  permissions: z.array(permissionSchema).default([]),
+});
+
+// Current admin's own credentials --------------------------------------------
+
+export const ownEmailSchema = z.object({
+  email: z.string().email("Enter a valid email"),
+});
+
+export const ownPasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Enter your current password"),
+    newPassword: z.string().min(8, "Password must be at least 8 characters").max(100),
+    confirmPassword: z.string().min(1, "Confirm your new password"),
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
+
+// Store settings (editable contact + socials) --------------------------------
+
+const optUrl = z
+  .union([z.string().url("Enter a valid URL"), z.literal("")])
+  .nullable()
+  .optional();
+
+export const storeSettingsSchema = z.object({
+  supportEmail: optionalEmail,
+  supportPhone: z.string().max(40).nullable().optional(),
+  address: z.string().max(200).nullable().optional(),
+  announcement: z.string().max(200).nullable().optional(),
+  instagram: optUrl,
+  facebook: optUrl,
+  twitter: optUrl,
+  youtube: optUrl,
+});
+
+export type AdminCreateInput = z.infer<typeof adminCreateSchema>;
+export type AdminUpdateInput = z.infer<typeof adminUpdateSchema>;
+export type StoreSettingsInput = z.infer<typeof storeSettingsSchema>;
 
 // Shared building blocks -----------------------------------------------------
 

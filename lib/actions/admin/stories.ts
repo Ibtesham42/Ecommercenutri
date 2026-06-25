@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { storyInputSchema } from "@/lib/validations/admin";
 import type { AdminResult } from "@/lib/actions/admin/types";
 
@@ -12,7 +12,7 @@ function revalidate() {
 }
 
 export async function saveStory(input: unknown): Promise<AdminResult> {
-  await requireAdmin();
+  await requirePermission("stories");
 
   const parsed = storyInputSchema.safeParse(input);
   if (!parsed.success) {
@@ -45,14 +45,14 @@ export async function toggleStoryPublish(
   id: string,
   isPublished: boolean,
 ): Promise<AdminResult> {
-  await requireAdmin();
+  await requirePermission("stories");
   await prisma.story.update({ where: { id }, data: { isPublished } });
   revalidate();
   return { ok: true };
 }
 
 export async function deleteStory(id: string): Promise<AdminResult> {
-  await requireAdmin();
+  await requirePermission("stories");
   await prisma.story.delete({ where: { id } });
   revalidate();
   return { ok: true };

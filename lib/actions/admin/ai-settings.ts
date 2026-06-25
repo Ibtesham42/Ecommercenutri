@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { aiSettingSchema } from "@/lib/validations/admin";
 import type { AdminResult } from "@/lib/actions/admin/types";
 
 const SINGLETON_ID = "singleton";
 
 export async function updateAISettings(input: unknown): Promise<AdminResult> {
-  await requireAdmin();
+  await requirePermission("ai");
 
   const parsed = aiSettingSchema.safeParse(input);
   if (!parsed.success) {

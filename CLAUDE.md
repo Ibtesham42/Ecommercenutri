@@ -261,6 +261,32 @@ swapped and RAG added later without touching callers.
 
 ---
 
+## 8a. Admin roles & permissions (RBAC)
+
+- **Two admin roles** (`Role` enum): `SUPER_ADMIN` (main admin — full access, manages
+  admins + store settings + own credentials) and `ADMIN` (sub-admin — access limited to
+  the sections in `User.permissions`). `USER` is a customer.
+- **Permission keys** (`lib/permissions.ts`): `products, stories, orders, categories,
+  coupons, inventory, customers, ai`. A sub-admin only reaches a section if its key is in
+  their `permissions` array; super admins always pass. Dashboard + Settings are available
+  to every admin (the dashboard only renders widgets the admin is permitted to see).
+- **Enforcement is layered & DB-fresh** (a stale JWT can't grant access):
+  - `middleware.ts` — coarse gate: any admin (`ADMIN`/`SUPER_ADMIN`) may enter `/admin`.
+  - `lib/auth.ts#getAdminUser` — loads role + permissions from the DB for the session user
+    (returns null if not an admin or `isActive=false`). All admin authz derives from this.
+  - Pages: `guardSection("key")` (`lib/admin-guard.ts`) redirects unauthorized sub-admins
+    to `/admin`. Super-admin-only pages (`/admin/admins`, store settings) check `isSuperAdmin`.
+  - Server actions: `requirePermission("key")` / `requireSuperAdmin()` (throw `FORBIDDEN`).
+  - Nav (`admin-nav.tsx`) filters items by the same permissions.
+- **Admin management** (`/admin/admins`, SUPER_ADMIN only): create/edit/activate/delete
+  sub-admins (name, login email, password, phone, contact email, address, photo, permission
+  checkboxes). Guards: can't delete/deactivate self or a super admin; emails are unique;
+  deactivated admins can't sign in (checked in the credentials `authorize`).
+- **Self-service + store settings** (`/admin/settings`): any admin can change their own
+  email + password; SUPER_ADMIN can edit `StoreSetting` (support email/phone, address,
+  socials, announcement). The storefront footer reads `getStoreSettings()` (DB) with a
+  `config/site.ts` fallback.
+
 ## 9. Security Rules
 
 - **All secrets in env vars** (`.env`, gitignored). Never print, log, or commit

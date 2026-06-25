@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/admin/page-header";
+import { guardSection } from "@/lib/admin-guard";
 import { CategoryManager, type CategoryRow } from "@/components/admin/category-manager";
 import { prisma } from "@/lib/prisma";
 import { isConfigured } from "@/lib/env";
@@ -7,6 +8,7 @@ import { isConfigured } from "@/lib/env";
 export const metadata: Metadata = { title: "Categories", robots: { index: false } };
 
 export default async function AdminCategoriesPage() {
+  await guardSection("categories");
   const categories = await prisma.category.findMany({
     orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
     include: {

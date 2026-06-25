@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import {
   IndianRupee,
@@ -7,6 +8,7 @@ import {
   Package,
   AlertTriangle,
   Clock,
+  LayoutDashboard,
 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +18,8 @@ import {
   getLowStockVariants,
   getTopProducts,
 } from "@/lib/queries/admin";
+import { getAdminUser } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { formatPrice, formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Admin Dashboard", robots: { index: false } };
@@ -44,136 +48,170 @@ function StatCard({
 }
 
 export default async function AdminDashboardPage() {
-  const [stats, recentOrders, lowStock, topProducts] = await Promise.all([
-    getDashboardStats(),
-    getRecentOrders(),
-    getLowStockVariants(),
-    getTopProducts(),
-  ]);
+  const admin = await getAdminUser();
+  if (!admin) redirect("/login?callbackUrl=/admin");
+
+  // The dashboard only surfaces data a sub-admin is permitted to see.
+  const showOrders = hasPermission(admin, "orders");
+  const showCustomers = hasPermission(admin, "customers");
+  const showProducts =
+    hasPermission(admin, "products") || hasPermission(admin, "inventory");
+  const showAnything = showOrders || showCustomers || showProducts;
+
+  const stats = showAnything ? await getDashboardStats() : null;
+  const recentOrders = showOrders ? await getRecentOrders() : [];
+  const lowStock = showProducts ? await getLowStockVariants() : [];
+  const topProducts = showProducts ? await getTopProducts() : [];
 
   return (
     <div>
       <PageHeader
         title="Dashboard"
-        description="An overview of your store's performance."
+        description={
+          admin.role === "SUPER_ADMIN"
+            ? "An overview of your store's performance."
+            : `Welcome back${admin.name ? `, ${admin.name}` : ""}.`
+        }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Revenue"
-          value={formatPrice(stats.revenue)}
-          icon={IndianRupee}
-          hint={`${stats.paidOrderCount} paid orders`}
-        />
-        <StatCard
-          label="Orders"
-          value={String(stats.orderCount)}
-          icon={ShoppingBag}
-          hint={`${stats.pendingOrderCount} pending`}
-        />
-        <StatCard
-          label="Customers"
-          value={String(stats.customerCount)}
-          icon={Users}
-        />
-        <StatCard
-          label="Products"
-          value={String(stats.productCount)}
-          icon={Package}
-          hint={`${stats.lowStockCount} low on stock`}
-        />
-      </div>
+      {!showAnything && (
+        <div className="rounded-xl border bg-background p-8 text-center">
+          <LayoutDashboard className="mx-auto size-10 text-muted-foreground/40" />
+          <p className="mt-3 font-medium">Welcome to the admin panel</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Use the menu to manage the sections you have access to.
+          </p>
+        </div>
+      )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        {/* Recent orders */}
-        <div className="rounded-xl border bg-background lg:col-span-2">
-          <div className="flex items-center justify-between border-b p-4">
-            <h2 className="flex items-center gap-2 font-semibold">
-              <Clock className="size-4 text-muted-foreground" /> Recent orders
-            </h2>
-            <Link href="/admin/orders" className="text-sm text-primary hover:underline">
-              View all
-            </Link>
-          </div>
-          {recentOrders.length === 0 ? (
-            <p className="p-6 text-sm text-muted-foreground">No orders yet.</p>
-          ) : (
-            <ul className="divide-y">
-              {recentOrders.map((o) => (
-                <li key={o.id}>
-                  <Link
-                    href={`/admin/orders/${o.orderNumber}`}
-                    className="flex items-center justify-between gap-3 p-4 transition hover:bg-muted/40"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">#{o.orderNumber}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {o.user.name ?? o.user.email} · {formatDate(o.createdAt)}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Badge variant="secondary">{o.status}</Badge>
-                      <span className="font-semibold">{formatPrice(o.total)}</span>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+      {stats && (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {showOrders && (
+            <>
+              <StatCard
+                label="Revenue"
+                value={formatPrice(stats.revenue)}
+                icon={IndianRupee}
+                hint={`${stats.paidOrderCount} paid orders`}
+              />
+              <StatCard
+                label="Orders"
+                value={String(stats.orderCount)}
+                icon={ShoppingBag}
+                hint={`${stats.pendingOrderCount} pending`}
+              />
+            </>
+          )}
+          {showCustomers && (
+            <StatCard label="Customers" value={String(stats.customerCount)} icon={Users} />
+          )}
+          {showProducts && (
+            <StatCard
+              label="Products"
+              value={String(stats.productCount)}
+              icon={Package}
+              hint={`${stats.lowStockCount} low on stock`}
+            />
           )}
         </div>
+      )}
 
-        {/* Side widgets */}
-        <div className="space-y-6">
-          <div className="rounded-xl border bg-background">
-            <div className="flex items-center gap-2 border-b p-4 font-semibold">
-              <AlertTriangle className="size-4 text-amber-500" /> Low stock
+      {(showOrders || showProducts) && (
+        <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          {/* Recent orders */}
+          {showOrders && (
+            <div className="rounded-xl border bg-background lg:col-span-2">
+              <div className="flex items-center justify-between border-b p-4">
+                <h2 className="flex items-center gap-2 font-semibold">
+                  <Clock className="size-4 text-muted-foreground" /> Recent orders
+                </h2>
+                <Link href="/admin/orders" className="text-sm text-primary hover:underline">
+                  View all
+                </Link>
+              </div>
+              {recentOrders.length === 0 ? (
+                <p className="p-6 text-sm text-muted-foreground">No orders yet.</p>
+              ) : (
+                <ul className="divide-y">
+                  {recentOrders.map((o) => (
+                    <li key={o.id}>
+                      <Link
+                        href={`/admin/orders/${o.orderNumber}`}
+                        className="flex items-center justify-between gap-3 p-4 transition hover:bg-muted/40"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">#{o.orderNumber}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {o.user.name ?? o.user.email} · {formatDate(o.createdAt)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Badge variant="secondary">{o.status}</Badge>
+                          <span className="font-semibold">{formatPrice(o.total)}</span>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            {lowStock.length === 0 ? (
-              <p className="p-4 text-sm text-muted-foreground">
-                Everything is well stocked.
-              </p>
-            ) : (
-              <ul className="divide-y">
-                {lowStock.map((v) => (
-                  <li
-                    key={v.id}
-                    className="flex items-center justify-between gap-2 p-3 text-sm"
-                  >
-                    <span className="truncate">
-                      {v.product.name}{" "}
-                      <span className="text-muted-foreground">({v.weightLabel})</span>
-                    </span>
-                    <Badge variant={v.stock === 0 ? "destructive" : "secondary"}>
-                      {v.stock} left
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          )}
 
-          <div className="rounded-xl border bg-background">
-            <div className="border-b p-4 font-semibold">Top products</div>
-            {topProducts.length === 0 ? (
-              <p className="p-4 text-sm text-muted-foreground">No sales yet.</p>
-            ) : (
-              <ul className="divide-y">
-                {topProducts.map((p) => (
-                  <li
-                    key={p.name}
-                    className="flex items-center justify-between gap-2 p-3 text-sm"
-                  >
-                    <span className="truncate">{p.name}</span>
-                    <span className="shrink-0 text-muted-foreground">
-                      {p.unitsSold} sold
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          {/* Side widgets (products / inventory) */}
+          {showProducts && (
+            <div className={showOrders ? "space-y-6" : "space-y-6 lg:col-span-3"}>
+              <div className="rounded-xl border bg-background">
+                <div className="flex items-center gap-2 border-b p-4 font-semibold">
+                  <AlertTriangle className="size-4 text-amber-500" /> Low stock
+                </div>
+                {lowStock.length === 0 ? (
+                  <p className="p-4 text-sm text-muted-foreground">
+                    Everything is well stocked.
+                  </p>
+                ) : (
+                  <ul className="divide-y">
+                    {lowStock.map((v) => (
+                      <li
+                        key={v.id}
+                        className="flex items-center justify-between gap-2 p-3 text-sm"
+                      >
+                        <span className="truncate">
+                          {v.product.name}{" "}
+                          <span className="text-muted-foreground">({v.weightLabel})</span>
+                        </span>
+                        <Badge variant={v.stock === 0 ? "destructive" : "secondary"}>
+                          {v.stock} left
+                        </Badge>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="rounded-xl border bg-background">
+                <div className="border-b p-4 font-semibold">Top products</div>
+                {topProducts.length === 0 ? (
+                  <p className="p-4 text-sm text-muted-foreground">No sales yet.</p>
+                ) : (
+                  <ul className="divide-y">
+                    {topProducts.map((p) => (
+                      <li
+                        key={p.name}
+                        className="flex items-center justify-between gap-2 p-3 text-sm"
+                      >
+                        <span className="truncate">{p.name}</span>
+                        <span className="shrink-0 text-muted-foreground">
+                          {p.unitsSold} sold
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

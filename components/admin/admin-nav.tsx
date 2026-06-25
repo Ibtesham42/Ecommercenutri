@@ -23,27 +23,56 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import type { Permission } from "@/lib/permissions";
 
-const nav = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  exact?: boolean;
+  permission?: Permission; // sub-admins need this section permission
+  superOnly?: boolean; // only the main admin
+};
+
+const nav: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/admin/orders", label: "Orders", icon: ShoppingBag },
-  { href: "/admin/products", label: "Products", icon: Package },
-  { href: "/admin/inventory", label: "Inventory", icon: Boxes },
-  { href: "/admin/categories", label: "Categories", icon: FolderTree },
-  { href: "/admin/coupons", label: "Coupons", icon: TicketPercent },
-  { href: "/admin/stories", label: "Stories", icon: Clapperboard },
-  { href: "/admin/customers", label: "Customers", icon: Users },
-  { href: "/admin/ai-settings", label: "AI Settings", icon: Sparkles },
+  { href: "/admin/orders", label: "Orders", icon: ShoppingBag, permission: "orders" },
+  { href: "/admin/products", label: "Products", icon: Package, permission: "products" },
+  { href: "/admin/inventory", label: "Inventory", icon: Boxes, permission: "inventory" },
+  { href: "/admin/categories", label: "Categories", icon: FolderTree, permission: "categories" },
+  { href: "/admin/coupons", label: "Coupons", icon: TicketPercent, permission: "coupons" },
+  { href: "/admin/stories", label: "Stories", icon: Clapperboard, permission: "stories" },
+  { href: "/admin/customers", label: "Customers", icon: Users, permission: "customers" },
+  { href: "/admin/ai-settings", label: "AI Settings", icon: Sparkles, permission: "ai" },
+  { href: "/admin/admins", label: "Admins", icon: ShieldCheck, superOnly: true },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
-export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
+export type AdminNavAccess = { isSuperAdmin: boolean; permissions: string[] };
+
+function visibleNav({ isSuperAdmin, permissions }: AdminNavAccess): NavItem[] {
+  if (isSuperAdmin) return nav;
+  return nav.filter((item) => {
+    if (item.superOnly) return false;
+    if (item.permission) return permissions.includes(item.permission);
+    return true; // Dashboard + Settings are always available
+  });
+}
+
+export function AdminNav({
+  access,
+  onNavigate,
+}: {
+  access: AdminNavAccess;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
   return (
     <nav className="flex flex-col gap-1">
-      {nav.map((item) => {
+      {visibleNav(access).map((item) => {
         const active = item.exact
           ? pathname === item.href
           : pathname.startsWith(item.href);
@@ -66,7 +95,7 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function AdminMobileNav() {
+export function AdminMobileNav({ access }: { access: AdminNavAccess }) {
   const [open, setOpen] = useState(false);
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -80,7 +109,7 @@ export function AdminMobileNav() {
           <SheetTitle className="text-left">Nutriyet Admin</SheetTitle>
         </SheetHeader>
         <div className="p-3">
-          <AdminNav onNavigate={() => setOpen(false)} />
+          <AdminNav access={access} onNavigate={() => setOpen(false)} />
         </div>
       </SheetContent>
     </Sheet>

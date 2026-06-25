@@ -3,6 +3,36 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [Admin RBAC] — Sub-admins, permissions & store settings — 2026-06-25
+
+### Added
+- **Roles**: `SUPER_ADMIN` (main admin) added to the `Role` enum; the bootstrap admin
+  is promoted to it. Sub-admins use role `ADMIN` with a `User.permissions` array.
+- **Schema** (additive migration `admin_rbac`): `Role.SUPER_ADMIN`; `User.permissions`,
+  `contactEmail`, `address`, `isActive`; new `StoreSetting` singleton.
+- **RBAC core**: `lib/permissions.ts` (section keys + `hasPermission`),
+  `lib/auth.ts` (`getAdminUser` DB-fresh context, `isSuperAdmin`, `requireSuperAdmin`,
+  `requirePermission`; `requireAdmin`/`isAdmin` now accept both admin roles),
+  `lib/admin-guard.ts` (`guardSection` page redirect). Middleware allows both admin roles.
+- **Admin management** (`/admin/admins`, SUPER_ADMIN only): create/edit/activate/delete
+  sub-admins with per-section permission checkboxes, phone, contact email, address and
+  optional photo. Safety guards (no self-delete/deactivate, no super-admin delete, unique
+  email, deactivated admins can't sign in).
+- **Self-service**: any admin can change their own login email + password from
+  `/admin/settings`.
+- **Editable store settings**: SUPER_ADMIN edits support email/phone, address, socials and
+  an announcement (`StoreSetting`); the storefront footer now reads them with a config
+  fallback (`lib/queries/settings.ts`).
+- **Permission-aware UI**: admin nav filters by permissions; every admin section page is
+  guarded; section server actions now require the matching permission; the dashboard only
+  renders widgets the admin may see.
+
+### Notes
+- Authorization is layered and **DB-fresh** so a stale JWT can't grant access.
+- Verified end-to-end: super admin full access; a products+stories sub-admin is allowed
+  into those sections only, blocked (307) elsewhere, and sees a restricted dashboard.
+- Quality gates: typecheck, ESLint, production build (49 routes) — all green.
+
 ## [M6] — SEO, PWA, Analytics, Notifications, Deploy — 2026-06-25
 
 ### Added

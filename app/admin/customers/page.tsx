@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
 import { PageHeader } from "@/components/admin/page-header";
+import { guardSection } from "@/lib/admin-guard";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,6 +23,7 @@ export default async function AdminCustomersPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  await guardSection("customers");
   const { q = "" } = await searchParams;
 
   const where: Prisma.UserWhereInput = {

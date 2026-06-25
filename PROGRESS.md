@@ -6,12 +6,20 @@ _Last updated: 2026-06-25 · Auto-maintained. Update at the end of every milesto
 
 | Item                | Status                                                          |
 | ------------------- | -------------------------------------------------------------- |
-| Build               | ✅ passing (`next build`, 48 routes)                            |
+| Build               | ✅ passing (`next build`, 49 routes)                            |
 | TypeScript          | ✅ `tsc --noEmit` clean                                         |
 | ESLint              | ✅ clean                                                        |
-| Runtime smoke       | ✅ SEO/PWA endpoints 200; structured data present; AI streams; rate-limit no-op without Redis |
-| Database (Neon)     | ✅ live, migrated, seeded                                       |
-| Current milestone   | **All milestones (M0–M6) complete — production-ready**         |
+| Runtime smoke       | ✅ Admin RBAC verified (super-admin full; sub-admin restricted, 307 on denied sections, scoped dashboard) |
+| Database (Neon)     | ✅ live, migrated (incl. `admin_rbac`), seeded                  |
+| Current milestone   | **M0–M6 complete + Admin RBAC — production-ready**             |
+
+## Latest: Admin RBAC (sub-admins, permissions, store settings)
+Roles `SUPER_ADMIN`/`ADMIN` with per-section `User.permissions`; new `StoreSetting`.
+`/admin/admins` (main admin) adds/manages sub-admins (permission checkboxes, photo,
+phone, contact email, address); self email/password + editable store contact/socials in
+`/admin/settings`. Enforced in middleware + `guardSection` (pages) +
+`requirePermission`/`requireSuperAdmin` (actions), all DB-fresh; dashboard widgets scoped
+to permissions. (Deploy still requires `DATABASE_URL` at runtime — see the build fix.)
 
 ## Milestones
 

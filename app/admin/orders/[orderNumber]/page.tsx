@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
+import { guardSection } from "@/lib/admin-guard";
 import { OrderStatusSelect } from "@/components/admin/order-status-select";
 import { OrderSummaryCard } from "@/components/storefront/order-summary-card";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ export default async function AdminOrderDetailPage({
 }: {
   params: Promise<{ orderNumber: string }>;
 }) {
+  await guardSection("orders");
   const { orderNumber } = await params;
   const order = await prisma.order.findUnique({
     where: { orderNumber },
