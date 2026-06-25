@@ -6,12 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ProductGrid } from "@/components/storefront/product-card";
 import { StoriesRail } from "@/components/storefront/stories-rail";
+import { HeroSlider } from "@/components/storefront/hero-slider";
 import { RecommendedProducts } from "@/components/storefront/recommended-products";
 import {
   getFeaturedProducts,
   getBestSellers,
 } from "@/lib/queries/products";
 import { getCategories, getPublishedStories } from "@/lib/queries/catalog";
+import { getActiveHeroSlides, heroSlideHref } from "@/lib/queries/home";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
 import { getCurrentUser } from "@/lib/auth";
 
@@ -33,12 +35,13 @@ const testimonials = [
 ];
 
 export default async function HomePage() {
-  const [featured, bestSellers, categories, stories, wishlistIds, user] =
+  const [featured, bestSellers, categories, stories, heroSlides, wishlistIds, user] =
     await Promise.all([
       getFeaturedProducts(8),
       getBestSellers(8),
       getCategories(),
       getPublishedStories(),
+      getActiveHeroSlides(),
       getWishlistProductIds(),
       getCurrentUser(),
     ]);
@@ -56,6 +59,24 @@ export default async function HomePage() {
           product: s.product,
         }))}
       />
+
+      {heroSlides.length > 0 && (
+        <HeroSlider
+          slides={heroSlides.map((s) => ({
+            id: s.id,
+            title: s.title,
+            subtitle: s.subtitle,
+            description: s.description,
+            desktopImage: s.desktopImage,
+            mobileImage: s.mobileImage,
+            ctaText: s.ctaText,
+            overlay: s.overlay,
+            buttonColor: s.buttonColor,
+            textAlign: s.textAlign,
+            href: heroSlideHref(s),
+          }))}
+        />
+      )}
 
       {/* Hero */}
       <section className="relative overflow-hidden border-b bg-gradient-to-b from-accent/40 via-background to-background">

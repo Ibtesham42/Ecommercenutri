@@ -5,11 +5,12 @@ decisions only** — see `CLAUDE.md` for the full guide, `PROGRESS.md` for the t
 `CHANGELOG.md` for history. Do not duplicate those here.
 
 ## Current milestone
-**Feature-complete (M0–M6).** All milestones done: foundation, storefront/auth,
-checkout/payments, admin, AI, stories + Cloudinary, and M6 (SEO, PWA, analytics,
-notifications, deploy hardening). Build/typecheck/lint green (48 routes); DB live +
-seeded; Groq + Cloudinary configured. Remaining work is operational — deploy per
-`DEPLOYMENT.md`. Future: real RAG behind the `lib/ai/retrieval.ts` seam.
+**Feature-complete (M0–M6) + Admin RBAC + CMS Phase 1.** All milestones done plus
+sub-admin RBAC and the **Homepage Hero Slider Manager** (first WordPress-style CMS phase).
+Build/typecheck/lint green (50 routes); DB live + migrated (`admin_rbac`, `hero_slides`);
+Groq + Cloudinary configured. **Active CMS roadmap** (one phase per turn): product-page UX
+redesign · appearance/settings · section builder · banners · navigation · footer · media
+library · content. Remaining ops: deploy per `DEPLOYMENT.md`.
 
 ## Architecture decisions that bite if forgotten
 - **Money = integer paise** everywhere. UI collects rupees and converts at the edge
@@ -36,6 +37,11 @@ seeded; Groq + Cloudinary configured. Remaining work is operational — deploy p
   `lib/cloudinary.ts`); `ImageUploadField` falls back to a pasted URL when Cloudinary
   is unconfigured. Optimize delivery with `cldUrl()` (`lib/cld.ts`); story media uses
   plain `<img>` (arbitrary hosts) so it bypasses `next/image` remotePatterns.
+- **CMS is permission-gated + additive**: all CMS admin features use the `appearance`
+  permission. Storefront CMS elements (e.g. the hero slider after Stories) render **only
+  when data exists**, so the homepage degrades to its current form otherwise. Reordering
+  uses native HTML5 DnD + a `reorder(ids[])` server action (no DnD library). Reuse
+  `HeroSlideContent` from `hero-slider.tsx` for the admin live preview.
 - **SEO/PWA/icons are file-convention + generated**: `app/sitemap.ts`, `robots.ts`,
   `manifest.ts`, and `next/og` `icon.tsx`/`apple-icon.tsx`/`opengraph-image.tsx` (no
   binary assets). Structured-data helpers in `lib/seo.ts`. Service worker

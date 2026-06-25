@@ -3,6 +3,36 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [CMS Phase 1] — Homepage Hero Slider Manager — 2026-06-25
+
+First phase of the WordPress-style CMS: admins can manage the homepage hero slider
+without code. Delivered additively (no rewrites; slider renders only when active
+slides exist).
+
+### Added
+- **Schema** (additive migration `hero_slides`): `HeroSlide` model (title/subtitle/
+  description, desktop + mobile image, CTA text/url, product or category link, overlay,
+  button color, text alignment, sort order, active, publish/expiry schedule) with
+  `product`/`category` relations.
+- **RBAC**: new `"appearance"` permission key (`lib/permissions.ts`) covering CMS sections.
+- **Backend**: `lib/validations/admin.ts#heroSlideSchema`; `lib/actions/admin/hero.ts`
+  (save/toggle/duplicate/delete/reorder, all `requirePermission("appearance")`);
+  `lib/queries/home.ts` (`getActiveHeroSlides` with schedule window + `heroSlideHref`).
+- **Admin** (`/admin/hero`, guarded by `appearance`): `hero-slider-manager.tsx` —
+  native HTML5 **drag-and-drop reordering**, add/edit dialog (reusing `ImageUploadField`
+  ×2, product/category selects, overlay slider, alignment + button-color, schedule),
+  **duplicate**, publish/unpublish toggle, and a **live preview** modal. New nav item.
+- **Storefront**: premium responsive `hero-slider.tsx` (art-directed desktop/mobile
+  images via `<picture>` + `cldUrl`, overlay, alignment, CTA, autoplay with hover/tab
+  pause + reduced-motion, dots + arrows + swipe), rendered right after Stories.
+
+### Notes
+- No new dependencies (native DnD; reused embla-era patterns, Cloudinary, RBAC).
+- Verified: slide renders after Stories; unpublish hides it; super admin manages it;
+  a sub-admin without `appearance` is blocked (307). Typecheck/lint/build green (50 routes).
+- Remaining CMS phases (product-page UX, appearance/settings, section builder, banners,
+  navigation, footer, media library, content) are the agreed backlog.
+
 ## [Admin RBAC] — Sub-admins, permissions & store settings — 2026-06-25
 
 ### Added

@@ -14,6 +14,7 @@ export const ADMIN_PERMISSIONS = [
   "inventory",
   "customers",
   "ai",
+  "appearance",
 ] as const;
 
 export type Permission = (typeof ADMIN_PERMISSIONS)[number];
@@ -27,6 +28,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   inventory: "Inventory",
   customers: "Customers",
   ai: "AI settings",
+  appearance: "Appearance & CMS",
 };
 
 /** Sensible default when creating a new sub-admin. */

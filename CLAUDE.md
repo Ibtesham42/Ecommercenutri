@@ -71,7 +71,8 @@ app/
   (auth)/              login, register, forgot/reset password, verify-email
   admin/               ADMIN-only panel (guarded by middleware + layout)
     page.tsx           Dashboard; orders/, products/, inventory/, categories/,
-                       coupons/, stories/, customers/, ai-settings/, settings/
+                       coupons/, stories/, hero/ (slider CMS), customers/,
+                       ai-settings/, settings/
   api/
     auth/[...nextauth] NextAuth handler
     ai/chat            Streaming AI chat (text stream; general + per-product)
@@ -286,6 +287,25 @@ swapped and RAG added later without touching callers.
   email + password; SUPER_ADMIN can edit `StoreSetting` (support email/phone, address,
   socials, announcement). The storefront footer reads `getStoreSettings()` (DB) with a
   `config/site.ts` fallback.
+
+## 8b. CMS (WordPress-style admin management) — phased
+
+Goal: let admins manage visible site content without code. Delivered in additive phases;
+all gated by the **`appearance`** permission (super admins always pass).
+
+- **Hero Slider (done)** — `HeroSlide` model; admin `/admin/hero` with native HTML5
+  drag-and-drop reorder, duplicate, schedule, publish toggle, live preview
+  (`components/admin/hero-slider-manager.tsx`, `lib/actions/admin/hero.ts`,
+  `lib/queries/home.ts`). Storefront `components/storefront/hero-slider.tsx` renders right
+  after Stories **only when active slides exist** (degrades to the current homepage).
+- **Backlog (one phase per turn):** product-page UX redesign + mobile polish; Appearance &
+  Website Settings (extend `StoreSetting`); Homepage Section Builder (`HomeSection`); Banner
+  Manager; Navigation Builder (`MenuItem`); Footer Builder; Media Library (`MediaAsset` +
+  Cloudinary); Content/popups/ads.
+- **CMS conventions:** reuse RBAC (`requirePermission("appearance")` / `guardSection`),
+  `AdminResult` actions, Zod schemas in `lib/validations/admin.ts`, `ImageUploadField` +
+  Cloudinary, `cldUrl` for delivery. Reordering uses native HTML5 DnD + a `reorder(ids[])`
+  action (no DnD library). Singletons extend `StoreSetting`; lists are new additive models.
 
 ## 9. Security Rules
 

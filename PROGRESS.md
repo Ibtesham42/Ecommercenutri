@@ -6,12 +6,20 @@ _Last updated: 2026-06-25 · Auto-maintained. Update at the end of every milesto
 
 | Item                | Status                                                          |
 | ------------------- | -------------------------------------------------------------- |
-| Build               | ✅ passing (`next build`, 49 routes)                            |
+| Build               | ✅ passing (`next build`, 50 routes)                            |
 | TypeScript          | ✅ `tsc --noEmit` clean                                         |
 | ESLint              | ✅ clean                                                        |
-| Runtime smoke       | ✅ Admin RBAC verified (super-admin full; sub-admin restricted, 307 on denied sections, scoped dashboard) |
-| Database (Neon)     | ✅ live, migrated (incl. `admin_rbac`), seeded                  |
-| Current milestone   | **M0–M6 complete + Admin RBAC — production-ready**             |
+| Runtime smoke       | ✅ Hero Slider verified (renders after Stories; unpublish hides; super-admin manages; sub-admin 307) |
+| Database (Neon)     | ✅ live, migrated (incl. `admin_rbac`, `hero_slides`), seeded   |
+| Current milestone   | **M0–M6 + RBAC + CMS Phase 1 (Hero Slider) — production-ready** |
+
+## CMS roadmap (WordPress-style admin management; one phase per turn)
+✅ **Phase 1 — Hero Slider Manager** (this turn): `HeroSlide` model + `/admin/hero`
+(drag-drop reorder, duplicate, schedule, publish, live preview) + premium storefront
+slider after Stories. Gated by new `appearance` permission.
+⏳ Backlog: 2) Product-page UX redesign + mobile polish · 3) Appearance & Website Settings
+· 4) Homepage Section Builder · 5) Banner Manager · 6) Navigation Builder · 7) Footer
+Builder · 8) Media Library · 9) Content/popups/ads.
 
 ## Latest: Admin RBAC (sub-admins, permissions, store settings)
 Roles `SUPER_ADMIN`/`ADMIN` with per-section `User.permissions`; new `StoreSetting`.

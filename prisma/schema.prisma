@@ -163,9 +163,10 @@ model Category {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  parent   Category?  @relation("CategoryToSubcategory", fields: [parentId], references: [id])
-  children Category[] @relation("CategoryToSubcategory")
-  products Product[]
+  parent     Category?   @relation("CategoryToSubcategory", fields: [parentId], references: [id])
+  children   Category[]  @relation("CategoryToSubcategory")
+  products   Product[]
+  heroSlides HeroSlide[]
 
   @@index([parentId])
 }
@@ -214,6 +215,7 @@ model Product {
   orderItems OrderItem[]
   stories    Story[]
   aiChats    AIChat[]
+  heroSlides HeroSlide[]
 
   @@index([categoryId])
   @@index([brandId])
@@ -410,6 +412,37 @@ model OrderItem {
   variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
+}
+
+// ---------------------------------------------------------------------------
+// Homepage hero slider (CMS-managed)
+// ---------------------------------------------------------------------------
+
+model HeroSlide {
+  id           String    @id @default(cuid())
+  title        String?
+  subtitle     String?
+  description  String?   @db.Text
+  desktopImage String
+  mobileImage  String? // falls back to desktopImage when blank
+  ctaText      String?
+  ctaUrl       String? // explicit link; product/category below take precedence if set
+  productId    String?
+  categoryId   String?
+  overlay      Int       @default(40) // dark overlay opacity, 0-100
+  buttonColor  String? // optional CTA background (hex); defaults to brand
+  textAlign    String    @default("left") // left | center | right
+  sortOrder    Int       @default(0)
+  isActive     Boolean   @default(true)
+  startsAt     DateTime?
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  product  Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([isActive])
 }
 
 // ---------------------------------------------------------------------------

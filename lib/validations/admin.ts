@@ -80,6 +80,44 @@ export type AdminCreateInput = z.infer<typeof adminCreateSchema>;
 export type AdminUpdateInput = z.infer<typeof adminUpdateSchema>;
 export type StoreSettingsInput = z.infer<typeof storeSettingsSchema>;
 
+// Hero slider (homepage CMS) -------------------------------------------------
+
+const optionalRelId = z
+  .union([z.string().min(1), z.literal("")])
+  .nullable()
+  .optional();
+
+export const heroSlideSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().max(120).nullable().optional(),
+  subtitle: z.string().max(160).nullable().optional(),
+  description: z.string().max(400).nullable().optional(),
+  desktopImage: z.string().url("Add a desktop image"),
+  mobileImage: z
+    .union([z.string().url("Enter a valid image URL"), z.literal("")])
+    .nullable()
+    .optional(),
+  ctaText: z.string().max(40).nullable().optional(),
+  ctaUrl: z
+    .union([z.string().url("Enter a valid URL"), z.string().regex(/^\//, "Use a full URL or a path starting with /"), z.literal("")])
+    .nullable()
+    .optional(),
+  productId: optionalRelId,
+  categoryId: optionalRelId,
+  overlay: z.number().int().min(0).max(100).default(40),
+  buttonColor: z
+    .union([z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Enter a hex color"), z.literal("")])
+    .nullable()
+    .optional(),
+  textAlign: z.enum(["left", "center", "right"]).default("left"),
+  sortOrder: z.number().int().default(0),
+  isActive: z.boolean().default(true),
+  startsAt: z.coerce.date().nullable().optional(),
+  expiresAt: z.coerce.date().nullable().optional(),
+});
+
+export type HeroSlideInput = z.infer<typeof heroSlideSchema>;
+
 // Shared building blocks -----------------------------------------------------
 
 const slug = z
