@@ -6,12 +6,12 @@ _Last updated: 2026-06-25 · Auto-maintained. Update at the end of every milesto
 
 | Item                | Status                                                          |
 | ------------------- | -------------------------------------------------------------- |
-| Build               | ✅ passing (`next build`, 51 routes)                            |
+| Build               | ✅ passing (`next build`, 52 routes)                            |
 | TypeScript          | ✅ `tsc --noEmit` clean                                         |
 | ESLint              | ✅ clean                                                        |
-| Runtime smoke       | ✅ Appearance verified (announcement/theme/WhatsApp/SEO reflect on storefront; appearance sub-admin scoped) |
-| Database (Neon)     | ✅ live, migrated (…`hero_slides`, `appearance_settings`), seeded |
-| Current milestone   | **M0–M6 + RBAC + CMS Phases 1–3 — production-ready**           |
+| Runtime smoke       | ✅ Section Builder verified (homepage identical by default; hide removes; reorder applies; sub-admin scoped) |
+| Database (Neon)     | ✅ live, migrated (…`appearance_settings`, `home_sections`), seeded |
+| Current milestone   | **M0–M6 + RBAC + CMS Phases 1–4 — production-ready**           |
 
 ## CMS roadmap (WordPress-style admin management; one phase per turn)
 ✅ **Phase 1 — Hero Slider Manager**: `HeroSlide` model + `/admin/hero` (drag-drop reorder,
@@ -23,11 +23,13 @@ Gated by `appearance` permission.
 trust badges, **sticky mobile add-to-cart bar** via IntersectionObserver); polished reviews.
 ✅ **Phase 3 — Appearance & Website Settings**: extended `StoreSetting` (branding, theme
 colors, announcement bar, contact + business hours + maps + WhatsApp, SEO defaults + favicon).
-`/admin/appearance` manager (appearance permission). Storefront wired: announcement bar,
-theme-color override, uploaded logo (header/footer), WhatsApp button, footer hours, root
-`generateMetadata` SEO defaults.
-⏳ Backlog: 4) Homepage Section Builder · 5) Banner Manager · 6) Navigation Builder ·
-7) Footer Builder · 8) Media Library · 9) Content/popups/ads. (+ optional full mobile audit.)
+`/admin/appearance` manager; storefront wired (announcement bar, theme override, logo,
+WhatsApp, footer hours, root `generateMetadata` SEO).
+✅ **Phase 4 — Homepage Section Builder**: `HomeSection` model + registry
+(`lib/home-sections.ts`); homepage refactored to a keyed section map rendered in admin
+order; `/admin/homepage` (drag-drop reorder + show/hide). Additive — identical until edited.
+⏳ Backlog: 5) Banner Manager · 6) Navigation Builder · 7) Footer Builder · 8) Media Library ·
+9) Content/popups/ads. (+ optional full mobile audit.)
 
 ## Latest: Admin RBAC (sub-admins, permissions, store settings)
 Roles `SUPER_ADMIN`/`ADMIN` with per-section `User.permissions`; new `StoreSetting`.

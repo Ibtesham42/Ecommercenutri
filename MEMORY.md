@@ -7,12 +7,12 @@ decisions only** — see `CLAUDE.md` for the full guide, `PROGRESS.md` for the t
 ## Current milestone
 **Feature-complete (M0–M6) + Admin RBAC + CMS Phase 1.** All milestones done plus
 sub-admin RBAC and the **Homepage Hero Slider Manager** (first WordPress-style CMS phase).
-Plus **CMS Phases 2–3** (product-page UX redesign; Appearance & Website Settings).
-Build/typecheck/lint green (51 routes); DB live + migrated (`admin_rbac`, `hero_slides`,
-`appearance_settings`); Groq + Cloudinary configured. **Active CMS roadmap** (one phase per
-turn): ✅1 hero slider · ✅2 product-page UX · ✅3 appearance/settings · 4 section builder ·
-5 banners · 6 navigation · 7 footer · 8 media library · 9 content. Remaining ops: deploy
-per `DEPLOYMENT.md`.
+Plus **CMS Phases 2–4** (product-page UX; Appearance & Settings; Homepage Section Builder).
+Build/typecheck/lint green (52 routes); DB live + migrated (`admin_rbac`, `hero_slides`,
+`appearance_settings`, `home_sections`); Groq + Cloudinary configured. **Active CMS roadmap**
+(one phase per turn): ✅1 hero slider · ✅2 product-page UX · ✅3 appearance/settings ·
+✅4 section builder · 5 banners · 6 navigation · 7 footer · 8 media library · 9 content.
+Remaining ops: deploy per `DEPLOYMENT.md`.
 
 ## Architecture decisions that bite if forgotten
 - **Money = integer paise** everywhere. UI collects rupees and converts at the edge

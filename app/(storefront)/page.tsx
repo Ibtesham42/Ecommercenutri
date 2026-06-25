@@ -1,3 +1,4 @@
+import { Fragment, type ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Sparkles, Leaf, ShieldCheck, Truck, HeartPulse, Star } from "lucide-react";
@@ -13,9 +14,14 @@ import {
   getBestSellers,
 } from "@/lib/queries/products";
 import { getCategories, getPublishedStories } from "@/lib/queries/catalog";
-import { getActiveHeroSlides, heroSlideHref } from "@/lib/queries/home";
+import {
+  getActiveHeroSlides,
+  heroSlideHref,
+  getHomeSectionOrder,
+} from "@/lib/queries/home";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
 import { getCurrentUser } from "@/lib/auth";
+import type { HomeSectionKey } from "@/lib/home-sections";
 
 // Personalized + catalog-driven, so render at request time. This also keeps the
 // database out of the build step (it's only needed at runtime).
@@ -35,19 +41,31 @@ const testimonials = [
 ];
 
 export default async function HomePage() {
-  const [featured, bestSellers, categories, stories, heroSlides, wishlistIds, user] =
-    await Promise.all([
-      getFeaturedProducts(8),
-      getBestSellers(8),
-      getCategories(),
-      getPublishedStories(),
-      getActiveHeroSlides(),
-      getWishlistProductIds(),
-      getCurrentUser(),
-    ]);
+  const [
+    featured,
+    bestSellers,
+    categories,
+    stories,
+    heroSlides,
+    sectionOrder,
+    wishlistIds,
+    user,
+  ] = await Promise.all([
+    getFeaturedProducts(8),
+    getBestSellers(8),
+    getCategories(),
+    getPublishedStories(),
+    getActiveHeroSlides(),
+    getHomeSectionOrder(),
+    getWishlistProductIds(),
+    getCurrentUser(),
+  ]);
 
-  return (
-    <>
+  // Each homepage section keyed for the admin Section Builder. Markup is
+  // unchanged — only order/visibility is admin-controlled. A `null` value (data
+  // condition unmet) is skipped even when the section is enabled.
+  const sections: Record<HomeSectionKey, ReactNode> = {
+    stories: (
       <StoriesRail
         stories={stories.map((s) => ({
           id: s.id,
@@ -59,8 +77,10 @@ export default async function HomePage() {
           product: s.product,
         }))}
       />
+    ),
 
-      {heroSlides.length > 0 && (
+    heroSlider:
+      heroSlides.length > 0 ? (
         <HeroSlider
           slides={heroSlides.map((s) => ({
             id: s.id,
@@ -76,9 +96,9 @@ export default async function HomePage() {
             href: heroSlideHref(s),
           }))}
         />
-      )}
+      ) : null,
 
-      {/* Hero */}
+    hero: (
       <section className="relative overflow-hidden border-b bg-gradient-to-b from-accent/40 via-background to-background">
         <div className="mx-auto grid w-full max-w-7xl items-center gap-10 px-4 py-16 md:grid-cols-2 md:py-24">
           <div className="space-y-6">
@@ -132,8 +152,9 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+    ),
 
-      {/* Categories */}
+    categories: (
       <section className="mx-auto w-full max-w-7xl px-4 py-14">
         <SectionHeading
           title="Shop by category"
@@ -161,9 +182,10 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+    ),
 
-      {/* Featured */}
-      {featured.length > 0 && (
+    featured:
+      featured.length > 0 ? (
         <section className="mx-auto w-full max-w-7xl px-4 py-6">
           <SectionHeading
             title="Featured products"
@@ -172,10 +194,10 @@ export default async function HomePage() {
           />
           <ProductGrid products={featured} wishlistedIds={wishlistIds} />
         </section>
-      )}
+      ) : null,
 
-      {/* Best sellers */}
-      {bestSellers.length > 0 && (
+    bestSellers:
+      bestSellers.length > 0 ? (
         <section className="border-y bg-muted/30">
           <div className="mx-auto w-full max-w-7xl px-4 py-14">
             <SectionHeading
@@ -186,10 +208,9 @@ export default async function HomePage() {
             <ProductGrid products={bestSellers} wishlistedIds={wishlistIds} />
           </div>
         </section>
-      )}
+      ) : null,
 
-      {/* Personalized recommendations (logged-in only) */}
-      {user && (
+    recommended: user ? (
         <section className="mx-auto w-full max-w-7xl px-4 py-14">
           <RecommendedProducts
             title="Recommended for you"
@@ -197,9 +218,9 @@ export default async function HomePage() {
             excludeProductIds={[...featured, ...bestSellers].map((p) => p.id)}
           />
         </section>
-      )}
+      ) : null,
 
-      {/* Why choose */}
+    whyChooseUs: (
       <section className="mx-auto w-full max-w-7xl px-4 py-14">
         <div className="mb-10 text-center">
           <h2 className="text-2xl font-bold sm:text-3xl">Why choose Nutriyet</h2>
@@ -221,8 +242,9 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+    ),
 
-      {/* Testimonials */}
+    testimonials: (
       <section className="border-t bg-muted/30">
         <div className="mx-auto w-full max-w-7xl px-4 py-14">
           <div className="mb-10 text-center">
@@ -248,8 +270,9 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+    ),
 
-      {/* AI banner */}
+    aiBanner: (
       <section className="mx-auto w-full max-w-7xl px-4 py-16">
         <div className="relative overflow-hidden rounded-3xl bg-primary px-6 py-12 text-primary-foreground sm:px-12">
           <div className="relative z-10 max-w-2xl space-y-4">
@@ -273,6 +296,16 @@ export default async function HomePage() {
           <Sparkles className="absolute -right-6 -top-6 size-48 opacity-10" />
         </div>
       </section>
+    ),
+  };
+
+  return (
+    <>
+      {sectionOrder
+        .filter((s) => s.enabled && sections[s.key] != null)
+        .map((s) => (
+          <Fragment key={s.key}>{sections[s.key]}</Fragment>
+        ))}
     </>
   );
 }

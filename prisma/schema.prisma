@@ -445,6 +445,16 @@ model HeroSlide {
   @@index([isActive])
 }
 
+// Homepage section visibility + order (Homepage Section Builder). One row per
+// section key (see lib/home-sections.ts). Missing keys fall back to defaults.
+model HomeSection {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  enabled   Boolean  @default(true)
+  sortOrder Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
 // ---------------------------------------------------------------------------
 // Instagram-style stories
 // ---------------------------------------------------------------------------

@@ -3,6 +3,30 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [CMS Phase 4] — Homepage Section Builder — 2026-06-25
+
+Admins can show/hide and drag-reorder homepage sections from `/admin/homepage`.
+Strictly additive: each existing section's markup is unchanged — only order and
+visibility are admin-controlled, and the homepage is identical until customized.
+
+### Added
+- **Schema** (additive migration `home_sections`): `HomeSection` model (key unique,
+  enabled, sortOrder). Registry in `lib/home-sections.ts` (10 sections in current order).
+- **Backend**: `getHomeSectionOrder()` (`lib/queries/home.ts`) merges admin config with
+  the registry (saved order first, new keys appended; all-enabled default).
+  `lib/actions/admin/home-sections.ts`: `ensureHomeSections`, `toggleHomeSection`,
+  `reorderHomeSections` (`requirePermission("appearance")`).
+- **Homepage** (`app/(storefront)/page.tsx`) refactored to a keyed section map rendered
+  in the configured order; sections with unmet data conditions (no featured/hero slides/
+  logged-out) stay hidden automatically.
+- **Admin** `/admin/homepage` (gated by `appearance`): `home-sections-manager.tsx` with
+  native HTML5 drag-and-drop reorder + show/hide switches. New nav item.
+
+### Notes
+- Reuses the native-DnD + `reorder(keys[])` pattern; no new dependencies.
+- Verified live: homepage identical by default; hiding a section removes it; reorder
+  changes the layout; restored to default after testing. Typecheck/lint/build green (52 routes).
+
 ## [CMS Phase 3] — Appearance & Website Settings — 2026-06-25
 
 Admins can now manage the storefront's branding, theme, announcement bar, contact

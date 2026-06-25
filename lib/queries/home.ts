@@ -1,5 +1,10 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  HOME_SECTION_KEYS,
+  isHomeSectionKey,
+  type HomeSectionKey,
+} from "@/lib/home-sections";
 
 const heroSlideSelect = {
   id: true,
@@ -51,4 +56,39 @@ export function heroSlideHref(slide: HeroSlideData): string | null {
   if (slide.product?.slug) return `/products/${slide.product.slug}`;
   if (slide.category?.slug) return `/categories/${slide.category.slug}`;
   return slide.ctaUrl || null;
+}
+
+export type HomeSectionOrderItem = { key: HomeSectionKey; enabled: boolean };
+
+/**
+ * Effective homepage section order + visibility. Reads the admin config and
+ * merges it with the section registry: configured sections keep their saved
+ * order, and any registry keys not yet in the DB are appended (enabled). With
+ * no config at all, returns the default registry order, all enabled — i.e. the
+ * homepage is unchanged until an admin customizes it.
+ */
+export async function getHomeSectionOrder(): Promise<HomeSectionOrderItem[]> {
+  let rows: { key: string; enabled: boolean }[] = [];
+  try {
+    rows = await prisma.homeSection.findMany({
+      orderBy: { sortOrder: "asc" },
+      select: { key: true, enabled: true },
+    });
+  } catch {
+    /* fall back to defaults below */
+  }
+
+  const seen = new Set<string>();
+  const ordered: HomeSectionOrderItem[] = [];
+  for (const r of rows) {
+    if (isHomeSectionKey(r.key) && !seen.has(r.key)) {
+      seen.add(r.key);
+      ordered.push({ key: r.key, enabled: r.enabled });
+    }
+  }
+  // Append any newly-added registry sections not yet persisted.
+  for (const key of HOME_SECTION_KEYS) {
+    if (!seen.has(key)) ordered.push({ key, enabled: true });
+  }
+  return ordered;
 }
