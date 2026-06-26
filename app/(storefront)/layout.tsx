@@ -29,7 +29,13 @@ export default async function StorefrontLayout({
         message={settings.announcement}
         link={settings.announcementLink}
       />
-      <SiteHeader logoUrl={settings.logo} siteName={settings.siteName} />
+      <SiteHeader
+        logoUrl={settings.logo}
+        siteName={settings.siteName}
+        logoHeight={settings.logoHeight}
+        logoHeightMobile={settings.logoHeightMobile}
+        logoMaxWidth={settings.logoMaxWidth}
+      />
       <main className="flex-1">{children}</main>
       <SiteFooter />
       <WhatsAppButton number={settings.whatsapp} />

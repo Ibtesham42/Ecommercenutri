@@ -19,6 +19,9 @@ export type AppearanceValues = {
   logo: string;
   logoDark: string;
   favicon: string;
+  logoHeight: number | null;
+  logoHeightMobile: number | null;
+  logoMaxWidth: number | null;
   primaryColor: string;
   secondaryColor: string;
   announcement: string;
@@ -102,6 +105,40 @@ function ColorField({
   );
 }
 
+function NumberField({
+  control,
+  name,
+  label,
+  placeholder,
+  hint,
+}: {
+  control: Control<AppearanceValues>;
+  name: "logoHeight" | "logoHeightMobile" | "logoMaxWidth";
+  label: string;
+  placeholder: string;
+  hint?: string;
+}) {
+  return (
+    <Controller
+      control={control}
+      name={name}
+      render={({ field }) => (
+        <div className="space-y-1.5">
+          <Label>{label}</Label>
+          <Input
+            type="number"
+            inputMode="numeric"
+            placeholder={placeholder}
+            value={field.value ?? ""}
+            onChange={(e) => field.onChange(e.target.value === "" ? null : Number(e.target.value))}
+          />
+          {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+        </div>
+      )}
+    />
+  );
+}
+
 export function AppearanceForm({
   initial,
   cloudinaryReady,
@@ -168,6 +205,18 @@ export function AppearanceForm({
           {imageField("logo", "Logo")}
           {imageField("logoDark", "Dark logo (optional)")}
           {imageField("favicon", "Favicon", "branding", "image/png,image/svg+xml,image/x-icon,.png,.svg,.ico")}
+        </div>
+        <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
+          <p className="text-sm font-medium">Logo size</p>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <NumberField control={control} name="logoHeight" label="Desktop height (px)" placeholder="32" hint="16–64" />
+            <NumberField control={control} name="logoHeightMobile" label="Mobile height (px)" placeholder="32" hint="16–64" />
+            <NumberField control={control} name="logoMaxWidth" label="Max width (px)" placeholder="160" hint="60–400" />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Controls the uploaded logo across the header and footer. Leave blank for defaults
+            (32px tall, 160px wide).
+          </p>
         </div>
       </Section>
 

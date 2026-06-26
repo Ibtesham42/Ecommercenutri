@@ -75,6 +75,14 @@ const optHex = z
   .nullable()
   .optional();
 
+/** Optional pixel size: a positive int within range, or blank (→ null). */
+const optPx = (min: number, max: number) =>
+  z.preprocess(
+    (v) =>
+      v === "" || v === null || (typeof v === "number" && Number.isNaN(v)) ? undefined : v,
+    z.coerce.number().int().min(min, `Min ${min}px`).max(max, `Max ${max}px`).optional(),
+  );
+
 export const storeSettingsSchema = z.object({
   // Branding
   siteName: z.string().max(60).nullable().optional(),
@@ -82,6 +90,10 @@ export const storeSettingsSchema = z.object({
   logo: optImage,
   logoDark: optImage,
   favicon: optImage,
+  // Logo size (px)
+  logoHeight: optPx(16, 64),
+  logoHeightMobile: optPx(16, 64),
+  logoMaxWidth: optPx(60, 400),
   // Theme
   primaryColor: optHex,
   secondaryColor: optHex,

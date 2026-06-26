@@ -45,7 +45,13 @@ export async function SiteFooter() {
     <footer className="mt-16 border-t bg-muted/30">
       <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 md:grid-cols-[1.5fr_repeat(3,1fr)]">
         <div className="space-y-4">
-          <Logo logoUrl={store.logo} name={store.siteName} />
+          <Logo
+            logoUrl={store.logo}
+            name={store.siteName}
+            height={store.logoHeight}
+            mobileHeight={store.logoHeightMobile}
+            maxWidth={store.logoMaxWidth}
+          />
           <p className="max-w-xs text-sm text-muted-foreground">
             {siteConfig.description}
           </p>

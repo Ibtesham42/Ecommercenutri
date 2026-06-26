@@ -10,7 +10,7 @@ _Last updated: 2026-06-25 · Auto-maintained. Update at the end of every milesto
 | TypeScript          | ✅ `tsc --noEmit` clean                                         |
 | ESLint              | ✅ clean                                                        |
 | Runtime smoke       | ✅ Favicon link normalized to an image (renders even from a stale `.pdf` asset); homepage identical by default after the section-content refactor; banner dark fields + brand-icon routes 200; admin guards 307 |
-| Database (Neon)     | ✅ live, migrated (…`content_page`, `contact_message`, `banner` dark variants, `home_section.content`), seeded |
+| Database (Neon)     | ✅ live, migrated (…`banner` dark variants, `home_section.content`, store logo-size), seeded |
 | Current milestone   | **M0–M6 + RBAC + CMS Phases 1–5 + content pages + CMS fixes — production-ready** |
 
 ## CMS roadmap (WordPress-style admin management; one phase per turn)
@@ -51,6 +51,11 @@ Node-21 build).
   gains `gravity`(g_auto smart crop)+`dpr`; storefront uses a shared `BannerCard` with a
   responsive `<picture>` (mobile/tablet/desktop, auto mobile crop, dark variants w/ light
   fallback); admin form adds dark uploads + a live theme/viewport preview.
+- **Logo sizing**: `StoreSetting` gains `logoHeight`/`logoHeightMobile`/`logoMaxWidth`;
+  Appearance form exposes them; `Logo` applies them responsively via CSS vars (defaults
+  32px/160px). Fixes the too-small storefront logo. (Note: existing logo/favicon assets were
+  uploaded as Cloudinary `.pdf`; `cldUrl` now delivers them as images — re-upload a PNG/SVG for
+  best quality.)
 - **Homepage Section editor**: `HomeSection.content` JSON + `lib/home-content.ts` defaults;
   the 8 content sections (hero, aiBanner, headings, why-choose-us, testimonials) are fully
   editable (text, buttons, colors, list items) with live preview, save and reset-to-default;

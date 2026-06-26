@@ -617,6 +617,10 @@ model StoreSetting {
   logo         String? // light logo image URL
   logoDark     String? // optional dark-mode logo
   favicon      String?
+  // Logo display size (storefront header/footer), px
+  logoHeight       Int? // height on desktop
+  logoHeightMobile Int? // height on mobile
+  logoMaxWidth     Int? // max width
   // Theme
   primaryColor   String? // hex override for --primary
   secondaryColor String? // hex override for --secondary

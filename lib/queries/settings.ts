@@ -9,6 +9,9 @@ export type StoreSettings = {
   logo: string | null;
   logoDark: string | null;
   favicon: string | null;
+  logoHeight: number | null;
+  logoHeightMobile: number | null;
+  logoMaxWidth: number | null;
   // Theme
   primaryColor: string | null;
   secondaryColor: string | null;
@@ -52,6 +55,9 @@ export async function getStoreSettings(): Promise<StoreSettings> {
     logo: s?.logo ?? null,
     logoDark: s?.logoDark ?? null,
     favicon: s?.favicon ?? null,
+    logoHeight: s?.logoHeight ?? null,
+    logoHeightMobile: s?.logoHeightMobile ?? null,
+    logoMaxWidth: s?.logoMaxWidth ?? null,
     primaryColor: s?.primaryColor ?? null,
     secondaryColor: s?.secondaryColor ?? null,
     announcement: s?.announcement ?? null,
