@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/admin/page-header";
 import { guardSection } from "@/lib/admin-guard";
-import { ProductForm, productToFormValues } from "@/components/admin/product-form";
+import { ProductForm } from "@/components/admin/product-form";
+import { productToFormValues } from "@/lib/admin/product-form-values";
 import { prisma } from "@/lib/prisma";
 import { isConfigured } from "@/lib/env";
 

@@ -129,6 +129,13 @@ types/                 Ambient types (next-auth.d.ts)
   Zod-inferred types. Type server-action inputs as `unknown` and parse with Zod.
 - **Server-first.** Default to React Server Components. Add `"use client"` only
   when you need state, effects, or browser APIs.
+- **Never *call* a function exported from a `"use client"` module in a Server
+  Component** — it throws in a production build ("Attempted to call X from the
+  server but X is on the client"). Client components may only be *rendered* / have
+  props passed. Pure helpers/types shared by both must live in a plain (non-client)
+  module. Example: product form value mapping is in
+  `lib/admin/product-form-values.ts` (server-safe), imported by both the edit page
+  (server) and `components/admin/product-form.tsx` (client).
 - **Server Actions** (`"use server"`) for mutations. Every exported member of a
   `"use server"` file must be an async function (type exports are fine).
 - **Never trust the client for prices, stock, totals or roles.** Re-price and
