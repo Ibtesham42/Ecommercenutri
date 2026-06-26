@@ -5,16 +5,59 @@ import { Upload, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { uploadImageAction } from "@/lib/actions/admin/upload";
 import { isVideoUrl } from "@/lib/cld";
 
-function fileToDataUri(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+// Raster types the browser can downscale/recompress before upload. Others
+// (svg, gif, video) are sent untouched so they're preserved.
+const COMPRESSIBLE = ["image/jpeg", "image/png", "image/webp"];
+const MAX_DIM = 1600;
+
+/**
+ * Shrink a large raster image client-side (resize to a max edge + recompress)
+ * and return a Blob to upload. PNGs are re-encoded as JPEG when downscaled
+ * (lossless PNG photos stay huge otherwise) — except we keep PNG when it's
+ * already small enough to be a logo/icon with possible transparency. Falls back
+ * to the original file on any failure.
+ */
+async function prepareBlob(file: File): Promise<{ blob: Blob; filename: string }> {
+  const fallback = { blob: file, filename: file.name || "upload" };
+  if (!COMPRESSIBLE.includes(file.type) || typeof createImageBitmap !== "function") {
+    return fallback;
+  }
+  try {
+    const bitmap = await createImageBitmap(file);
+    let { width, height } = bitmap;
+    const longest = Math.max(width, height);
+    const needsResize = longest > MAX_DIM;
+    // Small PNGs/WebP (likely logos) stay as-is to preserve transparency.
+    if (!needsResize && file.type !== "image/jpeg" && file.size <= 1.5 * 1024 * 1024) {
+      bitmap.close();
+      return fallback;
+    }
+    if (needsResize) {
+      const scale = MAX_DIM / longest;
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      bitmap.close();
+      return fallback;
+    }
+    ctx.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.85),
+    );
+    if (!blob) return fallback;
+    const base = (file.name || "upload").replace(/\.[^.]+$/, "");
+    return { blob, filename: `${base}.jpg` };
+  } catch {
+    return fallback;
+  }
 }
 
 /**
@@ -40,22 +83,29 @@ export function ImageUploadField({
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File) {
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error("File is too large (max 8 MB).");
+    // Generous raw guard (large originals are downscaled before upload below).
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error("That file is very large (max 25 MB). Try a smaller image.");
       return;
     }
     setUploading(true);
     try {
-      const dataUri = await fileToDataUri(file);
-      const res = await uploadImageAction(dataUri, folder);
-      if (res.ok && res.data) {
-        onChange(res.data.url);
+      const { blob, filename } = await prepareBlob(file);
+      const form = new FormData();
+      form.append("file", blob, filename);
+      if (folder) form.append("folder", folder);
+
+      const res = await fetch("/api/admin/upload", { method: "POST", body: form });
+      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (res.ok && data.url) {
+        onChange(data.url);
         toast.success("Uploaded");
       } else {
-        toast.error(res.ok ? "Upload failed." : res.error);
+        toast.error(data.error ?? "Upload failed. Please try again.");
       }
-    } catch {
-      toast.error("Could not read that file.");
+    } catch (err) {
+      console.error("[image-upload] failed:", err);
+      toast.error("Upload failed. Please try a different image.");
     } finally {
       setUploading(false);
     }
