@@ -19,6 +19,13 @@ export const env = {
   resendApiKey: process.env.RESEND_API_KEY ?? "",
   emailFrom: process.env.EMAIL_FROM ?? "Nutriyet <noreply@nutriyet.in>",
 
+  // Custom SMTP (preferred over Resend when configured).
+  smtpHost: process.env.SMTP_HOST ?? "",
+  smtpPort: process.env.SMTP_PORT ?? "",
+  smtpSecure: process.env.SMTP_SECURE ?? "",
+  smtpUser: process.env.SMTP_USER ?? "",
+  smtpPass: process.env.SMTP_PASS ?? "",
+
   razorpayKeyId: process.env.RAZORPAY_KEY_ID ?? "",
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET ?? "",
   razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET ?? "",
@@ -42,6 +49,9 @@ export const env = {
 export const isConfigured = {
   google: () => Boolean(env.googleId && env.googleSecret),
   resend: () => Boolean(env.resendApiKey),
+  smtp: () => Boolean(env.smtpHost && env.smtpUser && env.smtpPass),
+  // Either transport means transactional email can actually be delivered.
+  email: () => Boolean(env.smtpHost && env.smtpUser && env.smtpPass) || Boolean(env.resendApiKey),
   razorpay: () => Boolean(env.razorpayKeyId && env.razorpayKeySecret),
   cloudinary: () =>
     Boolean(

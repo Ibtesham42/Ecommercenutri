@@ -51,22 +51,32 @@ export async function registerAction(
   );
   if (!success) return { error: "Too many attempts. Please try again later." };
 
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    return { error: "An account with this email already exists." };
+  try {
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return { error: "An account with this email already exists." };
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    await prisma.user.create({ data: { name, email, passwordHash } });
+
+    // Best-effort verification email — a misconfigured/unverified email provider
+    // must never crash a successful sign-up (the account already exists).
+    try {
+      const token = await createVerificationToken(email);
+      const url = `${env.appUrl}/verify-email?token=${token}`;
+      await sendEmail({ to: email, ...verificationEmail(url, name) });
+    } catch (mailErr) {
+      console.error("[register] verification email failed:", mailErr);
+    }
+
+    return {
+      success: "Account created! You can sign in now (check your email for a verification link).",
+    };
+  } catch (err) {
+    console.error("[register] failed:", err);
+    return { error: "Could not create your account right now. Please try again." };
   }
-
-  const passwordHash = await bcrypt.hash(password, 10);
-  await prisma.user.create({ data: { name, email, passwordHash } });
-
-  const token = await createVerificationToken(email);
-  const url = `${env.appUrl}/verify-email?token=${token}`;
-  await sendEmail({ to: email, ...verificationEmail(url, name) });
-
-  return {
-    success:
-      "Account created! We've sent a verification link to your email. You can sign in now.",
-  };
 }
 
 export async function loginAction(
@@ -127,11 +137,20 @@ export async function requestPasswordResetAction(
   );
   if (!success) return { error: "Too many attempts. Please try again later." };
 
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (user) {
-    const token = await createPasswordResetToken(email);
-    const url = `${env.appUrl}/reset-password?token=${token}`;
-    await sendEmail({ to: email, ...passwordResetEmail(url, user.name) });
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (user) {
+      const token = await createPasswordResetToken(email);
+      const url = `${env.appUrl}/reset-password?token=${token}`;
+      // Best-effort — never surface an email/provider failure to the user.
+      try {
+        await sendEmail({ to: email, ...passwordResetEmail(url, user.name) });
+      } catch (mailErr) {
+        console.error("[forgot-password] reset email failed:", mailErr);
+      }
+    }
+  } catch (err) {
+    console.error("[forgot-password] failed:", err);
   }
 
   // Always return success to avoid leaking which emails are registered.
