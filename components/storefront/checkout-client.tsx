@@ -212,12 +212,10 @@ export function CheckoutClient({
               <MapPin className="size-4 text-primary" /> Delivery address
             </h2>
             <Button
-              size="sm"
-              variant="outline"
-              className="gap-1.5"
+              className="h-9 gap-1.5 px-4 shadow-sm"
               onClick={() => setAddressOpen(true)}
             >
-              <Plus className="size-4" /> Add new
+              <Plus className="size-4" /> Add new address
             </Button>
           </div>
 
