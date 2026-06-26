@@ -5,6 +5,10 @@ import {
   isHomeSectionKey,
   type HomeSectionKey,
 } from "@/lib/home-sections";
+import {
+  resolveSectionContent,
+  type HomeContentMap,
+} from "@/lib/home-content";
 
 const heroSlideSelect = {
   id: true,
@@ -91,4 +95,30 @@ export async function getHomeSectionOrder(): Promise<HomeSectionOrderItem[]> {
     if (!seen.has(key)) ordered.push({ key, enabled: true });
   }
   return ordered;
+}
+
+/**
+ * Resolved, editable content for every homepage section: each section's stored
+ * `content` JSON merged over its code defaults (`lib/home-content.ts`). Falls
+ * back to all-defaults if the DB is briefly unreachable, so the homepage is
+ * pixel-identical until an admin edits a section.
+ */
+export async function getHomeSectionsContent(): Promise<HomeContentMap> {
+  let rows: { key: string; content: Prisma.JsonValue }[] = [];
+  try {
+    rows = await prisma.homeSection.findMany({ select: { key: true, content: true } });
+  } catch {
+    /* fall back to defaults */
+  }
+  const byKey = new Map<string, unknown>(rows.map((r) => [r.key, r.content]));
+  return {
+    hero: resolveSectionContent("hero", byKey.get("hero")),
+    aiBanner: resolveSectionContent("aiBanner", byKey.get("aiBanner")),
+    categories: resolveSectionContent("categories", byKey.get("categories")),
+    featured: resolveSectionContent("featured", byKey.get("featured")),
+    bestSellers: resolveSectionContent("bestSellers", byKey.get("bestSellers")),
+    recommended: resolveSectionContent("recommended", byKey.get("recommended")),
+    whyChooseUs: resolveSectionContent("whyChooseUs", byKey.get("whyChooseUs")),
+    testimonials: resolveSectionContent("testimonials", byKey.get("testimonials")),
+  };
 }

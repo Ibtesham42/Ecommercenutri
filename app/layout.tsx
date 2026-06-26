@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { siteConfig } from "@/config/site";
 import { organizationSchema, websiteSchema, jsonLd } from "@/lib/seo";
 import { getStoreSettings } from "@/lib/queries/settings";
+import { cldUrl } from "@/lib/cld";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@/components/analytics";
@@ -25,6 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const title = store.metaTitle || `${name} — ${store.tagline}`;
   const description = store.metaDescription || siteConfig.description;
   const ogImages = store.ogImage ? [{ url: store.ogImage }] : undefined;
+  const fav = store.favicon;
 
   return {
     metadataBase: new URL(siteConfig.url),
@@ -52,7 +54,15 @@ export async function generateMetadata(): Promise<Metadata> {
       description,
       ...(store.ogImage ? { images: [store.ogImage] } : {}),
     },
-    icons: store.favicon ? { icon: store.favicon } : { icon: "/favicon.ico" },
+    // Drive icons from the admin-uploaded favicon when set, else the generated
+    // brand default. Favicons are normalized through Cloudinary (f_auto) so any
+    // uploaded asset is delivered as a proper image, and the versioned URL
+    // cache-busts the browser tab automatically. Supports .png/.ico/.svg.
+    icons: {
+      icon: fav ? [{ url: cldUrl(fav, { w: 64, h: 64, crop: "fit" }) }] : [{ url: "/brand-icon", type: "image/png" }],
+      shortcut: [fav ? cldUrl(fav, { w: 64, h: 64, crop: "fit" }) : "/brand-icon"],
+      apple: fav ? [{ url: cldUrl(fav, { w: 180, h: 180, crop: "fit" }) }] : [{ url: "/brand-apple-icon" }],
+    },
     robots: { index: true, follow: true },
   };
 }

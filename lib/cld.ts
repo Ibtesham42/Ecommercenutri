@@ -6,15 +6,27 @@
  */
 export function cldUrl(
   url: string | null | undefined,
-  opts: { w?: number; h?: number; crop?: "fill" | "fit" } = {},
+  opts: {
+    w?: number;
+    h?: number;
+    crop?: "fill" | "fit";
+    /** Focal point for cropping. "auto" = Cloudinary smart content detection. */
+    gravity?: "auto" | "center" | "face";
+    /** Device pixel ratio. "auto" serves a sharper image on retina screens. */
+    dpr?: "auto" | number;
+  } = {},
 ): string {
   if (!url) return "";
   if (!url.includes("res.cloudinary.com") || !url.includes("/upload/")) return url;
 
   const t = ["f_auto", "q_auto"];
+  if (opts.dpr) t.push(`dpr_${opts.dpr}`);
   if (opts.w) t.push(`w_${opts.w}`);
   if (opts.h) t.push(`h_${opts.h}`);
-  if (opts.w || opts.h) t.push(`c_${opts.crop ?? "fill"}`);
+  if (opts.w || opts.h) {
+    t.push(`c_${opts.crop ?? "fill"}`);
+    if (opts.gravity) t.push(`g_${opts.gravity}`);
+  }
 
   return url.replace("/upload/", `/upload/${t.join(",")}/`);
 }

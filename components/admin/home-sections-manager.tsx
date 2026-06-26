@@ -2,10 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { GripVertical, Eye, EyeOff } from "lucide-react";
+import { GripVertical, Eye, EyeOff, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  HomeSectionEditDialog,
+  type EditTarget,
+} from "@/components/admin/home-section-editor";
+import type { SectionEditorKind, HomeContentMap } from "@/lib/home-content";
 import {
   toggleHomeSection,
   reorderHomeSections,
@@ -16,12 +22,41 @@ export type HomeSectionRow = {
   label: string;
   note?: string;
   enabled: boolean;
+  editorKind: SectionEditorKind;
 };
 
-export function HomeSectionsManager({ sections }: { sections: HomeSectionRow[] }) {
+export function HomeSectionsManager({
+  sections,
+  content,
+}: {
+  sections: HomeSectionRow[];
+  content: HomeContentMap;
+}) {
   const router = useRouter();
   const [order, setOrder] = useState<HomeSectionRow[]>(sections);
   const [dragKey, setDragKey] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
+
+  function buildTarget(row: HomeSectionRow): EditTarget | null {
+    const label = row.label;
+    switch (row.key) {
+      case "hero":
+        return { kind: "hero", key: "hero", label, value: content.hero };
+      case "aiBanner":
+        return { kind: "aiBanner", key: "aiBanner", label, value: content.aiBanner };
+      case "categories":
+      case "featured":
+      case "bestSellers":
+      case "recommended":
+        return { kind: "heading", key: row.key, label, value: content[row.key] };
+      case "whyChooseUs":
+        return { kind: "whyChooseUs", key: "whyChooseUs", label, value: content.whyChooseUs };
+      case "testimonials":
+        return { kind: "testimonials", key: "testimonials", label, value: content.testimonials };
+      default:
+        return null;
+    }
+  }
 
   // Re-sync from the server after a refresh (when not mid-drag).
   if (
@@ -91,6 +126,16 @@ export function HomeSectionsManager({ sections }: { sections: HomeSectionRow[] }
           <Badge variant={s.enabled ? "default" : "secondary"}>
             {s.enabled ? "Shown" : "Hidden"}
           </Badge>
+          {s.editorKind !== "none" && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setEditTarget(buildTarget(s))}
+              aria-label={`Edit ${s.label}`}
+            >
+              <Pencil className="size-4" />
+            </Button>
+          )}
           <Switch
             checked={s.enabled}
             onCheckedChange={(v) => onToggle(s.key, v)}
@@ -98,6 +143,7 @@ export function HomeSectionsManager({ sections }: { sections: HomeSectionRow[] }
           />
         </li>
       ))}
+      <HomeSectionEditDialog target={editTarget} onClose={() => setEditTarget(null)} />
     </ul>
   );
 }

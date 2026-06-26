@@ -33,6 +33,8 @@ export default async function AdminBannersPage() {
     description: b.description,
     desktopImage: b.desktopImage,
     mobileImage: b.mobileImage,
+    desktopImageDark: b.desktopImageDark,
+    mobileImageDark: b.mobileImageDark,
     ctaText: b.ctaText,
     ctaUrl: b.ctaUrl,
     productId: b.productId,

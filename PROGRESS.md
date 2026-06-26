@@ -9,9 +9,9 @@ _Last updated: 2026-06-25 · Auto-maintained. Update at the end of every milesto
 | Build               | ✅ passing (`next build`, 52 routes)                            |
 | TypeScript          | ✅ `tsc --noEmit` clean                                         |
 | ESLint              | ✅ clean                                                        |
-| Runtime smoke       | ✅ Content pages verified (contact/blog/support/track/shipping/privacy/terms → 200; bad blog slug → 404; ContactMessage round-trip; track resolves a real order) |
-| Database (Neon)     | ✅ live, migrated (…`banners`, `blog_post`, `content_page`, `contact_message`), seeded |
-| Current milestone   | **M0–M6 + RBAC + CMS Phases 1–5 + content pages — production-ready** |
+| Runtime smoke       | ✅ Favicon link normalized to an image (renders even from a stale `.pdf` asset); homepage identical by default after the section-content refactor; banner dark fields + brand-icon routes 200; admin guards 307 |
+| Database (Neon)     | ✅ live, migrated (…`content_page`, `contact_message`, `banner` dark variants, `home_section.content`), seeded |
+| Current milestone   | **M0–M6 + RBAC + CMS Phases 1–5 + content pages + CMS fixes — production-ready** |
 
 ## CMS roadmap (WordPress-style admin management; one phase per turn)
 ✅ **Phase 1 — Hero Slider Manager**: `HeroSlide` model + `/admin/hero` (drag-drop reorder,
@@ -41,6 +41,20 @@ override + professional code defaults in `lib/legal-content.ts`). Footer "Track 
 `/track`; sitemap + SEO/JSON-LD updated. Admin editors for these land in a later CMS phase.
 Sanitization moved to `lib/sanitize.ts` (`sanitize-html`; isomorphic-dompurify breaks the
 Node-21 build).
+✅ **CMS fixes/upgrades**:
+- **Favicon**: removed the `app/favicon.ico`/`app/icon.tsx`/`app/apple-icon.tsx` file
+  conventions (they overrode `metadata.icons`); brand defaults now at `/brand-icon` +
+  `/brand-apple-icon`; root metadata drives icons from `StoreSetting.favicon`, normalized via
+  `cldUrl` (f_auto) so any uploaded asset (incl. a stale `.pdf`) is delivered as an image and
+  the versioned URL cache-busts. Favicon upload accepts `.png/.ico/.svg`.
+- **Banner Manager**: `Banner` gains optional `desktopImageDark`/`mobileImageDark`; `cldUrl`
+  gains `gravity`(g_auto smart crop)+`dpr`; storefront uses a shared `BannerCard` with a
+  responsive `<picture>` (mobile/tablet/desktop, auto mobile crop, dark variants w/ light
+  fallback); admin form adds dark uploads + a live theme/viewport preview.
+- **Homepage Section editor**: `HomeSection.content` JSON + `lib/home-content.ts` defaults;
+  the 8 content sections (hero, aiBanner, headings, why-choose-us, testimonials) are fully
+  editable (text, buttons, colors, list items) with live preview, save and reset-to-default;
+  homepage is pixel-identical until edited. stories/heroSlider keep their own managers.
 ⏳ Backlog: 6) Admin editors (blog/legal/contact-inbox) · 7) Navigation Builder ·
 8) Footer Builder · 9) Media Library · 10) popups/ads. (+ optional full mobile audit.)
 

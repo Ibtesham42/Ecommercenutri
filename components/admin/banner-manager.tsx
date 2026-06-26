@@ -3,7 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
-import { Plus, Pencil, Trash2, Copy, Loader2, ImageOff } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Copy,
+  Loader2,
+  ImageOff,
+  Monitor,
+  Smartphone,
+  Sun,
+  Moon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,8 +29,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { BannerCard, type BannerCardData } from "@/components/storefront/banner-card";
 import { BANNER_POSITIONS, BANNER_POSITION_LABELS } from "@/lib/banners";
 import { cldUrl } from "@/lib/cld";
+import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import {
   saveBanner,
@@ -35,6 +48,8 @@ export type BannerRow = {
   description: string | null;
   desktopImage: string;
   mobileImage: string | null;
+  desktopImageDark: string | null;
+  mobileImageDark: string | null;
   ctaText: string | null;
   ctaUrl: string | null;
   productId: string | null;
@@ -55,6 +70,8 @@ type FormValues = {
   description: string;
   desktopImage: string;
   mobileImage: string;
+  desktopImageDark: string;
+  mobileImageDark: string;
   ctaText: string;
   ctaUrl: string;
   productId: string;
@@ -84,7 +101,8 @@ export function BannerManager({
   const [editing, setEditing] = useState<BannerRow | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const { register, handleSubmit, control, reset } = useForm<FormValues>();
+  const { register, handleSubmit, control, reset, watch } = useForm<FormValues>();
+  const values = watch();
 
   function openAdd() {
     setEditing(null);
@@ -94,6 +112,8 @@ export function BannerManager({
       description: "",
       desktopImage: "",
       mobileImage: "",
+      desktopImageDark: "",
+      mobileImageDark: "",
       ctaText: "",
       ctaUrl: "",
       productId: "",
@@ -115,6 +135,8 @@ export function BannerManager({
       description: b.description ?? "",
       desktopImage: b.desktopImage,
       mobileImage: b.mobileImage ?? "",
+      desktopImageDark: b.desktopImageDark ?? "",
+      mobileImageDark: b.mobileImageDark ?? "",
       ctaText: b.ctaText ?? "",
       ctaUrl: b.ctaUrl ?? "",
       productId: b.productId ?? "",
@@ -137,6 +159,8 @@ export function BannerManager({
       description: v.description || null,
       desktopImage: v.desktopImage,
       mobileImage: v.mobileImage || null,
+      desktopImageDark: v.desktopImageDark || null,
+      mobileImageDark: v.mobileImageDark || null,
       ctaText: v.ctaText || null,
       ctaUrl: v.ctaUrl || null,
       productId: v.productId || null,
@@ -252,6 +276,8 @@ export function BannerManager({
             <DialogTitle>{editing ? "Edit banner" : "New banner"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+            <BannerPreview values={values} />
+
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="btitle">Title</Label>
@@ -288,6 +314,32 @@ export function BannerManager({
                     <ImageUploadField value={field.value} onChange={field.onChange} cloudinaryReady={cloudinaryReady} folder="banners" />
                   )}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Leave empty — a smart mobile crop is generated from the desktop image.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Dark-mode desktop (optional)</Label>
+                <Controller
+                  control={control}
+                  name="desktopImageDark"
+                  render={({ field }) => (
+                    <ImageUploadField value={field.value} onChange={field.onChange} cloudinaryReady={cloudinaryReady} folder="banners" />
+                  )}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Dark-mode mobile (optional)</Label>
+                <Controller
+                  control={control}
+                  name="mobileImageDark"
+                  render={({ field }) => (
+                    <ImageUploadField value={field.value} onChange={field.onChange} cloudinaryReady={cloudinaryReady} folder="banners" />
+                  )}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Shown in dark mode. The light image is used if left empty.
+                </p>
               </div>
             </div>
 
@@ -364,5 +416,90 @@ export function BannerManager({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/** Live, theme/viewport-switchable preview of the banner being edited. */
+function BannerPreview({ values }: { values: FormValues }) {
+  const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop");
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  const banner: BannerCardData = {
+    title: values.title || null,
+    subtitle: values.subtitle || null,
+    description: values.description || null,
+    ctaText: values.ctaText || null,
+    desktopImage: values.desktopImage || "",
+    mobileImage: values.mobileImage || null,
+    desktopImageDark: values.desktopImageDark || null,
+    mobileImageDark: values.mobileImageDark || null,
+  };
+
+  return (
+    <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Live preview
+        </span>
+        <div className="flex gap-1">
+          <Toggle active={viewport === "desktop"} onClick={() => setViewport("desktop")} label="Desktop">
+            <Monitor className="size-4" />
+          </Toggle>
+          <Toggle active={viewport === "mobile"} onClick={() => setViewport("mobile")} label="Mobile">
+            <Smartphone className="size-4" />
+          </Toggle>
+          <span className="mx-1 w-px bg-border" />
+          <Toggle active={theme === "light"} onClick={() => setTheme("light")} label="Light">
+            <Sun className="size-4" />
+          </Toggle>
+          <Toggle active={theme === "dark"} onClick={() => setTheme("dark")} label="Dark">
+            <Moon className="size-4" />
+          </Toggle>
+        </div>
+      </div>
+      <div
+        className={cn(
+          "flex justify-center rounded-lg p-3",
+          theme === "dark" ? "bg-neutral-900" : "bg-white",
+        )}
+      >
+        {banner.desktopImage ? (
+          <div className={cn("w-full", viewport === "mobile" && "max-w-[360px]")}>
+            <BannerCard banner={banner} preview={{ theme, viewport }} />
+          </div>
+        ) : (
+          <div className="flex h-32 w-full items-center justify-center text-sm text-muted-foreground">
+            Add a desktop image to preview
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Toggle({
+  active,
+  onClick,
+  label,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      aria-pressed={active}
+      className={cn(
+        "grid size-7 place-items-center rounded-md border transition-colors",
+        active ? "border-primary bg-primary text-primary-foreground" : "bg-background text-muted-foreground",
+      )}
+    >
+      {children}
+    </button>
   );
 }

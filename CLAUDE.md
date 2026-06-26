@@ -84,7 +84,8 @@ app/
     webhooks/razorpay  Razorpay webhook (signature-verified, idempotent)
   sitemap.ts / robots.ts          SEO (dynamic, DB-driven sitemap)
   manifest.ts                     PWA web manifest
-  icon.tsx / apple-icon.tsx / opengraph-image.tsx   Generated images (next/og)
+  opengraph-image.tsx               Generated OG image (next/og)
+  brand-icon/ brand-apple-icon/     Brand-default favicons (next/og routes; see §13)
   offline/             PWA offline fallback page (service worker in public/sw.js)
 components/
   ui/                  shadcn primitives (do not hand-edit lightly)
@@ -310,7 +311,19 @@ all gated by the **`appearance`** permission (super admins always pass).
   `lib/actions/admin/banners.ts`). Storefront `<BannerStrip position>`
   (`components/storefront/banner-strip.tsx`, reads `lib/queries/banners.ts#getBanners`) renders
   active in-schedule banners by priority and **renders nothing when empty** (fully additive). New
-  placement = add a key to `BANNER_POSITIONS` + drop a `<BannerStrip position>` in.
+  placement = add a key to `BANNER_POSITIONS` + drop a `<BannerStrip position>` in. Banners
+  support optional dark-mode images (`desktopImageDark`/`mobileImageDark`, light fallback),
+  smart focal-point mobile crops (`cldUrl` `gravity:"auto"`/`dpr:"auto"`) and a responsive
+  `<picture>` via the shared `components/storefront/banner-card.tsx`; the admin form has a live
+  theme/viewport preview.
+- **Homepage Section editor (done)** — every content section is editable, not just
+  order/visibility. `HomeSection.content` (JSON) overrides typed defaults in
+  `lib/home-content.ts`; `getHomeSectionsContent()` merges them. The 8 editable sections (hero,
+  aiBanner, the catalog headings, whyChooseUs, testimonials) render from shared
+  `components/storefront/home/*` components reused by the admin live preview
+  (`components/admin/home-section-editor.tsx`). Edit/save/reset-to-default via
+  `saveHomeSectionContent`/`resetHomeSectionContent`; homepage is identical until edited.
+  stories/heroSlider keep their dedicated managers (editor kind `none`).
 - **Content pages (foundation done)** — storefront pages for every footer/nav link, all
   CMS-ready data models in place (admin editors are a later phase):
   - `/blog` + `/blog/[slug]` — `BlogPost` model, `lib/queries/blog.ts`; renders published
@@ -469,9 +482,17 @@ See `PROGRESS.md` for the live tracker (status, blockers, next task).
   the `useChat`/UIMessage protocol — robust across AI SDK versions. Friendly
   fallbacks/limits carry an `X-AI-Fallback: 1` header so the client renders their
   message inline instead of erroring.
-- **Icons/OG are generated at the edge** via `next/og` `ImageResponse` (`app/icon.tsx`,
-  `apple-icon.tsx`, `opengraph-image.tsx`) — no binary asset files. `siteConfig.ogImage`
-  points at the generated `/opengraph-image` route.
+- **Favicon is metadata-driven, not file-convention.** App-Router file conventions
+  (`app/favicon.ico`/`icon.tsx`/`apple-icon.tsx`) override `metadata.icons`, so an
+  admin-uploaded favicon never showed. They were removed; the brand default is generated at
+  `app/brand-icon/route.tsx` + `app/brand-apple-icon/route.tsx` (`next/og`), and root
+  `generateMetadata().icons` points at `StoreSetting.favicon` (normalized through `cldUrl`
+  f_auto so any asset is delivered as an image) or the brand routes. The versioned Cloudinary
+  URL cache-busts the tab automatically. Don't re-add `app/favicon.ico`/`app/icon.*`.
+- **OG image** is still generated at the edge via `next/og` `ImageResponse`
+  (`app/opengraph-image.tsx`); `siteConfig.ogImage` points at `/opengraph-image`.
+- **`cldUrl`** supports `gravity` (`g_auto` smart focal point) and `dpr` (`dpr_auto`) on top of
+  `f_auto,q_auto,w,h,c_fill|fit` — used for responsive, non-stretching banner crops.
 - **Service worker is intentionally conservative** (`public/sw.js`): network-first for
   navigations with an `/offline` fallback, cache-first for static assets, and it
   **never** intercepts `/api`, `/admin`, `/account`, `/checkout`, or auth. Registered

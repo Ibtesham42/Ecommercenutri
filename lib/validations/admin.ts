@@ -161,6 +161,8 @@ export const bannerSchema = z.object({
     .union([z.string().url("Enter a valid image URL"), z.literal("")])
     .nullable()
     .optional(),
+  desktopImageDark: optImage,
+  mobileImageDark: optImage,
   ctaText: z.string().max(40).nullable().optional(),
   ctaUrl: z
     .union([
@@ -180,6 +182,109 @@ export const bannerSchema = z.object({
 });
 
 export type BannerInput = z.infer<typeof bannerSchema>;
+
+// Homepage section content (Homepage Section editor) -------------------------
+// A link target: a path ("/products"), full URL, or empty string.
+const linkHref = z.string().max(200);
+
+const statItemSchema = z.object({
+  value: z.string().max(20),
+  label: z.string().max(40),
+});
+
+const valuePropSchema = z.object({
+  icon: z.string().max(40),
+  title: z.string().max(60),
+  desc: z.string().max(200),
+});
+
+const testimonialItemSchema = z.object({
+  name: z.string().max(60),
+  text: z.string().max(400),
+  rating: z.number().int().min(1).max(5),
+});
+
+export const heroContentSchema = z.object({
+  eyebrow: z.string().max(80),
+  title: z.string().max(80),
+  highlight: z.string().max(80),
+  description: z.string().max(400),
+  primaryLabel: z.string().max(40),
+  primaryHref: linkHref,
+  secondaryLabel: z.string().max(40),
+  secondaryHref: linkHref,
+  stats: z.array(statItemSchema).max(4),
+  bgColor: optHex,
+  textColor: optHex,
+});
+
+export const aiBannerContentSchema = z.object({
+  eyebrow: z.string().max(80),
+  title: z.string().max(120),
+  description: z.string().max(400),
+  ctaLabel: z.string().max(40),
+  ctaHref: linkHref,
+  bgColor: optHex,
+  textColor: optHex,
+});
+
+export const headingContentSchema = z.object({
+  title: z.string().max(80),
+  subtitle: z.string().max(200),
+  ctaLabel: z.string().max(40).optional().default(""),
+  ctaHref: linkHref.optional().default(""),
+  limit: z.number().int().min(1).max(24).optional().default(8),
+});
+
+export const whyChooseUsContentSchema = z.object({
+  title: z.string().max(80),
+  subtitle: z.string().max(200),
+  items: z.array(valuePropSchema).max(8),
+});
+
+export const testimonialsContentSchema = z.object({
+  title: z.string().max(80),
+  subtitle: z.string().max(200),
+  items: z.array(testimonialItemSchema).max(12),
+});
+
+/** Zod schema per editable homepage section key. */
+export const homeContentSchemas = {
+  hero: heroContentSchema,
+  aiBanner: aiBannerContentSchema,
+  categories: headingContentSchema,
+  featured: headingContentSchema,
+  bestSellers: headingContentSchema,
+  recommended: headingContentSchema,
+  whyChooseUs: whyChooseUsContentSchema,
+  testimonials: testimonialsContentSchema,
+} as const;
+
+export type HomeContentKey = keyof typeof homeContentSchemas;
+
+export type HeroContent = z.infer<typeof heroContentSchema>;
+export type AiBannerContent = z.infer<typeof aiBannerContentSchema>;
+export type HeadingContent = z.infer<typeof headingContentSchema>;
+export type WhyChooseUsContent = z.infer<typeof whyChooseUsContentSchema>;
+export type TestimonialsContent = z.infer<typeof testimonialsContentSchema>;
+export type ValuePropItem = z.infer<typeof valuePropSchema>;
+export type TestimonialItem = z.infer<typeof testimonialItemSchema>;
+export type StatItem = z.infer<typeof statItemSchema>;
+
+export function isHomeContentKey(key: string): key is HomeContentKey {
+  return key in homeContentSchemas;
+}
+
+/** Validate a section's content payload against its schema. */
+export function parseHomeContent(
+  key: HomeContentKey,
+  data: unknown,
+): { ok: true; data: unknown } | { ok: false; error: string } {
+  const schema = homeContentSchemas[key] as z.ZodTypeAny;
+  const r = schema.safeParse(data);
+  if (r.success) return { ok: true, data: r.data };
+  return { ok: false, error: r.error.issues[0]?.message ?? "Invalid content." };
+}
 
 // Shared building blocks -----------------------------------------------------
 

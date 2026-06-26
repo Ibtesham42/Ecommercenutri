@@ -1,10 +1,8 @@
 import { ImageResponse } from "next/og";
 
-export const size = { width: 32, height: 32 };
-export const contentType = "image/png";
-
-/** App favicon: a brand-green rounded square with a white "N". */
-export default function Icon() {
+// Brand-default Apple touch icon (180×180), served as a normal route so
+// `metadata.icons` can override it with an admin-uploaded favicon.
+export function GET() {
   return new ImageResponse(
     (
       <div
@@ -16,14 +14,13 @@ export default function Icon() {
           justifyContent: "center",
           background: "#16803c",
           color: "#ffffff",
-          fontSize: 22,
+          fontSize: 120,
           fontWeight: 800,
-          borderRadius: 7,
         }}
       >
         N
       </div>
     ),
-    size,
+    { width: 180, height: 180 },
   );
 }

@@ -9,6 +9,8 @@ const bannerSelect = {
   description: true,
   desktopImage: true,
   mobileImage: true,
+  desktopImageDark: true,
+  mobileImageDark: true,
   ctaText: true,
   ctaUrl: true,
   product: { select: { slug: true } },

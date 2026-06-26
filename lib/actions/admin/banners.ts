@@ -33,6 +33,8 @@ export async function saveBanner(input: unknown): Promise<AdminResult> {
     description: d.description || null,
     desktopImage: d.desktopImage,
     mobileImage: d.mobileImage || null,
+    desktopImageDark: d.desktopImageDark || null,
+    mobileImageDark: d.mobileImageDark || null,
     ctaText: d.ctaText || null,
     ctaUrl: d.ctaUrl || null,
     productId: d.productId || null,

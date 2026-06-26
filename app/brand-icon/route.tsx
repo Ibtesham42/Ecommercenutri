@@ -1,10 +1,9 @@
 import { ImageResponse } from "next/og";
 
-export const size = { width: 180, height: 180 };
-export const contentType = "image/png";
-
-/** Apple touch icon: brand-green tile with a white "N". */
-export default function AppleIcon() {
+// Brand-default favicon (a green rounded square with a white "N"), served as a
+// normal route so `metadata.icons` stays authoritative and an admin-uploaded
+// favicon (StoreSetting.favicon) can override it. See app/layout.tsx.
+export function GET() {
   return new ImageResponse(
     (
       <div
@@ -16,13 +15,14 @@ export default function AppleIcon() {
           justifyContent: "center",
           background: "#16803c",
           color: "#ffffff",
-          fontSize: 120,
+          fontSize: 22,
           fontWeight: 800,
+          borderRadius: 7,
         }}
       >
         N
       </div>
     ),
-    size,
+    { width: 32, height: 32 },
   );
 }

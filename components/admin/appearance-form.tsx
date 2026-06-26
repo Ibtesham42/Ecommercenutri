@@ -127,7 +127,12 @@ export function AppearanceForm({
     }
   }
 
-  const imageField = (name: keyof AppearanceValues, label: string, folder = "branding") => (
+  const imageField = (
+    name: keyof AppearanceValues,
+    label: string,
+    folder = "branding",
+    accept?: string,
+  ) => (
     <div className="space-y-1.5">
       <Label>{label}</Label>
       <Controller
@@ -139,6 +144,7 @@ export function AppearanceForm({
             onChange={field.onChange}
             cloudinaryReady={cloudinaryReady}
             folder={folder}
+            {...(accept ? { accept } : {})}
           />
         )}
       />
@@ -161,7 +167,7 @@ export function AppearanceForm({
         <div className="grid gap-4 sm:grid-cols-3">
           {imageField("logo", "Logo")}
           {imageField("logoDark", "Dark logo (optional)")}
-          {imageField("favicon", "Favicon")}
+          {imageField("favicon", "Favicon", "branding", "image/png,image/svg+xml,image/x-icon,.png,.svg,.ico")}
         </div>
       </Section>
 

@@ -455,6 +455,9 @@ model Banner {
   description  String?   @db.Text
   desktopImage String
   mobileImage  String?
+  // Optional dark-mode variants; the light image is used as a fallback.
+  desktopImageDark String?
+  mobileImageDark  String?
   ctaText      String?
   ctaUrl       String?
   productId    String?
@@ -480,6 +483,9 @@ model HomeSection {
   key       String   @unique
   enabled   Boolean  @default(true)
   sortOrder Int      @default(0)
+  // Per-section editable content (Homepage Section editor). Null = code defaults
+  // in lib/home-content.ts, so the homepage is unchanged until an admin edits.
+  content   Json?
   updatedAt DateTime @updatedAt
 }
 
