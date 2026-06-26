@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Heart, Menu, Search, ShoppingCart, User } from "lucide-react";
+import { Heart, Menu, ShoppingCart, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -57,9 +57,6 @@ export function SiteHeader({
                 <Logo logoUrl={logoUrl} name={siteName} {...logoSize} />
               </SheetTitle>
             </SheetHeader>
-            <div className="border-b p-3">
-              <SearchBox onNavigate={() => setOpen(false)} />
-            </div>
             <nav className="flex flex-col gap-1 p-3">
               {siteConfig.mainNav.map((item) => (
                 <Link
@@ -94,11 +91,6 @@ export function SiteHeader({
         </div>
 
         <div className="ml-auto flex items-center gap-0.5">
-          <Button asChild variant="ghost" size="icon" aria-label="Search" className="lg:hidden">
-            <Link href="/search">
-              <Search className="size-5" />
-            </Link>
-          </Button>
           <Button
             asChild
             variant="ghost"
@@ -128,6 +120,14 @@ export function SiteHeader({
             </Link>
           </Button>
           <ThemeToggle />
+        </div>
+      </div>
+
+      {/* Full-width search row below the header on mobile/tablet. Desktop (lg+)
+          uses the inline search bar inside the header row above. */}
+      <div className="border-t lg:hidden">
+        <div className="mx-auto w-full max-w-7xl px-4 py-2.5">
+          <SearchBox />
         </div>
       </div>
     </header>
