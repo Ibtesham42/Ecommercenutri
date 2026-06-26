@@ -149,6 +149,38 @@ export const heroSlideSchema = z.object({
 
 export type HeroSlideInput = z.infer<typeof heroSlideSchema>;
 
+// Promotional banners --------------------------------------------------------
+
+export const bannerSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().max(120).nullable().optional(),
+  subtitle: z.string().max(160).nullable().optional(),
+  description: z.string().max(400).nullable().optional(),
+  desktopImage: z.string().url("Add a desktop image"),
+  mobileImage: z
+    .union([z.string().url("Enter a valid image URL"), z.literal("")])
+    .nullable()
+    .optional(),
+  ctaText: z.string().max(40).nullable().optional(),
+  ctaUrl: z
+    .union([
+      z.string().url("Enter a valid URL"),
+      z.string().regex(/^\//, "Use a full URL or a path starting with /"),
+      z.literal(""),
+    ])
+    .nullable()
+    .optional(),
+  productId: optionalRelId,
+  categoryId: optionalRelId,
+  position: z.string().min(1),
+  priority: z.number().int().default(0),
+  isActive: z.boolean().default(true),
+  startsAt: z.coerce.date().nullable().optional(),
+  expiresAt: z.coerce.date().nullable().optional(),
+});
+
+export type BannerInput = z.infer<typeof bannerSchema>;
+
 // Shared building blocks -----------------------------------------------------
 
 const slug = z

@@ -9,9 +9,9 @@ _Last updated: 2026-06-25 · Auto-maintained. Update at the end of every milesto
 | Build               | ✅ passing (`next build`, 52 routes)                            |
 | TypeScript          | ✅ `tsc --noEmit` clean                                         |
 | ESLint              | ✅ clean                                                        |
-| Runtime smoke       | ✅ Section Builder verified (homepage identical by default; hide removes; reorder applies; sub-admin scoped) |
-| Database (Neon)     | ✅ live, migrated (…`appearance_settings`, `home_sections`), seeded |
-| Current milestone   | **M0–M6 + RBAC + CMS Phases 1–4 — production-ready**           |
+| Runtime smoke       | ✅ Banner Manager verified (home/products/categories 200, additive — render nothing with no banners; `/admin/banners` guard-redirects when unauthenticated) |
+| Database (Neon)     | ✅ live, migrated (…`home_sections`, `banners`), seeded         |
+| Current milestone   | **M0–M6 + RBAC + CMS Phases 1–5 — production-ready**           |
 
 ## CMS roadmap (WordPress-style admin management; one phase per turn)
 ✅ **Phase 1 — Hero Slider Manager**: `HeroSlide` model + `/admin/hero` (drag-drop reorder,
@@ -28,7 +28,12 @@ WhatsApp, footer hours, root `generateMetadata` SEO).
 ✅ **Phase 4 — Homepage Section Builder**: `HomeSection` model + registry
 (`lib/home-sections.ts`); homepage refactored to a keyed section map rendered in admin
 order; `/admin/homepage` (drag-drop reorder + show/hide). Additive — identical until edited.
-⏳ Backlog: 5) Banner Manager · 6) Navigation Builder · 7) Footer Builder · 8) Media Library ·
+✅ **Phase 5 — Banner Manager**: `Banner` model + named placements registry
+(`lib/banners.ts`: homeTop / productsTop / categoryTop); `/admin/banners` (create/edit,
+desktop+mobile images, link to product/category/URL, priority, schedule, publish toggle,
+duplicate, delete) gated by `appearance`; storefront `<BannerStrip position>` renders active
+in-schedule banners by priority (server component, renders nothing when empty — fully additive).
+⏳ Backlog: 6) Navigation Builder · 7) Footer Builder · 8) Media Library ·
 9) Content/popups/ads. (+ optional full mobile audit.)
 
 ## Latest: Admin RBAC (sub-admins, permissions, store settings)

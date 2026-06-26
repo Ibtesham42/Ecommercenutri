@@ -298,10 +298,16 @@ all gated by the **`appearance`** permission (super admins always pass).
   (`components/admin/hero-slider-manager.tsx`, `lib/actions/admin/hero.ts`,
   `lib/queries/home.ts`). Storefront `components/storefront/hero-slider.tsx` renders right
   after Stories **only when active slides exist** (degrades to the current homepage).
-- **Backlog (one phase per turn):** product-page UX redesign + mobile polish; Appearance &
-  Website Settings (extend `StoreSetting`); Homepage Section Builder (`HomeSection`); Banner
-  Manager; Navigation Builder (`MenuItem`); Footer Builder; Media Library (`MediaAsset` +
-  Cloudinary); Content/popups/ads.
+- **Banner Manager (done)** — `Banner` model + named-placement registry (`lib/banners.ts`:
+  `homeTop`/`productsTop`/`categoryTop`); admin `/admin/banners` (create/edit, desktop+mobile
+  images via `ImageUploadField`, link to product/category/URL, priority, schedule, publish
+  toggle, duplicate, delete — `components/admin/banner-manager.tsx`,
+  `lib/actions/admin/banners.ts`). Storefront `<BannerStrip position>`
+  (`components/storefront/banner-strip.tsx`, reads `lib/queries/banners.ts#getBanners`) renders
+  active in-schedule banners by priority and **renders nothing when empty** (fully additive). New
+  placement = add a key to `BANNER_POSITIONS` + drop a `<BannerStrip position>` in.
+- **Backlog (one phase per turn):** Navigation Builder (`MenuItem`); Footer Builder; Media
+  Library (`MediaAsset` + Cloudinary); Content/popups/ads.
 - **CMS conventions:** reuse RBAC (`requirePermission("appearance")` / `guardSection`),
   `AdminResult` actions, Zod schemas in `lib/validations/admin.ts`, `ImageUploadField` +
   Cloudinary, `cldUrl` for delivery. Reordering uses native HTML5 DnD + a `reorder(ids[])`

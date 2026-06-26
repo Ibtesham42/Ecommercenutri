@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ProductGrid } from "@/components/storefront/product-card";
 import { StoriesRail } from "@/components/storefront/stories-rail";
 import { HeroSlider } from "@/components/storefront/hero-slider";
+import { BannerStrip } from "@/components/storefront/banner-strip";
 import { RecommendedProducts } from "@/components/storefront/recommended-products";
 import {
   getFeaturedProducts,
@@ -301,6 +302,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <BannerStrip position="homeTop" className="pt-6" />
       {sectionOrder
         .filter((s) => s.enabled && sections[s.key] != null)
         .map((s) => (

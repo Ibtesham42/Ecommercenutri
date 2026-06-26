@@ -7,6 +7,7 @@ import { CatalogFilters } from "@/components/storefront/catalog-filters";
 import { MobileFilters } from "@/components/storefront/mobile-filters";
 import { SortSelect } from "@/components/storefront/sort-select";
 import { PaginationBar } from "@/components/storefront/pagination-bar";
+import { BannerStrip } from "@/components/storefront/banner-strip";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
@@ -41,9 +42,11 @@ export default async function ProductsPage({
   const heading = activeCategory ? activeCategory.name : q ? `Results for “${q}”` : "All products";
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold sm:text-3xl">{heading}</h1>
+    <>
+      <BannerStrip position="productsTop" className="pt-6" />
+      <div className="mx-auto w-full max-w-7xl px-4 py-8">
+        <header className="mb-6">
+          <h1 className="text-2xl font-bold sm:text-3xl">{heading}</h1>
         {activeCategory?.description && (
           <p className="mt-1 text-muted-foreground">{activeCategory.description}</p>
         )}
@@ -79,5 +82,6 @@ export default async function ProductsPage({
         </div>
       </div>
     </div>
+    </>
   );
 }

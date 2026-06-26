@@ -167,6 +167,7 @@ model Category {
   children   Category[]  @relation("CategoryToSubcategory")
   products   Product[]
   heroSlides HeroSlide[]
+  banners    Banner[]
 
   @@index([parentId])
 }
@@ -216,6 +217,7 @@ model Product {
   stories    Story[]
   aiChats    AIChat[]
   heroSlides HeroSlide[]
+  banners    Banner[]
 
   @@index([categoryId])
   @@index([brandId])
@@ -443,6 +445,32 @@ model HeroSlide {
   category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@index([isActive])
+}
+
+// Promotional banners rendered at named placements (see lib/banners.ts).
+model Banner {
+  id           String    @id @default(cuid())
+  title        String?
+  subtitle     String?
+  description  String?   @db.Text
+  desktopImage String
+  mobileImage  String?
+  ctaText      String?
+  ctaUrl       String?
+  productId    String?
+  categoryId   String?
+  position     String    @default("homeTop")
+  priority     Int       @default(0) // higher shows first within a position
+  isActive     Boolean   @default(true)
+  startsAt     DateTime?
+  expiresAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  product  Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@index([position, isActive])
 }
 
 // Homepage section visibility + order (Homepage Section Builder). One row per
