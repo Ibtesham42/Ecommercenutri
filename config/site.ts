@@ -33,6 +33,7 @@ export const siteConfig = {
     { title: "Best Sellers", href: "/products?sort=best-sellers" },
     { title: "AI Assistant", href: "/assistant" },
     { title: "About", href: "/about" },
+    { title: "Contact", href: "/contact" },
   ],
 } as const;
 
