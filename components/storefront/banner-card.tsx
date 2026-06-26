@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { cldUrl } from "@/lib/cld";
+import { cn } from "@/lib/utils";
 
 export type BannerCardData = {
   title?: string | null;
@@ -14,17 +15,18 @@ export type BannerCardData = {
 };
 
 const DIMS = {
-  desktop: { w: 1600, h: 400 },
-  tablet: { w: 1200, h: 420 },
-  mobile: { w: 800, h: 600 },
+  desktop: { w: 1600, h: 600 },
+  tablet: { w: 1200, h: 500 },
+  mobile: { w: 900, h: 700 },
 } as const;
 
-// Smart, retina-aware crop with auto focal point so nothing important is cut.
+// Fit the WHOLE image (c_fit, never cropped) + retina + auto format/quality, so
+// any uploaded aspect ratio shows in full without zooming or chopping artwork.
 const opt = (src: string, dim: { w: number; h: number }) =>
-  cldUrl(src, { ...dim, crop: "fill", gravity: "auto", dpr: "auto" });
+  cldUrl(src, { ...dim, crop: "fit", dpr: "auto" });
 
 function resolveVariants(b: BannerCardData) {
-  // Mobile falls back to the desktop image (auto-cropped); dark falls back to light.
+  // Mobile falls back to the desktop image; dark falls back to light.
   const lightDesktop = b.desktopImage;
   const lightMobile = b.mobileImage || b.desktopImage;
   const darkDesktop = b.desktopImageDark || b.desktopImage;
@@ -37,6 +39,8 @@ function resolveVariants(b: BannerCardData) {
     darkDesktop: opt(darkDesktop, DIMS.desktop),
     darkTablet: opt(darkDesktop, DIMS.tablet),
     darkMobile: opt(darkMobile, DIMS.mobile),
+    // Tiny cover crop used as a blurred backdrop to fill the frame premium-style.
+    ambient: cldUrl(b.desktopImage, { w: 200, h: 80, crop: "fill" }),
   };
 }
 
@@ -45,8 +49,8 @@ function TextOverlay({ banner }: { banner: BannerCardData }) {
   if (!hasText) return null;
   return (
     <>
-      <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent" />
-      <div className="absolute inset-0 flex flex-col justify-center gap-1 p-4 sm:gap-1.5 sm:p-6 lg:p-10">
+      <div className="absolute inset-0 z-[2] bg-gradient-to-r from-black/70 via-black/35 to-transparent" />
+      <div className="absolute inset-0 z-[2] flex flex-col justify-center gap-1 p-4 sm:gap-1.5 sm:p-6 lg:p-10">
         {banner.subtitle && (
           <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80 sm:text-xs">
             {banner.subtitle}
@@ -74,8 +78,9 @@ function TextOverlay({ banner }: { banner: BannerCardData }) {
 }
 
 // Responsive banner height: comfortable on phones, taller on large screens so
-// uploaded artwork + content read well on every device.
-const imgClass = "h-52 w-full object-cover sm:h-60 md:h-56 lg:h-72";
+// uploaded artwork + content read well on every device. `object-contain` shows
+// the whole image; the blurred backdrop fills any letterbox space.
+const imgClass = "relative z-[1] h-52 w-full object-contain sm:h-60 md:h-56 lg:h-72";
 
 /**
  * Renders a promotional banner image with a text overlay. Shared by the
@@ -89,10 +94,13 @@ export function BannerCard({
   banner,
   href,
   preview,
+  bleed,
 }: {
   banner: BannerCardData;
   href?: string | null;
   preview?: { theme: "light" | "dark"; viewport: "desktop" | "mobile" };
+  /** Full-bleed (edge-to-edge): drops rounded corners + card shadow. */
+  bleed?: boolean;
 }) {
   const v = resolveVariants(banner);
   const hasDark = Boolean(banner.desktopImageDark || banner.mobileImageDark);
@@ -123,13 +131,32 @@ export function BannerCard({
         )}
         <source media="(min-width: 1024px)" srcSet={v.lightDesktop} />
         <source media="(min-width: 640px)" srcSet={v.lightTablet} />
-        <img src={v.lightMobile} alt={banner.title ?? "Promotion"} className={imgClass} loading="lazy" />
+        <img
+          src={v.lightMobile}
+          alt={banner.title ?? "Promotion"}
+          sizes="(min-width: 1280px) 1280px, 100vw"
+          className={imgClass}
+          loading="lazy"
+        />
       </picture>
     );
   }
 
   const inner = (
-    <div className="hover-lift relative overflow-hidden rounded-2xl shadow-elev-1 group-hover:shadow-elev-2">
+    <div
+      className={cn(
+        "relative overflow-hidden bg-neutral-100 dark:bg-neutral-900",
+        bleed ? "" : "hover-lift rounded-2xl shadow-elev-1 group-hover:shadow-elev-2",
+      )}
+    >
+      {/* Ambient blurred backdrop fills any letterbox space premium-style. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={v.ambient}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 z-0 size-full scale-125 object-cover blur-2xl"
+      />
       {media}
       <TextOverlay banner={banner} />
     </div>

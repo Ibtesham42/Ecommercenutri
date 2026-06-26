@@ -12,6 +12,8 @@ import {
   GripVertical,
   Loader2,
   ImageOff,
+  Monitor,
+  Smartphone,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -32,6 +34,7 @@ import {
   type HeroSlideView,
 } from "@/components/storefront/hero-slider";
 import { cldUrl } from "@/lib/cld";
+import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import {
   saveHeroSlide,
@@ -115,6 +118,7 @@ export function HeroSliderManager({
   const [editing, setEditing] = useState<HeroSlideRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState(false);
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
 
   // Local order for drag-and-drop; persisted on drop.
   const [order, setOrder] = useState<HeroSlideRow[]>(slides);
@@ -462,15 +466,40 @@ export function HeroSliderManager({
       {/* Live preview */}
       <Dialog open={preview} onOpenChange={setPreview}>
         <DialogContent className="max-w-4xl p-0">
-          <DialogHeader className="p-4 pb-0">
+          <DialogHeader className="flex-row items-center justify-between p-4 pb-0">
             <DialogTitle>Slide preview</DialogTitle>
+            <div className="mr-8 flex gap-1">
+              <Button
+                type="button"
+                size="sm"
+                variant={previewDevice === "desktop" ? "default" : "outline"}
+                className="gap-1.5"
+                onClick={() => setPreviewDevice("desktop")}
+              >
+                <Monitor className="size-4" /> Desktop
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={previewDevice === "mobile" ? "default" : "outline"}
+                className="gap-1.5"
+                onClick={() => setPreviewDevice("mobile")}
+              >
+                <Smartphone className="size-4" /> Mobile
+              </Button>
+            </div>
           </DialogHeader>
-          <div className="p-4">
-            <div className="relative h-[360px] w-full overflow-hidden rounded-xl">
-              <HeroSlideContent slide={toPreview(watch())} />
+          <div className="grid place-items-center bg-muted/40 p-4">
+            <div
+              className={cn(
+                "relative overflow-hidden rounded-xl shadow-elev-2 transition-all",
+                previewDevice === "mobile" ? "h-[560px] w-[300px]" : "h-[380px] w-full",
+              )}
+            >
+              <HeroSlideContent slide={toPreview(watch())} preview={previewDevice} />
             </div>
             <p className="mt-2 text-center text-xs text-muted-foreground">
-              Approximate desktop preview. Mobile uses a taller crop.
+              Exactly how this slide appears on {previewDevice === "mobile" ? "phones" : "desktop"}.
             </p>
           </div>
         </DialogContent>

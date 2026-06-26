@@ -28,28 +28,55 @@ const alignMap: Record<string, string> = {
   right: "items-end text-right",
 };
 
-/** A single slide's visual — shared by the storefront slider and the admin preview. */
-export function HeroSlideContent({ slide }: { slide: HeroSlideView }) {
+/** A single slide's visual — shared by the storefront slider and the admin
+ *  preview. Pass `preview` to force a device crop (the storefront uses a
+ *  viewport-driven `<picture>`, which a constrained preview frame can't honor). */
+export function HeroSlideContent({
+  slide,
+  preview,
+}: {
+  slide: HeroSlideView;
+  preview?: "desktop" | "mobile";
+}) {
   const align = alignMap[slide.textAlign] ?? alignMap.left;
-  const desktop = cldUrl(slide.desktopImage, { w: 2000, h: 900, crop: "fill" });
-  const mobile = cldUrl(slide.mobileImage || slide.desktopImage, {
-    w: 900,
-    h: 1100,
-    crop: "fill",
-  });
+  // Show the WHOLE uploaded image (c_fit, never cropped) + auto format/quality +
+  // retina. A blurred copy fills the frame so any aspect ratio looks premium
+  // without stretching, zooming, or cropping the artwork.
+  const fit = { crop: "fit", dpr: "auto" } as const;
+  const desktop = cldUrl(slide.desktopImage, { w: 2000, h: 1000, ...fit });
+  const mobile = cldUrl(slide.mobileImage || slide.desktopImage, { w: 1100, h: 1300, ...fit });
+  const ambient = cldUrl(slide.desktopImage, { w: 200, h: 110, crop: "fill" });
 
   return (
-    <div className="relative size-full overflow-hidden">
-      {/* Responsive art direction: portrait crop on phones, wide on desktop. */}
-      <picture>
-        <source media="(min-width: 768px)" srcSet={desktop} />
+    <div className="relative size-full overflow-hidden bg-neutral-950">
+      {/* Ambient blurred backdrop — fills the frame using the image's own colors. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={ambient}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 size-full scale-125 object-cover blur-2xl"
+      />
+      {/* The uploaded image, shown in full (auto-adjusts to any aspect ratio). */}
+      {preview ? (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={mobile}
+          src={preview === "mobile" ? mobile : desktop}
           alt={slide.title ?? "Featured"}
-          className="absolute inset-0 size-full object-cover"
-          loading="eager"
+          className="absolute inset-0 size-full object-contain"
         />
-      </picture>
+      ) : (
+        <picture>
+          <source media="(min-width: 768px)" srcSet={desktop} />
+          <img
+            src={mobile}
+            alt={slide.title ?? "Featured"}
+            sizes="100vw"
+            className="absolute inset-0 size-full object-contain"
+            loading="eager"
+          />
+        </picture>
+      )}
 
       {/* Overlay for legible text over any image. */}
       <div
@@ -137,37 +164,41 @@ export function HeroSlider({ slides }: { slides: HeroSlideView[] }) {
         touchX.current = null;
       }}
     >
-      {slides.map((slide, i) => (
-        <div
-          key={slide.id}
-          aria-hidden={i !== index}
-          className={cn(
-            "absolute inset-0 transition-opacity duration-700 ease-out",
-            i === index ? "opacity-100" : "pointer-events-none opacity-0",
-          )}
-        >
-          <HeroSlideContent slide={slide} />
-        </div>
-      ))}
+      {/* A single translateX track guarantees exactly one slide in view (no
+          overlap) and a smooth horizontal transition. */}
+      <div
+        className="flex size-full transition-transform duration-700 ease-out motion-reduce:transition-none"
+        style={{ transform: `translateX(-${index * 100}%)` }}
+      >
+        {slides.map((slide, i) => (
+          <div
+            key={slide.id}
+            aria-hidden={i !== index}
+            className="relative h-full w-full shrink-0 basis-full"
+          >
+            <HeroSlideContent slide={slide} />
+          </div>
+        ))}
+      </div>
 
       {count > 1 && (
         <>
-          {/* Arrows (desktop) */}
+          {/* Arrows — small on mobile, larger on desktop. */}
           <button
             type="button"
             onClick={() => go(index - 1)}
             aria-label="Previous slide"
-            className="absolute left-4 top-1/2 z-20 hidden -translate-y-1/2 place-items-center rounded-full bg-white/15 p-2 text-white backdrop-blur transition hover:bg-white/30 md:grid"
+            className="absolute left-2 top-1/2 z-20 grid -translate-y-1/2 place-items-center rounded-full bg-black/30 p-1.5 text-white backdrop-blur transition hover:bg-black/50 md:left-4 md:bg-white/15 md:p-2 md:hover:bg-white/30"
           >
-            <ChevronLeft className="size-5" />
+            <ChevronLeft className="size-4 md:size-5" />
           </button>
           <button
             type="button"
             onClick={() => go(index + 1)}
             aria-label="Next slide"
-            className="absolute right-4 top-1/2 z-20 hidden -translate-y-1/2 place-items-center rounded-full bg-white/15 p-2 text-white backdrop-blur transition hover:bg-white/30 md:grid"
+            className="absolute right-2 top-1/2 z-20 grid -translate-y-1/2 place-items-center rounded-full bg-black/30 p-1.5 text-white backdrop-blur transition hover:bg-black/50 md:right-4 md:bg-white/15 md:p-2 md:hover:bg-white/30"
           >
-            <ChevronRight className="size-5" />
+            <ChevronRight className="size-4 md:size-5" />
           </button>
 
           {/* Dots */}

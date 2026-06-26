@@ -14,7 +14,7 @@ export type SliderBanner = BannerCardData & { id: string; href: string | null };
 
 /** Renders multiple promotional banners as a swipeable, auto-advancing slider.
  *  Autoplay pauses on hover and is disabled under prefers-reduced-motion. */
-export function BannerSlider({ banners }: { banners: SliderBanner[] }) {
+export function BannerSlider({ banners, bleed }: { banners: SliderBanner[]; bleed?: boolean }) {
   const [api, setApi] = useState<CarouselApi>();
   const [selected, setSelected] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -48,7 +48,7 @@ export function BannerSlider({ banners }: { banners: SliderBanner[] }) {
       <CarouselContent className="ml-0">
         {banners.map((b) => (
           <CarouselItem key={b.id} className="pl-0">
-            <BannerCard banner={b} href={b.href} />
+            <BannerCard banner={b} href={b.href} bleed={bleed} />
           </CarouselItem>
         ))}
       </CarouselContent>

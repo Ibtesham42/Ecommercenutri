@@ -186,11 +186,11 @@ export default async function HomePage() {
     <>
       {/* The homepage banner sits just below the stories rail (or at the top when
           stories are hidden). */}
-      {!hasStories && <BannerStrip position="homeTop" className="pt-6" />}
+      {!hasStories && <BannerStrip position="homeTop" fullBleed className="py-6" />}
       {visible.map((s) => (
         <Fragment key={s.key}>
           {sections[s.key]}
-          {s.key === "stories" && <BannerStrip position="homeTop" className="pt-6" />}
+          {s.key === "stories" && <BannerStrip position="homeTop" fullBleed className="py-6" />}
         </Fragment>
       ))}
     </>

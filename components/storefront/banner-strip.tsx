@@ -10,19 +10,22 @@ import { cn } from "@/lib/utils";
 export async function BannerStrip({
   position,
   className,
+  fullBleed,
 }: {
   position: BannerPosition;
   className?: string;
+  /** Edge-to-edge (no max-width / side padding / rounded corners). */
+  fullBleed?: boolean;
 }) {
   const banners = await getBanners(position);
   if (banners.length === 0) return null;
 
   return (
-    <div className={cn("mx-auto w-full max-w-7xl px-4", className)}>
+    <div className={cn(fullBleed ? "w-full" : "mx-auto w-full max-w-7xl px-4", className)}>
       {banners.length === 1 ? (
-        <BannerCard banner={banners[0]} href={bannerHref(banners[0])} />
+        <BannerCard banner={banners[0]} href={bannerHref(banners[0])} bleed={fullBleed} />
       ) : (
-        <BannerSlider banners={banners.map((b) => ({ ...b, href: bannerHref(b) }))} />
+        <BannerSlider banners={banners.map((b) => ({ ...b, href: bannerHref(b) }))} bleed={fullBleed} />
       )}
     </div>
   );
