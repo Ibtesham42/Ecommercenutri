@@ -105,6 +105,18 @@ export function ProductForm({
   const images = useFieldArray({ control, name: "images" });
   const facts = useFieldArray({ control, name: "nutritionFacts" });
 
+  // Empty numeric inputs come back as NaN (react-hook-form `valueAsNumber`);
+  // coerce to a finite number so the server never sees NaN (which fails Zod with
+  // a cryptic "expected number, received NaN").
+  const num = (v: unknown): number => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const optNum = (v: unknown): number | null => {
+    const n = Number(v);
+    return v != null && v !== "" && Number.isFinite(n) ? n : null;
+  };
+
   async function onSubmit(values: ProductFormValues) {
     setSaving(true);
     const payload = {
@@ -124,17 +136,20 @@ export function ProductForm({
       metaTitle: values.metaTitle || null,
       metaDescription: values.metaDescription || null,
       nutritionFacts: values.nutritionFacts.filter((f) => f.label && f.value),
-      variants: values.variants.map((v) => ({
-        id: v.id,
-        weightLabel: v.weightLabel,
-        weightInGrams: v.weightInGrams ? Number(v.weightInGrams) : null,
-        price: rupeesToPaise(Number(v.priceRupees)),
-        discountPrice: v.discountRupees ? rupeesToPaise(Number(v.discountRupees)) : null,
-        stock: Number(v.stock),
-        sku: v.sku || null,
-        isActive: v.isActive,
-        isDefault: v.isDefault,
-      })),
+      variants: values.variants.map((v) => {
+        const discount = optNum(v.discountRupees);
+        return {
+          id: v.id,
+          weightLabel: v.weightLabel,
+          weightInGrams: optNum(v.weightInGrams),
+          price: rupeesToPaise(num(v.priceRupees)),
+          discountPrice: discount != null ? rupeesToPaise(discount) : null,
+          stock: num(v.stock),
+          sku: v.sku || null,
+          isActive: v.isActive,
+          isDefault: v.isDefault,
+        };
+      }),
       images: values.images.map((im, i) => ({
         id: im.id,
         url: im.url,
@@ -155,6 +170,22 @@ export function ProductForm({
     }
   }
 
+  // Never let a blocked submit fail silently — point the admin at what's missing.
+  function onInvalid() {
+    const missing: string[] = [];
+    if (errors.name) missing.push("name");
+    if (errors.slug) missing.push("slug");
+    if (errors.description) missing.push("description");
+    if (errors.categoryId) missing.push("category");
+    if (errors.variants) missing.push("each variant's label & price");
+    if (errors.images) missing.push("image URLs");
+    toast.error(
+      missing.length
+        ? `Please complete: ${missing.join(", ")}.`
+        : "Please complete the highlighted fields before saving.",
+    );
+  }
+
   function makeDefaultVariant(index: number) {
     watch("variants").forEach((_, i) => setValue(`variants.${i}.isDefault`, i === index));
   }
@@ -165,7 +196,7 @@ export function ProductForm({
   const sectionClass = "rounded-xl border bg-background p-5 space-y-4";
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           {/* Basics */}
@@ -239,6 +270,9 @@ export function ProductForm({
                         placeholder="250g"
                         {...register(`variants.${i}.weightLabel`, { required: true })}
                       />
+                      {errors.variants?.[i]?.weightLabel && (
+                        <p className="text-xs text-destructive">Required</p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Price (₹)</Label>
@@ -248,8 +282,12 @@ export function ProductForm({
                         {...register(`variants.${i}.priceRupees`, {
                           required: true,
                           valueAsNumber: true,
+                          min: 0.01,
                         })}
                       />
+                      {errors.variants?.[i]?.priceRupees && (
+                        <p className="text-xs text-destructive">Enter a price</p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Sale (₹)</Label>

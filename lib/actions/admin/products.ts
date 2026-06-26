@@ -12,6 +12,27 @@ import {
 } from "@/lib/validations/admin";
 import type { AdminResult } from "@/lib/actions/admin/types";
 
+/** Turn the first validation issue into a readable, field-aware message. */
+function describeIssue(error: {
+  issues: { path: PropertyKey[]; message: string }[];
+}): string {
+  const issue = error.issues[0];
+  if (!issue) return "Invalid product.";
+  const [section, index, field] = issue.path;
+  const fieldName = typeof field === "string" ? field : undefined;
+  // Friendlier copy for the NaN/empty-number case.
+  const msg = /expected number/i.test(issue.message)
+    ? "enter a valid number"
+    : issue.message;
+  if (section === "variants" && typeof index === "number") {
+    return `Variant ${index + 1}${fieldName ? ` (${fieldName})` : ""}: ${msg}`;
+  }
+  if (section === "images" && typeof index === "number") {
+    return `Image ${index + 1}: ${msg}`;
+  }
+  return msg;
+}
+
 /** Force exactly one default variant (first marked, else the first variant). */
 function withSingleDefault(variants: VariantInput[]): VariantInput[] {
   const idx = Math.max(0, variants.findIndex((v) => v.isDefault));
@@ -60,7 +81,7 @@ export async function saveProduct(input: unknown): Promise<AdminResult<{ id: str
 
   const parsed = productInputSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid product." };
+    return { ok: false, error: describeIssue(parsed.error) };
   }
   const data: ProductInput = parsed.data;
   const variants = withSingleDefault(data.variants);
