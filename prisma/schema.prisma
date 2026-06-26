@@ -524,16 +524,44 @@ model ContentPage {
 
 // Contact-form submissions (the admin inbox). Persisted so messages survive
 // even when email delivery isn't configured.
+enum ContactStatus {
+  NEW
+  IN_PROGRESS
+  REPLIED
+  CLOSED
+}
+
 model ContactMessage {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   name      String
   email     String
   subject   String?
-  message   String   @db.Text
-  handled   Boolean  @default(false)
-  createdAt DateTime @default(now())
+  message   String        @db.Text
+  handled   Boolean       @default(false) // legacy; status is authoritative
+  status    ContactStatus @default(NEW)
+  createdAt DateTime      @default(now())
+
+  replies ContactReply[]
 
   @@index([createdAt])
+  @@index([status])
+}
+
+// One admin reply in a contact conversation (full support history). Records the
+// sender admin, the body, and the email delivery outcome.
+model ContactReply {
+  id        String   @id @default(cuid())
+  messageId String
+  body      String   @db.Text
+  adminId   String?
+  adminName String?
+  delivered Boolean  @default(false)
+  error     String?
+  createdAt DateTime @default(now())
+
+  message ContactMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
 }
 
 // ---------------------------------------------------------------------------

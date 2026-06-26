@@ -11,6 +11,7 @@ export default async function AdminMessagesPage() {
 
   const messages = await prisma.contactMessage.findMany({
     orderBy: { createdAt: "desc" },
+    include: { replies: { orderBy: { createdAt: "asc" } } },
   });
 
   const rows: MessageRow[] = messages.map((m) => ({
@@ -19,8 +20,16 @@ export default async function AdminMessagesPage() {
     email: m.email,
     subject: m.subject,
     message: m.message,
-    handled: m.handled,
+    status: m.status,
     createdAt: m.createdAt.toISOString(),
+    replies: m.replies.map((r) => ({
+      id: r.id,
+      body: r.body,
+      adminName: r.adminName,
+      delivered: r.delivered,
+      error: r.error,
+      createdAt: r.createdAt.toISOString(),
+    })),
   }));
 
   return (

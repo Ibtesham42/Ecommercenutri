@@ -28,9 +28,11 @@ type SendEmailArgs = {
   subject: string;
   html: string;
   text?: string;
+  /** Address customer replies should go to (e.g. the support inbox). */
+  replyTo?: string;
 };
 
-export async function sendEmail({ to, subject, html, text }: SendEmailArgs) {
+export async function sendEmail({ to, subject, html, text, replyTo }: SendEmailArgs) {
   if (transporter) {
     const info = await transporter.sendMail({
       from: env.emailFrom,
@@ -38,6 +40,7 @@ export async function sendEmail({ to, subject, html, text }: SendEmailArgs) {
       subject,
       html,
       ...(text ? { text } : {}),
+      ...(replyTo ? { replyTo } : {}),
     });
     return { id: info.messageId, stubbed: false as const };
   }
@@ -49,6 +52,7 @@ export async function sendEmail({ to, subject, html, text }: SendEmailArgs) {
       subject,
       html,
       text: text ?? "",
+      ...(replyTo ? { replyTo } : {}),
     });
     if (error) throw new Error(error.message);
     return { id: data?.id ?? "", stubbed: false as const };

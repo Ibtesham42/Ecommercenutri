@@ -65,7 +65,7 @@ export default async function AdminDashboardPage() {
   const lowStock = showProducts ? await getLowStockVariants() : [];
   const topProducts = showProducts ? await getTopProducts() : [];
   const newMessages = showCustomers
-    ? await prisma.contactMessage.count({ where: { handled: false } }).catch(() => 0)
+    ? await prisma.contactMessage.count({ where: { status: "NEW" } }).catch(() => 0)
     : 0;
 
   return (
