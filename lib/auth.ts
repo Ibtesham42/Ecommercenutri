@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { env, isConfigured } from "@/lib/env";
 import { loginSchema } from "@/lib/validations/auth";
 import { authConfig } from "@/lib/auth.config";
+import { checkRateLimit, limiters } from "@/lib/rate-limit";
 import type { Permission } from "@/lib/permissions";
 
 const providers: Provider[] = [];
@@ -30,7 +31,16 @@ providers.push(
       email: { label: "Email", type: "email" },
       password: { label: "Password", type: "password" },
     },
-    authorize: async (raw) => {
+    authorize: async (raw, request) => {
+      // Rate-limit at the provider level too, so direct POSTs to the NextAuth
+      // credentials endpoint (bypassing the login server action) are throttled.
+      const ip =
+        request?.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        request?.headers?.get("x-real-ip") ||
+        "anon";
+      const { success } = await checkRateLimit(limiters.auth, `authorize:${ip}`);
+      if (!success) return null;
+
       const parsed = loginSchema.safeParse(raw);
       if (!parsed.success) return null;
       const { email, password } = parsed.data;

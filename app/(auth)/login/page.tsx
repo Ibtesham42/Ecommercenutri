@@ -13,6 +13,7 @@ import { LoginForm } from "@/components/auth/login-form";
 import { GoogleButton } from "@/components/auth/google-button";
 import { getCurrentUser } from "@/lib/auth";
 import { isConfigured } from "@/lib/env";
+import { safeRedirectPath } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -21,9 +22,10 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ callbackUrl?: string }>;
 }) {
-  const { callbackUrl } = await searchParams;
+  const { callbackUrl: rawCallback } = await searchParams;
+  const callbackUrl = safeRedirectPath(rawCallback, "/account");
   const user = await getCurrentUser();
-  if (user) redirect(callbackUrl || "/account");
+  if (user) redirect(callbackUrl);
 
   return (
     <Card>

@@ -13,6 +13,7 @@ import {
 } from "@/lib/tokens";
 import { sendEmail } from "@/lib/email";
 import { verificationEmail, passwordResetEmail } from "@/lib/emails";
+import { safeRedirectPath } from "@/lib/utils";
 import {
   registerSchema,
   loginSchema,
@@ -95,7 +96,7 @@ export async function loginAction(
   );
   if (!success) return { error: "Too many attempts. Please try again later." };
 
-  const callbackUrl = (formData.get("callbackUrl") as string) || "/account";
+  const callbackUrl = safeRedirectPath(formData.get("callbackUrl") as string, "/account");
 
   try {
     await signIn("credentials", {

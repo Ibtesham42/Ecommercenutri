@@ -54,6 +54,10 @@ export async function POST(request: Request) {
   if (file.size > MAX_BYTES) {
     return NextResponse.json({ error: "Image is too large (max 10 MB)." }, { status: 413 });
   }
+  // Allowlist image/video types only (defense-in-depth; admins upload media).
+  if (!/^(image|video)\//.test(file.type)) {
+    return NextResponse.json({ error: "Unsupported file type." }, { status: 415 });
+  }
 
   try {
     const buffer = Buffer.from(await file.arrayBuffer());

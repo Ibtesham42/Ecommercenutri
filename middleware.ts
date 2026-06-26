@@ -10,6 +10,11 @@ const securityHeaders: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  // HSTS (browsers ignore it over plain HTTP, so it's safe in dev).
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+  // Anti-clickjacking, complements X-Frame-Options without affecting scripts/styles.
+  "Content-Security-Policy": "frame-ancestors 'self'",
+  "X-Permitted-Cross-Domain-Policies": "none",
 };
 
 function withSecurityHeaders(res: NextResponse): NextResponse {
