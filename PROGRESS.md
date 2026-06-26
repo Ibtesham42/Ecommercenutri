@@ -9,7 +9,7 @@ _Last updated: 2026-06-25 · Auto-maintained. Update at the end of every milesto
 | Build               | ✅ passing (`next build`, 52 routes)                            |
 | TypeScript          | ✅ `tsc --noEmit` clean                                         |
 | ESLint              | ✅ clean                                                        |
-| Runtime smoke       | ✅ Favicon link normalized to an image (renders even from a stale `.pdf` asset); homepage identical by default after the section-content refactor; banner dark fields + brand-icon routes 200; admin guards 307 |
+| Runtime smoke       | ✅ Premium UI verified (home/products/PDP/search/cart 200; lightbox + blur-up + elevation/reveal present; search typeahead API returns suggestions; `/admin/messages` shows the contact message, guard 307) |
 | Database (Neon)     | ✅ live, migrated (…`banner` dark variants, `home_section.content`, store logo-size), seeded |
 | Current milestone   | **M0–M6 + RBAC + CMS Phases 1–5 + content pages + CMS fixes — production-ready** |
 
@@ -60,8 +60,23 @@ Node-21 build).
   the 8 content sections (hero, aiBanner, headings, why-choose-us, testimonials) are fully
   editable (text, buttons, colors, list items) with live preview, save and reset-to-default;
   homepage is pixel-identical until edited. stories/heroSlider keep their own managers.
-⏳ Backlog: 6) Admin editors (blog/legal/contact-inbox) · 7) Navigation Builder ·
-8) Footer Builder · 9) Media Library · 10) popups/ads. (+ optional full mobile audit.)
+✅ **Premium UI/UX uplift** (refined motion + warm-gold accent + elevation + skeletons):
+- **Design language** (`app/globals.css`): `--gold`/`--gold-foreground` tokens, `.shadow-elev-1/2/3`,
+  reduced-motion-gated keyframes (fade-up, blur-up, shimmer), `[data-reveal]` scroll reveal.
+  New shared `BlurImage`, `Reveal`, `EmptyState`, and skeleton building blocks.
+- **Product card + states**: premium card (BlurImage, gold best-seller badge, savings, hover-lift),
+  `loading.tsx` skeletons for products/categories/search/PDP, consistent `EmptyState` everywhere.
+- **Homepage**: gold-accented section headings, overlay category cards, elevated hero/AI-banner/
+  testimonials/why-choose-us, larger stories rail, footer trust row — CMS structure intact.
+- **PDP**: full-screen gallery **lightbox** (zoom + thumbnail/keyboard nav), refined buy area.
+- **Header**: desktop + mobile **search typeahead** (debounced, keyboard-nav,
+  `/api/search/suggestions`), polished nav; cart/checkout sticky elevated summaries; wishlist
+  heart micro-interaction.
+- **Contact admin inbox** (`/admin/messages`, `customers` permission): view / New+All filter /
+  search / mark handled / delete / reply; dashboard "new messages" banner. (Messages already
+  persisted + best-effort email — this adds the missing admin view.)
+⏳ Backlog: Admin editors (blog/legal) · Navigation Builder · Footer Builder · Media Library ·
+popups/ads.
 
 ## Latest: Admin RBAC (sub-admins, permissions, store settings)
 Roles `SUPER_ADMIN`/`ADMIN` with per-section `User.permissions`; new `StoreSetting`.

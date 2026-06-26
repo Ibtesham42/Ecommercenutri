@@ -45,25 +45,27 @@ function TextOverlay({ banner }: { banner: BannerCardData }) {
   if (!hasText) return null;
   return (
     <>
-      <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/25 to-transparent" />
-      <div className="absolute inset-0 flex flex-col justify-center gap-1.5 p-6 sm:p-8">
+      <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent" />
+      <div className="absolute inset-0 flex flex-col justify-center gap-1 p-4 sm:gap-1.5 sm:p-6 lg:p-10">
         {banner.subtitle && (
-          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-white/80">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80 sm:text-xs">
             {banner.subtitle}
           </span>
         )}
         {banner.title && (
-          <h3 className="max-w-md text-xl font-extrabold leading-tight text-white drop-shadow sm:text-2xl lg:text-3xl">
+          <h3 className="max-w-[16rem] text-lg font-extrabold leading-tight text-white drop-shadow sm:max-w-md sm:text-2xl lg:max-w-lg lg:text-4xl">
             {banner.title}
           </h3>
         )}
         {banner.description && (
-          <p className="max-w-sm text-sm text-white/85 drop-shadow">{banner.description}</p>
+          <p className="line-clamp-2 max-w-[18rem] text-xs text-white/85 drop-shadow sm:max-w-sm sm:text-sm lg:max-w-md">
+            {banner.description}
+          </p>
         )}
         {banner.ctaText && (
-          <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition group-hover:gap-2.5">
+          <span className="mt-1.5 inline-flex w-fit items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-black transition group-hover:gap-2.5 sm:mt-2 sm:px-4 sm:py-2 sm:text-sm">
             {banner.ctaText}
-            <ArrowRight className="size-4" />
+            <ArrowRight className="size-3.5 sm:size-4" />
           </span>
         )}
       </div>
@@ -71,7 +73,9 @@ function TextOverlay({ banner }: { banner: BannerCardData }) {
   );
 }
 
-const imgClass = "h-44 w-full object-cover sm:h-52 md:h-44 lg:h-48";
+// Responsive banner height: comfortable on phones, taller on large screens so
+// uploaded artwork + content read well on every device.
+const imgClass = "h-52 w-full object-cover sm:h-60 md:h-56 lg:h-72";
 
 /**
  * Renders a promotional banner image with a text overlay. Shared by the
@@ -125,7 +129,7 @@ export function BannerCard({
   }
 
   const inner = (
-    <div className="relative overflow-hidden rounded-2xl">
+    <div className="hover-lift relative overflow-hidden rounded-2xl shadow-elev-1 group-hover:shadow-elev-2">
       {media}
       <TextOverlay banner={banner} />
     </div>

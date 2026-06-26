@@ -8,6 +8,8 @@ import { MobileFilters } from "@/components/storefront/mobile-filters";
 import { SortSelect } from "@/components/storefront/sort-select";
 import { PaginationBar } from "@/components/storefront/pagination-bar";
 import { BannerStrip } from "@/components/storefront/banner-strip";
+import { EmptyState } from "@/components/storefront/empty-state";
+import { PackageSearch } from "lucide-react";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
@@ -71,12 +73,12 @@ export default async function ProductsPage({
           {result.products.length > 0 ? (
             <ProductGrid products={result.products} wishlistedIds={wishlistIds} />
           ) : (
-            <div className="rounded-xl border border-dashed p-12 text-center">
-              <p className="font-medium">No products found</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Try adjusting your filters or search.
-              </p>
-            </div>
+            <EmptyState
+              icon={PackageSearch}
+              title="No products found"
+              description="Try adjusting your filters or search to find what you're craving."
+              action={{ label: "Clear filters", href: "/products" }}
+            />
           )}
           <PaginationBar page={result.page} pageCount={result.pageCount} />
         </div>

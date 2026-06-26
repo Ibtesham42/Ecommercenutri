@@ -15,6 +15,7 @@ import { siteConfig } from "@/config/site";
 import { Logo } from "@/components/storefront/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CartCount } from "@/components/storefront/cart-count";
+import { SearchBox } from "@/components/storefront/search-box";
 
 export function SiteHeader({
   logoUrl,
@@ -56,13 +57,16 @@ export function SiteHeader({
                 <Logo logoUrl={logoUrl} name={siteName} {...logoSize} />
               </SheetTitle>
             </SheetHeader>
+            <div className="border-b p-3">
+              <SearchBox onNavigate={() => setOpen(false)} />
+            </div>
             <nav className="flex flex-col gap-1 p-3">
               {siteConfig.mainNav.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={() => setOpen(false)}
-                  className="rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
+                  className="rounded-md px-3 py-2.5 text-sm font-medium transition-colors hover:bg-accent"
                 >
                   {item.title}
                 </Link>
@@ -78,15 +82,19 @@ export function SiteHeader({
             <Link
               key={item.href}
               href={item.href}
-              className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               {item.title}
             </Link>
           ))}
         </nav>
 
+        <div className="mx-4 hidden flex-1 lg:block lg:max-w-sm xl:max-w-md">
+          <SearchBox />
+        </div>
+
         <div className="ml-auto flex items-center gap-0.5">
-          <Button asChild variant="ghost" size="icon" aria-label="Search">
+          <Button asChild variant="ghost" size="icon" aria-label="Search" className="lg:hidden">
             <Link href="/search">
               <Search className="size-5" />
             </Link>

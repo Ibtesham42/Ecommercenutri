@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   Clock,
   LayoutDashboard,
+  Mail,
 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,7 @@ import {
 import { getAdminUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { formatPrice, formatDate } from "@/lib/format";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = { title: "Admin Dashboard", robots: { index: false } };
 
@@ -62,6 +64,9 @@ export default async function AdminDashboardPage() {
   const recentOrders = showOrders ? await getRecentOrders() : [];
   const lowStock = showProducts ? await getLowStockVariants() : [];
   const topProducts = showProducts ? await getTopProducts() : [];
+  const newMessages = showCustomers
+    ? await prisma.contactMessage.count({ where: { handled: false } }).catch(() => 0)
+    : 0;
 
   return (
     <div>
@@ -82,6 +87,23 @@ export default async function AdminDashboardPage() {
             Use the menu to manage the sections you have access to.
           </p>
         </div>
+      )}
+
+      {newMessages > 0 && (
+        <Link
+          href="/admin/messages"
+          className="mb-4 flex items-center gap-3 rounded-xl border bg-primary/5 p-4 transition-colors hover:bg-primary/10"
+        >
+          <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+            <Mail className="size-5" />
+          </span>
+          <span className="text-sm">
+            <span className="font-semibold">
+              {newMessages} new {newMessages === 1 ? "message" : "messages"}
+            </span>{" "}
+            <span className="text-muted-foreground">from the contact form — review now.</span>
+          </span>
+        </Link>
       )}
 
       {stats && (

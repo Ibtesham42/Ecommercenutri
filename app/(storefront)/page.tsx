@@ -1,10 +1,10 @@
 import { Fragment, type ReactNode } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { ProductGrid } from "@/components/storefront/product-card";
+import { BlurImage } from "@/components/storefront/blur-image";
+import { Reveal } from "@/components/storefront/reveal";
 import { StoriesRail } from "@/components/storefront/stories-rail";
 import { HeroSlider } from "@/components/storefront/hero-slider";
 import { BannerStrip } from "@/components/storefront/banner-strip";
@@ -104,26 +104,29 @@ export default async function HomePage() {
           ctaLabel={content.categories.ctaLabel}
           ctaHref={content.categories.ctaHref}
         />
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <Reveal className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
           {categories.slice(0, content.categories.limit ?? 6).map((c) => (
-            <Link key={c.slug} href={`/categories/${c.slug}`}>
-              <Card className="group overflow-hidden p-0 transition-all hover:border-primary/40 hover:shadow-md">
-                <div className="relative aspect-square bg-accent/30">
-                  {c.image && (
-                    <Image
-                      src={c.image}
-                      alt={c.name}
-                      fill
-                      sizes="(max-width: 768px) 33vw, 16vw"
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  )}
-                </div>
-                <div className="p-3 text-center text-sm font-medium">{c.name}</div>
-              </Card>
+            <Link
+              key={c.slug}
+              href={`/categories/${c.slug}`}
+              className="hover-lift group relative block aspect-square overflow-hidden rounded-2xl border bg-accent/30 shadow-elev-1 hover:shadow-elev-2"
+            >
+              {c.image && (
+                <BlurImage
+                  src={c.image}
+                  alt={c.name}
+                  fill
+                  sizes="(max-width: 768px) 33vw, 16vw"
+                  className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+              <span className="absolute inset-x-0 bottom-0 p-3 text-center text-sm font-semibold text-white drop-shadow">
+                {c.name}
+              </span>
             </Link>
           ))}
-        </div>
+        </Reveal>
       </section>
     ),
 
@@ -136,7 +139,9 @@ export default async function HomePage() {
             ctaLabel={content.featured.ctaLabel}
             ctaHref={content.featured.ctaHref}
           />
-          <ProductGrid products={featured} wishlistedIds={wishlistIds} />
+          <Reveal>
+            <ProductGrid products={featured} wishlistedIds={wishlistIds} />
+          </Reveal>
         </section>
       ) : null,
 
@@ -150,7 +155,9 @@ export default async function HomePage() {
               ctaLabel={content.bestSellers.ctaLabel}
               ctaHref={content.bestSellers.ctaHref}
             />
-            <ProductGrid products={bestSellers} wishlistedIds={wishlistIds} />
+            <Reveal>
+              <ProductGrid products={bestSellers} wishlistedIds={wishlistIds} />
+            </Reveal>
           </div>
         </section>
       ) : null,
@@ -172,14 +179,20 @@ export default async function HomePage() {
     aiBanner: <HomeAiBanner content={content.aiBanner} />,
   };
 
+  const visible = sectionOrder.filter((s) => s.enabled && sections[s.key] != null);
+  const hasStories = visible.some((s) => s.key === "stories");
+
   return (
     <>
-      <BannerStrip position="homeTop" className="pt-6" />
-      {sectionOrder
-        .filter((s) => s.enabled && sections[s.key] != null)
-        .map((s) => (
-          <Fragment key={s.key}>{sections[s.key]}</Fragment>
-        ))}
+      {/* The homepage banner sits just below the stories rail (or at the top when
+          stories are hidden). */}
+      {!hasStories && <BannerStrip position="homeTop" className="pt-6" />}
+      {visible.map((s) => (
+        <Fragment key={s.key}>
+          {sections[s.key]}
+          {s.key === "stories" && <BannerStrip position="homeTop" className="pt-6" />}
+        </Fragment>
+      ))}
     </>
   );
 }
@@ -196,13 +209,14 @@ function SectionHeading({
   ctaHref?: string;
 }) {
   return (
-    <div className="mb-8 flex items-end justify-between">
-      <div>
-        <h2 className="text-2xl font-bold sm:text-3xl">{title}</h2>
-        {subtitle && <p className="text-muted-foreground">{subtitle}</p>}
+    <div className="mb-8 flex items-end justify-between gap-4">
+      <div className="min-w-0">
+        <span className="mb-2.5 block h-1 w-10 rounded-full bg-gradient-to-r from-primary to-gold" />
+        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
+        {subtitle && <p className="mt-1 text-muted-foreground">{subtitle}</p>}
       </div>
       {ctaHref && ctaLabel && (
-        <Button asChild variant="ghost" className="gap-1">
+        <Button asChild variant="ghost" className="shrink-0 gap-1 text-primary hover:text-primary">
           <Link href={ctaHref}>
             {ctaLabel} <ArrowRight className="size-4" />
           </Link>

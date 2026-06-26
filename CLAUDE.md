@@ -76,7 +76,8 @@ app/
   (auth)/              login, register, forgot/reset password, verify-email
   admin/               ADMIN-only panel (guarded by middleware + layout)
     page.tsx           Dashboard; orders/, products/, inventory/, categories/,
-                       coupons/, stories/, hero/ (slider CMS), customers/,
+                       coupons/, stories/, hero/ (slider CMS), banners/, homepage/,
+                       appearance/, customers/, messages/ (contact inbox),
                        ai-settings/, settings/
   api/
     auth/[...nextauth] NextAuth handler
@@ -161,6 +162,22 @@ types/                 Ambient types (next-auth.d.ts)
   brand. Loading via `Skeleton`/`animate-pulse`; feedback via `sonner` toasts.
 - Images via `next/image` with explicit `sizes`. Money via `formatPrice` (never
   raw division).
+
+### Premium design language (added in the UI uplift — reuse these, don't reinvent)
+- **Warm-gold accent**: `bg-gold` / `text-gold` / `text-gold-foreground` tokens
+  (`app/globals.css`) for premium highlights only (best-seller badges, savings, stars,
+  sparkles). Green stays the primary brand/action color.
+- **Elevation**: `shadow-elev-1/2/3` (soft layered shadows) instead of flat `shadow-md`;
+  pair `hover-lift` with an elevation class for card hover.
+- **Motion is reduced-motion-gated**: `animate-fade-up`, the `[data-reveal]` scroll-reveal
+  (via the `Reveal` component), `.shimmer`, and `BlurImage`'s blur-up are all suppressed under
+  `prefers-reduced-motion: reduce`. Keep any new motion behind that gate.
+- **Reuse**: `components/storefront/blur-image.tsx` (image blur-up, no CLS — keep aspect
+  ratios), `reveal.tsx` (scroll reveal), `empty-state.tsx` (all empty states),
+  `skeletons.tsx` (`ProductCardSkeleton`/`ProductGridSkeleton`/`SectionSkeleton`) + route
+  `loading.tsx` files. Product gallery has a `Dialog` lightbox; header search uses
+  `/api/search/suggestions` (typeahead). Don't use `useSearchParams` in layout-mounted client
+  components (static-render deopt) — read `window.location` on mount instead.
 
 ### Color palette (brand = fresh nutrition green; defined in `app/globals.css`, OKLCH)
 | Token        | Light                    | Role                         |

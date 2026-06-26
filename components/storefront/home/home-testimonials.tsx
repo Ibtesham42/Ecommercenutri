@@ -12,14 +12,17 @@ export function HomeTestimonials({ content }: { content: TestimonialsContent }) 
         </div>
         <div className="grid gap-5 sm:grid-cols-3">
           {content.items.map((t, i) => (
-            <Card key={i} className="h-full">
+            <Card key={i} className="hover-lift relative h-full overflow-hidden border-transparent shadow-elev-1 hover:shadow-elev-2">
+              <span className="pointer-events-none absolute -right-2 -top-4 font-heading text-7xl text-primary/10">
+                &rdquo;
+              </span>
               <CardContent className="space-y-3 p-6">
-                <div className="flex">
+                <div className="flex gap-0.5">
                   {Array.from({ length: Math.max(0, Math.min(5, t.rating)) }).map((_, j) => (
-                    <Star key={j} className="size-4 fill-amber-400 text-amber-400" />
+                    <Star key={j} className="size-4 fill-gold text-gold" />
                   ))}
                 </div>
-                <p className="text-sm text-muted-foreground">“{t.text}”</p>
+                <p className="text-sm leading-relaxed text-muted-foreground">“{t.text}”</p>
                 <p className="text-sm font-semibold">{t.name}</p>
               </CardContent>
             </Card>

@@ -124,7 +124,7 @@ export function ProductPurchase({
               <span className="text-lg text-muted-foreground line-through">
                 {formatPrice(variant!.price)}
               </span>
-              <Badge className="bg-primary/10 text-primary hover:bg-primary/10">
+              <Badge className="border-transparent bg-primary text-primary-foreground hover:bg-primary">
                 {off}% OFF
               </Badge>
             </>
@@ -253,7 +253,7 @@ export function ProductPurchase({
         </div>
         <Button
           size="lg"
-          className="h-12 w-full gap-2 text-base"
+          className="h-12 w-full gap-2 text-base shadow-elev-2"
           onClick={buyNow}
           disabled={outOfStock}
         >

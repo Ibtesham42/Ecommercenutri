@@ -16,8 +16,8 @@ export function HomeAiBanner({ content }: { content: AiBannerContent }) {
     <section className="mx-auto w-full max-w-7xl px-4 py-16">
       <div
         className={cn(
-          "relative overflow-hidden rounded-3xl px-6 py-12 sm:px-12",
-          !styled && "bg-primary text-primary-foreground",
+          "relative overflow-hidden rounded-3xl px-6 py-12 shadow-elev-2 sm:px-12",
+          !styled && "bg-gradient-to-br from-primary via-primary to-emerald-700 text-primary-foreground",
         )}
         style={styled ? style : undefined}
       >

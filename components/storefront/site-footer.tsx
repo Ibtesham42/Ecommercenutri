@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Truck, ShieldCheck, Leaf, RotateCcw } from "lucide-react";
 import { Logo } from "@/components/storefront/logo";
 import {
   InstagramIcon,
@@ -7,6 +8,13 @@ import {
 } from "@/components/storefront/social-icons";
 import { siteConfig } from "@/config/site";
 import { getStoreSettings } from "@/lib/queries/settings";
+
+const trustItems = [
+  { icon: Truck, label: "Fast, fresh delivery" },
+  { icon: ShieldCheck, label: "Secure payments" },
+  { icon: Leaf, label: "100% natural" },
+  { icon: RotateCcw, label: "Easy returns" },
+];
 
 const footerCols = [
   {
@@ -43,6 +51,18 @@ export async function SiteFooter() {
   const store = await getStoreSettings();
   return (
     <footer className="mt-16 border-t bg-muted/30">
+      <div className="border-b">
+        <div className="mx-auto grid w-full max-w-7xl grid-cols-2 gap-4 px-4 py-6 lg:grid-cols-4">
+          {trustItems.map((t) => (
+            <div key={t.label} className="flex items-center gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary/10 to-gold/10 text-primary">
+                <t.icon className="size-5" />
+              </span>
+              <span className="text-sm font-medium">{t.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
       <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 md:grid-cols-[1.5fr_repeat(3,1fr)]">
         <div className="space-y-4">
           <Logo

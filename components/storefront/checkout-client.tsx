@@ -300,7 +300,7 @@ export function CheckoutClient({
       </div>
 
       {/* Right: summary */}
-      <aside className="h-fit space-y-4 rounded-2xl border p-5">
+      <aside className="h-fit space-y-4 rounded-2xl border p-5 shadow-elev-1 lg:sticky lg:top-24">
         <h2 className="font-semibold">Order summary</h2>
 
         {/* Coupon */}

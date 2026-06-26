@@ -12,27 +12,27 @@ export function StoriesRail({ stories }: { stories: StoryItem[] }) {
   return (
     <>
       <div className="border-b bg-background/60">
-        <div className="mx-auto flex w-full max-w-7xl gap-4 overflow-x-auto px-4 py-4">
+        <div className="mx-auto flex w-full max-w-7xl snap-x gap-5 overflow-x-auto px-4 py-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {stories.map((s, i) => (
             <button
               key={s.id}
               type="button"
               onClick={() => setOpenIndex(i)}
-              className="flex w-[72px] shrink-0 flex-col items-center gap-1.5"
+              className="group flex w-[76px] shrink-0 snap-start flex-col items-center gap-1.5"
             >
-              <span className="rounded-full bg-gradient-to-tr from-primary via-emerald-400 to-amber-400 p-[2px]">
-                <span className="block rounded-full bg-background p-[2px]">
+              <span className="rounded-full bg-gradient-to-tr from-primary via-emerald-400 to-gold p-[2.5px] transition-transform duration-200 group-hover:scale-105 group-active:scale-95">
+                <span className="block rounded-full bg-background p-[2.5px]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={cldUrl(s.coverImage, { w: 120, h: 120 })}
+                    src={cldUrl(s.coverImage, { w: 132, h: 132 })}
                     alt={s.title}
-                    width={60}
-                    height={60}
-                    className="size-[60px] rounded-full object-cover"
+                    width={64}
+                    height={64}
+                    className="size-16 rounded-full object-cover"
                   />
                 </span>
               </span>
-              <span className="line-clamp-1 w-full text-center text-[11px] text-muted-foreground">
+              <span className="line-clamp-1 w-full text-center text-[11px] font-medium text-muted-foreground transition-colors group-hover:text-foreground">
                 {s.title.replace("Spotlight: ", "")}
               </span>
             </button>

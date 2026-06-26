@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/storefront/empty-state";
 import { useCart, cartSubtotal } from "@/lib/store/cart";
 import { formatPrice } from "@/lib/format";
 import { shippingFor, FREE_SHIPPING_THRESHOLD } from "@/lib/shipping";
@@ -22,16 +23,12 @@ export function CartView() {
 
   if (items.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed p-16 text-center">
-        <ShoppingBag className="mx-auto size-12 text-muted-foreground/40" />
-        <p className="mt-4 text-lg font-semibold">Your cart is empty</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Add some wholesome goodness to get started.
-        </p>
-        <Button asChild className="mt-6">
-          <Link href="/products">Browse products</Link>
-        </Button>
-      </div>
+      <EmptyState
+        icon={ShoppingBag}
+        title="Your cart is empty"
+        description="Add some wholesome goodness to get started."
+        action={{ label: "Browse products", href: "/products" }}
+      />
     );
   }
 
@@ -117,7 +114,7 @@ export function CartView() {
         ))}
       </ul>
 
-      <aside className="h-fit space-y-4 rounded-2xl border p-5">
+      <aside className="h-fit space-y-4 rounded-2xl border p-5 shadow-elev-1 lg:sticky lg:top-24">
         <h2 className="font-semibold">Order summary</h2>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">

@@ -44,17 +44,17 @@ export function WishlistButton({
       aria-label={active ? "Remove from wishlist" : "Add to wishlist"}
       aria-pressed={active}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-full",
+        "inline-flex items-center justify-center gap-2 rounded-full transition-transform active:scale-90",
         withLabel
           ? "h-9 border px-4 text-sm font-medium hover:bg-accent"
-          : "size-8 bg-background/80 backdrop-blur hover:bg-background",
+          : "size-8 bg-background/80 shadow-sm backdrop-blur hover:bg-background",
         className,
       )}
     >
       <Heart
         className={cn(
-          "size-4 transition-colors",
-          active && "fill-rose-500 text-rose-500",
+          "size-4 transition-all duration-200",
+          active ? "scale-110 fill-rose-500 text-rose-500" : "hover:text-rose-500",
         )}
       />
       {withLabel && (active ? "Wishlisted" : "Wishlist")}

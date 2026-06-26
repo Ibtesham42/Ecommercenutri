@@ -18,9 +18,9 @@ export function AnnouncementBar({
   );
 
   return (
-    <div className="bg-primary text-center text-xs font-medium text-primary-foreground sm:text-sm">
+    <div className="bg-gradient-to-r from-primary via-primary to-emerald-600 text-center text-xs font-medium tracking-wide text-primary-foreground sm:text-sm">
       {link ? (
-        <Link href={link} className="block py-2 hover:underline">
+        <Link href={link} className="block py-2 transition-opacity hover:opacity-90 hover:underline">
           {content}
         </Link>
       ) : (

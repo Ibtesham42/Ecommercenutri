@@ -15,9 +15,9 @@ export function HomeWhyChooseUs({ content }: { content: WhyChooseUsContent }) {
         {content.items.map((vp, i) => {
           const Icon = valuePropIcon(vp.icon);
           return (
-            <Card key={i} className="h-full">
+            <Card key={i} className="hover-lift h-full border-transparent shadow-elev-1 hover:shadow-elev-2">
               <CardContent className="space-y-3 p-6">
-                <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
+                <span className="grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-primary/15 to-gold/15 text-primary">
                   <Icon className="size-6" />
                 </span>
                 <h3 className="font-semibold">{vp.title}</h3>

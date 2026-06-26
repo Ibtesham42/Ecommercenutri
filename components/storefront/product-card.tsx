@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/storefront/star-rating";
 import { WishlistButton } from "@/components/storefront/wishlist-button";
+import { BlurImage } from "@/components/storefront/blur-image";
 import { formatPrice, discountPercent, effectivePrice } from "@/lib/format";
 import { minVariantPrice, type ProductCardData } from "@/lib/queries/products";
 
@@ -24,39 +24,48 @@ export function ProductCard({
   const off = defaultVariant
     ? discountPercent(defaultVariant.price, defaultVariant.discountPrice)
     : null;
-  const outOfStock = product.variants.every((v) => v.stock <= 0);
+  const hasDiscount =
+    !!defaultVariant?.discountPrice &&
+    effectivePrice(mrp, defaultVariant.discountPrice) < mrp;
+  const totalStock = product.variants.reduce((sum, v) => sum + Math.max(0, v.stock), 0);
+  const outOfStock = totalStock <= 0;
+  const lowStock = !outOfStock && totalStock <= 5;
 
   return (
-    <Card className="group relative overflow-hidden p-0 transition-all hover:border-primary/40 hover:shadow-md">
-      <div className="absolute left-2 top-2 z-10 flex flex-col gap-1">
+    <Card className="group hover-lift relative overflow-hidden p-0 shadow-elev-1 transition-colors hover:border-primary/40 hover:shadow-elev-2">
+      <div className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex flex-col items-start gap-1">
         {product.isBestSeller && (
-          <Badge className="bg-amber-500 text-white hover:bg-amber-500">
-            Best Seller
+          <Badge className="border-transparent bg-gold text-gold-foreground shadow-sm hover:bg-gold">
+            ★ Best Seller
           </Badge>
         )}
         {off ? (
-          <Badge variant="secondary" className="bg-primary/10 text-primary">
+          <Badge className="border-transparent bg-primary text-primary-foreground shadow-sm hover:bg-primary">
             {off}% OFF
           </Badge>
         ) : null}
       </div>
-      <div className="absolute right-2 top-2 z-10">
+      <div className="absolute right-2.5 top-2.5 z-10">
         <WishlistButton productId={product.id} initial={wishlisted} />
       </div>
 
-      <Link href={`/products/${product.slug}`} className="block">
+      <Link
+        href={`/products/${product.slug}`}
+        className="block focus-visible:outline-none"
+        aria-label={product.name}
+      >
         <div className="relative aspect-square overflow-hidden bg-accent/30">
           {image ? (
-            <Image
+            <BlurImage
               src={image.url}
               alt={image.alt ?? product.name}
               fill
               sizes="(max-width: 768px) 50vw, 25vw"
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.07]"
             />
           ) : null}
           {outOfStock && (
-            <div className="absolute inset-0 grid place-items-center bg-background/60">
+            <div className="absolute inset-0 grid place-items-center bg-background/60 backdrop-blur-[1px]">
               <Badge variant="secondary">Out of stock</Badge>
             </div>
           )}
@@ -64,27 +73,38 @@ export function ProductCard({
       </Link>
 
       <CardContent className="space-y-1.5 p-4">
-        <p className="text-xs text-muted-foreground">{product.category.name}</p>
+        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          {product.category.name}
+        </p>
         <Link href={`/products/${product.slug}`}>
-          <h3 className="line-clamp-2 text-sm font-semibold leading-snug hover:text-primary">
+          <h3 className="line-clamp-2 text-sm font-semibold leading-snug transition-colors group-hover:text-primary">
             {product.name}
           </h3>
         </Link>
         {product.ratingCount > 0 && (
           <StarRating rating={product.ratingAvg} count={product.ratingCount} />
         )}
-        <div className="flex items-baseline gap-2 pt-1">
-          <span className="text-base font-bold">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 pt-1">
+          <span className="text-base font-bold tracking-tight">
             {hasMultiple ? "From " : ""}
             {formatPrice(sale)}
           </span>
-          {defaultVariant?.discountPrice &&
-            effectivePrice(mrp, defaultVariant.discountPrice) < mrp && (
+          {hasDiscount && (
+            <>
               <span className="text-xs text-muted-foreground line-through">
                 {formatPrice(mrp)}
               </span>
-            )}
+              {off ? (
+                <span className="text-xs font-semibold text-primary">Save {off}%</span>
+              ) : null}
+            </>
+          )}
         </div>
+        {lowStock && (
+          <p className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
+            Only {totalStock} left
+          </p>
+        )}
       </CardContent>
     </Card>
   );

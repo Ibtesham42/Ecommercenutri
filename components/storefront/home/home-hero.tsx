@@ -70,7 +70,7 @@ export function HomeHero({ content }: { content: HeroContent }) {
         </div>
 
         <div className="relative hidden md:block">
-          <div className="aspect-square w-full rounded-3xl bg-gradient-to-br from-primary/15 via-accent to-secondary p-1.5 shadow-xl">
+          <div className="aspect-square w-full rounded-3xl bg-gradient-to-br from-primary/15 via-accent to-gold/20 p-1.5 shadow-elev-3">
             <div className="grid size-full place-items-center rounded-[calc(var(--radius)*2)] bg-card">
               <div className="flex flex-col items-center gap-4 p-8 text-center">
                 <span className="grid size-24 place-items-center rounded-full bg-primary/10 text-primary">
