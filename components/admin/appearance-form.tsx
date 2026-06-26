@@ -206,6 +206,10 @@ export function AppearanceForm({
           {imageField("logoDark", "Dark logo (optional)")}
           {imageField("favicon", "Favicon", "branding", "image/png,image/svg+xml,image/x-icon,.png,.svg,.ico")}
         </div>
+        <p className="text-xs text-muted-foreground">
+          This logo appears across the whole site — storefront header &amp; footer and the
+          login, sign-up, password and account pages. Blank uses the default wordmark.
+        </p>
         <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
           <p className="text-sm font-medium">Logo size</p>
           <div className="grid gap-4 sm:grid-cols-3">
