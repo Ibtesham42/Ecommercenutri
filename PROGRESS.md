@@ -9,9 +9,9 @@ _Last updated: 2026-06-25 · Auto-maintained. Update at the end of every milesto
 | Build               | ✅ passing (`next build`, 52 routes)                            |
 | TypeScript          | ✅ `tsc --noEmit` clean                                         |
 | ESLint              | ✅ clean                                                        |
-| Runtime smoke       | ✅ Banner Manager verified (home/products/categories 200, additive — render nothing with no banners; `/admin/banners` guard-redirects when unauthenticated) |
-| Database (Neon)     | ✅ live, migrated (…`home_sections`, `banners`), seeded         |
-| Current milestone   | **M0–M6 + RBAC + CMS Phases 1–5 — production-ready**           |
+| Runtime smoke       | ✅ Content pages verified (contact/blog/support/track/shipping/privacy/terms → 200; bad blog slug → 404; ContactMessage round-trip; track resolves a real order) |
+| Database (Neon)     | ✅ live, migrated (…`banners`, `blog_post`, `content_page`, `contact_message`), seeded |
+| Current milestone   | **M0–M6 + RBAC + CMS Phases 1–5 + content pages — production-ready** |
 
 ## CMS roadmap (WordPress-style admin management; one phase per turn)
 ✅ **Phase 1 — Hero Slider Manager**: `HeroSlide` model + `/admin/hero` (drag-drop reorder,
@@ -33,8 +33,16 @@ order; `/admin/homepage` (drag-drop reorder + show/hide). Additive — identical
 desktop+mobile images, link to product/category/URL, priority, schedule, publish toggle,
 duplicate, delete) gated by `appearance`; storefront `<BannerStrip position>` renders active
 in-schedule banners by priority (server component, renders nothing when empty — fully additive).
-⏳ Backlog: 6) Navigation Builder · 7) Footer Builder · 8) Media Library ·
-9) Content/popups/ads. (+ optional full mobile audit.)
+✅ **Footer/nav content pages**: every footer + nav link now resolves (no 404s).
+Added `/contact` (working form → `ContactMessage` + email), `/blog` + `/blog/[slug]`
+(`BlogPost`, CMS-ready, 3 seeded posts), `/support` (help hub), `/track` (public guest
+order tracking → existing Order system), and `/shipping` `/privacy` `/terms` (`ContentPage`
+override + professional code defaults in `lib/legal-content.ts`). Footer "Track Order" →
+`/track`; sitemap + SEO/JSON-LD updated. Admin editors for these land in a later CMS phase.
+Sanitization moved to `lib/sanitize.ts` (`sanitize-html`; isomorphic-dompurify breaks the
+Node-21 build).
+⏳ Backlog: 6) Admin editors (blog/legal/contact-inbox) · 7) Navigation Builder ·
+8) Footer Builder · 9) Media Library · 10) popups/ads. (+ optional full mobile audit.)
 
 ## Latest: Admin RBAC (sub-admins, permissions, store settings)
 Roles `SUPER_ADMIN`/`ADMIN` with per-section `User.permissions`; new `StoreSetting`.

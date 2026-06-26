@@ -65,6 +65,11 @@ app/
     checkout/          Checkout + checkout/success
     assistant/         AI nutrition assistant
     about/
+    contact/           Contact form (server action) + business info + FAQ + map
+    support/           Help & support hub (links to track/shipping/policies/AI)
+    track/             Public guest order tracking (order # + checkout email)
+    blog/              Blog list + [slug] (DB-driven, CMS-ready BlogPost model)
+    shipping/ privacy/ terms/   Legal/policy pages (ContentPage override + code defaults)
   (account)/           Authenticated customer area (middleware-gated)
     account/           Profile, addresses, orders, orders/[orderNumber],
                        wishlist, ai-history
@@ -306,8 +311,19 @@ all gated by the **`appearance`** permission (super admins always pass).
   (`components/storefront/banner-strip.tsx`, reads `lib/queries/banners.ts#getBanners`) renders
   active in-schedule banners by priority and **renders nothing when empty** (fully additive). New
   placement = add a key to `BANNER_POSITIONS` + drop a `<BannerStrip position>` in.
-- **Backlog (one phase per turn):** Navigation Builder (`MenuItem`); Footer Builder; Media
-  Library (`MediaAsset` + Cloudinary); Content/popups/ads.
+- **Content pages (foundation done)** — storefront pages for every footer/nav link, all
+  CMS-ready data models in place (admin editors are a later phase):
+  - `/blog` + `/blog/[slug]` — `BlogPost` model, `lib/queries/blog.ts`; renders published
+    posts (sanitized HTML), empty-state friendly, Article + Breadcrumb JSON-LD.
+  - `/shipping`, `/privacy`, `/terms` — `ContentPage` model overrides the professional
+    defaults in `lib/legal-content.ts` (shared `LegalPageView`); works with zero rows.
+  - `/contact` — `ContactMessage` model; `submitContactMessage` (Zod + rate-limit + persist +
+    best-effort email) via `components/storefront/contact-form.tsx`; business info, FAQ, map.
+  - `/track` — public guest order tracking: `trackOrder(orderNumber, email)` matches the
+    checkout email and returns a trimmed DTO + status timeline (no auth).
+  - `/support` — help hub linking the above. Footer "Track Order" now points at `/track`.
+- **Backlog (one phase per turn):** admin editors for Blog/Legal/Contact-inbox; Navigation
+  Builder (`MenuItem`); Footer Builder; Media Library (`MediaAsset` + Cloudinary); popups/ads.
 - **CMS conventions:** reuse RBAC (`requirePermission("appearance")` / `guardSection`),
   `AdminResult` actions, Zod schemas in `lib/validations/admin.ts`, `ImageUploadField` +
   Cloudinary, `cldUrl` for delivery. Reordering uses native HTML5 DnD + a `reorder(ids[])`
@@ -323,8 +339,10 @@ all gated by the **`appearance`** permission (super admins always pass).
   and order queries filter by `userId`).
 - **Payment integrity:** verify Razorpay payment + webhook signatures with HMAC and
   constant-time comparison (`lib/razorpay.ts`); re-price orders server-side.
-- **Input validation** with Zod on every boundary; sanitize rich text with
-  `isomorphic-dompurify` where rendered as HTML.
+- **Input validation** with Zod on every boundary; sanitize CMS/admin-authored
+  HTML before rendering with `lib/sanitize.ts#sanitizeRichText` (`sanitize-html`).
+  Do **not** use `isomorphic-dompurify` in server components — it pulls in `jsdom`,
+  whose transitive ESM dep breaks the production build under Node 21.
 - **Security headers** set in middleware (X-Frame-Options, X-Content-Type-Options,
   Referrer-Policy, Permissions-Policy).
 - **Rate limiting** via Upstash where abuse is possible (auth, AI) — no-op fallback

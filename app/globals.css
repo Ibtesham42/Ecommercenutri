@@ -143,3 +143,35 @@
     @apply font-heading tracking-tight;
   }
 }
+
+/* Styling for admin/CMS-authored HTML (blog articles, custom legal pages). */
+.rich-content {
+  @apply leading-relaxed text-foreground;
+}
+.rich-content > * + * {
+  @apply mt-4;
+}
+.rich-content h2 {
+  @apply mt-8 text-xl font-semibold;
+}
+.rich-content h3 {
+  @apply mt-6 text-lg font-semibold;
+}
+.rich-content p {
+  @apply text-muted-foreground;
+}
+.rich-content ul {
+  @apply list-disc space-y-1 pl-5 text-muted-foreground;
+}
+.rich-content ol {
+  @apply list-decimal space-y-1 pl-5 text-muted-foreground;
+}
+.rich-content a {
+  @apply font-medium text-primary underline underline-offset-2;
+}
+.rich-content img {
+  @apply rounded-xl;
+}
+.rich-content blockquote {
+  @apply border-l-4 border-border pl-4 italic text-muted-foreground;
+}

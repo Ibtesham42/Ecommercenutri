@@ -464,6 +464,57 @@ async function main() {
     });
   }
 
+  // Blog posts (CMS-ready; storefront renders these at /blog)
+  const blogPosts = [
+    {
+      slug: "5-reasons-makhana-is-the-perfect-snack",
+      title: "5 Reasons Makhana Is the Perfect Snack",
+      tag: "Nutrition",
+      author: "Team Nutriyet",
+      excerpt:
+        "Light, crunchy and surprisingly nutritious — here's why roasted fox nuts deserve a spot in your pantry.",
+      content:
+        "<p>Makhana, or roasted fox nuts, have been a staple of Indian kitchens for centuries — and modern nutrition science is catching up to what our grandparents always knew.</p>" +
+        "<h2>1. High in plant protein</h2><p>A single serving delivers a meaningful protein boost, making makhana a smart snack between meals.</p>" +
+        "<h2>2. Low in calories</h2><p>Air-roasted makhana is light and satisfying without weighing you down.</p>" +
+        "<h2>3. Naturally gluten-free</h2><p>A great option for anyone avoiding gluten.</p>" +
+        "<h2>4. Rich in minerals</h2><p>Magnesium, potassium and phosphorus support everyday wellbeing.</p>" +
+        "<h2>5. Endlessly versatile</h2><p>Toss with spices, add to trail mix, or enjoy them plain.</p>",
+    },
+    {
+      slug: "how-to-build-a-balanced-snack-box",
+      title: "How to Build a Balanced Snack Box",
+      tag: "Wellness",
+      author: "Team Nutriyet",
+      excerpt:
+        "Mix protein, healthy fats and a little crunch for snacks that keep you going all day.",
+      content:
+        "<p>The secret to snacking well isn't cutting out snacks — it's building better ones.</p>" +
+        "<h2>Start with protein</h2><p>Almonds, makhana and seeds keep you fuller for longer.</p>" +
+        "<h2>Add healthy fats</h2><p>Walnuts and pumpkin seeds bring satisfying richness.</p>" +
+        "<h2>Finish with flavour</h2><p>A handful of raisins or a dark-chocolate-coated treat makes it feel indulgent.</p>",
+    },
+    {
+      slug: "seeds-101-chia-flax-and-pumpkin",
+      title: "Seeds 101: Chia, Flax and Pumpkin",
+      tag: "Guides",
+      author: "Team Nutriyet",
+      excerpt: "Tiny but mighty — a quick guide to three seeds worth adding to your routine.",
+      content:
+        "<p>Seeds pack a remarkable amount of nutrition into a small package. Here's how to use three favourites.</p>" +
+        "<h2>Chia</h2><p>Stir into water or smoothies for a fibre-rich gel that keeps you hydrated.</p>" +
+        "<h2>Flax</h2><p>Ground flax adds omega-3s to oats, yoghurt and baking.</p>" +
+        "<h2>Pumpkin</h2><p>Crunchy and rich in magnesium — perfect straight from the bag.</p>",
+    },
+  ];
+  for (const post of blogPosts) {
+    await prisma.blogPost.upsert({
+      where: { slug: post.slug },
+      update: {},
+      create: { ...post, coverImage: img(post.title), isPublished: true },
+    });
+  }
+
   console.log("✅ Seed complete.");
   console.log(`   Admin login: ${adminEmail} / ${adminPassword}`);
 }

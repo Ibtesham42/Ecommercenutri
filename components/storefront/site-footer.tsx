@@ -30,7 +30,8 @@ const footerCols = [
   {
     title: "Support",
     links: [
-      { label: "Track Order", href: "/account/orders" },
+      { label: "Help & Support", href: "/support" },
+      { label: "Track Order", href: "/track" },
       { label: "Shipping & Returns", href: "/shipping" },
       { label: "Privacy Policy", href: "/privacy" },
       { label: "Terms of Service", href: "/terms" },

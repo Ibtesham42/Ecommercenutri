@@ -16,16 +16,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/categories`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${base}/assistant`, changeFrequency: "monthly", priority: 0.6 },
     { url: `${base}/about`, changeFrequency: "monthly", priority: 0.4 },
+    { url: `${base}/blog`, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${base}/contact`, changeFrequency: "yearly", priority: 0.4 },
+    { url: `${base}/support`, changeFrequency: "yearly", priority: 0.4 },
+    { url: `${base}/track`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${base}/shipping`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${base}/privacy`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${base}/terms`, changeFrequency: "yearly", priority: 0.3 },
   ];
 
   try {
-    const [products, categories] = await Promise.all([
+    const [products, categories, posts] = await Promise.all([
       prisma.product.findMany({
         where: { isActive: true },
         select: { slug: true, updatedAt: true },
       }),
       prisma.category.findMany({
         where: { isActive: true },
+        select: { slug: true, updatedAt: true },
+      }),
+      prisma.blogPost.findMany({
+        where: { isPublished: true, publishedAt: { lte: new Date() } },
         select: { slug: true, updatedAt: true },
       }),
     ]);
@@ -44,7 +55,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }));
 
-    return [...staticRoutes, ...categoryRoutes, ...productRoutes];
+    const blogRoutes: MetadataRoute.Sitemap = posts.map((p) => ({
+      url: `${base}/blog/${p.slug}`,
+      lastModified: p.updatedAt,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    }));
+
+    return [...staticRoutes, ...categoryRoutes, ...productRoutes, ...blogRoutes];
   } catch {
     // If the DB is briefly unreachable, still serve the static sitemap.
     return staticRoutes;

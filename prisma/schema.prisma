@@ -484,6 +484,53 @@ model HomeSection {
 }
 
 // ---------------------------------------------------------------------------
+// Content / CMS (blog, legal pages, contact inbox)
+// ---------------------------------------------------------------------------
+
+// Blog articles. CMS-ready: a future admin phase manages these rows; the
+// storefront renders only published posts (see lib/queries/blog.ts).
+model BlogPost {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  excerpt     String?
+  content     String    @db.Text
+  coverImage  String?
+  author      String?
+  tag         String?
+  isPublished Boolean   @default(true)
+  publishedAt DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([isPublished, publishedAt])
+}
+
+// Editable legal/policy pages (privacy, terms, shipping). The slug is the page
+// key; when a row is absent the storefront falls back to the defaults in
+// lib/legal-content.ts. `body` is sanitized HTML rendered on the page.
+model ContentPage {
+  slug      String   @id // "privacy" | "terms" | "shipping"
+  title     String
+  body      String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+// Contact-form submissions (the admin inbox). Persisted so messages survive
+// even when email delivery isn't configured.
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String?
+  message   String   @db.Text
+  handled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
 // Instagram-style stories
 // ---------------------------------------------------------------------------
 
