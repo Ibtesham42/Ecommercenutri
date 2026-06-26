@@ -496,7 +496,16 @@ See `PROGRESS.md` for the live tracker (status, blockers, next task).
 - **Service worker is intentionally conservative** (`public/sw.js`): network-first for
   navigations with an `/offline` fallback, cache-first for static assets, and it
   **never** intercepts `/api`, `/admin`, `/account`, `/checkout`, or auth. Registered
-  in **production only** (`components/service-worker-register.tsx`).
+  in **production only** (`components/service-worker-register.tsx`, which also calls
+  `registration.update()` so a corrected SW propagates promptly).
+  - **Critical invariant (`isCacheable`):** the SW must **only ever cache or serve a clean
+    same-origin 200** (`response.ok && type === "basic" && !redirected`). It must pass
+    redirects/opaque/non-OK responses straight through, never caching them. Reason: an alias
+    host (e.g. `www`) that 307-redirects to the primary apex must be allowed to redirect — a
+    prior version cached/returned the cross-origin `opaqueredirect`, which **blanked
+    `www.nutriyet.in`** on browsers that had the SW installed on that origin (SW + Cache are
+    per-origin and survive redeploys). Bump `VERSION` when changing SW behavior so `activate`
+    purges old caches. Don't reintroduce unconditional `cache.put`.
 - **Analytics is dependency-free + pluggable**: a `<Script>` is injected only when
   `NEXT_PUBLIC_ANALYTICS_SRC` + `_DOMAIN` are set (Plausible/Umami-style), else nothing.
 - **Rate limiting** uses `lib/rate-limit.ts` (Upstash) and **fails open** — wired into

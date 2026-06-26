@@ -16,9 +16,16 @@ export function ServiceWorkerRegister() {
       return;
     }
     const onLoad = () => {
-      navigator.serviceWorker.register("/sw.js").catch(() => {
-        /* registration is best-effort */
-      });
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((reg) => {
+          // Proactively check for a newer SW so clients with a stale worker
+          // (e.g. an alias origin that now redirects) pick up the fix promptly.
+          reg.update().catch(() => {});
+        })
+        .catch(() => {
+          /* registration is best-effort */
+        });
     };
     window.addEventListener("load", onLoad);
     return () => window.removeEventListener("load", onLoad);
