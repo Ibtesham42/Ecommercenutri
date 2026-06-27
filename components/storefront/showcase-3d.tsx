@@ -207,10 +207,9 @@ export function Showcase3D({ items }: { items: ShowcaseDisplayItem[] }) {
             >
               {/* Universal premium product stage — any uploaded image (auto-trimmed,
                   centered, fit) is presented on a soft glass pedestal with inner
-                  spotlight, glossy sheen, a lifted product and a floor reflection.
-                  Consistent for every product; no transparent PNG required. */}
+                  spotlight and glossy sheen. The product is always centered. */}
               <div
-                className="relative grid size-full place-items-center overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-white to-zinc-100 p-5 shadow-elev-3 ring-1 ring-black/5 dark:from-zinc-800 dark:to-zinc-900 dark:ring-white/10 sm:p-7"
+                className="relative grid size-full place-items-center overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-white to-zinc-100 p-6 shadow-elev-3 ring-1 ring-black/5 dark:from-zinc-800 dark:to-zinc-900 dark:ring-white/10 sm:p-8"
                 style={{ transform: `scale(${cardScale})` }}
               >
                 {/* Inner spotlight behind the product */}
@@ -219,27 +218,17 @@ export function Showcase3D({ items }: { items: ShowcaseDisplayItem[] }) {
                   className="pointer-events-none absolute inset-0"
                   style={{
                     background:
-                      "radial-gradient(58% 52% at 50% 40%, color-mix(in oklch, var(--primary) 12%, transparent), transparent 70%)",
+                      "radial-gradient(58% 52% at 50% 45%, color-mix(in oklch, var(--primary) 12%, transparent), transparent 70%)",
                   }}
                 />
-                <div className="relative flex size-full flex-col items-center justify-center">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- transform-friendly, lazy, optimized via cldShowcaseImage */}
-                  <img
-                    src={productSrc}
-                    alt={item.title}
-                    loading="lazy"
-                    decoding="async"
-                    className="max-h-[82%] max-w-full object-contain drop-shadow-[0_22px_34px_rgba(0,0,0,0.22)]"
-                  />
-                  {/* Floor reflection (flipped, faded) for premium depth */}
-                  {/* eslint-disable-next-line @next/next/no-img-element -- decorative reflection */}
-                  <img
-                    src={productSrc}
-                    alt=""
-                    aria-hidden
-                    className="pointer-events-none -mt-1 max-h-[18%] max-w-full -scale-y-100 object-contain object-top opacity-20 [mask-image:linear-gradient(to_bottom,rgba(0,0,0,0.55),transparent_70%)]"
-                  />
-                </div>
+                {/* eslint-disable-next-line @next/next/no-img-element -- transform-friendly, lazy, optimized via cldShowcaseImage */}
+                <img
+                  src={productSrc}
+                  alt={item.title}
+                  loading="lazy"
+                  decoding="async"
+                  className="relative col-start-1 row-start-1 max-h-full max-w-full self-center justify-self-center object-contain drop-shadow-[0_22px_34px_rgba(0,0,0,0.22)]"
+                />
                 {/* Glossy top sheen */}
                 <div
                   aria-hidden
