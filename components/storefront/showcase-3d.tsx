@@ -224,19 +224,34 @@ export function Showcase3D({ items }: { items: ShowcaseDisplayItem[] }) {
                   />
                 </>
               ) : (
-                /* Regular photo → centered in a clean product card; the image
+                /* Regular photo → a premium product card: soft gradient surface,
+                   inner spotlight, glossy sheen and a lifted product. The image
                    auto-fits (object-contain) so it's never cropped or boxy. */
                 <div
-                  className="grid size-full place-items-center overflow-hidden rounded-[1.75rem] border border-black/5 bg-white p-6 shadow-elev-3 dark:border-white/10 dark:bg-zinc-900 sm:p-8"
-                  style={{ transform: `scale(${0.84 + (zoom / 100) * 0.16})` }}
+                  className="relative grid size-full place-items-center overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-white to-zinc-100 p-5 shadow-elev-3 ring-1 ring-black/5 dark:from-zinc-800 dark:to-zinc-900 dark:ring-white/10 sm:p-7"
+                  style={{ transform: `scale(${0.86 + (zoom / 100) * 0.14})` }}
                 >
+                  {/* Inner spotlight behind the product */}
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                      background:
+                        "radial-gradient(60% 55% at 50% 42%, color-mix(in oklch, var(--primary) 12%, transparent), transparent 70%)",
+                    }}
+                  />
                   {/* eslint-disable-next-line @next/next/no-img-element -- transform-friendly, lazy, optimized via cldUrl */}
                   <img
                     src={productSrc}
                     alt={item.title}
                     loading="lazy"
                     decoding="async"
-                    className="max-h-full max-w-full object-contain"
+                    className="relative max-h-full max-w-full object-contain drop-shadow-[0_18px_30px_rgba(0,0,0,0.18)]"
+                  />
+                  {/* Glossy top sheen */}
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/50 to-transparent dark:from-white/10"
                   />
                 </div>
               )}

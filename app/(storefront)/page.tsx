@@ -238,18 +238,24 @@ export default async function HomePage() {
   const visible = sectionOrder.filter((s) => s.enabled && sections[s.key] != null);
   const hasStories = visible.some((s) => s.key === "stories");
 
+  const showcaseNode = showcase.enabled ? (
+    <Showcase3D items={showcase.items} />
+  ) : null;
+
   return (
     <>
-      {/* Premium 3D hero showcase — sits at the very top (below the header search),
-          above the product sections. Renders nothing unless enabled with items. */}
-      {showcase.enabled && <Showcase3D items={showcase.items} />}
-
-      {/* The homepage banner sits just below the stories rail (or at the top when
-          stories are hidden). */}
-      {!hasStories && <BannerStrip position="homeTop" fullBleed className="py-6" />}
+      {/* When stories are hidden, the showcase + banner sit at the top. */}
+      {!hasStories && (
+        <>
+          {showcaseNode}
+          <BannerStrip position="homeTop" fullBleed className="py-6" />
+        </>
+      )}
       {visible.map((s) => (
         <Fragment key={s.key}>
           {sections[s.key]}
+          {/* Stories stay on top; the 3D showcase sits right below them. */}
+          {s.key === "stories" && showcaseNode}
           {s.key === "stories" && <BannerStrip position="homeTop" fullBleed className="py-6" />}
         </Fragment>
       ))}
