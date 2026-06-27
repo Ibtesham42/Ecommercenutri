@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ADMIN_PERMISSIONS } from "@/lib/permissions";
+import { isShowcaseAnimation, isShowcaseBackground } from "@/lib/showcase";
 
 // Admins (sub-admin management by a super admin) -----------------------------
 
@@ -194,6 +195,40 @@ export const heroSlideSchema = z.object({
 
 export type HeroSlideInput = z.infer<typeof heroSlideSchema>;
 
+// 3D hero showcase -----------------------------------------------------------
+
+export const showcaseItemSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().min(1, "Add a title").max(80),
+  tagline: z.string().max(120).nullable().optional(),
+  image: z.string().url("Add a product image"),
+  imagePng: optImage,
+  productId: optionalRelId,
+  ctaText: z.string().max(40).nullable().optional(),
+  ctaUrl: z
+    .union([
+      z.string().url("Enter a valid URL"),
+      z.string().regex(/^\//, "Use a full URL or a path starting with /"),
+      z.literal(""),
+    ])
+    .nullable()
+    .optional(),
+  animation: z
+    .string()
+    .refine(isShowcaseAnimation, "Pick a valid animation")
+    .default("float"),
+  background: z
+    .string()
+    .refine(isShowcaseBackground, "Pick a valid background")
+    .default("aurora"),
+  rotationSpeed: z.number().int().min(0).max(100).default(50),
+  floatIntensity: z.number().int().min(0).max(100).default(50),
+  zoom: z.number().int().min(0).max(100).default(50),
+  isActive: z.boolean().default(true),
+});
+
+export type ShowcaseItemInput = z.infer<typeof showcaseItemSchema>;
+
 // Promotional banners --------------------------------------------------------
 
 export const bannerSchema = z.object({
@@ -301,6 +336,8 @@ export const homeContentSchemas = {
   featured: headingContentSchema,
   bestSellers: headingContentSchema,
   recommended: headingContentSchema,
+  trending: headingContentSchema,
+  combos: headingContentSchema,
   whyChooseUs: whyChooseUsContentSchema,
   testimonials: testimonialsContentSchema,
 } as const;

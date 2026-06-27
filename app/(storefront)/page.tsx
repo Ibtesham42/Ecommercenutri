@@ -7,9 +7,10 @@ import { BlurImage } from "@/components/storefront/blur-image";
 import { Reveal } from "@/components/storefront/reveal";
 import { StoriesRail } from "@/components/storefront/stories-rail";
 import { HeroSlider } from "@/components/storefront/hero-slider";
+import { Showcase3D } from "@/components/storefront/showcase-3d";
 import { BannerStrip } from "@/components/storefront/banner-strip";
 import { RecommendedProducts } from "@/components/storefront/recommended-products";
-import { RecoSection } from "@/components/storefront/reco-section";
+import { RecoClickArea } from "@/components/storefront/reco-click-area";
 import { HomeHero } from "@/components/storefront/home/home-hero";
 import { HomeAiBanner } from "@/components/storefront/home/home-ai-banner";
 import { HomeWhyChooseUs } from "@/components/storefront/home/home-why-choose-us";
@@ -25,6 +26,7 @@ import {
   heroSlideHref,
   getHomeSectionOrder,
   getHomeSectionsContent,
+  getActiveShowcase,
 } from "@/lib/queries/home";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
 import { getCurrentUser } from "@/lib/auth";
@@ -49,6 +51,7 @@ export default async function HomePage() {
     user,
     trendingProducts,
     combos,
+    showcase,
   ] = await Promise.all([
     getFeaturedProducts(content.featured.limit ?? 8),
     getBestSellers(content.bestSellers.limit ?? 8),
@@ -58,8 +61,9 @@ export default async function HomePage() {
     getHomeSectionOrder(),
     getWishlistProductIds(),
     getCurrentUser(),
-    trending({ windowDays: 7, limit: 8 }),
-    productCombos(4),
+    trending({ windowDays: 7, limit: content.trending.limit ?? 8 }),
+    productCombos(content.combos.limit ?? 4),
+    getActiveShowcase(),
   ]);
 
   // Trending excludes what's already shown in featured/best-sellers above.
@@ -182,6 +186,48 @@ export default async function HomePage() {
       </section>
     ) : null,
 
+    trending:
+      trendingFresh.length > 0 ? (
+        <section className="mx-auto w-full max-w-7xl px-4 py-14">
+          <SectionHeading
+            title={content.trending.title}
+            subtitle={content.trending.subtitle}
+          />
+          <Reveal>
+            <RecoClickArea source="trending">
+              <ProductGrid products={trendingFresh} wishlistedIds={wishlistIds} />
+            </RecoClickArea>
+          </Reveal>
+        </section>
+      ) : null,
+
+    combos:
+      combos.length > 0 ? (
+        <section className="border-y bg-muted/30">
+          <div className="mx-auto w-full max-w-7xl space-y-12 px-4 py-14">
+            <SectionHeading
+              title={content.combos.title}
+              subtitle={content.combos.subtitle}
+            />
+            {combos.map((combo) => (
+              <div key={combo.key}>
+                <h3 className="mb-5 text-lg font-bold sm:text-xl">
+                  {combo.title}
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    {combo.description}
+                  </span>
+                </h3>
+                <Reveal>
+                  <RecoClickArea source={`combo:${combo.key}`}>
+                    <ProductGrid products={combo.products} wishlistedIds={wishlistIds} />
+                  </RecoClickArea>
+                </Reveal>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null,
+
     whyChooseUs: <HomeWhyChooseUs content={content.whyChooseUs} />,
 
     testimonials: <HomeTestimonials content={content.testimonials} />,
@@ -194,6 +240,10 @@ export default async function HomePage() {
 
   return (
     <>
+      {/* Premium 3D hero showcase — sits at the very top (below the header search),
+          above the product sections. Renders nothing unless enabled with items. */}
+      {showcase.enabled && <Showcase3D items={showcase.items} />}
+
       {/* The homepage banner sits just below the stories rail (or at the top when
           stories are hidden). */}
       {!hasStories && <BannerStrip position="homeTop" fullBleed className="py-6" />}
@@ -203,45 +253,6 @@ export default async function HomePage() {
           {s.key === "stories" && <BannerStrip position="homeTop" fullBleed className="py-6" />}
         </Fragment>
       ))}
-
-      {/* Behavioral: trending + goal-based combos. Render nothing when empty. */}
-      {trendingFresh.length > 0 && (
-        <section className="mx-auto w-full max-w-7xl px-4 py-14">
-          <RecoSection
-            title="Trending now"
-            subtitle="What other shoppers are loving this week"
-            products={trendingFresh}
-            wishlistedIds={wishlistIds}
-            source="trending"
-          />
-        </section>
-      )}
-
-      {combos.length > 0 && (
-        <section className="border-y bg-muted/30">
-          <div className="mx-auto w-full max-w-7xl space-y-12 px-4 py-14">
-            <div>
-              <span className="mb-2.5 block h-1 w-10 rounded-full bg-gradient-to-r from-primary to-gold" />
-              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                Shop by goal
-              </h2>
-              <p className="mt-1 text-muted-foreground">
-                Smart combos curated for your wellness goals
-              </p>
-            </div>
-            {combos.map((combo) => (
-              <RecoSection
-                key={combo.key}
-                title={combo.title}
-                subtitle={combo.description}
-                products={combo.products}
-                wishlistedIds={wishlistIds}
-                source={`combo:${combo.key}`}
-              />
-            ))}
-          </div>
-        </section>
-      )}
     </>
   );
 }

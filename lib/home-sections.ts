@@ -12,6 +12,8 @@ export const HOME_SECTIONS = [
   { key: "featured", label: "Featured Products" },
   { key: "bestSellers", label: "Best Sellers" },
   { key: "recommended", label: "Recommended", note: "Personalized, logged-in only" },
+  { key: "trending", label: "Trending Now", note: "Behavioral — views, orders, wishlist" },
+  { key: "combos", label: "Shop by Goal", note: "AI product combos (breakfast, weight loss…)" },
   { key: "whyChooseUs", label: "Why Choose Us" },
   { key: "testimonials", label: "Testimonials" },
   { key: "aiBanner", label: "AI Assistant Banner" },

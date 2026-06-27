@@ -239,10 +239,11 @@ model Product {
   reviews    Review[]
   wishlist   WishlistItem[]
   orderItems OrderItem[]
-  stories    Story[]
-  aiChats    AIChat[]
-  heroSlides HeroSlide[]
-  banners    Banner[]
+  stories       Story[]
+  aiChats       AIChat[]
+  heroSlides    HeroSlide[]
+  banners       Banner[]
+  showcaseItems ShowcaseItem[]
 
   @@index([categoryId])
   @@index([brandId])
@@ -516,6 +517,33 @@ model HeroSlide {
   @@index([isActive])
 }
 
+// Premium 3D hero showcase items (admin-managed, rendered below the homepage
+// search/hero via the CSS/GPU 3D engine — components/storefront/showcase-3d).
+// The global on/off lives on StoreSetting.showcase3dEnabled.
+model ShowcaseItem {
+  id             String   @id @default(cuid())
+  title          String
+  tagline        String?
+  image          String // product image (Cloudinary)
+  imagePng       String? // optional transparent PNG/WebP for a true cut-out look
+  productId      String?
+  ctaText        String? // defaults to "Shop Now"
+  ctaUrl         String? // explicit link; product takes precedence when set
+  animation      String   @default("float") // preset key (see lib/showcase.ts)
+  background     String   @default("aurora") // background style key
+  rotationSpeed  Int      @default(50) // 0-100
+  floatIntensity Int      @default(50) // 0-100
+  zoom           Int      @default(50) // 0-100
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([isActive])
+}
+
 // Promotional banners rendered at named placements (see lib/banners.ts).
 model Banner {
   id           String    @id @default(cuid())
@@ -750,6 +778,8 @@ model StoreSetting {
   announcement       String? // banner text
   announcementActive Boolean @default(false)
   announcementLink   String?
+  // 3D hero showcase (managed at /admin/showcase; items are ShowcaseItem rows)
+  showcase3dEnabled  Boolean @default(false)
   // Pricing & tax defaults (used when a product doesn't override). GST is
   // inclusive of the listed price. Money is paise.
   defaultGstRate        Int     @default(0)     // GST percent applied by default

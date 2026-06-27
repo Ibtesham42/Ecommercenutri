@@ -21,6 +21,8 @@ export type HomeContentMap = {
   featured: HeadingContent;
   bestSellers: HeadingContent;
   recommended: HeadingContent;
+  trending: HeadingContent;
+  combos: HeadingContent;
   whyChooseUs: WhyChooseUsContent;
   testimonials: TestimonialsContent;
 };
@@ -82,6 +84,20 @@ export const HOME_CONTENT_DEFAULTS: HomeContentMap = {
     ctaHref: "",
     limit: 8,
   },
+  trending: {
+    title: "Trending now",
+    subtitle: "What other shoppers are loving this week.",
+    ctaLabel: "",
+    ctaHref: "",
+    limit: 8,
+  },
+  combos: {
+    title: "Shop by goal",
+    subtitle: "Smart combos curated for your wellness goals.",
+    ctaLabel: "",
+    ctaHref: "",
+    limit: 4,
+  },
   whyChooseUs: {
     title: "Why choose Nutriyet",
     subtitle: "We obsess over quality so you can focus on feeling your best.",
@@ -120,6 +136,8 @@ export const HOME_SECTION_EDITOR: Record<HomeSectionKey, SectionEditorKind> = {
   featured: "heading",
   bestSellers: "heading",
   recommended: "heading",
+  trending: "heading",
+  combos: "heading",
   whyChooseUs: "whyChooseUs",
   testimonials: "testimonials",
   aiBanner: "aiBanner",

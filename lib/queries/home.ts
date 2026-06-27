@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { effectivePrice } from "@/lib/format";
 import {
   HOME_SECTION_KEYS,
   isHomeSectionKey,
@@ -118,7 +119,84 @@ export async function getHomeSectionsContent(): Promise<HomeContentMap> {
     featured: resolveSectionContent("featured", byKey.get("featured")),
     bestSellers: resolveSectionContent("bestSellers", byKey.get("bestSellers")),
     recommended: resolveSectionContent("recommended", byKey.get("recommended")),
+    trending: resolveSectionContent("trending", byKey.get("trending")),
+    combos: resolveSectionContent("combos", byKey.get("combos")),
     whyChooseUs: resolveSectionContent("whyChooseUs", byKey.get("whyChooseUs")),
     testimonials: resolveSectionContent("testimonials", byKey.get("testimonials")),
   };
+}
+
+export type ShowcaseDisplayItem = {
+  id: string;
+  title: string;
+  tagline: string | null;
+  image: string;
+  imagePng: string | null;
+  href: string | null;
+  price: number | null; // paise
+  ctaText: string;
+  animation: string;
+  background: string;
+  rotationSpeed: number;
+  floatIntensity: number;
+  zoom: number;
+};
+
+/**
+ * The 3D hero showcase for the storefront: the global on/off flag + published
+ * items (ordered), each resolved to a destination link and price. Returns
+ * `enabled: false` (and no items) on any error, so the homepage never breaks.
+ */
+export async function getActiveShowcase(): Promise<{
+  enabled: boolean;
+  items: ShowcaseDisplayItem[];
+}> {
+  try {
+    const [setting, rows] = await Promise.all([
+      prisma.storeSetting.findUnique({
+        where: { id: "singleton" },
+        select: { showcase3dEnabled: true },
+      }),
+      prisma.showcaseItem.findMany({
+        where: { isActive: true },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        include: {
+          product: {
+            select: {
+              slug: true,
+              variants: {
+                where: { isActive: true },
+                select: { price: true, discountPrice: true },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const items: ShowcaseDisplayItem[] = rows.map((r) => {
+      const prices = (r.product?.variants ?? []).map((v) =>
+        effectivePrice(v.price, v.discountPrice),
+      );
+      return {
+        id: r.id,
+        title: r.title,
+        tagline: r.tagline,
+        image: r.image,
+        imagePng: r.imagePng,
+        href: r.product?.slug ? `/products/${r.product.slug}` : r.ctaUrl || null,
+        price: prices.length ? Math.min(...prices) : null,
+        ctaText: r.ctaText || "Shop Now",
+        animation: r.animation,
+        background: r.background,
+        rotationSpeed: r.rotationSpeed,
+        floatIntensity: r.floatIntensity,
+        zoom: r.zoom,
+      };
+    });
+
+    return { enabled: (setting?.showcase3dEnabled ?? false) && items.length > 0, items };
+  } catch {
+    return { enabled: false, items: [] };
+  }
 }
