@@ -45,6 +45,30 @@ export function cldRasterLogo(url: string | null | undefined, size = 256): strin
     .replace(/\.(pdf|svg|webp|avif|jpe?g|gif|tiff?)(\?|$)/i, ".png$2");
 }
 
+/**
+ * Normalize any uploaded product image for the 3D showcase so every item looks
+ * consistent regardless of source dimensions/format. Cloudinary auto-trims solid
+ * (e.g. white) borders (`e_trim`), then fits/pads the product into a centered
+ * square — never cropping or stretching it. `transparent` pads with alpha (for
+ * cut-out PNGs that float on the stage); otherwise it fits within the square so a
+ * white/colored background blends into the product card. No-op for non-Cloudinary
+ * URLs (returned unchanged), so pasted external URLs still work.
+ */
+export function cldShowcaseImage(
+  url: string | null | undefined,
+  opts: { transparent?: boolean; size?: number } = {},
+): string {
+  if (!url) return "";
+  if (!url.includes("res.cloudinary.com") || !url.includes("/upload/")) return url;
+  const size = opts.size ?? 900;
+  const t = opts.transparent
+    ? // Trim → center-pad to a transparent square (consistent framing, blends).
+      `e_trim:12,c_pad,w_${size},h_${size},b_transparent,f_auto,q_auto`
+    : // Trim → fit within a square (product fills the card consistently).
+      `e_trim:12,c_fit,w_${size},h_${size},f_auto,q_auto`;
+  return url.replace("/upload/", `/upload/${t}/`);
+}
+
 /** True for URLs we should treat as video in previews/viewers. */
 export function isVideoUrl(url: string): boolean {
   return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url);

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { formatPrice } from "@/lib/format";
-import { cldUrl } from "@/lib/cld";
+import { cldShowcaseImage } from "@/lib/cld";
 import { showcaseMotion, showcaseBackground, clampIntensity } from "@/lib/showcase";
 import type { ShowcaseDisplayItem } from "@/lib/queries/home";
 import { cn } from "@/lib/utils";
@@ -68,11 +68,12 @@ export function Showcase3D({ items }: { items: ShowcaseDisplayItem[] }) {
   const spinDur = motion.spin ? 60 - (spin / 100) * 45 : 0; // 60s … 15s
   const scale = 0.92 + (zoom / 100) * 0.26; // 0.92 … 1.18
   const tiltMax = motion.tilt && !reduced ? 10 : 0;
-  const productSrc = cldUrl(item.imagePng || item.image, { w: 900 });
-  const textLight = bg.dark;
   // A transparent PNG floats bare (Apple-style cut-out); a regular product photo
   // is framed in a clean card so it always fits well, never a floating rectangle.
   const cutout = !!item.imagePng;
+  // Auto-trim + center + pad to a consistent square so any aspect ratio fits.
+  const productSrc = cldShowcaseImage(item.imagePng || item.image, { transparent: cutout });
+  const textLight = bg.dark;
 
   return (
     <section
@@ -208,7 +209,7 @@ export function Showcase3D({ items }: { items: ShowcaseDisplayItem[] }) {
             >
               {cutout ? (
                 <>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- transform-friendly, lazy, optimized via cldUrl */}
+                  {/* eslint-disable-next-line @next/next/no-img-element -- transform-friendly, lazy, optimized via cldShowcaseImage */}
                   <img
                     src={productSrc}
                     alt={item.title}
@@ -217,9 +218,18 @@ export function Showcase3D({ items }: { items: ShowcaseDisplayItem[] }) {
                     className="size-full object-contain drop-shadow-2xl"
                     style={{ transform: `scale(${scale})` }}
                   />
+                  {/* Premium floor reflection (flipped, faded) */}
+                  {/* eslint-disable-next-line @next/next/no-img-element -- decorative reflection */}
+                  <img
+                    src={productSrc}
+                    alt=""
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 top-[88%] mx-auto h-1/2 w-full object-contain object-top opacity-25 [mask-image:linear-gradient(to_bottom,rgba(0,0,0,0.6),transparent_55%)]"
+                    style={{ transform: `scaleY(-1) scale(${scale})` }}
+                  />
                   {/* Soft contact shadow under the floating cut-out */}
                   <div
-                    className="absolute inset-x-[15%] bottom-[6%] -z-10 h-6 rounded-[50%] bg-black/25 blur-xl"
+                    className="absolute inset-x-[18%] bottom-[4%] -z-10 h-6 rounded-[50%] bg-black/25 blur-xl"
                     style={{ transform: "translateZ(-30px)" }}
                   />
                 </>
