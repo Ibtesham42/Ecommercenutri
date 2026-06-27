@@ -28,7 +28,6 @@ export default async function AdminShowcasePage() {
     title: s.title,
     tagline: s.tagline,
     image: s.image,
-    imagePng: s.imagePng,
     productId: s.productId,
     ctaText: s.ctaText,
     ctaUrl: s.ctaUrl,

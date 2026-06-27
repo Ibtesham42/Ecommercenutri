@@ -45,7 +45,6 @@ export type ShowcaseRow = {
   title: string;
   tagline: string | null;
   image: string;
-  imagePng: string | null;
   productId: string | null;
   ctaText: string | null;
   ctaUrl: string | null;
@@ -64,7 +63,6 @@ type FormValues = {
   title: string;
   tagline: string;
   image: string;
-  imagePng: string;
   productId: string;
   ctaText: string;
   ctaUrl: string;
@@ -82,7 +80,6 @@ function toPreview(v: FormValues): ShowcaseDisplayItem {
     title: v.title || "Your product",
     tagline: v.tagline || null,
     image: v.image || "https://placehold.co/900x900/16803c/ffffff?text=Product",
-    imagePng: v.imagePng || null,
     href: "#",
     price: null,
     ctaText: v.ctaText || "Shop Now",
@@ -125,7 +122,6 @@ export function ShowcaseManager({
       title: "",
       tagline: "",
       image: "",
-      imagePng: "",
       productId: "",
       ctaText: "",
       ctaUrl: "",
@@ -145,7 +141,6 @@ export function ShowcaseManager({
       title: s.title,
       tagline: s.tagline ?? "",
       image: s.image,
-      imagePng: s.imagePng ?? "",
       productId: s.productId ?? "",
       ctaText: s.ctaText ?? "",
       ctaUrl: s.ctaUrl ?? "",
@@ -166,7 +161,6 @@ export function ShowcaseManager({
       title: v.title,
       tagline: v.tagline || null,
       image: v.image,
-      imagePng: v.imagePng || null,
       productId: v.productId || null,
       ctaText: v.ctaText || null,
       ctaUrl: v.ctaUrl || null,
@@ -263,7 +257,7 @@ export function ShowcaseManager({
               <div className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-accent/30">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={cldUrl(s.imagePng || s.image, { w: 120, h: 120, crop: "fit" })}
+                  src={cldUrl(s.image, { w: 120, h: 120, crop: "fit" })}
                   alt=""
                   className="size-full object-contain"
                 />
@@ -330,28 +324,21 @@ export function ShowcaseManager({
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Product image</Label>
-                <Controller
-                  control={control}
-                  name="image"
-                  rules={{ required: true }}
-                  render={({ field: f }) => (
-                    <ImageUploadField value={f.value} onChange={f.onChange} cloudinaryReady={cloudinaryReady} folder="showcase" />
-                  )}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Transparent PNG/WebP (optional)</Label>
-                <Controller
-                  control={control}
-                  name="imagePng"
-                  render={({ field: f }) => (
-                    <ImageUploadField value={f.value} onChange={f.onChange} cloudinaryReady={cloudinaryReady} folder="showcase" />
-                  )}
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Product image</Label>
+              <Controller
+                control={control}
+                name="image"
+                rules={{ required: true }}
+                render={({ field: f }) => (
+                  <ImageUploadField value={f.value} onChange={f.onChange} cloudinaryReady={cloudinaryReady} folder="showcase" />
+                )}
+              />
+              <p className="text-xs text-muted-foreground">
+                Upload any image (JPG, PNG, WebP — portrait, landscape or square).
+                It&rsquo;s automatically trimmed, centered and fitted into the 3D
+                showcase — no editing needed.
+              </p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
