@@ -1,9 +1,14 @@
 "use server";
 
+import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { profileSchema, addressSchema } from "@/lib/validations/account";
+import { transitionOrderStatus } from "@/lib/orders";
+import { isCustomerCancellable } from "@/lib/order-status";
+import { orderStatusEmail } from "@/lib/emails";
+import { sendEmail } from "@/lib/email";
 
 export type AccountState = { error?: string; success?: string } | undefined;
 
@@ -97,4 +102,68 @@ export async function setDefaultAddress(id: string) {
     data: { isDefault: true },
   });
   revalidatePath("/account/addresses");
+}
+
+// --- Order cancellation (customer) ------------------------------------------
+
+const cancelOrderSchema = z.object({
+  orderNumber: z.string().min(1),
+  reason: z.string().trim().max(300).optional(),
+});
+
+export type CancelOrderResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Customer-initiated cancellation. Allowed only while the order is still PENDING
+ * (before the admin approves it); the shared `transitionOrderStatus` restocks
+ * inventory and records the timeline event + reason.
+ */
+export async function cancelOrder(input: unknown): Promise<CancelOrderResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Please sign in." };
+
+  const parsed = cancelOrderSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid request." };
+  }
+
+  const order = await prisma.order.findFirst({
+    where: { orderNumber: parsed.data.orderNumber, userId: user.id },
+    select: { id: true, status: true },
+  });
+  if (!order) return { ok: false, error: "Order not found." };
+  if (!isCustomerCancellable(order.status)) {
+    return {
+      ok: false,
+      error: "This order can no longer be cancelled. Please contact support.",
+    };
+  }
+
+  const reason = parsed.data.reason || "Cancelled by customer";
+  const updated = await transitionOrderStatus(order.id, "CANCELLED", {
+    reason,
+    actor: "customer",
+  });
+
+  // Notify the customer (best-effort).
+  if (updated?.user?.email) {
+    const mail = orderStatusEmail({
+      orderNumber: updated.orderNumber,
+      status: "CANCELLED",
+      name: updated.user.name,
+      reason,
+    });
+    if (mail) {
+      try {
+        await sendEmail({ to: updated.user.email, ...mail });
+      } catch (err) {
+        console.error("[account] cancel email failed:", err);
+      }
+    }
+  }
+
+  revalidatePath("/account/orders");
+  revalidatePath(`/account/orders/${parsed.data.orderNumber}`);
+  revalidatePath("/admin/orders");
+  return { ok: true };
 }

@@ -121,16 +121,28 @@ export function orderConfirmationEmail(order: OrderEmailData): Email {
 type OrderStatus =
   | "PENDING"
   | "PAID"
+  | "APPROVED"
   | "PROCESSING"
+  | "PACKED"
   | "SHIPPED"
+  | "OUT_FOR_DELIVERY"
   | "DELIVERED"
   | "CANCELLED"
+  | "RETURNED"
   | "REFUNDED";
 
 const STATUS_COPY: Partial<Record<OrderStatus, { heading: string; intro: string }>> = {
+  APPROVED: {
+    heading: "Your order is confirmed! ✅",
+    intro: "Good news — we've approved your order and started preparing it.",
+  },
   SHIPPED: {
     heading: "Your order is on its way! 📦",
     intro: "Good news — your order has shipped and is heading to you.",
+  },
+  OUT_FOR_DELIVERY: {
+    heading: "Out for delivery! 🚚",
+    intro: "Your order is out for delivery and should arrive today.",
   },
   DELIVERED: {
     heading: "Delivered — enjoy! 🌿",
@@ -140,6 +152,10 @@ const STATUS_COPY: Partial<Record<OrderStatus, { heading: string; intro: string 
     heading: "Your order was cancelled",
     intro:
       "Your order has been cancelled. If this was paid for, a refund has been initiated.",
+  },
+  RETURNED: {
+    heading: "Your return is complete",
+    intro: "We've processed the return for your order.",
   },
   REFUNDED: {
     heading: "Your refund is on the way",
@@ -153,15 +169,20 @@ export function orderStatusEmail(order: {
   orderNumber: string;
   status: OrderStatus;
   name?: string | null;
+  reason?: string | null;
 }): Email | null {
   const copy = STATUS_COPY[order.status];
   if (!copy) return null;
   const url = `${siteConfig.url}/account/orders/${order.orderNumber}`;
+  const reasonLine =
+    order.status === "CANCELLED" && order.reason
+      ? ` Reason: <em>${order.reason}</em>.`
+      : "";
   return {
-    subject: `Order #${order.orderNumber} — ${order.status.toLowerCase()} · ${siteConfig.name}`,
+    subject: `Order #${order.orderNumber} — ${order.status.replace(/_/g, " ").toLowerCase()} · ${siteConfig.name}`,
     html: shell({
       heading: copy.heading,
-      intro: `Hi${order.name ? ` ${order.name}` : ""}, ${copy.intro} (Order <strong>#${order.orderNumber}</strong>.)`,
+      intro: `Hi${order.name ? ` ${order.name}` : ""}, ${copy.intro} (Order <strong>#${order.orderNumber}</strong>.)${reasonLine}`,
       ctaLabel: "Track your order",
       ctaUrl: url,
     }),

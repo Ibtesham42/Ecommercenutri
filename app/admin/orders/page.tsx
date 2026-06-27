@@ -17,14 +17,18 @@ import {
 import { prisma } from "@/lib/prisma";
 import { formatPrice, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { statusBadgeVariant, statusLabel } from "@/lib/order-status";
 
 export const metadata: Metadata = { title: "Orders", robots: { index: false } };
 
 const FILTERS: { label: string; value: string }[] = [
   { label: "All", value: "" },
   { label: "Pending", value: "PENDING" },
+  { label: "Approved", value: "APPROVED" },
   { label: "Processing", value: "PROCESSING" },
+  { label: "Packed", value: "PACKED" },
   { label: "Shipped", value: "SHIPPED" },
+  { label: "Out for delivery", value: "OUT_FOR_DELIVERY" },
   { label: "Delivered", value: "DELIVERED" },
   { label: "Cancelled", value: "CANCELLED" },
 ];
@@ -158,7 +162,9 @@ export default async function AdminOrdersPage({
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{o.status}</Badge>
+                    <Badge variant={statusBadgeVariant[o.status] ?? "secondary"}>
+                      {statusLabel(o.status)}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-right font-semibold">
                     {formatPrice(o.total)}

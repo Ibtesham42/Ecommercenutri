@@ -38,11 +38,15 @@ enum CouponType {
 
 enum OrderStatus {
   PENDING
-  PAID
+  PAID // legacy (kept for existing rows); fulfilment uses the stages below
+  APPROVED
   PROCESSING
+  PACKED
   SHIPPED
+  OUT_FOR_DELIVERY
   DELIVERED
   CANCELLED
+  RETURNED // future-ready
   REFUNDED
 }
 
@@ -392,6 +396,7 @@ model Order {
   // True once stock has been decremented for this order (at PAID for online, at
   // confirmation for COD). Drives confirm-idempotency and restock-on-cancel.
   stockDeducted   Boolean       @default(false)
+  cancelReason    String? // why the order was cancelled (shown in the timeline)
   couponId        String?
   couponCode      String?
   addressId       String?
@@ -410,9 +415,25 @@ model Order {
   address Address?    @relation(fields: [addressId], references: [id])
   items   OrderItem[]
   invoice Invoice?
+  events  OrderEvent[]
 
   @@index([userId])
   @@index([status])
+}
+
+// Append-only status timeline for an order (one row per transition). Powers the
+// customer order tracker with timestamps and the cancellation reason.
+model OrderEvent {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  note      String? // e.g. cancellation reason
+  actor     String? // "customer" | "admin" | "system"
+  createdAt DateTime    @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
 }
 
 model OrderItem {

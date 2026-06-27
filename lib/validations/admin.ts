@@ -478,13 +478,16 @@ export const orderStatusSchema = z.object({
   orderId: z.string().min(1),
   status: z.enum([
     "PENDING",
-    "PAID",
+    "APPROVED",
     "PROCESSING",
+    "PACKED",
     "SHIPPED",
+    "OUT_FOR_DELIVERY",
     "DELIVERED",
     "CANCELLED",
-    "REFUNDED",
+    "RETURNED",
   ]),
+  reason: z.string().trim().max(300).optional(),
 });
 
 // Inferred types -------------------------------------------------------------

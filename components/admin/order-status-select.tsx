@@ -11,16 +11,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { updateOrderStatus } from "@/lib/actions/admin/orders";
-
-const STATUSES = [
-  "PENDING",
-  "PAID",
-  "PROCESSING",
-  "SHIPPED",
-  "DELIVERED",
-  "CANCELLED",
-  "REFUNDED",
-] as const;
+import {
+  ADMIN_STATUS_OPTIONS,
+  ORDER_STATUS_LABEL,
+  statusLabel,
+} from "@/lib/order-status";
 
 export function OrderStatusSelect({
   orderId,
@@ -37,7 +32,7 @@ export function OrderStatusSelect({
     startTransition(async () => {
       const res = await updateOrderStatus({ orderId, status: next });
       if (res.ok) {
-        toast.success(`Order marked ${next.toLowerCase()}`);
+        toast.success(`Order marked ${statusLabel(next as never).toLowerCase()}`);
         router.refresh();
       } else {
         toast.error(res.error);
@@ -47,13 +42,13 @@ export function OrderStatusSelect({
 
   return (
     <Select value={status} onValueChange={onChange} disabled={pending}>
-      <SelectTrigger className="w-44">
+      <SelectTrigger className="w-48">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {STATUSES.map((s) => (
+        {ADMIN_STATUS_OPTIONS.map((s) => (
           <SelectItem key={s} value={s}>
-            {s.charAt(0) + s.slice(1).toLowerCase()}
+            {ORDER_STATUS_LABEL[s]}
           </SelectItem>
         ))}
       </SelectContent>

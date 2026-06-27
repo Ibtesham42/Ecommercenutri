@@ -503,9 +503,24 @@ See `PROGRESS.md` for the live tracker (status, blockers, next task).
 - Stock is decremented when an order is **confirmed** — at the PAID transition for
   online, at order placement for COD (payment still PENDING). The `Order.stockDeducted`
   flag (not `paymentStatus`) is the single signal for both **confirm-idempotency**
-  (`confirmOrder` no-ops once set) and **restock-on-cancel** (admin cancel/refund restocks
+  (`confirmOrder` no-ops once set) and **restock-on-cancel** (cancel/return/refund restocks
   once when `stockDeducted`, then clears it). `markOrderPaid` is a thin wrapper over
   `confirmOrder(id, { paymentStatus: "PAID", payment })`.
+- **Order workflow & cancellation** (Amazon/Flipkart-style). Fulfilment stages
+  (`OrderStatus`): PENDING → APPROVED → PROCESSING → PACKED → SHIPPED → OUT_FOR_DELIVERY →
+  DELIVERED, plus CANCELLED and RETURNED (future-ready); PAID/REFUNDED retained for legacy.
+  `confirmOrder` **leaves a placed order at PENDING** (it no longer jumps to PROCESSING) so it
+  awaits admin approval and stays customer-cancellable. **Single source of truth**:
+  `lib/order-status.ts` (flow, labels, badge variants, `isCustomerCancellable` = status is
+  PENDING, `ADMIN_STATUS_OPTIONS`, `CLOSED_STATUSES`) + `lib/orders.ts#transitionOrderStatus`
+  (restock by `stockDeducted`, paymentStatus derivation, appends an `OrderEvent`, stores
+  `Order.cancelReason`). Admin `updateOrderStatus` and the customer `cancelOrder`
+  (`lib/actions/account.ts`, PENDING-only guard, owner-scoped) both delegate to it. The
+  **timeline** is the append-only `OrderEvent` table (status + note + actor + timestamp),
+  rendered by `components/storefront/order-timeline.tsx` on the customer and admin order pages;
+  the customer cancel button (`cancel-order-button.tsx`, confirm dialog + reason) shows only
+  while cancellable. Notifications via `orderStatusEmail` cover APPROVED/SHIPPED/OUT_FOR_DELIVERY/
+  DELIVERED/CANCELLED (with reason)/RETURNED.
 - **Cash on Delivery**: `Order.paymentMethod` (`RAZORPAY`/`COD`) + `Order.codFee`. COD is
   configured at `/admin/shipping` (`StoreSetting.codEnabled/codFee/codMinOrder/codMaxOrder`;
   `codPincodes` reserved for a future allowlist). Availability (`isCodAvailable`) and the fee

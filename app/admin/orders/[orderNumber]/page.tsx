@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/admin/page-header";
 import { guardSection } from "@/lib/admin-guard";
 import { OrderStatusSelect } from "@/components/admin/order-status-select";
 import { OrderSummaryCard } from "@/components/storefront/order-summary-card";
+import { OrderTimeline } from "@/components/storefront/order-timeline";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/prisma";
@@ -22,7 +23,11 @@ export default async function AdminOrderDetailPage({
   const { orderNumber } = await params;
   const order = await prisma.order.findUnique({
     where: { orderNumber },
-    include: { items: true, user: { select: { name: true, email: true, phone: true } } },
+    include: {
+      items: true,
+      user: { select: { name: true, email: true, phone: true } },
+      events: { orderBy: { createdAt: "asc" } },
+    },
   });
   if (!order) notFound();
 
@@ -52,6 +57,22 @@ export default async function AdminOrderDetailPage({
             {order.user.phone && (
               <p className="text-muted-foreground">{order.user.phone}</p>
             )}
+          </div>
+
+          <div className="rounded-xl border bg-background p-4">
+            <p className="mb-3 text-xs font-semibold uppercase text-muted-foreground">
+              Status timeline
+            </p>
+            <OrderTimeline
+              status={order.status}
+              placedAt={order.createdAt.toISOString()}
+              cancelReason={order.cancelReason}
+              events={order.events.map((e) => ({
+                status: e.status,
+                note: e.note,
+                createdAt: e.createdAt.toISOString(),
+              }))}
+            />
           </div>
 
           <div className="rounded-xl border bg-background p-4 text-sm">

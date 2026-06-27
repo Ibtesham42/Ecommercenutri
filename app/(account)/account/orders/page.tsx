@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice, formatDate } from "@/lib/format";
+import { statusBadgeVariant, statusLabel } from "@/lib/order-status";
 
 export const metadata: Metadata = { title: "Orders" };
 
@@ -49,7 +50,9 @@ export default async function OrdersPage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Badge variant="secondary">{order.status}</Badge>
+              <Badge variant={statusBadgeVariant[order.status] ?? "secondary"}>
+                {statusLabel(order.status)}
+              </Badge>
               <span className="font-semibold">{formatPrice(order.total)}</span>
             </div>
           </div>

@@ -1,9 +1,11 @@
 import { customAlphabet } from "nanoid";
+import type { OrderStatus, PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { effectivePrice } from "@/lib/format";
 import { orderConfirmationEmail } from "@/lib/emails";
 import { sendEmail } from "@/lib/email";
 import { ensureInvoice, getInvoiceData } from "@/lib/invoices";
+import { isClosed } from "@/lib/order-status";
 import type { CheckoutItem } from "@/lib/validations/checkout";
 
 export {
@@ -101,9 +103,12 @@ export async function priceCart(items: CheckoutItem[]): Promise<PricedCart> {
 }
 
 /**
- * Confirm a placed order: decrement stock, mark the coupon used, move it into
- * the fulfilment pipeline (PROCESSING) with the given payment status, then
- * (best-effort) generate the invoice and email the customer with the PDF.
+ * Confirm a placed order: decrement stock, mark the coupon used, set the payment
+ * status, record the "Order placed" timeline event, then (best-effort) generate
+ * the invoice and email the customer with the PDF.
+ *
+ * The fulfilment `status` is intentionally left at PENDING — the order awaits
+ * admin approval and stays customer-cancellable until then (Amazon/Flipkart-style).
  *
  * Used by both flows: online (`paymentStatus: "PAID"`) and COD
  * (`paymentStatus: "PENDING"`, collected at delivery). Idempotent via the
@@ -141,10 +146,9 @@ export async function confirmOrder(
       });
     }
 
-    return tx.order.update({
+    const updated = await tx.order.update({
       where: { id },
       data: {
-        status: "PROCESSING",
         paymentStatus: opts.paymentStatus,
         stockDeducted: true,
         razorpayPaymentId: opts.payment?.paymentId,
@@ -152,6 +156,13 @@ export async function confirmOrder(
       },
       include: { items: true, user: { select: { email: true, name: true } } },
     });
+
+    // Seed the timeline with the placement event.
+    await tx.orderEvent.create({
+      data: { orderId: id, status: "PENDING", note: "Order placed", actor: "system" },
+    });
+
+    return updated;
   });
 
   if (!order) return;
@@ -191,4 +202,92 @@ export async function markOrderPaid(
   payment?: { paymentId: string; signature?: string },
 ): Promise<void> {
   return confirmOrder(id, { paymentStatus: "PAID", payment });
+}
+
+export type TransitionedOrder = {
+  id: string;
+  orderNumber: string;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  cancelReason: string | null;
+  user: { email: string | null; name: string | null };
+};
+
+/**
+ * Move an order to a new fulfilment status with the right side-effects — the
+ * single source of truth shared by the admin status picker and customer cancel.
+ *
+ * - Restocks inventory when entering a closed state (CANCELLED/RETURNED/REFUNDED)
+ *   from an open one, keyed off `stockDeducted` (so COD orders restock correctly),
+ *   and clears the flag so it can't double-restock.
+ * - Derives `paymentStatus`: a paid order that's cancelled/returned → REFUNDED;
+ *   a COD order delivered → PAID (cash collected). Otherwise unchanged.
+ * - Appends an OrderEvent (timeline) and stores the cancellation reason.
+ *
+ * Returns the updated order for the caller to send a notification, or null if
+ * the status was unchanged. Authorization/allowed-transition checks live in the
+ * callers (admin vs customer).
+ */
+export async function transitionOrderStatus(
+  orderId: string,
+  status: OrderStatus,
+  opts: { reason?: string | null; actor: "customer" | "admin" | "system" },
+): Promise<TransitionedOrder | null> {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { items: true },
+  });
+  if (!order) throw new Error("ORDER_NOT_FOUND");
+  if (order.status === status) return null; // no-op
+
+  const closing = isClosed(status);
+  const reason = opts.reason?.trim() || null;
+
+  let paymentStatus: PaymentStatus = order.paymentStatus;
+  if (closing) {
+    if (order.paymentStatus === "PAID") paymentStatus = "REFUNDED";
+  } else if (
+    status === "DELIVERED" &&
+    order.paymentMethod === "COD" &&
+    order.paymentStatus === "PENDING"
+  ) {
+    paymentStatus = "PAID";
+  }
+
+  const shouldRestock = closing && !isClosed(order.status) && order.stockDeducted;
+
+  const updated = await prisma.$transaction(async (tx) => {
+    if (shouldRestock) {
+      for (const item of order.items) {
+        if (!item.variantId) continue;
+        await tx.productVariant.update({
+          where: { id: item.variantId },
+          data: { stock: { increment: item.quantity } },
+        });
+      }
+    }
+    const o = await tx.order.update({
+      where: { id: orderId },
+      data: {
+        status,
+        paymentStatus,
+        ...(shouldRestock ? { stockDeducted: false } : {}),
+        ...(status === "CANCELLED" ? { cancelReason: reason } : {}),
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        paymentStatus: true,
+        cancelReason: true,
+        user: { select: { email: true, name: true } },
+      },
+    });
+    await tx.orderEvent.create({
+      data: { orderId, status, note: reason, actor: opts.actor },
+    });
+    return o;
+  });
+
+  return updated;
 }

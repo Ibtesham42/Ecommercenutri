@@ -2,6 +2,7 @@ import Image from "next/image";
 import type { Prisma } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice, formatDate } from "@/lib/format";
+import { statusBadgeVariant, statusLabel } from "@/lib/order-status";
 
 type OrderWithItems = Prisma.OrderGetPayload<{ include: { items: true } }>;
 
@@ -16,16 +17,6 @@ type ShippingAddress = {
   country: string;
 };
 
-const statusVariant: Record<string, "secondary" | "default" | "destructive"> = {
-  PENDING: "secondary",
-  PAID: "default",
-  PROCESSING: "default",
-  SHIPPED: "default",
-  DELIVERED: "default",
-  CANCELLED: "destructive",
-  REFUNDED: "destructive",
-};
-
 export function OrderSummaryCard({ order }: { order: OrderWithItems }) {
   const address = order.shippingAddress as unknown as ShippingAddress | null;
 
@@ -38,8 +29,8 @@ export function OrderSummaryCard({ order }: { order: OrderWithItems }) {
             Placed {formatDate(order.createdAt)}
           </p>
         </div>
-        <Badge variant={statusVariant[order.status] ?? "secondary"}>
-          {order.status}
+        <Badge variant={statusBadgeVariant[order.status] ?? "secondary"}>
+          {statusLabel(order.status)}
         </Badge>
       </div>
 

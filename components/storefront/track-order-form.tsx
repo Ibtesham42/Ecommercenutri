@@ -24,6 +24,7 @@ import { formatPrice, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { trackOrder, type TrackedOrder } from "@/lib/actions/track";
 import { trackOrderSchema, type TrackOrderInput } from "@/lib/validations/contact";
+import { statusLabel } from "@/lib/order-status";
 
 const STEPS = [
   { key: "PENDING", label: "Placed", icon: PackageCheck },
@@ -32,13 +33,18 @@ const STEPS = [
   { key: "DELIVERED", label: "Delivered", icon: Home },
 ] as const;
 
+// Map every fulfilment status onto the four coarse steps of the public tracker.
 const STEP_INDEX: Record<TrackedOrder["status"], number> = {
   PENDING: 0,
   PAID: 1,
+  APPROVED: 1,
   PROCESSING: 1,
+  PACKED: 1,
   SHIPPED: 2,
+  OUT_FOR_DELIVERY: 2,
   DELIVERED: 3,
   CANCELLED: -1,
+  RETURNED: -1,
   REFUNDED: -1,
 };
 
@@ -116,7 +122,7 @@ function Result({ order }: { order: TrackedOrder }) {
           </p>
         </div>
         <Badge variant={STEP_INDEX[order.status] < 0 ? "destructive" : "default"}>
-          {order.status}
+          {statusLabel(order.status)}
         </Badge>
       </div>
 

@@ -22,6 +22,7 @@ import {
 import { getAdminUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { formatPrice, formatDate } from "@/lib/format";
+import { statusBadgeVariant, statusLabel } from "@/lib/order-status";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = { title: "Admin Dashboard", robots: { index: false } };
@@ -168,7 +169,9 @@ export default async function AdminDashboardPage() {
                           </p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <Badge variant="secondary">{o.status}</Badge>
+                          <Badge variant={statusBadgeVariant[o.status] ?? "secondary"}>
+                            {statusLabel(o.status)}
+                          </Badge>
                           <span className="font-semibold">{formatPrice(o.total)}</span>
                         </div>
                       </Link>
