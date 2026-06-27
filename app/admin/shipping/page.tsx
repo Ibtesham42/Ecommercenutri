@@ -24,6 +24,9 @@ export default async function AdminShippingPage() {
     localDeliveryFee: toRupees(raw?.localDeliveryFee),
     expressDeliveryFee: toRupees(raw?.expressDeliveryFee),
     codFee: toRupees(raw?.codFee),
+    codEnabled: raw?.codEnabled ?? false,
+    codMinOrder: toRupees(raw?.codMinOrder),
+    codMaxOrder: toRupees(raw?.codMaxOrder),
   };
 
   return (

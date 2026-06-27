@@ -65,10 +65,13 @@ export function passwordResetEmail(url: string, name?: string | null): Email {
 
 type OrderEmailData = {
   orderNumber: string;
+  invoiceNumber?: string;
+  paymentMethod?: "RAZORPAY" | "COD";
   subtotal: number;
   discount: number;
   shipping: number;
   shippingSaved: number;
+  codFee: number;
   tax: number;
   total: number;
   user?: { name?: string | null } | null;
@@ -92,15 +95,21 @@ export function orderConfirmationEmail(order: OrderEmailData): Email {
       ${order.discount > 0 ? `<tr><td>Discount</td><td align="right" style="color:#16803c">−${formatPrice(order.discount)}</td></tr>` : ""}
       <tr><td>Delivery</td><td align="right"${order.shipping === 0 ? ' style="color:#16803c;font-weight:600"' : ""}>${order.shipping === 0 ? "Free Delivery" : formatPrice(order.shipping)}</td></tr>
       ${order.shipping === 0 && order.shippingSaved > 0 ? `<tr><td colspan="2" align="right" style="font-size:11px;color:#16803c">You saved ${formatPrice(order.shippingSaved)} on shipping</td></tr>` : ""}
+      ${order.codFee > 0 ? `<tr><td>Cash on Delivery fee</td><td align="right">${formatPrice(order.codFee)}</td></tr>` : ""}
       <tr><td style="padding-top:8px;font-weight:700;color:#13241c">Total</td><td align="right" style="padding-top:8px;font-weight:700;color:#13241c">${formatPrice(order.total)}</td></tr>
       ${order.tax > 0 ? `<tr><td colspan="2" style="padding-top:4px;font-size:11px;color:#9aa79f">Inclusive of GST ${formatPrice(order.tax)}</td></tr>` : ""}
+      ${order.paymentMethod === "COD" ? `<tr><td colspan="2" style="padding-top:4px;font-size:11px;color:#9aa79f">Payment: Cash on Delivery — pay ${formatPrice(order.total)} at delivery</td></tr>` : ""}
     </table>`;
+
+  const invoiceNote = order.invoiceNumber
+    ? `<p style="margin:16px 0 0;font-size:12px;color:#8a978f">Tax invoice <strong>${order.invoiceNumber}</strong> is attached to this email. You can also download it from your order page.</p>`
+    : "";
 
   return {
     subject: `Order confirmed #${order.orderNumber} — ${siteConfig.name}`,
     html: shell({
       heading: `Thanks for your order${order.user?.name ? `, ${order.user.name}` : ""}! 🌿`,
-      intro: `We've received your order <strong>#${order.orderNumber}</strong> and it's now being processed.${summary}`,
+      intro: `We've received your order <strong>#${order.orderNumber}</strong> and it's now being processed.${summary}${invoiceNote}`,
       ctaLabel: "View your order",
       ctaUrl: url,
       outro: "We'll email you again when it ships.",

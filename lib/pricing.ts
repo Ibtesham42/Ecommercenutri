@@ -41,8 +41,25 @@ export type PriceBreakdown = {
   tax: number; // paise, GST contained in the (post-discount) goods value
   shipping: number; // paise (0 when free)
   shippingSaved: number; // paise waived by the free-delivery rule (else 0)
+  codFee: number; // paise, Cash-on-Delivery handling fee (0 for online)
   total: number; // paise payable
 };
+
+/** Cash-on-Delivery availability config (subset of the store settings). */
+export type CodAvailability = {
+  codEnabled: boolean;
+  codMinOrder: number | null; // paise
+  codMaxOrder: number | null; // paise
+};
+
+/** Whether COD may be offered for a given goods subtotal (paise). Pure. */
+export function isCodAvailable(subtotal: number, cod: CodAvailability): boolean {
+  return (
+    cod.codEnabled &&
+    subtotal >= (cod.codMinOrder ?? 0) &&
+    (cod.codMaxOrder == null || subtotal <= cod.codMaxOrder)
+  );
+}
 
 /** Effective GST percent for a line, falling back to the store default. */
 export function resolveGstRate(
@@ -116,9 +133,11 @@ export function computeBreakdown(
   lines: PricingLine[],
   s: PricingSettings,
   discount = 0,
+  codFee = 0,
 ): PriceBreakdown {
   const subtotal = lines.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
   const safeDiscount = Math.min(Math.max(0, Math.round(discount)), subtotal);
+  const safeCodFee = Math.max(0, Math.round(codFee));
   const { charge: shipping, saved: shippingSaved } = computeShipping(lines, subtotal, s);
 
   const scale = subtotal > 0 ? (subtotal - safeDiscount) / subtotal : 0;
@@ -128,6 +147,14 @@ export function computeBreakdown(
     tax += gstWithin(net, resolveGstRate(l.gstRate, s));
   }
 
-  const total = Math.max(0, subtotal - safeDiscount + shipping);
-  return { subtotal, discount: safeDiscount, tax, shipping, shippingSaved, total };
+  const total = Math.max(0, subtotal - safeDiscount + shipping + safeCodFee);
+  return {
+    subtotal,
+    discount: safeDiscount,
+    tax,
+    shipping,
+    shippingSaved,
+    codFee: safeCodFee,
+    total,
+  };
 }

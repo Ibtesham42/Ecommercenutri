@@ -133,6 +133,9 @@ export async function updateShippingSettings(input: unknown): Promise<AdminResul
     localDeliveryFee: d.localDeliveryFee ?? null,
     expressDeliveryFee: d.expressDeliveryFee ?? null,
     codFee: d.codFee ?? null,
+    codEnabled: d.codEnabled,
+    codMinOrder: d.codMinOrder ?? null,
+    codMaxOrder: d.codMaxOrder ?? null,
   };
 
   await prisma.storeSetting.upsert({

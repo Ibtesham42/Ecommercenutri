@@ -1,19 +1,23 @@
 "use client";
 
-import { Printer } from "lucide-react";
+import { Printer, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatPrice, formatDate } from "@/lib/format";
 
 export type InvoiceData = {
   orderNumber: string;
+  invoiceNumber: string;
+  issuedAt: string; // ISO
   placedAt: string; // ISO
   paymentStatus: string;
+  paymentMethod: "RAZORPAY" | "COD";
   store: {
     name: string;
     address: string | null;
     gstin: string | null;
     supportEmail: string | null;
     supportPhone: string | null;
+    logo: string | null;
   };
   billTo: {
     fullName: string;
@@ -37,7 +41,13 @@ export type InvoiceData = {
   tax: number;
   shipping: number;
   shippingSaved: number;
+  codFee: number;
   total: number;
+};
+
+export const PAYMENT_METHOD_LABEL: Record<InvoiceData["paymentMethod"], string> = {
+  RAZORPAY: "Paid online",
+  COD: "Cash on Delivery",
 };
 
 /** Printable tax invoice. GST is inclusive — `tax` is the component contained in
@@ -48,11 +58,18 @@ export function OrderInvoice({ data }: { data: InvoiceData }) {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-4 flex items-center justify-between print:hidden">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 print:hidden">
         <h1 className="text-xl font-bold">Invoice</h1>
-        <Button onClick={() => window.print()} className="gap-2">
-          <Printer className="size-4" /> Print / Save PDF
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" className="gap-2">
+            <a href={`/api/invoices/${data.orderNumber}?download=1`}>
+              <Download className="size-4" /> Download PDF
+            </a>
+          </Button>
+          <Button onClick={() => window.print()} className="gap-2">
+            <Printer className="size-4" /> Print
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-2xl border p-6 print:border-0 print:p-0">
@@ -75,10 +92,15 @@ export function OrderInvoice({ data }: { data: InvoiceData }) {
             <p className="font-semibold uppercase tracking-wide text-muted-foreground">
               Tax Invoice
             </p>
-            <p className="mt-1 font-medium">#{data.orderNumber}</p>
-            <p className="text-xs text-muted-foreground">{formatDate(data.placedAt)}</p>
+            <p className="mt-1 font-medium">{data.invoiceNumber}</p>
+            <p className="text-xs text-muted-foreground">
+              Issued {formatDate(data.issuedAt)}
+            </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Payment: {data.paymentStatus}
+              Order #{data.orderNumber} · {formatDate(data.placedAt)}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {PAYMENT_METHOD_LABEL[data.paymentMethod]} · {data.paymentStatus}
             </p>
           </div>
         </div>
@@ -164,6 +186,12 @@ export function OrderInvoice({ data }: { data: InvoiceData }) {
             <div className="flex justify-between text-xs text-primary">
               <span>You saved on shipping</span>
               <span>{formatPrice(data.shippingSaved)}</span>
+            </div>
+          )}
+          {data.codFee > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Cash on Delivery fee</span>
+              <span>{formatPrice(data.codFee)}</span>
             </div>
           )}
           <div className="flex justify-between border-t pt-2 text-base font-bold">

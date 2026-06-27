@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft, FileText, Download } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
@@ -32,11 +32,18 @@ export default async function OrderDetailPage({
         >
           <ArrowLeft className="size-4" /> Back to orders
         </Link>
-        <Button asChild variant="outline" size="sm" className="gap-2">
-          <Link href={`/account/orders/${order.orderNumber}/invoice`}>
-            <FileText className="size-4" /> View invoice
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <Link href={`/account/orders/${order.orderNumber}/invoice`}>
+              <FileText className="size-4" /> View invoice
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="gap-2">
+            <a href={`/api/invoices/${order.orderNumber}?download=1`}>
+              <Download className="size-4" /> Download PDF
+            </a>
+          </Button>
+        </div>
       </div>
       <OrderSummaryCard order={order} />
     </div>

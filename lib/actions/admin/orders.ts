@@ -29,21 +29,29 @@ export async function updateOrderStatus(input: unknown): Promise<AdminResult> {
   const statusChanged = order.status !== status;
 
   // Derive the payment status implied by the new fulfillment status.
+  const isCod = order.paymentMethod === "COD";
   let paymentStatus: PaymentStatus = order.paymentStatus;
-  if (status === "PAID" || status === "PROCESSING" || status === "SHIPPED" || status === "DELIVERED") {
-    if (order.paymentStatus === "PENDING") paymentStatus = "PAID";
-  } else if (status === "REFUNDED") {
+  if (status === "REFUNDED") {
     paymentStatus = "REFUNDED";
   } else if (status === "CANCELLED") {
     paymentStatus = order.paymentStatus === "PAID" ? "REFUNDED" : "FAILED";
+  } else if (isCod) {
+    // COD is collected on delivery — mark PAID only at DELIVERED.
+    if (status === "DELIVERED" && order.paymentStatus === "PENDING") paymentStatus = "PAID";
+  } else if (
+    status === "PAID" ||
+    status === "PROCESSING" ||
+    status === "SHIPPED" ||
+    status === "DELIVERED"
+  ) {
+    if (order.paymentStatus === "PENDING") paymentStatus = "PAID";
   }
 
-  // Restock only on the transition *into* a closed state from an open, paid order
-  // (stock is decremented at the PAID transition). Prevents double restock.
+  // Restock on the transition *into* a closed state from an open order whose
+  // stock was actually decremented (PAID for online, at confirmation for COD).
+  // Keyed off `stockDeducted` — not paymentStatus — so COD restocks correctly.
   const shouldRestock =
-    CLOSED.includes(status) &&
-    !CLOSED.includes(order.status) &&
-    order.paymentStatus === "PAID";
+    CLOSED.includes(status) && !CLOSED.includes(order.status) && order.stockDeducted;
 
   await prisma.$transaction(async (tx) => {
     if (shouldRestock) {
@@ -57,7 +65,11 @@ export async function updateOrderStatus(input: unknown): Promise<AdminResult> {
     }
     await tx.order.update({
       where: { id: orderId },
-      data: { status, paymentStatus },
+      data: {
+        status,
+        paymentStatus,
+        ...(shouldRestock ? { stockDeducted: false } : {}),
+      },
     });
   });
 

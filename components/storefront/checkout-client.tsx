@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import Script from "next/script";
 import { toast } from "sonner";
-import { ShoppingBag, Plus, Tag, X, Loader2, MapPin } from "lucide-react";
+import { ShoppingBag, Plus, Tag, X, Loader2, MapPin, CreditCard, Banknote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -60,6 +60,7 @@ declare global {
 }
 
 type AppliedCoupon = { code: string; discount: number };
+type PaymentMethod = "RAZORPAY" | "COD";
 
 export function CheckoutClient({
   addresses,
@@ -83,6 +84,8 @@ export function CheckoutClient({
   const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
   const [couponPending, startCoupon] = useTransition();
   const [placing, setPlacing] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("RAZORPAY");
+  const [codAvailable, setCodAvailable] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
@@ -118,19 +121,25 @@ export function CheckoutClient({
   useEffect(() => {
     if (payload.length === 0) {
       setServer(null);
+      setCodAvailable(false);
       return;
     }
     let active = true;
-    void previewOrderPricing({ items: payload, couponCode }).then((res) => {
-      if (active && res.ok) setServer(res.breakdown);
+    void previewOrderPricing({ items: payload, couponCode, paymentMethod }).then((res) => {
+      if (!active || !res.ok) return;
+      setServer(res.breakdown);
+      setCodAvailable(res.codAvailable);
+      // If COD became unavailable (e.g. cart changed), fall back to online.
+      if (!res.codAvailable && paymentMethod === "COD") setPaymentMethod("RAZORPAY");
     });
     return () => {
       active = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payloadKey, couponCode]);
+  }, [payloadKey, couponCode, paymentMethod]);
 
-  const { subtotal, shipping, shippingSaved, tax, total, discount } = server ?? optimistic;
+  const { subtotal, shipping, shippingSaved, codFee, tax, total, discount } =
+    server ?? optimistic;
 
   if (!mounted) {
     return <div className="h-72 animate-pulse rounded-xl bg-muted" />;
@@ -176,6 +185,7 @@ export function CheckoutClient({
       items: payload,
       addressId: selectedId,
       couponCode: coupon?.code,
+      paymentMethod,
     });
 
     if (!res.ok) {
@@ -184,8 +194,8 @@ export function CheckoutClient({
       return;
     }
 
-    // Keyless / mock flow — order already marked paid server-side.
-    if (res.mock || !res.razorpay) {
+    // COD or keyless / mock flow — order already placed server-side.
+    if (res.cod || res.mock || !res.razorpay) {
       clearCart();
       router.push(`/checkout/success?order=${res.orderNumber}`);
       return;
@@ -398,6 +408,12 @@ export function CheckoutClient({
               You saved {formatPrice(shippingSaved)} on shipping
             </p>
           )}
+          {codFee > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Cash on Delivery fee</span>
+              <span className="font-medium">{formatPrice(codFee)}</span>
+            </div>
+          )}
           <div className="flex justify-between border-t pt-2 text-base font-bold">
             <span>Total</span>
             <span>{formatPrice(total)}</span>
@@ -406,6 +422,57 @@ export function CheckoutClient({
             <p className="text-xs text-muted-foreground">
               Inclusive of GST {formatPrice(tax)}
             </p>
+          )}
+        </div>
+
+        {/* Payment method */}
+        <div className="space-y-2 border-t pt-3">
+          <p className="text-sm font-semibold">Payment method</p>
+          <label
+            className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm transition ${
+              paymentMethod === "RAZORPAY" ? "border-primary ring-1 ring-primary" : "hover:border-foreground/20"
+            }`}
+          >
+            <input
+              type="radio"
+              name="payment"
+              className="mt-0.5 size-4 accent-primary"
+              checked={paymentMethod === "RAZORPAY"}
+              onChange={() => setPaymentMethod("RAZORPAY")}
+            />
+            <span>
+              <span className="flex items-center gap-1.5 font-medium">
+                <CreditCard className="size-4 text-primary" />
+                {razorpayEnabled ? "Pay online" : "Pay online (demo)"}
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                UPI, cards, net banking &amp; wallets via Razorpay.
+              </span>
+            </span>
+          </label>
+          {codAvailable && (
+            <label
+              className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm transition ${
+                paymentMethod === "COD" ? "border-primary ring-1 ring-primary" : "hover:border-foreground/20"
+              }`}
+            >
+              <input
+                type="radio"
+                name="payment"
+                className="mt-0.5 size-4 accent-primary"
+                checked={paymentMethod === "COD"}
+                onChange={() => setPaymentMethod("COD")}
+              />
+              <span>
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Banknote className="size-4 text-primary" /> Cash on Delivery
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  Pay in cash when your order arrives
+                  {settings && codFee > 0 ? ` · +${formatPrice(codFee)} fee` : ""}.
+                </span>
+              </span>
+            </label>
           )}
         </div>
 
@@ -419,13 +486,15 @@ export function CheckoutClient({
             <>
               <Loader2 className="size-4 animate-spin" /> Processing…
             </>
+          ) : paymentMethod === "COD" ? (
+            `Place order · ${formatPrice(total)}`
           ) : razorpayEnabled ? (
             `Pay ${formatPrice(total)}`
           ) : (
             `Place order · ${formatPrice(total)}`
           )}
         </Button>
-        {!razorpayEnabled && (
+        {!razorpayEnabled && paymentMethod === "RAZORPAY" && (
           <p className="text-center text-xs text-muted-foreground">
             Demo mode — no payment gateway configured. Orders are simulated.
           </p>

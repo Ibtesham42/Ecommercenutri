@@ -4,15 +4,10 @@ import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getStoreSettings } from "@/lib/queries/settings";
-import {
-  OrderInvoice,
-  type InvoiceData,
-} from "@/components/storefront/order-invoice";
+import { getInvoiceData } from "@/lib/invoices";
+import { OrderInvoice } from "@/components/storefront/order-invoice";
 
 export const metadata: Metadata = { title: "Invoice", robots: { index: false } };
-
-type ShippingAddress = InvoiceData["billTo"];
 
 export default async function OrderInvoicePage({
   params,
@@ -22,46 +17,19 @@ export default async function OrderInvoicePage({
   const { orderNumber } = await params;
   const user = await getCurrentUser();
 
-  const [order, store] = await Promise.all([
-    prisma.order.findFirst({
-      where: { orderNumber, userId: user!.id },
-      include: { items: true },
-    }),
-    getStoreSettings(),
-  ]);
+  const order = await prisma.order.findFirst({
+    where: { orderNumber, userId: user!.id },
+    select: { id: true },
+  });
   if (!order) notFound();
 
-  const data: InvoiceData = {
-    orderNumber: order.orderNumber,
-    placedAt: order.createdAt.toISOString(),
-    paymentStatus: order.paymentStatus,
-    store: {
-      name: store.siteName,
-      address: store.address,
-      gstin: store.gstin,
-      supportEmail: store.supportEmail,
-      supportPhone: store.supportPhone,
-    },
-    billTo: order.shippingAddress as unknown as ShippingAddress,
-    items: order.items.map((i) => ({
-      productName: i.productName,
-      variantLabel: i.variantLabel,
-      quantity: i.quantity,
-      price: i.price,
-    })),
-    subtotal: order.subtotal,
-    discount: order.discount,
-    couponCode: order.couponCode,
-    tax: order.tax,
-    shipping: order.shipping,
-    shippingSaved: order.shippingSaved,
-    total: order.total,
-  };
+  const data = await getInvoiceData(order.id);
+  if (!data) notFound();
 
   return (
     <div className="space-y-5">
       <Link
-        href={`/account/orders/${order.orderNumber}`}
+        href={`/account/orders/${data.orderNumber}`}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground print:hidden"
       >
         <ArrowLeft className="size-4" /> Back to order

@@ -16,6 +16,7 @@ export type TrackedOrder = {
   tax: number; // paise (GST, inclusive)
   shipping: number; // paise
   shippingSaved: number; // paise (waived by free delivery)
+  codFee: number; // paise (Cash on Delivery fee)
   total: number; // paise
   couponCode: string | null;
   recipient: string | null;
@@ -79,6 +80,7 @@ export async function trackOrder(input: unknown): Promise<TrackResult> {
       tax: order.tax,
       shipping: order.shipping,
       shippingSaved: order.shippingSaved,
+      codFee: order.codFee,
       total: order.total,
       couponCode: order.couponCode,
       recipient: address?.fullName ?? order.user.name ?? null,

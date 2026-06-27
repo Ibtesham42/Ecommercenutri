@@ -94,10 +94,20 @@ export function OrderSummaryCard({ order }: { order: OrderWithItems }) {
             You saved {formatPrice(order.shippingSaved)} on shipping
           </p>
         )}
+        {order.codFee > 0 && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Cash on Delivery fee</span>
+            <span>{formatPrice(order.codFee)}</span>
+          </div>
+        )}
         <div className="flex justify-between border-t pt-2 text-base font-bold">
           <span>Total</span>
           <span>{formatPrice(order.total)}</span>
         </div>
+        <p className="text-xs text-muted-foreground">
+          Payment:{" "}
+          {order.paymentMethod === "COD" ? "Cash on Delivery" : "Paid online"}
+        </p>
         {order.tax > 0 && (
           <p className="text-xs text-muted-foreground">
             Inclusive of GST {formatPrice(order.tax)}

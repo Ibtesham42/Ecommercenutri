@@ -7,11 +7,14 @@ export const checkoutItemSchema = z.object({
   quantity: z.number().int().min(1).max(99),
 });
 
+export const paymentMethodSchema = z.enum(["RAZORPAY", "COD"]).default("RAZORPAY");
+
 export const createOrderSchema = z.object({
   items: z.array(checkoutItemSchema).min(1, "Your cart is empty."),
   addressId: z.string().min(1, "Select a delivery address."),
   couponCode: z.string().trim().max(40).optional(),
   notes: z.string().trim().max(500).optional(),
+  paymentMethod: paymentMethodSchema,
 });
 
 export const applyCouponSchema = z.object({
@@ -23,6 +26,7 @@ export const applyCouponSchema = z.object({
 export const previewPricingSchema = z.object({
   items: z.array(checkoutItemSchema).min(1),
   couponCode: z.string().trim().max(40).optional(),
+  paymentMethod: z.enum(["RAZORPAY", "COD"]).default("RAZORPAY"),
 });
 
 export const verifyPaymentSchema = z.object({

@@ -53,6 +53,11 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum PaymentMethod {
+  RAZORPAY // online (Razorpay, or the keyless mock)
+  COD // cash on delivery — collected at delivery
+}
+
 enum StoryMediaType {
   IMAGE
   VIDEO
@@ -376,12 +381,17 @@ model Order {
   userId          String
   status          OrderStatus   @default(PENDING)
   paymentStatus   PaymentStatus @default(PENDING)
+  paymentMethod   PaymentMethod @default(RAZORPAY)
   subtotal        Int // paise
   discount        Int           @default(0)
   shipping        Int           @default(0)
   shippingSaved   Int           @default(0) // paise waived by free-delivery (for "you saved" copy)
+  codFee          Int           @default(0) // paise, COD handling fee (0 for online)
   tax             Int           @default(0)
   total           Int // paise
+  // True once stock has been decremented for this order (at PAID for online, at
+  // confirmation for COD). Drives confirm-idempotency and restock-on-cancel.
+  stockDeducted   Boolean       @default(false)
   couponId        String?
   couponCode      String?
   addressId       String?
@@ -399,6 +409,7 @@ model Order {
   coupon  Coupon?     @relation(fields: [couponId], references: [id])
   address Address?    @relation(fields: [addressId], references: [id])
   items   OrderItem[]
+  invoice Invoice?
 
   @@index([userId])
   @@index([status])
@@ -420,6 +431,26 @@ model OrderItem {
   variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
+}
+
+// One persistent tax invoice per order (created at order confirmation, or lazily
+// on first view for legacy orders). The PDF is rendered on demand from the
+// immutable order + this seller snapshot, so it never changes once issued.
+// `seq` is a DB autoincrement → `invoiceNumber` (INV-<FY>-<seq>) is collision-free.
+model Invoice {
+  id            String   @id @default(cuid())
+  orderId       String   @unique
+  seq           Int      @unique @default(autoincrement())
+  invoiceNumber String   @unique
+  issuedAt      DateTime @default(now())
+  // Seller details snapshot at issue time (so later store edits don't rewrite history).
+  sellerName    String
+  sellerAddress String?
+  sellerGstin   String?
+  sellerEmail   String?
+  sellerPhone   String?
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 // ---------------------------------------------------------------------------
@@ -670,7 +701,12 @@ model StoreSetting {
   freeShippingEnabled   Boolean @default(true)  // master switch for the free-delivery rule
   localDeliveryFee      Int?    // paise, configurable delivery option (managed in /admin/shipping)
   expressDeliveryFee    Int?    // paise, configurable delivery option
-  codFee                Int?    // paise, Cash-on-Delivery charge
+  // Cash on Delivery
+  codFee                Int?     // paise, COD handling fee
+  codEnabled            Boolean  @default(false) // offer COD at checkout
+  codMinOrder           Int?     // paise, min subtotal for COD (null = no minimum)
+  codMaxOrder           Int?     // paise, max subtotal for COD (null = no maximum)
+  codPincodes           String[] @default([]) // future-ready pincode allowlist (empty = all)
   gstin                 String? // seller GSTIN shown on the tax invoice
   // Contact
   supportEmail String?

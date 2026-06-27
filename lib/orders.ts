@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { effectivePrice } from "@/lib/format";
 import { orderConfirmationEmail } from "@/lib/emails";
 import { sendEmail } from "@/lib/email";
+import { ensureInvoice, getInvoiceData } from "@/lib/invoices";
 import type { CheckoutItem } from "@/lib/validations/checkout";
 
 export {
@@ -100,12 +101,21 @@ export async function priceCart(items: CheckoutItem[]): Promise<PricedCart> {
 }
 
 /**
- * Transition an order to PAID. Decrements stock, marks the coupon as used and
- * sends the confirmation email. Idempotent: a no-op if already paid.
+ * Confirm a placed order: decrement stock, mark the coupon used, move it into
+ * the fulfilment pipeline (PROCESSING) with the given payment status, then
+ * (best-effort) generate the invoice and email the customer with the PDF.
+ *
+ * Used by both flows: online (`paymentStatus: "PAID"`) and COD
+ * (`paymentStatus: "PENDING"`, collected at delivery). Idempotent via the
+ * `stockDeducted` flag — the correct signal since COD confirms while still
+ * PENDING, so a payment-status guard would double-decrement.
  */
-export async function markOrderPaid(
+export async function confirmOrder(
   id: string,
-  payment?: { paymentId: string; signature?: string },
+  opts: {
+    paymentStatus: "PAID" | "PENDING";
+    payment?: { paymentId: string; signature?: string };
+  },
 ): Promise<void> {
   const order = await prisma.$transaction(async (tx) => {
     const existing = await tx.order.findUnique({
@@ -113,7 +123,7 @@ export async function markOrderPaid(
       include: { items: true },
     });
     if (!existing) throw new Error("ORDER_NOT_FOUND");
-    if (existing.paymentStatus === "PAID") return null; // already handled
+    if (existing.stockDeducted) return null; // already confirmed
 
     // Decrement stock for each line (guarded against going negative).
     for (const line of existing.items) {
@@ -135,9 +145,10 @@ export async function markOrderPaid(
       where: { id },
       data: {
         status: "PROCESSING",
-        paymentStatus: "PAID",
-        razorpayPaymentId: payment?.paymentId,
-        razorpaySignature: payment?.signature,
+        paymentStatus: opts.paymentStatus,
+        stockDeducted: true,
+        razorpayPaymentId: opts.payment?.paymentId,
+        razorpaySignature: opts.payment?.signature,
       },
       include: { items: true, user: { select: { email: true, name: true } } },
     });
@@ -145,13 +156,39 @@ export async function markOrderPaid(
 
   if (!order) return;
 
-  // Best-effort confirmation email — never block order completion on it.
+  // Best-effort: ensure the invoice exists, then email the customer with the PDF
+  // attached. Never block order completion on invoice/email failures.
   try {
+    const invoice = await ensureInvoice(order.id);
     if (order.user?.email) {
-      const mail = orderConfirmationEmail(order);
-      await sendEmail({ to: order.user.email, ...mail });
+      const mail = orderConfirmationEmail({ ...order, invoiceNumber: invoice.invoiceNumber });
+      let attachments: { filename: string; content: Buffer }[] | undefined;
+      try {
+        const data = await getInvoiceData(order.id);
+        if (data) {
+          const { renderInvoiceBuffer } = await import("@/lib/pdf/invoice-pdf");
+          attachments = [
+            { filename: `${invoice.invoiceNumber}.pdf`, content: await renderInvoiceBuffer(data) },
+          ];
+        }
+      } catch (e) {
+        console.error("[orders] invoice PDF render failed:", e);
+      }
+      await sendEmail({
+        to: order.user.email,
+        ...mail,
+        ...(attachments ? { attachments } : {}),
+      });
     }
   } catch (err) {
-    console.error("[orders] confirmation email failed:", err);
+    console.error("[orders] post-confirm (invoice/email) failed:", err);
   }
+}
+
+/** Transition an order to PAID (online payment). Thin wrapper over confirmOrder. */
+export async function markOrderPaid(
+  id: string,
+  payment?: { paymentId: string; signature?: string },
+): Promise<void> {
+  return confirmOrder(id, { paymentStatus: "PAID", payment });
 }

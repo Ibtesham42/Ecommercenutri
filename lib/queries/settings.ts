@@ -29,7 +29,12 @@ export type StoreSettings = {
   freeShippingEnabled: boolean;
   localDeliveryFee: number | null;
   expressDeliveryFee: number | null;
+  // Cash on Delivery
   codFee: number | null;
+  codEnabled: boolean;
+  codMinOrder: number | null;
+  codMaxOrder: number | null;
+  codPincodes: string[];
   // Contact
   supportEmail: string;
   supportPhone: string;
@@ -83,6 +88,10 @@ export async function getStoreSettings(): Promise<StoreSettings> {
     localDeliveryFee: s?.localDeliveryFee ?? null,
     expressDeliveryFee: s?.expressDeliveryFee ?? null,
     codFee: s?.codFee ?? null,
+    codEnabled: s?.codEnabled ?? false,
+    codMinOrder: s?.codMinOrder ?? null,
+    codMaxOrder: s?.codMaxOrder ?? null,
+    codPincodes: s?.codPincodes ?? [],
     supportEmail: s?.supportEmail || siteConfig.contact.email,
     supportPhone: s?.supportPhone || siteConfig.contact.phone,
     whatsapp: s?.whatsapp ?? null,
@@ -124,5 +133,47 @@ export async function getPricingSettings(): Promise<PricingSettings> {
     };
   } catch {
     return PRICING_DEFAULTS;
+  }
+}
+
+export type CodSettings = {
+  codEnabled: boolean;
+  codFee: number; // paise (0 when unset)
+  codMinOrder: number | null; // paise
+  codMaxOrder: number | null; // paise
+  codPincodes: string[];
+};
+
+const COD_DEFAULTS: CodSettings = {
+  codEnabled: false,
+  codFee: 0,
+  codMinOrder: null,
+  codMaxOrder: null,
+  codPincodes: [],
+};
+
+/** Cash-on-Delivery settings for checkout. COD is off (unavailable) on DB error. */
+export async function getCodSettings(): Promise<CodSettings> {
+  try {
+    const s = await prisma.storeSetting.findUnique({
+      where: { id: "singleton" },
+      select: {
+        codEnabled: true,
+        codFee: true,
+        codMinOrder: true,
+        codMaxOrder: true,
+        codPincodes: true,
+      },
+    });
+    if (!s) return COD_DEFAULTS;
+    return {
+      codEnabled: s.codEnabled,
+      codFee: s.codFee ?? 0,
+      codMinOrder: s.codMinOrder,
+      codMaxOrder: s.codMaxOrder,
+      codPincodes: s.codPincodes,
+    };
+  } catch {
+    return COD_DEFAULTS;
   }
 }

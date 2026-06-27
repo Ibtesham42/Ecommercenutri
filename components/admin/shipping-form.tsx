@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller, type Control } from "react-hook-form";
-import { Loader2, Truck } from "lucide-react";
+import { Loader2, Truck, Banknote } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,9 +19,12 @@ export type ShippingValues = {
   localDeliveryFee: number | null; // rupees
   expressDeliveryFee: number | null; // rupees
   codFee: number | null; // rupees
+  codEnabled: boolean;
+  codMinOrder: number | null; // rupees
+  codMaxOrder: number | null; // rupees
 };
 
-type MoneyName = Exclude<keyof ShippingValues, "freeShippingEnabled">;
+type MoneyName = Exclude<keyof ShippingValues, "freeShippingEnabled" | "codEnabled">;
 
 function MoneyField({
   control,
@@ -78,6 +81,9 @@ export function ShippingForm({ initial }: { initial: ShippingValues }) {
       localDeliveryFee: toPaise(v.localDeliveryFee),
       expressDeliveryFee: toPaise(v.expressDeliveryFee),
       codFee: toPaise(v.codFee),
+      codEnabled: v.codEnabled,
+      codMinOrder: toPaise(v.codMinOrder),
+      codMaxOrder: toPaise(v.codMaxOrder),
     });
     setSaving(false);
     if (res.ok) {
@@ -121,13 +127,6 @@ export function ShippingForm({ initial }: { initial: ShippingValues }) {
             placeholder="Optional"
             hint="Optional delivery option"
           />
-          <MoneyField
-            control={control}
-            name="codFee"
-            label="Cash on Delivery charge (₹)"
-            placeholder="Optional"
-            hint="Optional COD surcharge"
-          />
         </div>
       </section>
 
@@ -150,6 +149,45 @@ export function ShippingForm({ initial }: { initial: ShippingValues }) {
             label="Free delivery over (₹)"
             placeholder="499"
             hint="Orders at or above this subtotal ship free"
+          />
+        </div>
+      </section>
+
+      <section className="rounded-xl border bg-background p-5">
+        <h2 className="mb-4 flex items-center gap-2 font-semibold">
+          <Banknote className="size-4 text-primary" /> Cash on Delivery
+        </h2>
+        <Controller
+          control={control}
+          name="codEnabled"
+          render={({ field }) => (
+            <label className="flex items-center justify-between text-sm">
+              Offer Cash on Delivery at checkout
+              <Switch checked={field.value} onCheckedChange={field.onChange} />
+            </label>
+          )}
+        />
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <MoneyField
+            control={control}
+            name="codFee"
+            label="COD handling fee (₹)"
+            placeholder="Optional"
+            hint="Added to the order total for COD"
+          />
+          <MoneyField
+            control={control}
+            name="codMinOrder"
+            label="Min order for COD (₹)"
+            placeholder="Optional"
+            hint="Below this, COD is hidden"
+          />
+          <MoneyField
+            control={control}
+            name="codMaxOrder"
+            label="Max order for COD (₹)"
+            placeholder="Optional"
+            hint="Above this, COD is hidden"
           />
         </div>
       </section>

@@ -239,9 +239,10 @@ npm run db:check      # scripts/db-check.ts — counts + relational sanity repor
   `unknown`, parsed with Zod, returning a discriminated result, e.g.
   `{ ok: true, … } | { ok: false, error }` or `{ error?, success? }`.
 - **Reads** in `lib/queries/*` or directly in RSC pages via Prisma.
-- **Route Handlers** (`app/api/**/route.ts`) only for third-party integrations and
-  webhooks (NextAuth, Razorpay webhook). Webhooks verify signatures over the **raw**
-  body and must be **idempotent** (`markOrderPaid` is a no-op once `PAID`).
+- **Route Handlers** (`app/api/**/route.ts`) only for third-party integrations,
+  webhooks (NextAuth, Razorpay webhook) and binary responses (invoice PDF). Webhooks
+  verify signatures over the **raw** body and must be **idempotent** (order confirmation
+  is a no-op once `stockDeducted`).
 - **Auth in actions:** call `getCurrentUser()` / `requireUser()` from `lib/auth.ts`;
   never rely on client-sent identity. After writes, `revalidatePath(...)`.
 - **Admin actions** live in `lib/actions/admin/*`, start with `await requireAdmin()`,
@@ -499,9 +500,29 @@ See `PROGRESS.md` for the live tracker (status, blockers, next task).
   GST values always win and stale cart fields can't mislead. `createOrder` uses the same engine
   so the displayed total always equals what's charged.
 - **Order numbers:** `NUT-YYMMDD-XXXXXX` (nanoid, unambiguous alphabet).
-- Stock is decremented at the **PAID** transition (guarded `updateMany`), not at
-  cart/PENDING. Admin cancelling/refunding a previously-paid order **restocks** it
-  (once — guarded against double restock by the open→closed transition check).
+- Stock is decremented when an order is **confirmed** — at the PAID transition for
+  online, at order placement for COD (payment still PENDING). The `Order.stockDeducted`
+  flag (not `paymentStatus`) is the single signal for both **confirm-idempotency**
+  (`confirmOrder` no-ops once set) and **restock-on-cancel** (admin cancel/refund restocks
+  once when `stockDeducted`, then clears it). `markOrderPaid` is a thin wrapper over
+  `confirmOrder(id, { paymentStatus: "PAID", payment })`.
+- **Cash on Delivery**: `Order.paymentMethod` (`RAZORPAY`/`COD`) + `Order.codFee`. COD is
+  configured at `/admin/shipping` (`StoreSetting.codEnabled/codFee/codMinOrder/codMaxOrder`;
+  `codPincodes` reserved for a future allowlist). Availability (`isCodAvailable`) and the fee
+  are **recomputed server-side** in `previewOrderPricing`/`createOrder` — never trusted from
+  the client; a COD-but-unavailable request is rejected. COD orders skip Razorpay, are placed
+  via `confirmOrder(..., { paymentStatus: "PENDING" })`, and flip to PAID only when the admin
+  marks them DELIVERED. The COD fee is an optional 4th term in `computeBreakdown` (engine stays
+  pure); online totals/Razorpay `amount` are unchanged.
+- **Invoices**: one persistent `Invoice` per order (`ensureInvoice`, idempotent; created at
+  confirmation and lazily on first view for legacy orders). Number `INV-<FY>-<seq>` (Indian
+  Apr–Mar FY + DB `autoincrement seq` → collision-free; concurrent create guarded by
+  `orderId @unique` + P2002). Seller details are snapshotted on the invoice row. The **PDF** is
+  rendered on demand from the immutable order+invoice snapshot via `@react-pdf/renderer`
+  (`lib/pdf/invoice-pdf.tsx`) at `GET /api/invoices/[orderNumber]` (owner or `orders`-permitted
+  admin; `?download=1` → attachment), and attached best-effort to the confirmation email. The
+  PDF route is `runtime = "nodejs"`; `next.config.ts` lists `@react-pdf/renderer` in
+  `serverExternalPackages`. Money in the PDF is ASCII (`Rs. …`) since Helvetica lacks ₹.
 - Admin **product image management is URL-based** for now; real Cloudinary uploads
   land in M5. Product edits preserve variant/image ids (cart links survive) and
   delete only the variants/images the admin removed.

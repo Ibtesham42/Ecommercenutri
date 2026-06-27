@@ -23,6 +23,8 @@ if (isConfigured.smtp()) {
   });
 }
 
+type EmailAttachment = { filename: string; content: Buffer };
+
 type SendEmailArgs = {
   to: string | string[];
   subject: string;
@@ -30,9 +32,20 @@ type SendEmailArgs = {
   text?: string;
   /** Address customer replies should go to (e.g. the support inbox). */
   replyTo?: string;
+  /** Optional file attachments (e.g. the invoice PDF). */
+  attachments?: EmailAttachment[];
 };
 
-export async function sendEmail({ to, subject, html, text, replyTo }: SendEmailArgs) {
+export async function sendEmail({
+  to,
+  subject,
+  html,
+  text,
+  replyTo,
+  attachments,
+}: SendEmailArgs) {
+  const hasAttachments = !!attachments && attachments.length > 0;
+
   if (transporter) {
     const info = await transporter.sendMail({
       from: env.emailFrom,
@@ -41,6 +54,7 @@ export async function sendEmail({ to, subject, html, text, replyTo }: SendEmailA
       html,
       ...(text ? { text } : {}),
       ...(replyTo ? { replyTo } : {}),
+      ...(hasAttachments ? { attachments } : {}),
     });
     return { id: info.messageId, stubbed: false as const };
   }
@@ -53,13 +67,16 @@ export async function sendEmail({ to, subject, html, text, replyTo }: SendEmailA
       html,
       text: text ?? "",
       ...(replyTo ? { replyTo } : {}),
+      ...(hasAttachments
+        ? { attachments: attachments!.map((a) => ({ filename: a.filename, content: a.content })) }
+        : {}),
     });
     if (error) throw new Error(error.message);
     return { id: data?.id ?? "", stubbed: false as const };
   }
 
   console.log(
-    `\n──────── [email:stub] ────────\nTo: ${Array.isArray(to) ? to.join(", ") : to}\nSubject: ${subject}\n\n${text ?? html}\n──────────────────────────────\n`,
+    `\n──────── [email:stub] ────────\nTo: ${Array.isArray(to) ? to.join(", ") : to}\nSubject: ${subject}${hasAttachments ? `\nAttachments: ${attachments!.map((a) => a.filename).join(", ")}` : ""}\n\n${text ?? html}\n──────────────────────────────\n`,
   );
   return { id: "stubbed", stubbed: true as const };
 }

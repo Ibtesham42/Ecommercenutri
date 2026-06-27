@@ -136,14 +136,23 @@ export type StoreSettingsInput = z.infer<typeof storeSettingsSchema>;
 
 // Shipping & delivery (single source of truth — /admin/shipping). Fees are paise;
 // the form converts rupees → paise before submit.
-export const shippingSettingsSchema = z.object({
-  defaultShippingFee: optInt(0, 10_000_00, "Default delivery"),
-  freeShippingThreshold: optInt(0, 1_000_000_00, "Free-delivery threshold"),
-  freeShippingEnabled: z.boolean().default(true),
-  localDeliveryFee: optInt(0, 10_000_00, "Local delivery"),
-  expressDeliveryFee: optInt(0, 10_000_00, "Express delivery"),
-  codFee: optInt(0, 10_000_00, "COD charge"),
-});
+export const shippingSettingsSchema = z
+  .object({
+    defaultShippingFee: optInt(0, 10_000_00, "Default delivery"),
+    freeShippingThreshold: optInt(0, 1_000_000_00, "Free-delivery threshold"),
+    freeShippingEnabled: z.boolean().default(true),
+    localDeliveryFee: optInt(0, 10_000_00, "Local delivery"),
+    expressDeliveryFee: optInt(0, 10_000_00, "Express delivery"),
+    // Cash on Delivery
+    codEnabled: z.boolean().default(false),
+    codFee: optInt(0, 10_000_00, "COD charge"),
+    codMinOrder: optInt(0, 1_000_000_00, "COD min order"),
+    codMaxOrder: optInt(0, 1_000_000_00, "COD max order"),
+  })
+  .refine(
+    (d) => d.codMinOrder == null || d.codMaxOrder == null || d.codMaxOrder >= d.codMinOrder,
+    { message: "COD max must be ≥ COD min", path: ["codMaxOrder"] },
+  );
 
 export type ShippingSettingsInput = z.infer<typeof shippingSettingsSchema>;
 

@@ -6,12 +6,13 @@ import { razorpay, razorpayEnabled, verifyPaymentSignature } from "@/lib/razorpa
 import { siteConfig } from "@/config/site";
 import { env } from "@/lib/env";
 import { validateCoupon } from "@/lib/coupons";
-import { computeBreakdown, type PriceBreakdown } from "@/lib/pricing";
-import { getPricingSettings } from "@/lib/queries/settings";
+import { computeBreakdown, isCodAvailable, type PriceBreakdown } from "@/lib/pricing";
+import { getPricingSettings, getCodSettings } from "@/lib/queries/settings";
 import {
   priceCart,
   generateOrderNumber,
   markOrderPaid,
+  confirmOrder,
 } from "@/lib/orders";
 import {
   applyCouponSchema,
@@ -49,7 +50,7 @@ export async function applyCoupon(input: unknown): Promise<CouponPreview> {
 }
 
 export type PricingPreview =
-  | { ok: true; breakdown: PriceBreakdown }
+  | { ok: true; breakdown: PriceBreakdown; codAvailable: boolean; codFee: number }
   | { ok: false; error: string };
 
 /**
@@ -68,7 +69,7 @@ export async function previewOrderPricing(input: unknown): Promise<PricingPrevie
   const priced = await priceCart(parsed.data.items);
   if (!priced.ok) return { ok: false, error: priced.error };
 
-  const settings = await getPricingSettings();
+  const [settings, cod] = await Promise.all([getPricingSettings(), getCodSettings()]);
 
   // Optional coupon (only for signed-in users; the cart page has none).
   let discount = 0;
@@ -80,6 +81,10 @@ export async function previewOrderPricing(input: unknown): Promise<PricingPrevie
     }
   }
 
+  const codAvailable = isCodAvailable(priced.subtotal, cod);
+  const codFee =
+    parsed.data.paymentMethod === "COD" && codAvailable ? cod.codFee : 0;
+
   const breakdown = computeBreakdown(
     priced.lines.map((l) => ({
       unitPrice: l.unitPrice,
@@ -89,8 +94,9 @@ export async function previewOrderPricing(input: unknown): Promise<PricingPrevie
     })),
     settings,
     discount,
+    codFee,
   );
-  return { ok: true, breakdown };
+  return { ok: true, breakdown, codAvailable, codFee };
 }
 
 export type CreateOrderResult =
@@ -110,6 +116,8 @@ export type CreateOrderResult =
       };
       // Mock path — already paid, just redirect to success.
       mock?: boolean;
+      // COD path — order placed (payment pending), just redirect to success.
+      cod?: boolean;
     }
   | { ok: false; error: string };
 
@@ -124,7 +132,7 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
       error: parsed.error.issues[0]?.message ?? "Invalid order details.",
     };
   }
-  const { items, addressId, couponCode, notes } = parsed.data;
+  const { items, addressId, couponCode, notes, paymentMethod } = parsed.data;
 
   // Re-price everything from the database.
   const priced = await priceCart(items);
@@ -148,9 +156,19 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
     resolvedCouponCode = result.coupon.code;
   }
 
-  // Compute shipping + (inclusive) GST authoritatively from the re-priced lines
-  // and the store's pricing settings — never trust client-sent totals.
-  const pricingSettings = await getPricingSettings();
+  // Compute shipping + (inclusive) GST + any COD fee authoritatively from the
+  // re-priced lines and the store's settings — never trust client-sent totals.
+  const [pricingSettings, cod] = await Promise.all([
+    getPricingSettings(),
+    getCodSettings(),
+  ]);
+
+  const isCod = paymentMethod === "COD";
+  if (isCod && !isCodAvailable(priced.subtotal, cod)) {
+    return { ok: false, error: "Cash on Delivery isn't available for this order." };
+  }
+  const codFee = isCod ? cod.codFee : 0;
+
   const breakdown = computeBreakdown(
     priced.lines.map((l) => ({
       unitPrice: l.unitPrice,
@@ -160,6 +178,7 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
     })),
     pricingSettings,
     discount,
+    codFee,
   );
   const shipping = breakdown.shipping;
   const shippingSaved = breakdown.shippingSaved;
@@ -184,10 +203,12 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
       userId: user.id,
       status: "PENDING",
       paymentStatus: "PENDING",
+      paymentMethod,
       subtotal: priced.subtotal,
       discount,
       shipping,
       shippingSaved,
+      codFee,
       tax,
       total,
       couponId,
@@ -208,6 +229,13 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
       },
     },
   });
+
+  // Cash on Delivery — place the order now (payment collected at delivery).
+  // Confirm it (decrement stock, generate invoice, email) with payment PENDING.
+  if (isCod) {
+    await confirmOrder(order.id, { paymentStatus: "PENDING" });
+    return { ok: true, orderNumber, cod: true };
+  }
 
   // Live payments via Razorpay when configured…
   if (razorpayEnabled && razorpay) {
