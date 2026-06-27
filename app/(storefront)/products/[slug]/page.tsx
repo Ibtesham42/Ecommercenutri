@@ -7,6 +7,7 @@ import {
   minVariantPrice,
 } from "@/lib/queries/products";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
+import { getPricingSettings } from "@/lib/queries/settings";
 import { buildMetadata, breadcrumbSchema, jsonLd } from "@/lib/seo";
 import { ProductGallery } from "@/components/storefront/product-gallery";
 import { ProductPurchase } from "@/components/storefront/product-purchase";
@@ -59,9 +60,10 @@ export default async function ProductPage({
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const [related, wishlistIds] = await Promise.all([
+  const [related, wishlistIds, pricingSettings] = await Promise.all([
     getRelatedProducts(product.id, product.categoryId),
     getWishlistProductIds(),
+    getPricingSettings(),
   ]);
 
   const facts: NutritionFact[] = Array.isArray(product.nutritionFacts)
@@ -177,6 +179,9 @@ export default async function ProductPage({
             }))}
             wishlisted={wishlistIds.has(product.id)}
             highlights={facts.slice(0, 3)}
+            gstRate={product.gstRate}
+            deliveryCharge={product.deliveryCharge}
+            settings={pricingSettings}
           />
 
           <ProductAiAssistant productId={product.id} productName={product.name} />

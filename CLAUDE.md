@@ -474,8 +474,23 @@ See `PROGRESS.md` for the live tracker (status, blockers, next task).
 - **Cart is client-side** (Zustand + localStorage); the server is authoritative for
   pricing/stock at checkout. (DB `Cart`/`CartItem` models exist for future
   server-synced carts.)
-- **Shipping:** free ≥ ₹499 subtotal, else flat ₹49 (`lib/shipping.ts`, single source
-  of truth shared by cart, checkout UI, and order pricing).
+- **Shipping:** free ≥ ₹499 subtotal, else flat ₹49 (`lib/shipping.ts` holds the keyless
+  defaults). These are now admin-configurable global defaults (see Pricing & tax below).
+- **Pricing & tax engine** (`lib/pricing.ts`, client-safe, single source of truth):
+  **GST is inclusive** — a product's listed price already contains GST at its rate, so the
+  tax line is the component *extracted* from the price and the payable total is unchanged
+  (Razorpay amount unaffected). **Shipping = the highest per-product delivery charge** in the
+  cart (one shipment), free once the subtotal reaches the threshold. `computeBreakdown(lines,
+  settings, discount)` returns `{ subtotal, discount, tax, shipping, total }` and is used by
+  the cart, checkout, product page **and** server-side order pricing so they always agree.
+  Per-product overrides live on `Product.gstRate` / `Product.deliveryCharge` (null = use the
+  store default); global defaults + seller `gstin` live on `StoreSetting`
+  (`defaultGstRate`/`defaultShippingFee`/`freeShippingThreshold`), edited at
+  `/admin/appearance` → Pricing & tax and per product in the product form. Cart items carry
+  the product overrides; settings come from `getPricingSettings()` (passed to client cart/
+  checkout as props). The breakdown shows on PDP, cart, checkout, order summary card, track,
+  the confirmation email, and the printable tax invoice
+  (`/account/orders/[orderNumber]/invoice`, `components/storefront/order-invoice.tsx`).
 - **Order numbers:** `NUT-YYMMDD-XXXXXX` (nanoid, unambiguous alphabet).
 - Stock is decremented at the **PAID** transition (guarded `updateMany`), not at
   cart/PENDING. Admin cancelling/refunding a previously-paid order **restocks** it

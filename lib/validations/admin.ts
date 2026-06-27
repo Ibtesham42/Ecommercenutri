@@ -83,6 +83,14 @@ const optPx = (min: number, max: number) =>
     z.coerce.number().int().min(min, `Min ${min}px`).max(max, `Max ${max}px`).optional(),
   );
 
+/** Optional non-negative integer within range, or blank (→ undefined). */
+const optInt = (min: number, max: number, label = "Value") =>
+  z.preprocess(
+    (v) =>
+      v === "" || v === null || (typeof v === "number" && Number.isNaN(v)) ? undefined : v,
+    z.coerce.number().int().min(min, `${label} min ${min}`).max(max, `${label} max ${max}`).optional(),
+  );
+
 export const storeSettingsSchema = z.object({
   // Branding
   siteName: z.string().max(60).nullable().optional(),
@@ -101,6 +109,11 @@ export const storeSettingsSchema = z.object({
   announcement: z.string().max(200).nullable().optional(),
   announcementActive: z.boolean().default(false),
   announcementLink: optUrl,
+  // Pricing & tax (fees are paise; the form converts rupees → paise)
+  defaultGstRate: optInt(0, 100, "GST %"),
+  defaultShippingFee: optInt(0, 10_000_00, "Shipping fee"),
+  freeShippingThreshold: optInt(0, 1_000_000_00, "Free-shipping threshold"),
+  gstin: z.string().max(20).nullable().optional(),
   // Contact
   supportEmail: optionalEmail,
   supportPhone: z.string().max(40).nullable().optional(),
@@ -360,6 +373,9 @@ export const productInputSchema = z.object({
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   isBestSeller: z.boolean().default(false),
+  // Tax & shipping overrides; null = use the global store default.
+  gstRate: z.number().int().min(0, "GST can't be negative").max(100, "GST max 100%").nullable().optional(),
+  deliveryCharge: z.number().int().min(0, "Delivery can't be negative").nullable().optional(), // paise
   metaTitle: z.string().max(70).nullable().optional(),
   metaDescription: z.string().max(160).nullable().optional(),
   nutritionFacts: z.array(nutritionFactSchema).default([]),

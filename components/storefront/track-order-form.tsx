@@ -149,9 +149,30 @@ function Result({ order }: { order: TrackedOrder }) {
         ))}
       </ul>
 
-      <div className="flex items-center justify-between border-t pt-3 text-base font-bold">
-        <span>Total</span>
-        <span>{formatPrice(order.total)}</span>
+      <div className="space-y-1.5 border-t pt-3 text-sm">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Subtotal</span>
+          <span>{formatPrice(order.subtotal)}</span>
+        </div>
+        {order.discount > 0 && (
+          <div className="flex justify-between text-primary">
+            <span>Discount {order.couponCode ? `(${order.couponCode})` : ""}</span>
+            <span>−{formatPrice(order.discount)}</span>
+          </div>
+        )}
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Shipping</span>
+          <span>{order.shipping === 0 ? "Free" : formatPrice(order.shipping)}</span>
+        </div>
+        <div className="flex justify-between border-t pt-2 text-base font-bold">
+          <span>Total</span>
+          <span>{formatPrice(order.total)}</span>
+        </div>
+        {order.tax > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Inclusive of GST {formatPrice(order.tax)}
+          </p>
+        )}
       </div>
 
       <p className="text-sm text-muted-foreground">

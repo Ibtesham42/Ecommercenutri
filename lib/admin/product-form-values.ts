@@ -20,6 +20,8 @@ export type ProductFormValues = {
   isActive: boolean;
   isFeatured: boolean;
   isBestSeller: boolean;
+  gstRate?: number | null; // percent; null/blank = store default
+  deliveryRupees?: number | null; // rupees; null/blank = store default
   metaTitle?: string;
   metaDescription?: string;
   nutritionFacts: { label: string; value: string }[];
@@ -52,6 +54,8 @@ export function productToFormValues(p: {
   isActive: boolean;
   isFeatured: boolean;
   isBestSeller: boolean;
+  gstRate: number | null;
+  deliveryCharge: number | null;
   metaTitle: string | null;
   metaDescription: string | null;
   nutritionFacts: unknown;
@@ -85,6 +89,8 @@ export function productToFormValues(p: {
     isActive: p.isActive,
     isFeatured: p.isFeatured,
     isBestSeller: p.isBestSeller,
+    gstRate: p.gstRate,
+    deliveryRupees: p.deliveryCharge != null ? paiseToRupees(p.deliveryCharge) : null,
     metaTitle: p.metaTitle ?? "",
     metaDescription: p.metaDescription ?? "",
     nutritionFacts: nf,

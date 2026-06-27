@@ -107,6 +107,8 @@ export async function saveProduct(input: unknown): Promise<AdminResult<{ id: str
     isActive: data.isActive,
     isFeatured: data.isFeatured,
     isBestSeller: data.isBestSeller,
+    gstRate: data.gstRate ?? null,
+    deliveryCharge: data.deliveryCharge ?? null,
     metaTitle: data.metaTitle || null,
     metaDescription: data.metaDescription || null,
     nutritionFacts:

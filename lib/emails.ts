@@ -68,6 +68,7 @@ type OrderEmailData = {
   subtotal: number;
   discount: number;
   shipping: number;
+  tax: number;
   total: number;
   user?: { name?: string | null } | null;
   items: { productName: string; variantLabel: string; quantity: number; price: number }[];
@@ -90,6 +91,7 @@ export function orderConfirmationEmail(order: OrderEmailData): Email {
       ${order.discount > 0 ? `<tr><td>Discount</td><td align="right" style="color:#16803c">−${formatPrice(order.discount)}</td></tr>` : ""}
       <tr><td>Shipping</td><td align="right">${order.shipping === 0 ? "Free" : formatPrice(order.shipping)}</td></tr>
       <tr><td style="padding-top:8px;font-weight:700;color:#13241c">Total</td><td align="right" style="padding-top:8px;font-weight:700;color:#13241c">${formatPrice(order.total)}</td></tr>
+      ${order.tax > 0 ? `<tr><td colspan="2" style="padding-top:4px;font-size:11px;color:#9aa79f">Inclusive of GST ${formatPrice(order.tax)}</td></tr>` : ""}
     </table>`;
 
   return {

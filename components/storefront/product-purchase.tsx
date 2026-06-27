@@ -19,7 +19,13 @@ import { Badge } from "@/components/ui/badge";
 import { WishlistButton } from "@/components/storefront/wishlist-button";
 import { useCart } from "@/lib/store/cart";
 import { formatPrice, discountPercent, effectivePrice } from "@/lib/format";
-import { FREE_SHIPPING_THRESHOLD } from "@/lib/shipping";
+import {
+  gstWithin,
+  resolveGstRate,
+  resolveDeliveryCharge,
+  PRICING_DEFAULTS,
+  type PricingSettings,
+} from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 type Variant = {
@@ -47,6 +53,9 @@ export function ProductPurchase({
   variants,
   wishlisted,
   highlights = [],
+  gstRate = null,
+  deliveryCharge = null,
+  settings = PRICING_DEFAULTS,
 }: {
   productId: string;
   slug: string;
@@ -55,6 +64,9 @@ export function ProductPurchase({
   variants: Variant[];
   wishlisted?: boolean;
   highlights?: Highlight[];
+  gstRate?: number | null;
+  deliveryCharge?: number | null;
+  settings?: PricingSettings;
 }) {
   const router = useRouter();
   const addItem = useCart((s) => s.addItem);
@@ -83,7 +95,12 @@ export function ProductPurchase({
   const savings = variant && off ? variant.price - price : 0;
   const outOfStock = !variant || variant.stock <= 0;
   const maxQty = Math.min(variant?.stock ?? 1, 10);
-  const freeShipping = price * qty >= FREE_SHIPPING_THRESHOLD;
+  const lineTotal = price * qty;
+  const effectiveGstRate = resolveGstRate(gstRate, settings);
+  const gstAmount = gstWithin(lineTotal, effectiveGstRate);
+  const effectiveDelivery = resolveDeliveryCharge(deliveryCharge, settings);
+  const freeShipping =
+    settings.freeShippingThreshold > 0 && lineTotal >= settings.freeShippingThreshold;
 
   const deliveryFrom = format(addDays(new Date(), 3), "EEE, d MMM");
   const deliveryTo = format(addDays(new Date(), 5), "EEE, d MMM");
@@ -100,6 +117,8 @@ export function ProductPurchase({
         weightLabel: variant.weightLabel,
         price,
         maxStock: variant.stock,
+        gstRate,
+        deliveryCharge,
       },
       qty,
     );
@@ -136,7 +155,11 @@ export function ProductPurchase({
               You save {formatPrice(savings * qty)}
             </span>
           )}
-          <span className="text-muted-foreground">inclusive of all taxes</span>
+          <span className="text-muted-foreground">
+            {effectiveGstRate > 0
+              ? `incl. ${effectiveGstRate}% GST (${formatPrice(gstAmount)})`
+              : "inclusive of all taxes"}
+          </span>
         </div>
       </div>
 
@@ -276,19 +299,26 @@ export function ProductPurchase({
         <div className="flex items-start gap-3">
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
           <p>
-            {freeShipping ? (
+            {freeShipping || effectiveDelivery === 0 ? (
               <span className="font-medium text-primary">
-                This order ships free.
+                {effectiveDelivery === 0 && !freeShipping
+                  ? "Free delivery on this product."
+                  : "This order ships free."}
               </span>
-            ) : (
+            ) : settings.freeShippingThreshold > 0 ? (
               <>
                 <span className="font-medium">
-                  Free shipping over {formatPrice(FREE_SHIPPING_THRESHOLD)}
+                  Free shipping over {formatPrice(settings.freeShippingThreshold)}
                 </span>
                 <span className="block text-xs text-muted-foreground">
-                  Add {formatPrice(FREE_SHIPPING_THRESHOLD - price * qty)} more to qualify.
+                  Delivery {formatPrice(effectiveDelivery)} · add{" "}
+                  {formatPrice(settings.freeShippingThreshold - lineTotal)} more to qualify.
                 </span>
               </>
+            ) : (
+              <span className="font-medium">
+                Delivery {formatPrice(effectiveDelivery)}
+              </span>
             )}
           </p>
         </div>

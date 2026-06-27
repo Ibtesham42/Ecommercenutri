@@ -37,6 +37,12 @@ export default async function AdminAppearancePage() {
     announcement: s(raw?.announcement),
     announcementActive: raw?.announcementActive ?? false,
     announcementLink: s(raw?.announcementLink),
+    // Money stored as paise → show as ₹ in the form.
+    defaultGstRate: raw?.defaultGstRate ?? store.defaultGstRate,
+    defaultShippingFee: (raw?.defaultShippingFee ?? store.defaultShippingFee) / 100,
+    freeShippingThreshold:
+      (raw?.freeShippingThreshold ?? store.freeShippingThreshold) / 100,
+    gstin: s(raw?.gstin),
     supportEmail: s(raw?.supportEmail),
     supportPhone: s(raw?.supportPhone),
     whatsapp: s(raw?.whatsapp),

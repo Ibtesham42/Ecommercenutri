@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller, type Control } from "react-hook-form";
-import { Loader2, Palette, Megaphone, Phone, Share2, Search, Image as ImageIcon } from "lucide-react";
+import { Loader2, Palette, Megaphone, Phone, Share2, Search, Image as ImageIcon, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { updateStoreSettings } from "@/lib/actions/admin/settings";
+import { rupeesToPaise } from "@/lib/format";
 
 export type AppearanceValues = {
   siteName: string;
@@ -27,6 +28,11 @@ export type AppearanceValues = {
   announcement: string;
   announcementActive: boolean;
   announcementLink: string;
+  // Pricing & tax — GST is a percent; fees/threshold are entered in ₹.
+  defaultGstRate: number | null;
+  defaultShippingFee: number | null; // rupees
+  freeShippingThreshold: number | null; // rupees
+  gstin: string;
   supportEmail: string;
   supportPhone: string;
   whatsapp: string;
@@ -154,7 +160,16 @@ export function AppearanceForm({
 
   async function onSubmit(v: AppearanceValues) {
     setSaving(true);
-    const res = await updateStoreSettings(v);
+    const payload = {
+      ...v,
+      // Money is stored as paise; the form collects rupees.
+      defaultShippingFee:
+        v.defaultShippingFee != null ? rupeesToPaise(v.defaultShippingFee) : undefined,
+      freeShippingThreshold:
+        v.freeShippingThreshold != null ? rupeesToPaise(v.freeShippingThreshold) : undefined,
+      defaultGstRate: v.defaultGstRate ?? undefined,
+    };
+    const res = await updateStoreSettings(payload);
     setSaving(false);
     if (res.ok) {
       toast.success("Appearance saved");
@@ -252,6 +267,89 @@ export function AppearanceForm({
         <div className="space-y-1.5">
           <Label htmlFor="announcementLink">Link (optional)</Label>
           <Input id="announcementLink" placeholder="https://… or /products" {...register("announcementLink")} />
+        </div>
+      </Section>
+
+      <Section title="Pricing &amp; tax" icon={Receipt}>
+        <p className="text-sm text-muted-foreground">
+          Store-wide defaults. Individual products can override the GST rate and
+          delivery charge. Prices are inclusive of GST.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Controller
+            control={control}
+            name="defaultGstRate"
+            render={({ field }) => (
+              <div className="space-y-1.5">
+                <Label htmlFor="defaultGstRate">Default GST (%)</Label>
+                <Input
+                  id="defaultGstRate"
+                  type="number"
+                  inputMode="numeric"
+                  step="1"
+                  min={0}
+                  max={100}
+                  placeholder="0"
+                  value={field.value ?? ""}
+                  onChange={(e) =>
+                    field.onChange(e.target.value === "" ? null : Number(e.target.value))
+                  }
+                />
+                <p className="text-xs text-muted-foreground">e.g. 0, 5, 12, 18, 28</p>
+              </div>
+            )}
+          />
+          <Controller
+            control={control}
+            name="defaultShippingFee"
+            render={({ field }) => (
+              <div className="space-y-1.5">
+                <Label htmlFor="defaultShippingFee">Default delivery (₹)</Label>
+                <Input
+                  id="defaultShippingFee"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min={0}
+                  placeholder="49"
+                  value={field.value ?? ""}
+                  onChange={(e) =>
+                    field.onChange(e.target.value === "" ? null : Number(e.target.value))
+                  }
+                />
+                <p className="text-xs text-muted-foreground">Below the free threshold</p>
+              </div>
+            )}
+          />
+          <Controller
+            control={control}
+            name="freeShippingThreshold"
+            render={({ field }) => (
+              <div className="space-y-1.5">
+                <Label htmlFor="freeShippingThreshold">Free shipping over (₹)</Label>
+                <Input
+                  id="freeShippingThreshold"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min={0}
+                  placeholder="499"
+                  value={field.value ?? ""}
+                  onChange={(e) =>
+                    field.onChange(e.target.value === "" ? null : Number(e.target.value))
+                  }
+                />
+                <p className="text-xs text-muted-foreground">Set 0 to disable</p>
+              </div>
+            )}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="gstin">GSTIN (optional)</Label>
+          <Input id="gstin" placeholder="22AAAAA0000A1Z5" {...register("gstin")} />
+          <p className="text-xs text-muted-foreground">
+            Shown on the tax invoice when set.
+          </p>
         </div>
       </Section>
 

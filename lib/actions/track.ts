@@ -11,7 +11,12 @@ export type TrackedOrder = {
   status: OrderStatus;
   paymentStatus: PaymentStatus;
   placedAt: string; // ISO
+  subtotal: number; // paise
+  discount: number; // paise
+  tax: number; // paise (GST, inclusive)
+  shipping: number; // paise
   total: number; // paise
+  couponCode: string | null;
   recipient: string | null;
   items: {
     id: string;
@@ -68,7 +73,12 @@ export async function trackOrder(input: unknown): Promise<TrackResult> {
       status: order.status,
       paymentStatus: order.paymentStatus,
       placedAt: order.createdAt.toISOString(),
+      subtotal: order.subtotal,
+      discount: order.discount,
+      tax: order.tax,
+      shipping: order.shipping,
       total: order.total,
+      couponCode: order.couponCode,
       recipient: address?.fullName ?? order.user.name ?? null,
       items: order.items.map((i) => ({
         id: i.id,

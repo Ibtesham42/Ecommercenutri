@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { siteConfig } from "@/config/site";
+import { PRICING_DEFAULTS, type PricingSettings } from "@/lib/pricing";
 
 /** Editable store details, merged with the static config as a fallback. */
 export type StoreSettings = {
@@ -19,6 +20,11 @@ export type StoreSettings = {
   announcement: string | null;
   announcementActive: boolean;
   announcementLink: string | null;
+  // Pricing & tax
+  defaultGstRate: number;
+  defaultShippingFee: number;
+  freeShippingThreshold: number;
+  gstin: string | null;
   // Contact
   supportEmail: string;
   supportPhone: string;
@@ -63,6 +69,11 @@ export async function getStoreSettings(): Promise<StoreSettings> {
     announcement: s?.announcement ?? null,
     announcementActive: s?.announcementActive ?? false,
     announcementLink: s?.announcementLink ?? null,
+    defaultGstRate: s?.defaultGstRate ?? PRICING_DEFAULTS.defaultGstRate,
+    defaultShippingFee: s?.defaultShippingFee ?? PRICING_DEFAULTS.defaultShippingFee,
+    freeShippingThreshold:
+      s?.freeShippingThreshold ?? PRICING_DEFAULTS.freeShippingThreshold,
+    gstin: s?.gstin ?? null,
     supportEmail: s?.supportEmail || siteConfig.contact.email,
     supportPhone: s?.supportPhone || siteConfig.contact.phone,
     whatsapp: s?.whatsapp ?? null,
@@ -77,4 +88,30 @@ export async function getStoreSettings(): Promise<StoreSettings> {
     metaDescription: s?.metaDescription ?? null,
     ogImage: s?.ogImage ?? null,
   };
+}
+
+/**
+ * Just the pricing/tax settings (GST + shipping defaults), for the cart and
+ * checkout where the full store settings aren't needed. Falls back to the
+ * built-in defaults if the DB is briefly unreachable.
+ */
+export async function getPricingSettings(): Promise<PricingSettings> {
+  try {
+    const s = await prisma.storeSetting.findUnique({
+      where: { id: "singleton" },
+      select: {
+        defaultGstRate: true,
+        defaultShippingFee: true,
+        freeShippingThreshold: true,
+      },
+    });
+    if (!s) return PRICING_DEFAULTS;
+    return {
+      defaultGstRate: s.defaultGstRate,
+      defaultShippingFee: s.defaultShippingFee,
+      freeShippingThreshold: s.freeShippingThreshold,
+    };
+  } catch {
+    return PRICING_DEFAULTS;
+  }
 }

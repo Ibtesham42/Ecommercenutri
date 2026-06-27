@@ -91,6 +91,11 @@ export function OrderSummaryCard({ order }: { order: OrderWithItems }) {
           <span>Total</span>
           <span>{formatPrice(order.total)}</span>
         </div>
+        {order.tax > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Inclusive of GST {formatPrice(order.tax)}
+          </p>
+        )}
       </div>
 
       {address && (

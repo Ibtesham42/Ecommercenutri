@@ -13,6 +13,10 @@ export type CartItem = {
   price: number; // effective unit price in paise
   quantity: number;
   maxStock: number;
+  // Pricing overrides (product-level); null/undefined = use the store default.
+  // Resolved against store settings at display time (server is authoritative).
+  gstRate?: number | null; // GST percent
+  deliveryCharge?: number | null; // paise
 };
 
 type CartState = {

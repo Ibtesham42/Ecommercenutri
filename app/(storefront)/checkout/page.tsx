@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildMetadata } from "@/lib/seo";
 import { razorpayEnabled } from "@/lib/razorpay";
+import { getPricingSettings } from "@/lib/queries/settings";
 import { CheckoutClient } from "@/components/storefront/checkout-client";
 import type { AddressData } from "@/components/account/address-form";
 
@@ -17,10 +18,13 @@ export default async function CheckoutPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?callbackUrl=/checkout");
 
-  const addresses = await prisma.address.findMany({
-    where: { userId: user.id },
-    orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
-  });
+  const [addresses, settings] = await Promise.all([
+    prisma.address.findMany({
+      where: { userId: user.id },
+      orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+    }),
+    getPricingSettings(),
+  ]);
 
   const data: AddressData[] = addresses.map((a) => ({
     id: a.id,
@@ -42,6 +46,7 @@ export default async function CheckoutPage() {
         addresses={data}
         razorpayEnabled={razorpayEnabled}
         userName={user.name ?? ""}
+        settings={settings}
       />
     </div>
   );

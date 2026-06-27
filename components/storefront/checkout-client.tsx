@@ -19,9 +19,13 @@ import {
   AddressForm,
   type AddressData,
 } from "@/components/account/address-form";
-import { useCart, cartSubtotal } from "@/lib/store/cart";
+import { useCart } from "@/lib/store/cart";
 import { formatPrice } from "@/lib/format";
-import { shippingFor } from "@/lib/shipping";
+import {
+  computeBreakdown,
+  PRICING_DEFAULTS,
+  type PricingSettings,
+} from "@/lib/pricing";
 import {
   applyCoupon,
   createOrder,
@@ -59,10 +63,12 @@ export function CheckoutClient({
   addresses,
   razorpayEnabled,
   userName,
+  settings = PRICING_DEFAULTS,
 }: {
   addresses: AddressData[];
   razorpayEnabled: boolean;
   userName: string;
+  settings?: PricingSettings;
 }) {
   const router = useRouter();
   const items = useCart((s) => s.items);
@@ -91,10 +97,18 @@ export function CheckoutClient({
     [items],
   );
 
-  const subtotal = cartSubtotal(items);
-  const shipping = shippingFor(subtotal);
-  const discount = coupon ? Math.min(coupon.discount, subtotal) : 0;
-  const total = Math.max(0, subtotal - discount + shipping);
+  const breakdown = computeBreakdown(
+    items.map((i) => ({
+      unitPrice: i.price,
+      quantity: i.quantity,
+      gstRate: i.gstRate,
+      deliveryCharge: i.deliveryCharge,
+    })),
+    settings,
+    coupon?.discount ?? 0,
+  );
+  const { subtotal, shipping, tax, total } = breakdown;
+  const discount = breakdown.discount;
 
   if (!mounted) {
     return <div className="h-72 animate-pulse rounded-xl bg-muted" />;
@@ -361,6 +375,11 @@ export function CheckoutClient({
             <span>Total</span>
             <span>{formatPrice(total)}</span>
           </div>
+          {tax > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Inclusive of GST {formatPrice(tax)}
+            </p>
+          )}
         </div>
 
         <Button

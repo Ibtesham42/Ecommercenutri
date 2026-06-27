@@ -31,6 +31,8 @@ export type PricedLine = {
   unitPrice: number; // paise (effective price)
   quantity: number;
   lineTotal: number; // paise
+  gstRate: number | null; // product GST override; null = store default
+  deliveryCharge: number | null; // paise product override; null = store default
 };
 
 export type PricedCart =
@@ -52,6 +54,8 @@ export async function priceCart(items: CheckoutItem[]): Promise<PricedCart> {
           id: true,
           name: true,
           isActive: true,
+          gstRate: true,
+          deliveryCharge: true,
           images: {
             where: { isMain: true },
             take: 1,
@@ -86,6 +90,8 @@ export async function priceCart(items: CheckoutItem[]): Promise<PricedCart> {
       unitPrice,
       quantity: item.quantity,
       lineTotal: unitPrice * item.quantity,
+      gstRate: v.product.gstRate,
+      deliveryCharge: v.product.deliveryCharge,
     });
   }
 

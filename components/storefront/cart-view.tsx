@@ -6,11 +6,15 @@ import { useEffect, useState } from "react";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/storefront/empty-state";
-import { useCart, cartSubtotal } from "@/lib/store/cart";
+import { useCart } from "@/lib/store/cart";
 import { formatPrice } from "@/lib/format";
-import { shippingFor, FREE_SHIPPING_THRESHOLD } from "@/lib/shipping";
+import {
+  computeBreakdown,
+  PRICING_DEFAULTS,
+  type PricingSettings,
+} from "@/lib/pricing";
 
-export function CartView() {
+export function CartView({ settings = PRICING_DEFAULTS }: { settings?: PricingSettings }) {
   const items = useCart((s) => s.items);
   const updateQty = useCart((s) => s.updateQty);
   const removeItem = useCart((s) => s.removeItem);
@@ -32,8 +36,16 @@ export function CartView() {
     );
   }
 
-  const subtotal = cartSubtotal(items);
-  const shipping = shippingFor(subtotal);
+  const breakdown = computeBreakdown(
+    items.map((i) => ({
+      unitPrice: i.price,
+      quantity: i.quantity,
+      gstRate: i.gstRate,
+      deliveryCharge: i.deliveryCharge,
+    })),
+    settings,
+  );
+  const { subtotal, shipping, tax, total } = breakdown;
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
@@ -121,21 +133,27 @@ export function CartView() {
             <span className="text-muted-foreground">Subtotal</span>
             <span className="font-medium">{formatPrice(subtotal)}</span>
           </div>
+          {tax > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">GST (incl.)</span>
+              <span className="font-medium">{formatPrice(tax)}</span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-muted-foreground">Shipping</span>
             <span className="font-medium">
               {shipping === 0 ? "Free" : formatPrice(shipping)}
             </span>
           </div>
-          {shipping > 0 && (
+          {shipping > 0 && settings.freeShippingThreshold > subtotal && (
             <p className="text-xs text-muted-foreground">
-              Add {formatPrice(FREE_SHIPPING_THRESHOLD - subtotal)} more for free
+              Add {formatPrice(settings.freeShippingThreshold - subtotal)} more for free
               shipping.
             </p>
           )}
           <div className="flex justify-between border-t pt-2 text-base font-bold">
             <span>Total</span>
-            <span>{formatPrice(subtotal + shipping)}</span>
+            <span>{formatPrice(total)}</span>
           </div>
         </div>
         <Button asChild size="lg" className="w-full">

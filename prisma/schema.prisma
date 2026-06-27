@@ -200,6 +200,11 @@ model Product {
   isActive         Boolean  @default(true)
   isFeatured       Boolean  @default(false)
   isBestSeller     Boolean  @default(false)
+  // Tax & shipping overrides. Null = fall back to the global store defaults
+  // (StoreSetting.defaultGstRate / defaultShippingFee). GST is inclusive: the
+  // listed price already contains tax at this rate.
+  gstRate          Int? // GST percent for this product (e.g. 0,5,12,18,28); null = store default
+  deliveryCharge   Int? // paise; per-product delivery override; null = store default, 0 = free
   ratingAvg        Float    @default(0)
   ratingCount      Int      @default(0)
   metaTitle        String?
@@ -656,6 +661,12 @@ model StoreSetting {
   announcement       String? // banner text
   announcementActive Boolean @default(false)
   announcementLink   String?
+  // Pricing & tax defaults (used when a product doesn't override). GST is
+  // inclusive of the listed price. Money is paise.
+  defaultGstRate        Int     @default(0)     // GST percent applied by default
+  defaultShippingFee    Int     @default(4900)  // paise, flat fee below the free threshold
+  freeShippingThreshold Int     @default(49900) // paise, subtotal at/above ships free (0 disables)
+  gstin                 String? // seller GSTIN shown on the tax invoice
   // Contact
   supportEmail String?
   supportPhone String?

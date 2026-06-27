@@ -6,9 +6,10 @@ import { razorpay, razorpayEnabled, verifyPaymentSignature } from "@/lib/razorpa
 import { siteConfig } from "@/config/site";
 import { env } from "@/lib/env";
 import { validateCoupon } from "@/lib/coupons";
+import { computeBreakdown } from "@/lib/pricing";
+import { getPricingSettings } from "@/lib/queries/settings";
 import {
   priceCart,
-  shippingFor,
   generateOrderNumber,
   markOrderPaid,
 } from "@/lib/orders";
@@ -101,8 +102,22 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
     resolvedCouponCode = result.coupon.code;
   }
 
-  const shipping = shippingFor(priced.subtotal);
-  const total = Math.max(0, priced.subtotal - discount + shipping);
+  // Compute shipping + (inclusive) GST authoritatively from the re-priced lines
+  // and the store's pricing settings — never trust client-sent totals.
+  const pricingSettings = await getPricingSettings();
+  const breakdown = computeBreakdown(
+    priced.lines.map((l) => ({
+      unitPrice: l.unitPrice,
+      quantity: l.quantity,
+      gstRate: l.gstRate,
+      deliveryCharge: l.deliveryCharge,
+    })),
+    pricingSettings,
+    discount,
+  );
+  const shipping = breakdown.shipping;
+  const tax = breakdown.tax;
+  const total = breakdown.total;
   const orderNumber = generateOrderNumber();
 
   const shippingAddress = {
@@ -125,7 +140,7 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
       subtotal: priced.subtotal,
       discount,
       shipping,
-      tax: 0,
+      tax,
       total,
       couponId,
       couponCode: resolvedCouponCode,

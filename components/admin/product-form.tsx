@@ -105,6 +105,11 @@ export function ProductForm({
       isActive: values.isActive,
       isFeatured: values.isFeatured,
       isBestSeller: values.isBestSeller,
+      gstRate: optNum(values.gstRate),
+      deliveryCharge: (() => {
+        const d = optNum(values.deliveryRupees);
+        return d != null ? rupeesToPaise(d) : null;
+      })(),
       metaTitle: values.metaTitle || null,
       metaDescription: values.metaDescription || null,
       nutritionFacts: values.nutritionFacts.filter((f) => f.label && f.value),
@@ -484,6 +489,76 @@ export function ProductForm({
                 )}
               />
             </div>
+          </div>
+
+          <div className={sectionClass}>
+            <h2 className="font-semibold">Tax &amp; shipping</h2>
+            <p className="text-xs text-muted-foreground">
+              Leave blank to use the store defaults (set in Appearance → Pricing).
+              Prices are treated as inclusive of GST.
+            </p>
+            <Controller
+              control={control}
+              name="gstRate"
+              render={({ field: f }) => (
+                <div className="space-y-1.5">
+                  <Label htmlFor="gstRate">GST rate (%)</Label>
+                  <Input
+                    id="gstRate"
+                    type="number"
+                    inputMode="numeric"
+                    step="1"
+                    min={0}
+                    max={100}
+                    placeholder="Store default"
+                    value={f.value ?? ""}
+                    onChange={(e) =>
+                      f.onChange(e.target.value === "" ? null : Number(e.target.value))
+                    }
+                  />
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {[0, 5, 12, 18, 28].map((rate) => (
+                      <button
+                        key={rate}
+                        type="button"
+                        onClick={() => f.onChange(rate)}
+                        className={`rounded-md border px-2 py-0.5 text-xs transition ${
+                          f.value === rate
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:border-primary/40"
+                        }`}
+                      >
+                        {rate}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            />
+            <Controller
+              control={control}
+              name="deliveryRupees"
+              render={({ field: f }) => (
+                <div className="space-y-1.5">
+                  <Label htmlFor="deliveryCharge">Delivery charge (₹)</Label>
+                  <Input
+                    id="deliveryCharge"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    min={0}
+                    placeholder="Store default"
+                    value={f.value ?? ""}
+                    onChange={(e) =>
+                      f.onChange(e.target.value === "" ? null : Number(e.target.value))
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Set ₹0 for free delivery on this product.
+                  </p>
+                </div>
+              )}
+            />
           </div>
 
           <div className={sectionClass}>
