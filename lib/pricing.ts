@@ -16,7 +16,8 @@ import { FREE_SHIPPING_THRESHOLD, SHIPPING_FEE } from "@/lib/shipping";
 export type PricingSettings = {
   defaultGstRate: number; // percent applied when a product doesn't override
   defaultShippingFee: number; // paise, used when a product doesn't override
-  freeShippingThreshold: number; // paise; subtotal at/above ships free (0 disables)
+  freeShippingThreshold: number; // paise; subtotal at/above ships free
+  freeShippingEnabled: boolean; // master switch for the free-delivery rule
 };
 
 /** Keyless fallback used when store settings aren't available. */
@@ -24,6 +25,7 @@ export const PRICING_DEFAULTS: PricingSettings = {
   defaultGstRate: 0,
   defaultShippingFee: SHIPPING_FEE,
   freeShippingThreshold: FREE_SHIPPING_THRESHOLD,
+  freeShippingEnabled: true,
 };
 
 export type PricingLine = {
@@ -37,7 +39,8 @@ export type PriceBreakdown = {
   subtotal: number; // paise, incl. GST
   discount: number; // paise
   tax: number; // paise, GST contained in the (post-discount) goods value
-  shipping: number; // paise
+  shipping: number; // paise (0 when free)
+  shippingSaved: number; // paise waived by the free-delivery rule (else 0)
   total: number; // paise payable
 };
 
@@ -65,20 +68,43 @@ export function gstWithin(amountInclusive: number, rate: number): number {
   return Math.round((amountInclusive * rate) / (100 + rate));
 }
 
-/** Shipping for a cart: highest per-product delivery charge, free over threshold. */
-export function computeShipping(
+/** The delivery charge that applies before the free-delivery rule: the highest
+ *  per-product charge across the cart (product override → else default). */
+export function deliveryChargeFor(
   lines: PricingLine[],
-  subtotal: number,
   s: PricingSettings,
 ): number {
-  if (subtotal <= 0) return 0;
-  if (s.freeShippingThreshold > 0 && subtotal >= s.freeShippingThreshold) return 0;
   let max = 0;
   for (const l of lines) {
     const c = resolveDeliveryCharge(l.deliveryCharge, s);
     if (c > max) max = c;
   }
   return max;
+}
+
+/** Whether a subtotal qualifies for free delivery under the store's rule. */
+export function qualifiesForFreeShipping(
+  subtotal: number,
+  s: PricingSettings,
+): boolean {
+  return (
+    s.freeShippingEnabled &&
+    s.freeShippingThreshold > 0 &&
+    subtotal >= s.freeShippingThreshold
+  );
+}
+
+/** Shipping for a cart: `{ charge, saved }`. `charge` is what the customer pays
+ *  (0 when free); `saved` is the amount waived by the free-delivery rule. */
+export function computeShipping(
+  lines: PricingLine[],
+  subtotal: number,
+  s: PricingSettings,
+): { charge: number; saved: number } {
+  if (subtotal <= 0) return { charge: 0, saved: 0 };
+  const base = deliveryChargeFor(lines, s);
+  if (qualifiesForFreeShipping(subtotal, s)) return { charge: 0, saved: base };
+  return { charge: base, saved: 0 };
 }
 
 /**
@@ -93,7 +119,7 @@ export function computeBreakdown(
 ): PriceBreakdown {
   const subtotal = lines.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
   const safeDiscount = Math.min(Math.max(0, Math.round(discount)), subtotal);
-  const shipping = computeShipping(lines, subtotal, s);
+  const { charge: shipping, saved: shippingSaved } = computeShipping(lines, subtotal, s);
 
   const scale = subtotal > 0 ? (subtotal - safeDiscount) / subtotal : 0;
   let tax = 0;
@@ -103,5 +129,5 @@ export function computeBreakdown(
   }
 
   const total = Math.max(0, subtotal - safeDiscount + shipping);
-  return { subtotal, discount: safeDiscount, tax, shipping, total };
+  return { subtotal, discount: safeDiscount, tax, shipping, shippingSaved, total };
 }

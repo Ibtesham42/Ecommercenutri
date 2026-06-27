@@ -24,11 +24,13 @@ import { formatPrice } from "@/lib/format";
 import {
   computeBreakdown,
   PRICING_DEFAULTS,
+  type PriceBreakdown,
   type PricingSettings,
 } from "@/lib/pricing";
 import {
   applyCoupon,
   createOrder,
+  previewOrderPricing,
   verifyPayment,
 } from "@/lib/actions/checkout";
 
@@ -97,7 +99,9 @@ export function CheckoutClient({
     [items],
   );
 
-  const breakdown = computeBreakdown(
+  // Optimistic client breakdown; corrected by the server (authoritative re-price
+  // from the DB, so admin delivery/GST and coupon values always win).
+  const optimistic = computeBreakdown(
     items.map((i) => ({
       unitPrice: i.price,
       quantity: i.quantity,
@@ -107,8 +111,26 @@ export function CheckoutClient({
     settings,
     coupon?.discount ?? 0,
   );
-  const { subtotal, shipping, tax, total } = breakdown;
-  const discount = breakdown.discount;
+
+  const payloadKey = JSON.stringify(payload);
+  const couponCode = coupon?.code;
+  const [server, setServer] = useState<PriceBreakdown | null>(null);
+  useEffect(() => {
+    if (payload.length === 0) {
+      setServer(null);
+      return;
+    }
+    let active = true;
+    void previewOrderPricing({ items: payload, couponCode }).then((res) => {
+      if (active && res.ok) setServer(res.breakdown);
+    });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payloadKey, couponCode]);
+
+  const { subtotal, shipping, shippingSaved, tax, total, discount } = server ?? optimistic;
 
   if (!mounted) {
     return <div className="h-72 animate-pulse rounded-xl bg-muted" />;
@@ -366,11 +388,16 @@ export function CheckoutClient({
             </div>
           )}
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Shipping</span>
-            <span className="font-medium">
-              {shipping === 0 ? "Free" : formatPrice(shipping)}
+            <span className="text-muted-foreground">Delivery</span>
+            <span className={shipping === 0 ? "font-semibold text-primary" : "font-medium"}>
+              {shipping === 0 ? "Free Delivery" : formatPrice(shipping)}
             </span>
           </div>
+          {shipping === 0 && shippingSaved > 0 && (
+            <p className="text-xs font-medium text-primary">
+              You saved {formatPrice(shippingSaved)} on shipping
+            </p>
+          )}
           <div className="flex justify-between border-t pt-2 text-base font-bold">
             <span>Total</span>
             <span>{formatPrice(total)}</span>

@@ -22,9 +22,14 @@ export type StoreSettings = {
   announcementLink: string | null;
   // Pricing & tax
   defaultGstRate: number;
+  gstin: string | null;
+  // Shipping & delivery
   defaultShippingFee: number;
   freeShippingThreshold: number;
-  gstin: string | null;
+  freeShippingEnabled: boolean;
+  localDeliveryFee: number | null;
+  expressDeliveryFee: number | null;
+  codFee: number | null;
   // Contact
   supportEmail: string;
   supportPhone: string;
@@ -70,10 +75,14 @@ export async function getStoreSettings(): Promise<StoreSettings> {
     announcementActive: s?.announcementActive ?? false,
     announcementLink: s?.announcementLink ?? null,
     defaultGstRate: s?.defaultGstRate ?? PRICING_DEFAULTS.defaultGstRate,
+    gstin: s?.gstin ?? null,
     defaultShippingFee: s?.defaultShippingFee ?? PRICING_DEFAULTS.defaultShippingFee,
     freeShippingThreshold:
       s?.freeShippingThreshold ?? PRICING_DEFAULTS.freeShippingThreshold,
-    gstin: s?.gstin ?? null,
+    freeShippingEnabled: s?.freeShippingEnabled ?? PRICING_DEFAULTS.freeShippingEnabled,
+    localDeliveryFee: s?.localDeliveryFee ?? null,
+    expressDeliveryFee: s?.expressDeliveryFee ?? null,
+    codFee: s?.codFee ?? null,
     supportEmail: s?.supportEmail || siteConfig.contact.email,
     supportPhone: s?.supportPhone || siteConfig.contact.phone,
     whatsapp: s?.whatsapp ?? null,
@@ -103,6 +112,7 @@ export async function getPricingSettings(): Promise<PricingSettings> {
         defaultGstRate: true,
         defaultShippingFee: true,
         freeShippingThreshold: true,
+        freeShippingEnabled: true,
       },
     });
     if (!s) return PRICING_DEFAULTS;
@@ -110,6 +120,7 @@ export async function getPricingSettings(): Promise<PricingSettings> {
       defaultGstRate: s.defaultGstRate,
       defaultShippingFee: s.defaultShippingFee,
       freeShippingThreshold: s.freeShippingThreshold,
+      freeShippingEnabled: s.freeShippingEnabled,
     };
   } catch {
     return PRICING_DEFAULTS;

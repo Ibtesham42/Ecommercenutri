@@ -8,6 +8,7 @@ import {
   ownEmailSchema,
   ownPasswordSchema,
   storeSettingsSchema,
+  shippingSettingsSchema,
 } from "@/lib/validations/admin";
 import type { AdminResult } from "@/lib/actions/admin/types";
 
@@ -87,8 +88,6 @@ export async function updateStoreSettings(input: unknown): Promise<AdminResult> 
     announcementActive: d.announcementActive,
     announcementLink: d.announcementLink || null,
     defaultGstRate: d.defaultGstRate ?? 0,
-    defaultShippingFee: d.defaultShippingFee ?? 4900,
-    freeShippingThreshold: d.freeShippingThreshold ?? 49900,
     gstin: d.gstin?.trim() || null,
     supportEmail: d.supportEmail || null,
     supportPhone: d.supportPhone || null,
@@ -113,5 +112,37 @@ export async function updateStoreSettings(input: unknown): Promise<AdminResult> 
 
   revalidatePath("/admin/appearance");
   revalidatePath("/", "layout"); // header/footer/announcement read store settings
+  return { ok: true };
+}
+
+// --- Shipping & delivery settings (appearance permission) -------------------
+
+export async function updateShippingSettings(input: unknown): Promise<AdminResult> {
+  await requirePermission("appearance");
+
+  const parsed = shippingSettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid settings." };
+  }
+  const d = parsed.data;
+
+  const data = {
+    defaultShippingFee: d.defaultShippingFee ?? 4900,
+    freeShippingThreshold: d.freeShippingThreshold ?? 49900,
+    freeShippingEnabled: d.freeShippingEnabled,
+    localDeliveryFee: d.localDeliveryFee ?? null,
+    expressDeliveryFee: d.expressDeliveryFee ?? null,
+    codFee: d.codFee ?? null,
+  };
+
+  await prisma.storeSetting.upsert({
+    where: { id: "singleton" },
+    update: data,
+    create: { id: "singleton", ...data },
+  });
+
+  revalidatePath("/admin/shipping");
+  // Storefront pricing (cart/checkout/product) reads these.
+  revalidatePath("/", "layout");
   return { ok: true };
 }

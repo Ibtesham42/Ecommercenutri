@@ -6,7 +6,7 @@ import { razorpay, razorpayEnabled, verifyPaymentSignature } from "@/lib/razorpa
 import { siteConfig } from "@/config/site";
 import { env } from "@/lib/env";
 import { validateCoupon } from "@/lib/coupons";
-import { computeBreakdown } from "@/lib/pricing";
+import { computeBreakdown, type PriceBreakdown } from "@/lib/pricing";
 import { getPricingSettings } from "@/lib/queries/settings";
 import {
   priceCart,
@@ -16,6 +16,7 @@ import {
 import {
   applyCouponSchema,
   createOrderSchema,
+  previewPricingSchema,
   verifyPaymentSchema,
 } from "@/lib/validations/checkout";
 
@@ -45,6 +46,51 @@ export async function applyCoupon(input: unknown): Promise<CouponPreview> {
     discount: result.discount,
     description: result.coupon.description,
   };
+}
+
+export type PricingPreview =
+  | { ok: true; breakdown: PriceBreakdown }
+  | { ok: false; error: string };
+
+/**
+ * Server-authoritative pricing for the cart/checkout summary. Re-prices the cart
+ * from the database (fresh product delivery/GST) and computes the breakdown with
+ * the store's current shipping settings — so the storefront never relies on
+ * stale client/localStorage values. This is the single source of truth shared
+ * with `createOrder`.
+ */
+export async function previewOrderPricing(input: unknown): Promise<PricingPreview> {
+  const parsed = previewPricingSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid cart." };
+  }
+
+  const priced = await priceCart(parsed.data.items);
+  if (!priced.ok) return { ok: false, error: priced.error };
+
+  const settings = await getPricingSettings();
+
+  // Optional coupon (only for signed-in users; the cart page has none).
+  let discount = 0;
+  if (parsed.data.couponCode) {
+    const user = await getCurrentUser();
+    if (user) {
+      const res = await validateCoupon(parsed.data.couponCode, priced.subtotal, user.id);
+      if (res.ok) discount = res.discount;
+    }
+  }
+
+  const breakdown = computeBreakdown(
+    priced.lines.map((l) => ({
+      unitPrice: l.unitPrice,
+      quantity: l.quantity,
+      gstRate: l.gstRate,
+      deliveryCharge: l.deliveryCharge,
+    })),
+    settings,
+    discount,
+  );
+  return { ok: true, breakdown };
 }
 
 export type CreateOrderResult =
@@ -116,6 +162,7 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
     discount,
   );
   const shipping = breakdown.shipping;
+  const shippingSaved = breakdown.shippingSaved;
   const tax = breakdown.tax;
   const total = breakdown.total;
   const orderNumber = generateOrderNumber();
@@ -140,6 +187,7 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
       subtotal: priced.subtotal,
       discount,
       shipping,
+      shippingSaved,
       tax,
       total,
       couponId,

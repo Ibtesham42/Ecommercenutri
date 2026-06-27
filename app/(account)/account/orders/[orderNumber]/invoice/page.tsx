@@ -54,6 +54,7 @@ export default async function OrderInvoicePage({
     couponCode: order.couponCode,
     tax: order.tax,
     shipping: order.shipping,
+    shippingSaved: order.shippingSaved,
     total: order.total,
   };
 

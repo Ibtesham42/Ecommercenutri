@@ -100,7 +100,9 @@ export function ProductPurchase({
   const gstAmount = gstWithin(lineTotal, effectiveGstRate);
   const effectiveDelivery = resolveDeliveryCharge(deliveryCharge, settings);
   const freeShipping =
-    settings.freeShippingThreshold > 0 && lineTotal >= settings.freeShippingThreshold;
+    settings.freeShippingEnabled &&
+    settings.freeShippingThreshold > 0 &&
+    lineTotal >= settings.freeShippingThreshold;
 
   const deliveryFrom = format(addDays(new Date(), 3), "EEE, d MMM");
   const deliveryTo = format(addDays(new Date(), 5), "EEE, d MMM");
@@ -300,19 +302,27 @@ export function ProductPurchase({
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
           <p>
             {freeShipping || effectiveDelivery === 0 ? (
-              <span className="font-medium text-primary">
-                {effectiveDelivery === 0 && !freeShipping
-                  ? "Free delivery on this product."
-                  : "This order ships free."}
-              </span>
-            ) : settings.freeShippingThreshold > 0 ? (
+              <>
+                <span className="font-medium text-primary">
+                  {effectiveDelivery === 0 && !freeShipping
+                    ? "Free Delivery on this product."
+                    : "Free Delivery on this order."}
+                </span>
+                {freeShipping && effectiveDelivery > 0 && (
+                  <span className="block text-xs font-medium text-primary">
+                    You save {formatPrice(effectiveDelivery)} on shipping.
+                  </span>
+                )}
+              </>
+            ) : settings.freeShippingEnabled && settings.freeShippingThreshold > 0 ? (
               <>
                 <span className="font-medium">
-                  Free shipping over {formatPrice(settings.freeShippingThreshold)}
+                  Delivery {formatPrice(effectiveDelivery)} · free over{" "}
+                  {formatPrice(settings.freeShippingThreshold)}
                 </span>
                 <span className="block text-xs text-muted-foreground">
-                  Delivery {formatPrice(effectiveDelivery)} · add{" "}
-                  {formatPrice(settings.freeShippingThreshold - lineTotal)} more to qualify.
+                  Add {formatPrice(settings.freeShippingThreshold - lineTotal)} more to
+                  qualify for Free Delivery.
                 </span>
               </>
             ) : (

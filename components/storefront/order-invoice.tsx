@@ -36,6 +36,7 @@ export type InvoiceData = {
   couponCode: string | null;
   tax: number;
   shipping: number;
+  shippingSaved: number;
   total: number;
 };
 
@@ -154,9 +155,17 @@ export function OrderInvoice({ data }: { data: InvoiceData }) {
             </>
           )}
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Shipping</span>
-            <span>{data.shipping === 0 ? "Free" : formatPrice(data.shipping)}</span>
+            <span className="text-muted-foreground">Delivery</span>
+            <span className={data.shipping === 0 ? "font-semibold text-primary" : ""}>
+              {data.shipping === 0 ? "Free Delivery" : formatPrice(data.shipping)}
+            </span>
           </div>
+          {data.shipping === 0 && data.shippingSaved > 0 && (
+            <div className="flex justify-between text-xs text-primary">
+              <span>You saved on shipping</span>
+              <span>{formatPrice(data.shippingSaved)}</span>
+            </div>
+          )}
           <div className="flex justify-between border-t pt-2 text-base font-bold">
             <span>Total</span>
             <span>{formatPrice(data.total)}</span>

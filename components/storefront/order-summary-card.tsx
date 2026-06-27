@@ -84,9 +84,16 @@ export function OrderSummaryCard({ order }: { order: OrderWithItems }) {
           </div>
         )}
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Shipping</span>
-          <span>{order.shipping === 0 ? "Free" : formatPrice(order.shipping)}</span>
+          <span className="text-muted-foreground">Delivery</span>
+          <span className={order.shipping === 0 ? "font-semibold text-primary" : ""}>
+            {order.shipping === 0 ? "Free Delivery" : formatPrice(order.shipping)}
+          </span>
         </div>
+        {order.shipping === 0 && order.shippingSaved > 0 && (
+          <p className="text-xs font-medium text-primary">
+            You saved {formatPrice(order.shippingSaved)} on shipping
+          </p>
+        )}
         <div className="flex justify-between border-t pt-2 text-base font-bold">
           <span>Total</span>
           <span>{formatPrice(order.total)}</span>

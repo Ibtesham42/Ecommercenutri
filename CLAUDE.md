@@ -484,13 +484,20 @@ See `PROGRESS.md` for the live tracker (status, blockers, next task).
   settings, discount)` returns `{ subtotal, discount, tax, shipping, total }` and is used by
   the cart, checkout, product page **and** server-side order pricing so they always agree.
   Per-product overrides live on `Product.gstRate` / `Product.deliveryCharge` (null = use the
-  store default); global defaults + seller `gstin` live on `StoreSetting`
-  (`defaultGstRate`/`defaultShippingFee`/`freeShippingThreshold`), edited at
-  `/admin/appearance` → Pricing & tax and per product in the product form. Cart items carry
-  the product overrides; settings come from `getPricingSettings()` (passed to client cart/
-  checkout as props). The breakdown shows on PDP, cart, checkout, order summary card, track,
-  the confirmation email, and the printable tax invoice
-  (`/account/orders/[orderNumber]/invoice`, `components/storefront/order-invoice.tsx`).
+  store default). GST default + seller `gstin` are edited at `/admin/appearance` → Tax (GST);
+  **all shipping settings live at a dedicated `/admin/shipping`** (`appearance` permission):
+  `defaultShippingFee` (standard/default), `freeShippingThreshold`, `freeShippingEnabled`
+  (master free-delivery switch) and configurable `localDeliveryFee`/`expressDeliveryFee`/
+  `codFee`. Shipping rule: **product override wins → else default; highest across the cart
+  (never summed); free when enabled & subtotal ≥ threshold**. The breakdown shows on PDP,
+  cart, checkout, order summary card, track, the confirmation email and the printable tax
+  invoice (`/account/orders/[orderNumber]/invoice`), with **"Free Delivery" + "You saved ₹XX
+  on shipping"** (engine returns `shippingSaved`, persisted on `Order.shippingSaved`).
+- **Cart/checkout pricing is server-authoritative.** The client cart (localStorage) is only an
+  optimistic placeholder; `previewOrderPricing` (`lib/actions/checkout.ts`) re-prices from the
+  DB (`priceCart` + `computeBreakdown`) and the client renders that result, so admin delivery/
+  GST values always win and stale cart fields can't mislead. `createOrder` uses the same engine
+  so the displayed total always equals what's charged.
 - **Order numbers:** `NUT-YYMMDD-XXXXXX` (nanoid, unambiguous alphabet).
 - Stock is decremented at the **PAID** transition (guarded `updateMany`), not at
   cart/PENDING. Admin cancelling/refunding a previously-paid order **restocks** it

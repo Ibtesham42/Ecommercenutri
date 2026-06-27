@@ -379,6 +379,7 @@ model Order {
   subtotal        Int // paise
   discount        Int           @default(0)
   shipping        Int           @default(0)
+  shippingSaved   Int           @default(0) // paise waived by free-delivery (for "you saved" copy)
   tax             Int           @default(0)
   total           Int // paise
   couponId        String?
@@ -664,8 +665,12 @@ model StoreSetting {
   // Pricing & tax defaults (used when a product doesn't override). GST is
   // inclusive of the listed price. Money is paise.
   defaultGstRate        Int     @default(0)     // GST percent applied by default
-  defaultShippingFee    Int     @default(4900)  // paise, flat fee below the free threshold
-  freeShippingThreshold Int     @default(49900) // paise, subtotal at/above ships free (0 disables)
+  defaultShippingFee    Int     @default(4900)  // paise, standard/default fee below the free threshold
+  freeShippingThreshold Int     @default(49900) // paise, subtotal at/above ships free
+  freeShippingEnabled   Boolean @default(true)  // master switch for the free-delivery rule
+  localDeliveryFee      Int?    // paise, configurable delivery option (managed in /admin/shipping)
+  expressDeliveryFee    Int?    // paise, configurable delivery option
+  codFee                Int?    // paise, Cash-on-Delivery charge
   gstin                 String? // seller GSTIN shown on the tax invoice
   // Contact
   supportEmail String?

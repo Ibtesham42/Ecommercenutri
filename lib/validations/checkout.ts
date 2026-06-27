@@ -19,6 +19,12 @@ export const applyCouponSchema = z.object({
   items: z.array(checkoutItemSchema).min(1),
 });
 
+/** Live, server-authoritative cart/checkout pricing preview. */
+export const previewPricingSchema = z.object({
+  items: z.array(checkoutItemSchema).min(1),
+  couponCode: z.string().trim().max(40).optional(),
+});
+
 export const verifyPaymentSchema = z.object({
   orderId: z.string().min(1),
   razorpayOrderId: z.string().min(1),

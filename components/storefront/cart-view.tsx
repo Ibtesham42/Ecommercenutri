@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/storefront/empty-state";
@@ -11,8 +11,10 @@ import { formatPrice } from "@/lib/format";
 import {
   computeBreakdown,
   PRICING_DEFAULTS,
+  type PriceBreakdown,
   type PricingSettings,
 } from "@/lib/pricing";
+import { previewOrderPricing } from "@/lib/actions/checkout";
 
 export function CartView({ settings = PRICING_DEFAULTS }: { settings?: PricingSettings }) {
   const items = useCart((s) => s.items);
@@ -20,6 +22,40 @@ export function CartView({ settings = PRICING_DEFAULTS }: { settings?: PricingSe
   const removeItem = useCart((s) => s.removeItem);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  // Optimistic client breakdown for instant render; corrected by the server
+  // (which re-prices from the DB) so admin delivery/GST values always win.
+  const optimistic = computeBreakdown(
+    items.map((i) => ({
+      unitPrice: i.price,
+      quantity: i.quantity,
+      gstRate: i.gstRate,
+      deliveryCharge: i.deliveryCharge,
+    })),
+    settings,
+  );
+
+  const payload = useMemo(
+    () => items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
+    [items],
+  );
+  const payloadKey = JSON.stringify(payload);
+  const [server, setServer] = useState<PriceBreakdown | null>(null);
+
+  useEffect(() => {
+    if (payload.length === 0) {
+      setServer(null);
+      return;
+    }
+    let active = true;
+    void previewOrderPricing({ items: payload }).then((res) => {
+      if (active && res.ok) setServer(res.breakdown);
+    });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payloadKey]);
 
   if (!mounted) {
     return <div className="h-64 animate-pulse rounded-xl bg-muted" />;
@@ -36,16 +72,7 @@ export function CartView({ settings = PRICING_DEFAULTS }: { settings?: PricingSe
     );
   }
 
-  const breakdown = computeBreakdown(
-    items.map((i) => ({
-      unitPrice: i.price,
-      quantity: i.quantity,
-      gstRate: i.gstRate,
-      deliveryCharge: i.deliveryCharge,
-    })),
-    settings,
-  );
-  const { subtotal, shipping, tax, total } = breakdown;
+  const { subtotal, shipping, shippingSaved, tax, total } = server ?? optimistic;
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
@@ -140,17 +167,24 @@ export function CartView({ settings = PRICING_DEFAULTS }: { settings?: PricingSe
             </div>
           )}
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Shipping</span>
-            <span className="font-medium">
-              {shipping === 0 ? "Free" : formatPrice(shipping)}
+            <span className="text-muted-foreground">Delivery</span>
+            <span className={shipping === 0 ? "font-semibold text-primary" : "font-medium"}>
+              {shipping === 0 ? "Free Delivery" : formatPrice(shipping)}
             </span>
           </div>
-          {shipping > 0 && settings.freeShippingThreshold > subtotal && (
-            <p className="text-xs text-muted-foreground">
-              Add {formatPrice(settings.freeShippingThreshold - subtotal)} more for free
-              shipping.
+          {shipping === 0 && shippingSaved > 0 && (
+            <p className="text-xs font-medium text-primary">
+              You saved {formatPrice(shippingSaved)} on shipping
             </p>
           )}
+          {shipping > 0 &&
+            settings.freeShippingEnabled &&
+            settings.freeShippingThreshold > subtotal && (
+              <p className="text-xs text-muted-foreground">
+                Add {formatPrice(settings.freeShippingThreshold - subtotal)} more for free
+                delivery.
+              </p>
+            )}
           <div className="flex justify-between border-t pt-2 text-base font-bold">
             <span>Total</span>
             <span>{formatPrice(total)}</span>

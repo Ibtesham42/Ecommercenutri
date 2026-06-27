@@ -109,10 +109,8 @@ export const storeSettingsSchema = z.object({
   announcement: z.string().max(200).nullable().optional(),
   announcementActive: z.boolean().default(false),
   announcementLink: optUrl,
-  // Pricing & tax (fees are paise; the form converts rupees → paise)
+  // Tax / GST (shipping lives in shippingSettingsSchema → /admin/shipping)
   defaultGstRate: optInt(0, 100, "GST %"),
-  defaultShippingFee: optInt(0, 10_000_00, "Shipping fee"),
-  freeShippingThreshold: optInt(0, 1_000_000_00, "Free-shipping threshold"),
   gstin: z.string().max(20).nullable().optional(),
   // Contact
   supportEmail: optionalEmail,
@@ -135,6 +133,19 @@ export const storeSettingsSchema = z.object({
 export type AdminCreateInput = z.infer<typeof adminCreateSchema>;
 export type AdminUpdateInput = z.infer<typeof adminUpdateSchema>;
 export type StoreSettingsInput = z.infer<typeof storeSettingsSchema>;
+
+// Shipping & delivery (single source of truth — /admin/shipping). Fees are paise;
+// the form converts rupees → paise before submit.
+export const shippingSettingsSchema = z.object({
+  defaultShippingFee: optInt(0, 10_000_00, "Default delivery"),
+  freeShippingThreshold: optInt(0, 1_000_000_00, "Free-delivery threshold"),
+  freeShippingEnabled: z.boolean().default(true),
+  localDeliveryFee: optInt(0, 10_000_00, "Local delivery"),
+  expressDeliveryFee: optInt(0, 10_000_00, "Express delivery"),
+  codFee: optInt(0, 10_000_00, "COD charge"),
+});
+
+export type ShippingSettingsInput = z.infer<typeof shippingSettingsSchema>;
 
 // Hero slider (homepage CMS) -------------------------------------------------
 

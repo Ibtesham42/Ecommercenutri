@@ -12,7 +12,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { updateStoreSettings } from "@/lib/actions/admin/settings";
-import { rupeesToPaise } from "@/lib/format";
 
 export type AppearanceValues = {
   siteName: string;
@@ -28,10 +27,8 @@ export type AppearanceValues = {
   announcement: string;
   announcementActive: boolean;
   announcementLink: string;
-  // Pricing & tax — GST is a percent; fees/threshold are entered in ₹.
+  // Tax / GST — GST is a percent. (Shipping is managed in /admin/shipping.)
   defaultGstRate: number | null;
-  defaultShippingFee: number | null; // rupees
-  freeShippingThreshold: number | null; // rupees
   gstin: string;
   supportEmail: string;
   supportPhone: string;
@@ -160,15 +157,7 @@ export function AppearanceForm({
 
   async function onSubmit(v: AppearanceValues) {
     setSaving(true);
-    const payload = {
-      ...v,
-      // Money is stored as paise; the form collects rupees.
-      defaultShippingFee:
-        v.defaultShippingFee != null ? rupeesToPaise(v.defaultShippingFee) : undefined,
-      freeShippingThreshold:
-        v.freeShippingThreshold != null ? rupeesToPaise(v.freeShippingThreshold) : undefined,
-      defaultGstRate: v.defaultGstRate ?? undefined,
-    };
+    const payload = { ...v, defaultGstRate: v.defaultGstRate ?? undefined };
     const res = await updateStoreSettings(payload);
     setSaving(false);
     if (res.ok) {
@@ -270,12 +259,13 @@ export function AppearanceForm({
         </div>
       </Section>
 
-      <Section title="Pricing &amp; tax" icon={Receipt}>
+      <Section title="Tax (GST)" icon={Receipt}>
         <p className="text-sm text-muted-foreground">
-          Store-wide defaults. Individual products can override the GST rate and
-          delivery charge. Prices are inclusive of GST.
+          Store-wide default GST. Individual products can override the rate. Prices are
+          inclusive of GST. Delivery charges are managed in{" "}
+          <span className="font-medium">Shipping</span>.
         </p>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Controller
             control={control}
             name="defaultGstRate"
@@ -299,57 +289,11 @@ export function AppearanceForm({
               </div>
             )}
           />
-          <Controller
-            control={control}
-            name="defaultShippingFee"
-            render={({ field }) => (
-              <div className="space-y-1.5">
-                <Label htmlFor="defaultShippingFee">Default delivery (₹)</Label>
-                <Input
-                  id="defaultShippingFee"
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min={0}
-                  placeholder="49"
-                  value={field.value ?? ""}
-                  onChange={(e) =>
-                    field.onChange(e.target.value === "" ? null : Number(e.target.value))
-                  }
-                />
-                <p className="text-xs text-muted-foreground">Below the free threshold</p>
-              </div>
-            )}
-          />
-          <Controller
-            control={control}
-            name="freeShippingThreshold"
-            render={({ field }) => (
-              <div className="space-y-1.5">
-                <Label htmlFor="freeShippingThreshold">Free shipping over (₹)</Label>
-                <Input
-                  id="freeShippingThreshold"
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min={0}
-                  placeholder="499"
-                  value={field.value ?? ""}
-                  onChange={(e) =>
-                    field.onChange(e.target.value === "" ? null : Number(e.target.value))
-                  }
-                />
-                <p className="text-xs text-muted-foreground">Set 0 to disable</p>
-              </div>
-            )}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="gstin">GSTIN (optional)</Label>
-          <Input id="gstin" placeholder="22AAAAA0000A1Z5" {...register("gstin")} />
-          <p className="text-xs text-muted-foreground">
-            Shown on the tax invoice when set.
-          </p>
+          <div className="space-y-1.5">
+            <Label htmlFor="gstin">GSTIN (optional)</Label>
+            <Input id="gstin" placeholder="22AAAAA0000A1Z5" {...register("gstin")} />
+            <p className="text-xs text-muted-foreground">Shown on the tax invoice when set.</p>
+          </div>
         </div>
       </Section>
 
