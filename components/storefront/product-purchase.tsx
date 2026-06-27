@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { WishlistButton } from "@/components/storefront/wishlist-button";
 import { useCart } from "@/lib/store/cart";
+import { trackClient } from "@/components/storefront/behavior-tracker";
 import { formatPrice, discountPercent, effectivePrice } from "@/lib/format";
 import {
   gstWithin,
@@ -124,6 +125,7 @@ export function ProductPurchase({
       },
       qty,
     );
+    trackClient({ type: "CART_ADD", productId });
     toast.success(`Added ${qty} × ${name} (${variant.weightLabel}) to cart`);
   }
 

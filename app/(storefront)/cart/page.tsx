@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CartView } from "@/components/storefront/cart-view";
+import { CartCrossSell } from "@/components/storefront/cart-cross-sell";
 import { RecommendedProducts } from "@/components/storefront/recommended-products";
 import { RecentlyViewed } from "@/components/storefront/recently-viewed";
 import { buildMetadata } from "@/lib/seo";
@@ -19,6 +20,7 @@ export default async function CartPage() {
       <CartView settings={settings} />
 
       <div className="mt-16 space-y-16">
+        <CartCrossSell />
         <RecommendedProducts title="You might also like" />
         <RecentlyViewed />
       </div>

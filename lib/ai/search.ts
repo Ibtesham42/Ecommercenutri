@@ -9,6 +9,37 @@ import {
   type ProductSort,
   type ProductCardData,
 } from "@/lib/queries/products";
+import { expandSearchTerms } from "@/lib/recommendations/intent";
+
+/**
+ * Keyword search that also understands wellness intent — so "weight loss" surfaces
+ * flax/chia/makhana/pumpkin seeds even with no AI key. Unions the literal match
+ * with intent-expanded term matches, deduped. This is the keyless smart-search.
+ */
+export async function smartKeywordSearch(
+  query: string,
+  limit = 24,
+): Promise<ProductCardData[]> {
+  const seen = new Set<string>();
+  const out: ProductCardData[] = [];
+  const push = (items: ProductCardData[]) => {
+    for (const p of items) {
+      if (!seen.has(p.id)) {
+        seen.add(p.id);
+        out.push(p);
+      }
+    }
+  };
+
+  push(await searchProducts(query, limit));
+  if (out.length < limit) {
+    for (const term of expandSearchTerms(query)) {
+      push(await searchProducts(term, 8));
+      if (out.length >= limit) break;
+    }
+  }
+  return out.slice(0, limit);
+}
 
 /**
  * Lenient intent schema. We extract structured search filters via plain text
@@ -131,7 +162,7 @@ export async function aiProductSearch(rawQuery: string): Promise<AISearchResult>
     settings.enabled && settings.searchEnabled ? getModel(settings.model) : null;
 
   if (!model) {
-    return { products: await searchProducts(query), interpreted: null, usedAI: false };
+    return { products: await smartKeywordSearch(query), interpreted: null, usedAI: false };
   }
 
   try {
@@ -155,7 +186,7 @@ Use null where a field is not implied. "keywords" are short product terms. "summ
 
     const intent = parseIntent(text);
     if (!intent) {
-      return { products: await searchProducts(query), interpreted: null, usedAI: false };
+      return { products: await smartKeywordSearch(query), interpreted: null, usedAI: false };
     }
 
     const validCategory = categories.find((c) => c.slug === intent.category)?.slug;
@@ -165,7 +196,7 @@ Use null where a field is not implied. "keywords" are short product terms. "summ
     const maxPrice = intent.maxPrice ?? undefined;
     const interpreted = intent.summary || null;
 
-    const products = await runProgressiveSearch({
+    let products = await runProgressiveSearch({
       query,
       keywords: intent.keywords || query,
       category: validCategory,
@@ -173,10 +204,12 @@ Use null where a field is not implied. "keywords" are short product terms. "summ
       maxPrice,
       sort: baseSort,
     });
+    // Last resort: intent-expanded keyword search (handles goal-style queries).
+    if (products.length === 0) products = await smartKeywordSearch(query);
 
     return { products, interpreted, usedAI: true };
   } catch (err) {
     console.error("[ai] search failed:", err);
-    return { products: await searchProducts(query), interpreted: null, usedAI: false };
+    return { products: await smartKeywordSearch(query), interpreted: null, usedAI: false };
   }
 }

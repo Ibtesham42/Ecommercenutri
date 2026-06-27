@@ -100,8 +100,10 @@ lib/
     admin/             Admin mutations — products, categories, coupons, stories, orders,
                        ai-settings (+ types.ts: AdminResult)
   ai/                  AI layer — provider (registry/seam), settings, retrieval (RAG seam),
-                       prompts, chat (orchestration), search, recommendations, history
-  queries/             Read helpers (catalog, products, wishlist, admin analytics)
+                       prompts, chat (orchestration), search, recommendations (delegates), history
+  recommendations/     Centralized recommendation service — events (tracking + signals),
+                       service (all sections), intent (smart-search synonyms)
+  queries/             Read helpers (catalog, products, wishlist, admin analytics, insights)
   validations/         Zod schemas (auth, account, checkout, review, admin)
   store/               Zustand stores (cart)
   prisma.ts            Prisma client singleton
@@ -556,6 +558,26 @@ See `PROGRESS.md` for the live tracker (status, blockers, next task).
 - **AI provider + RAG are seams, not hardcoded**: provider via `lib/ai/provider.ts`
   registry, retrieval via `lib/ai/retrieval.ts` (`ContextChunk[]`). Business logic
   stays out of routes (`lib/ai/chat.ts`/`search.ts`).
+- **Recommendation engine** is a centralized service in `lib/recommendations/` — the
+  single source of truth for every reco section (no duplicated logic). `service.ts`:
+  `recommendedForYou`, `similarProducts`, `frequentlyBoughtTogether`,
+  `customersAlsoBought`, `trending`, `bestSellers`, `complementaryForCart`,
+  `productCombos`. All **rule-based + DB-driven today** (work with no AI key) and isolated
+  so a future provider (embeddings / vector search / LLM re-rank) slots in without touching
+  callers — same seam philosophy as the AI provider. `lib/ai/recommendations.ts#getRecommendations`
+  is a thin back-compat wrapper over `recommendedForYou`. **Behavior tracking** feeds it:
+  the additive `UserEvent` log (`lib/recommendations/events.ts#trackEvent` + `getUserSignals`)
+  — privacy-preserving (session userId or an anon `nut_anon` cookie; no PII). Client signals go
+  through `POST /api/track` (rate-limited) via `components/storefront/behavior-tracker.tsx`
+  (`BehaviorTracker` / `trackClient`); WISHLIST_ADD and PURCHASE are recorded server-side from
+  their authoritative actions. Reco strips reuse `components/storefront/reco-section.tsx`
+  (`RecoSection`, with optional `source` → RECO_CLICK analytics via `reco-click-area.tsx`).
+  **Smart search** is keyless: `lib/recommendations/intent.ts#expandSearchTerms` maps goals
+  ("weight loss" → flax/chia/makhana…) and `smartKeywordSearch` (in `lib/ai/search.ts`) unions
+  literal + intent matches — used as the fallback at every level of `aiProductSearch`. **Admin
+  AI Insights** (`/admin/insights`, `ai` permission, `lib/queries/insights.ts`) reports most
+  viewed/purchased/cart-added, top searches, FBT pairs, reco click-rate and repeat-purchase rate
+  from real `UserEvent` + order data. Sections render nothing when empty (cold-start safe).
 - **Groq `llama-3.3-70b-versatile` does NOT support the `json_schema` response
   format**, so AI SDK `generateObject` fails on it. We use `generateText` + a
   defensive JSON parse for structured search instead — also keeps us model/provider

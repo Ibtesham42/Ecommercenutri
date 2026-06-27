@@ -9,6 +9,7 @@ import { StoriesRail } from "@/components/storefront/stories-rail";
 import { HeroSlider } from "@/components/storefront/hero-slider";
 import { BannerStrip } from "@/components/storefront/banner-strip";
 import { RecommendedProducts } from "@/components/storefront/recommended-products";
+import { RecoSection } from "@/components/storefront/reco-section";
 import { HomeHero } from "@/components/storefront/home/home-hero";
 import { HomeAiBanner } from "@/components/storefront/home/home-ai-banner";
 import { HomeWhyChooseUs } from "@/components/storefront/home/home-why-choose-us";
@@ -17,6 +18,7 @@ import {
   getFeaturedProducts,
   getBestSellers,
 } from "@/lib/queries/products";
+import { trending, productCombos } from "@/lib/recommendations/service";
 import { getCategories, getPublishedStories } from "@/lib/queries/catalog";
 import {
   getActiveHeroSlides,
@@ -45,6 +47,8 @@ export default async function HomePage() {
     sectionOrder,
     wishlistIds,
     user,
+    trendingProducts,
+    combos,
   ] = await Promise.all([
     getFeaturedProducts(content.featured.limit ?? 8),
     getBestSellers(content.bestSellers.limit ?? 8),
@@ -54,7 +58,13 @@ export default async function HomePage() {
     getHomeSectionOrder(),
     getWishlistProductIds(),
     getCurrentUser(),
+    trending({ windowDays: 7, limit: 8 }),
+    productCombos(4),
   ]);
+
+  // Trending excludes what's already shown in featured/best-sellers above.
+  const shownIds = new Set([...featured, ...bestSellers].map((p) => p.id));
+  const trendingFresh = trendingProducts.filter((p) => !shownIds.has(p.id));
 
   // Each homepage section keyed for the admin Section Builder. Content comes from
   // the editable defaults (lib/home-content.ts) merged with admin edits, so the
@@ -193,6 +203,45 @@ export default async function HomePage() {
           {s.key === "stories" && <BannerStrip position="homeTop" fullBleed className="py-6" />}
         </Fragment>
       ))}
+
+      {/* Behavioral: trending + goal-based combos. Render nothing when empty. */}
+      {trendingFresh.length > 0 && (
+        <section className="mx-auto w-full max-w-7xl px-4 py-14">
+          <RecoSection
+            title="Trending now"
+            subtitle="What other shoppers are loving this week"
+            products={trendingFresh}
+            wishlistedIds={wishlistIds}
+            source="trending"
+          />
+        </section>
+      )}
+
+      {combos.length > 0 && (
+        <section className="border-y bg-muted/30">
+          <div className="mx-auto w-full max-w-7xl space-y-12 px-4 py-14">
+            <div>
+              <span className="mb-2.5 block h-1 w-10 rounded-full bg-gradient-to-r from-primary to-gold" />
+              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                Shop by goal
+              </h2>
+              <p className="mt-1 text-muted-foreground">
+                Smart combos curated for your wellness goals
+              </p>
+            </div>
+            {combos.map((combo) => (
+              <RecoSection
+                key={combo.key}
+                title={combo.title}
+                subtitle={combo.description}
+                products={combo.products}
+                wishlistedIds={wishlistIds}
+                source={`combo:${combo.key}`}
+              />
+            ))}
+          </div>
+        </section>
+      )}
     </>
   );
 }

@@ -73,6 +73,17 @@ enum AIRole {
   ASSISTANT
 }
 
+enum UserEventType {
+  PRODUCT_VIEW
+  CATEGORY_VIEW
+  SEARCH
+  CART_ADD
+  WISHLIST_ADD
+  PURCHASE
+  RECO_CLICK // clicked a recommended product
+  CLICK
+}
+
 // ---------------------------------------------------------------------------
 // Auth (NextAuth v5 / Auth.js Prisma adapter)
 // ---------------------------------------------------------------------------
@@ -657,6 +668,31 @@ model StoryView {
   story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
 
   @@index([storyId])
+}
+
+// ---------------------------------------------------------------------------
+// Behavior tracking (powers the recommendation service + admin AI insights)
+// ---------------------------------------------------------------------------
+
+// Append-only behavioral signal log. Privacy-preserving: keyed by the session
+// userId when signed in, else an anonymous cookie id; never stores PII. Product/
+// category are plain ids (no FK) so the log is fully additive and survives
+// catalog edits — reads filter to active products. See lib/recommendations/*.
+model UserEvent {
+  id         String        @id @default(cuid())
+  type       UserEventType
+  userId     String?
+  anonId     String?
+  productId  String?
+  categoryId String?
+  query      String? // for SEARCH
+  source     String? // section/page that produced a RECO_CLICK (e.g. "fbt", "trending")
+  createdAt  DateTime      @default(now())
+
+  @@index([type, createdAt])
+  @@index([productId, type])
+  @@index([userId, createdAt])
+  @@index([categoryId, createdAt])
 }
 
 // ---------------------------------------------------------------------------

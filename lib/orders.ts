@@ -6,6 +6,7 @@ import { orderConfirmationEmail } from "@/lib/emails";
 import { sendEmail } from "@/lib/email";
 import { ensureInvoice, getInvoiceData } from "@/lib/invoices";
 import { isClosed } from "@/lib/order-status";
+import { trackEvent } from "@/lib/recommendations/events";
 import type { CheckoutItem } from "@/lib/validations/checkout";
 
 export {
@@ -193,6 +194,13 @@ export async function confirmOrder(
     }
   } catch (err) {
     console.error("[orders] post-confirm (invoice/email) failed:", err);
+  }
+
+  // Record purchase signals for the recommendation service (best-effort).
+  for (const item of order.items) {
+    if (item.productId) {
+      await trackEvent({ type: "PURCHASE", userId: order.userId, productId: item.productId });
+    }
   }
 }
 

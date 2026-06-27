@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { trackEvent } from "@/lib/recommendations/events";
 
 export type ToggleWishlistResult =
   | { wishlisted: boolean }
@@ -25,6 +26,7 @@ export async function toggleWishlist(
   }
 
   await prisma.wishlistItem.create({ data: { userId: user.id, productId } });
+  await trackEvent({ type: "WISHLIST_ADD", userId: user.id, productId });
   revalidatePath("/account/wishlist");
   return { wishlisted: true };
 }

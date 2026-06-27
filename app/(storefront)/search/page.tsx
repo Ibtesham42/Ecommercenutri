@@ -6,6 +6,7 @@ import { getWishlistProductIds } from "@/lib/queries/wishlist";
 import { ProductGrid } from "@/components/storefront/product-card";
 import { SearchBox } from "@/components/storefront/search-box";
 import { EmptyState } from "@/components/storefront/empty-state";
+import { BehaviorTracker } from "@/components/storefront/behavior-tracker";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
@@ -32,6 +33,7 @@ export default async function SearchPage({
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-10">
+      {term && <BehaviorTracker event={{ type: "SEARCH", query: term }} />}
       <h1 className="mb-4 text-2xl font-bold">Search</h1>
       <SearchBox autoFocus />
 

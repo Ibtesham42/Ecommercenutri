@@ -19,6 +19,7 @@ import {
   Users,
   Mail,
   Sparkles,
+  LineChart,
   Settings,
   Menu,
 } from "lucide-react";
@@ -58,6 +59,7 @@ const nav: NavItem[] = [
   { href: "/admin/shipping", label: "Shipping", icon: Truck, permission: "appearance" },
   { href: "/admin/customers", label: "Customers", icon: Users, permission: "customers" },
   { href: "/admin/messages", label: "Messages", icon: Mail, permission: "customers" },
+  { href: "/admin/insights", label: "AI Insights", icon: LineChart, permission: "ai" },
   { href: "/admin/ai-settings", label: "AI Settings", icon: Sparkles, permission: "ai" },
   { href: "/admin/admins", label: "Admins", icon: ShieldCheck, superOnly: true },
   { href: "/admin/settings", label: "Settings", icon: Settings },

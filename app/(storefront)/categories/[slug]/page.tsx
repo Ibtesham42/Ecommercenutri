@@ -8,6 +8,7 @@ import { SortSelect } from "@/components/storefront/sort-select";
 import { PaginationBar } from "@/components/storefront/pagination-bar";
 import { buildMetadata, breadcrumbSchema, jsonLd } from "@/lib/seo";
 import { BannerStrip } from "@/components/storefront/banner-strip";
+import { BehaviorTracker } from "@/components/storefront/behavior-tracker";
 
 export async function generateMetadata({
   params,
@@ -56,6 +57,7 @@ export default async function CategoryPage({
           ]),
         )}
       />
+      <BehaviorTracker event={{ type: "CATEGORY_VIEW", categoryId: category.id }} />
       <BannerStrip position="categoryTop" className="mb-6 px-0" />
       <header className="mb-6 rounded-2xl bg-gradient-to-r from-accent/50 to-secondary p-8">
         <h1 className="text-2xl font-bold sm:text-3xl">{category.name}</h1>

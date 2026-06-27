@@ -3,11 +3,15 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import {
   getProductBySlug,
-  getRelatedProducts,
   minVariantPrice,
 } from "@/lib/queries/products";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
 import { getPricingSettings } from "@/lib/queries/settings";
+import {
+  similarProducts,
+  frequentlyBoughtTogether,
+  customersAlsoBought,
+} from "@/lib/recommendations/service";
 import { buildMetadata, breadcrumbSchema, jsonLd } from "@/lib/seo";
 import { ProductGallery } from "@/components/storefront/product-gallery";
 import { ProductPurchase } from "@/components/storefront/product-purchase";
@@ -18,7 +22,8 @@ import {
   RecentlyViewed,
   RecentlyViewedTracker,
 } from "@/components/storefront/recently-viewed";
-import { ProductGrid } from "@/components/storefront/product-card";
+import { RecoSection } from "@/components/storefront/reco-section";
+import { BehaviorTracker } from "@/components/storefront/behavior-tracker";
 import { StarRating } from "@/components/storefront/star-rating";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -60,8 +65,10 @@ export default async function ProductPage({
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const [related, wishlistIds, pricingSettings] = await Promise.all([
-    getRelatedProducts(product.id, product.categoryId),
+  const [similar, fbt, alsoBought, wishlistIds, pricingSettings] = await Promise.all([
+    similarProducts(product.id),
+    frequentlyBoughtTogether(product.id),
+    customersAlsoBought(product.id),
     getWishlistProductIds(),
     getPricingSettings(),
   ]);
@@ -242,18 +249,45 @@ export default async function ProductPage({
         }))}
       />
 
-      {/* Related (similar products) */}
-      {related.length > 0 && (
-        <section className="mt-14">
-          <h2 className="mb-6 text-xl font-bold">You may also like</h2>
-          <ProductGrid products={related} wishlistedIds={wishlistIds} />
-        </section>
-      )}
+      {/* Frequently bought together */}
+      <RecoSection
+        className="mt-14"
+        title="Frequently bought together"
+        products={fbt}
+        wishlistedIds={wishlistIds}
+        source="fbt"
+      />
+
+      {/* Customers also bought */}
+      <RecoSection
+        className="mt-14"
+        title="Customers also bought"
+        products={alsoBought}
+        wishlistedIds={wishlistIds}
+        source="also-bought"
+      />
+
+      {/* Similar products */}
+      <RecoSection
+        className="mt-14"
+        title="Similar products"
+        products={similar}
+        wishlistedIds={wishlistIds}
+        source="similar"
+      />
 
       {/* Recently viewed */}
       <div className="mt-14">
         <RecentlyViewed excludeSlug={product.slug} />
       </div>
+
+      <BehaviorTracker
+        event={{
+          type: "PRODUCT_VIEW",
+          productId: product.id,
+          categoryId: product.categoryId,
+        }}
+      />
 
       <RecentlyViewedTracker
         item={{
