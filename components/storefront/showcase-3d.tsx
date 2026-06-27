@@ -70,6 +70,9 @@ export function Showcase3D({ items }: { items: ShowcaseDisplayItem[] }) {
   const tiltMax = motion.tilt && !reduced ? 10 : 0;
   const productSrc = cldUrl(item.imagePng || item.image, { w: 900 });
   const textLight = bg.dark;
+  // A transparent PNG floats bare (Apple-style cut-out); a regular product photo
+  // is framed in a clean card so it always fits well, never a floating rectangle.
+  const cutout = !!item.imagePng;
 
   return (
     <section
@@ -203,20 +206,40 @@ export function Showcase3D({ items }: { items: ShowcaseDisplayItem[] }) {
                 ["--float-px" as string]: `${floatPx}px`,
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- transform-friendly, lazy, optimized via cldUrl */}
-              <img
-                src={productSrc}
-                alt={item.title}
-                loading="lazy"
-                decoding="async"
-                className="size-full object-contain drop-shadow-2xl"
-                style={{ transform: `scale(${scale})` }}
-              />
-              {/* Soft contact shadow */}
-              <div
-                className="absolute inset-x-[15%] bottom-[6%] -z-10 h-6 rounded-[50%] bg-black/25 blur-xl"
-                style={{ transform: "translateZ(-30px)" }}
-              />
+              {cutout ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- transform-friendly, lazy, optimized via cldUrl */}
+                  <img
+                    src={productSrc}
+                    alt={item.title}
+                    loading="lazy"
+                    decoding="async"
+                    className="size-full object-contain drop-shadow-2xl"
+                    style={{ transform: `scale(${scale})` }}
+                  />
+                  {/* Soft contact shadow under the floating cut-out */}
+                  <div
+                    className="absolute inset-x-[15%] bottom-[6%] -z-10 h-6 rounded-[50%] bg-black/25 blur-xl"
+                    style={{ transform: "translateZ(-30px)" }}
+                  />
+                </>
+              ) : (
+                /* Regular photo → centered in a clean product card; the image
+                   auto-fits (object-contain) so it's never cropped or boxy. */
+                <div
+                  className="grid size-full place-items-center overflow-hidden rounded-[1.75rem] border border-black/5 bg-white p-6 shadow-elev-3 dark:border-white/10 dark:bg-zinc-900 sm:p-8"
+                  style={{ transform: `scale(${0.84 + (zoom / 100) * 0.16})` }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- transform-friendly, lazy, optimized via cldUrl */}
+                  <img
+                    src={productSrc}
+                    alt={item.title}
+                    loading="lazy"
+                    decoding="async"
+                    className="max-h-full max-w-full object-contain"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
