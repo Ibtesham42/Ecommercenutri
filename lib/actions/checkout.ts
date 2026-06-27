@@ -7,7 +7,12 @@ import { siteConfig } from "@/config/site";
 import { env } from "@/lib/env";
 import { validateCoupon } from "@/lib/coupons";
 import { computeBreakdown, isCodAvailable, type PriceBreakdown } from "@/lib/pricing";
-import { getPricingSettings, getCodSettings } from "@/lib/queries/settings";
+import {
+  getPricingSettings,
+  getCodSettings,
+  getStoreSettings,
+} from "@/lib/queries/settings";
+import { cldRasterLogo } from "@/lib/cld";
 import {
   priceCart,
   generateOrderNumber,
@@ -112,6 +117,8 @@ export type CreateOrderResult =
         orderId: string;
         name: string;
         description: string;
+        image?: string; // merchant logo shown in the checkout modal
+        themeColor: string; // brand color for the checkout modal
         prefill: { name: string; email: string; contact: string };
       };
       // Mock path — already paid, just redirect to success.
@@ -250,6 +257,9 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
         where: { id: order.id },
         data: { razorpayOrderId: rzpOrder.id },
       });
+      // Brand the checkout modal with the store's logo, name and color.
+      const store = await getStoreSettings();
+      const brandLogo = cldRasterLogo(store.logo);
       return {
         ok: true,
         orderNumber,
@@ -259,8 +269,10 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
           currency: "INR",
           razorpayOrderId: rzpOrder.id,
           orderId: order.id,
-          name: siteConfig.name,
+          name: store.siteName || siteConfig.name,
           description: `Order ${orderNumber}`,
+          ...(brandLogo ? { image: brandLogo } : {}),
+          themeColor: store.primaryColor || "#16803c",
           prefill: {
             name: address.fullName,
             email: user.email ?? "",

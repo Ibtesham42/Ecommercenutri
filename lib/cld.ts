@@ -31,6 +31,20 @@ export function cldUrl(
   return url.replace("/upload/", `/upload/${t.join(",")}/`);
 }
 
+/**
+ * Deliver any Cloudinary asset — including a PDF or SVG — as a sized raster PNG.
+ * Used where an external service requires a real bitmap image (e.g. the Razorpay
+ * checkout logo, which can't render a PDF/SVG). Non-Cloudinary URLs are returned
+ * unchanged (they must already be a usable image).
+ */
+export function cldRasterLogo(url: string | null | undefined, size = 256): string {
+  if (!url) return "";
+  if (!url.includes("res.cloudinary.com") || !url.includes("/upload/")) return url;
+  return url
+    .replace("/upload/", `/upload/f_png,pg_1,c_fit,w_${size},h_${size}/`)
+    .replace(/\.(pdf|svg|webp|avif|jpe?g|gif|tiff?)(\?|$)/i, ".png$2");
+}
+
 /** True for URLs we should treat as video in previews/viewers. */
 export function isVideoUrl(url: string): boolean {
   return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url);

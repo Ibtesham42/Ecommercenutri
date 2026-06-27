@@ -46,6 +46,7 @@ type RazorpayOptions = {
   currency: string;
   name: string;
   description: string;
+  image?: string;
   order_id: string;
   prefill: { name: string; email: string; contact: string };
   theme: { color: string };
@@ -214,9 +215,10 @@ export function CheckoutClient({
       currency: rzp.currency,
       name: rzp.name,
       description: rzp.description,
+      ...(rzp.image ? { image: rzp.image } : {}),
       order_id: rzp.razorpayOrderId,
       prefill: rzp.prefill,
-      theme: { color: "#16803c" },
+      theme: { color: rzp.themeColor },
       handler: (response) => {
         void (async () => {
           const verify = await verifyPayment({
