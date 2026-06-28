@@ -21,6 +21,9 @@ export type CartItem = {
 
 type CartState = {
   items: CartItem[];
+  // Increments on every add — a transient signal the header cart icon subscribes
+  // to so it can play a "bump" animation. Not used for any pricing/logic.
+  bump: number;
   addItem: (item: Omit<CartItem, "quantity">, qty?: number) => void;
   removeItem: (variantId: string) => void;
   updateQty: (variantId: string, qty: number) => void;
@@ -31,29 +34,20 @@ export const useCart = create<CartState>()(
   persist(
     (set) => ({
       items: [],
+      bump: 0,
       addItem: (item, qty = 1) =>
         set((state) => {
           const existing = state.items.find(
             (i) => i.variantId === item.variantId,
           );
-          if (existing) {
-            return {
-              items: state.items.map((i) =>
+          const items = existing
+            ? state.items.map((i) =>
                 i.variantId === item.variantId
-                  ? {
-                      ...i,
-                      quantity: Math.min(i.quantity + qty, i.maxStock || 99),
-                    }
+                  ? { ...i, quantity: Math.min(i.quantity + qty, i.maxStock || 99) }
                   : i,
-              ),
-            };
-          }
-          return {
-            items: [
-              ...state.items,
-              { ...item, quantity: Math.min(qty, item.maxStock || 99) },
-            ],
-          };
+              )
+            : [...state.items, { ...item, quantity: Math.min(qty, item.maxStock || 99) }];
+          return { items, bump: state.bump + 1 };
         }),
       removeItem: (variantId) =>
         set((state) => ({
