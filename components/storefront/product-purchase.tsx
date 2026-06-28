@@ -6,7 +6,6 @@ import { addDays, format } from "date-fns";
 import {
   Minus,
   Plus,
-  ShoppingCart,
   Zap,
   ShieldCheck,
   Truck,
@@ -16,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { WishlistButton } from "@/components/storefront/wishlist-button";
 import { useCart } from "@/lib/store/cart";
 import { trackClient } from "@/components/storefront/behavior-tracker";
@@ -204,7 +204,7 @@ export function ProductPurchase({
                 }}
                 aria-pressed={isActive}
                 className={cn(
-                  "flex min-h-[3.25rem] flex-col items-start justify-center rounded-xl border px-3 py-2 text-left transition",
+                  "flex min-h-[3.25rem] flex-col items-start justify-center rounded-xl border px-3 py-2 text-left transition-all duration-150 motion-safe:active:scale-[0.97]",
                   isActive
                     ? "border-primary bg-primary/5 ring-1 ring-primary"
                     : "hover:border-primary/40",
@@ -232,7 +232,7 @@ export function ProductPurchase({
         <div className="flex items-center rounded-xl border">
           <button
             type="button"
-            className="grid size-11 place-items-center rounded-l-xl transition hover:bg-accent disabled:opacity-40"
+            className="grid size-11 place-items-center rounded-l-xl transition-all duration-150 hover:bg-accent disabled:opacity-40 motion-safe:active:scale-90"
             onClick={() => setQty((q) => Math.max(1, q - 1))}
             disabled={qty <= 1 || outOfStock}
             aria-label="Decrease quantity"
@@ -244,7 +244,7 @@ export function ProductPurchase({
           </span>
           <button
             type="button"
-            className="grid size-11 place-items-center rounded-r-xl transition hover:bg-accent disabled:opacity-40"
+            className="grid size-11 place-items-center rounded-r-xl transition-all duration-150 hover:bg-accent disabled:opacity-40 motion-safe:active:scale-90"
             onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
             disabled={qty >= maxQty || outOfStock}
             aria-label="Increase quantity"
@@ -262,16 +262,12 @@ export function ProductPurchase({
       {/* Inline actions */}
       <div ref={actionsRef} className="space-y-3">
         <div className="flex gap-3">
-          <Button
-            size="lg"
-            variant="outline"
-            className="h-12 flex-1 gap-2 text-base"
-            onClick={add}
+          <AddToCartButton
+            onAdd={add}
             disabled={outOfStock}
-          >
-            <ShoppingCart className="size-5" />
-            {outOfStock ? "Out of stock" : "Add to cart"}
-          </Button>
+            label={outOfStock ? "Out of stock" : "Add to cart"}
+            className="h-12 flex-1 gap-2 text-base"
+          />
           <WishlistButton
             productId={productId}
             initial={wishlisted}
@@ -363,15 +359,13 @@ export function ProductPurchase({
               {name} · {variant?.weightLabel}
             </p>
           </div>
-          <Button
-            variant="outline"
-            className="h-11 gap-1.5"
-            onClick={add}
+          <AddToCartButton
+            onAdd={add}
             disabled={outOfStock}
-          >
-            <ShoppingCart className="size-4" />
-            Add
-          </Button>
+            label="Add"
+            className="h-11 gap-1.5"
+            iconClassName="size-4"
+          />
           <Button className="h-11 gap-1.5" onClick={buyNow} disabled={outOfStock}>
             <Zap className="size-4" />
             Buy now

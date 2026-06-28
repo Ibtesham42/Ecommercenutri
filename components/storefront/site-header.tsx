@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Heart, Menu, ShoppingCart, User } from "lucide-react";
+import { Heart, Menu, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +16,7 @@ import {
 import { siteConfig } from "@/config/site";
 import { Logo } from "@/components/storefront/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { CartCount } from "@/components/storefront/cart-count";
+import { CartIcon } from "@/components/storefront/cart-icon";
 import { SearchBox } from "@/components/storefront/search-box";
 import { NotificationBell, type BellNotification } from "@/components/account/notification-bell";
 
@@ -148,8 +148,7 @@ export function SiteHeader({
             aria-label="Cart"
           >
             <Link href="/cart">
-              <ShoppingCart className="size-5" />
-              <CartCount />
+              <CartIcon />
             </Link>
           </Button>
           <ThemeToggle />
