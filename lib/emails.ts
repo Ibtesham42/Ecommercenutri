@@ -189,3 +189,70 @@ export function orderStatusEmail(order: {
     text: `Order #${order.orderNumber} is now ${order.status}. Track it: ${url}`,
   };
 }
+
+type ReturnStatusName =
+  | "REQUESTED"
+  | "UNDER_REVIEW"
+  | "INFO_REQUESTED"
+  | "APPROVED"
+  | "REJECTED"
+  | "PICKUP_SCHEDULED"
+  | "ITEM_RECEIVED"
+  | "REFUNDED"
+  | "CANCELLED";
+
+/** Customer notification when a return/refund request changes status. Returns null
+ *  for statuses that don't warrant an email (e.g. internal ITEM_RECEIVED). */
+export function returnStatusEmail(data: {
+  returnNumber: string;
+  orderNumber: string;
+  status: ReturnStatusName;
+  name?: string | null;
+  reason?: string | null; // rejection reason / info request message
+  amount?: number; // paise (REFUNDED)
+  method?: string | null; // refund method (REFUNDED)
+  pickupAt?: string | null; // ISO (PICKUP_SCHEDULED)
+}): Email | null {
+  const url = `${siteConfig.url}/account/returns/${data.returnNumber}`;
+  const hi = `Hi${data.name ? ` ${data.name}` : ""},`;
+  const ref = `return <strong>${data.returnNumber}</strong> (order #${data.orderNumber})`;
+
+  const copy: Partial<Record<ReturnStatusName, { heading: string; intro: string }>> = {
+    REQUESTED: {
+      heading: "We've received your return request 📋",
+      intro: `${hi} we've received your ${ref}. Our team will review it shortly.`,
+    },
+    UNDER_REVIEW: {
+      heading: "Your return is under review 🔎",
+      intro: `${hi} your ${ref} is now being reviewed by our team.`,
+    },
+    INFO_REQUESTED: {
+      heading: "We need a little more information",
+      intro: `${hi} to proceed with your ${ref}, we need more info.${data.reason ? ` <em>${data.reason}</em>` : ""}`,
+    },
+    APPROVED: {
+      heading: "Your return is approved ✅",
+      intro: `${hi} good news — your ${ref} has been approved. We'll process the refund shortly.`,
+    },
+    REJECTED: {
+      heading: "About your return request",
+      intro: `${hi} unfortunately your ${ref} could not be approved.${data.reason ? ` Reason: <em>${data.reason}</em>.` : ""}`,
+    },
+    PICKUP_SCHEDULED: {
+      heading: "Pickup scheduled 🚚",
+      intro: `${hi} a pickup has been scheduled for your ${ref}${data.pickupAt ? ` on <strong>${new Date(data.pickupAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}</strong>` : ""}. Please keep the item packed and ready.`,
+    },
+    REFUNDED: {
+      heading: "Your refund is on the way 💸",
+      intro: `${hi} we've processed a refund of <strong>${formatPrice(data.amount ?? 0)}</strong> for your ${ref}${data.method ? ` via ${data.method.replace(/_/g, " ").toLowerCase()}` : ""}. It may take a few days to reflect.`,
+    },
+  };
+
+  const c = copy[data.status];
+  if (!c) return null;
+  return {
+    subject: `Return ${data.returnNumber} — ${data.status.replace(/_/g, " ").toLowerCase()} · ${siteConfig.name}`,
+    html: shell({ heading: c.heading, intro: c.intro, ctaLabel: "View your return", ctaUrl: url }),
+    text: `Return ${data.returnNumber} for order #${data.orderNumber} is now ${data.status}. View it: ${url}`,
+  };
+}

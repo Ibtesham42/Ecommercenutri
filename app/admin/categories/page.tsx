@@ -26,6 +26,7 @@ export default async function AdminCategoriesPage() {
     parentId: c.parentId,
     sortOrder: c.sortOrder,
     isActive: c.isActive,
+    returnable: c.returnable,
     productCount: c._count.products,
     parentName: c.parent?.name ?? null,
   }));

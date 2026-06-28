@@ -39,6 +39,7 @@ export async function saveCategory(input: unknown): Promise<AdminResult> {
     parentId: d.parentId || null,
     sortOrder: d.sortOrder,
     isActive: d.isActive,
+    returnable: d.returnable,
     metaTitle: d.metaTitle || null,
     metaDescription: d.metaDescription || null,
   };

@@ -27,6 +27,8 @@ export default async function AdminShippingPage() {
     codEnabled: raw?.codEnabled ?? false,
     codMinOrder: toRupees(raw?.codMinOrder),
     codMaxOrder: toRupees(raw?.codMaxOrder),
+    returnsEnabled: raw?.returnsEnabled ?? true,
+    returnWindowDays: raw?.returnWindowDays ?? 7,
   };
 
   return (

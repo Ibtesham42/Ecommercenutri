@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, Package, MapPin, Heart, MessageSquare, LogOut } from "lucide-react";
+import { User, Package, MapPin, Heart, MessageSquare, RotateCcw, LogOut } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
 
 const nav = [
   { href: "/account", label: "Profile", icon: User },
   { href: "/account/orders", label: "Orders", icon: Package },
+  { href: "/account/returns", label: "Returns & Refunds", icon: RotateCcw },
   { href: "/account/addresses", label: "Addresses", icon: MapPin },
   { href: "/account/wishlist", label: "Wishlist", icon: Heart },
   { href: "/account/ai-history", label: "AI Chats", icon: MessageSquare },

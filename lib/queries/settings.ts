@@ -35,6 +35,9 @@ export type StoreSettings = {
   codMinOrder: number | null;
   codMaxOrder: number | null;
   codPincodes: string[];
+  // Returns & refunds
+  returnsEnabled: boolean;
+  returnWindowDays: number;
   // Contact
   supportEmail: string;
   supportPhone: string;
@@ -92,6 +95,8 @@ export async function getStoreSettings(): Promise<StoreSettings> {
     codMinOrder: s?.codMinOrder ?? null,
     codMaxOrder: s?.codMaxOrder ?? null,
     codPincodes: s?.codPincodes ?? [],
+    returnsEnabled: s?.returnsEnabled ?? true,
+    returnWindowDays: s?.returnWindowDays ?? 7,
     supportEmail: s?.supportEmail || siteConfig.contact.email,
     supportPhone: s?.supportPhone || siteConfig.contact.phone,
     whatsapp: s?.whatsapp ?? null,
@@ -151,6 +156,24 @@ const COD_DEFAULTS: CodSettings = {
   codMaxOrder: null,
   codPincodes: [],
 };
+
+export type ReturnSettings = { returnsEnabled: boolean; returnWindowDays: number };
+
+const RETURN_DEFAULTS: ReturnSettings = { returnsEnabled: true, returnWindowDays: 7 };
+
+/** Returns/refund policy settings. Falls back to defaults on DB error. */
+export async function getReturnSettings(): Promise<ReturnSettings> {
+  try {
+    const s = await prisma.storeSetting.findUnique({
+      where: { id: "singleton" },
+      select: { returnsEnabled: true, returnWindowDays: true },
+    });
+    if (!s) return RETURN_DEFAULTS;
+    return { returnsEnabled: s.returnsEnabled, returnWindowDays: s.returnWindowDays };
+  } catch {
+    return RETURN_DEFAULTS;
+  }
+}
 
 /** Cash-on-Delivery settings for checkout. COD is off (unavailable) on DB error. */
 export async function getCodSettings(): Promise<CodSettings> {

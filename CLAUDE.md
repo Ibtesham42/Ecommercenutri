@@ -300,8 +300,8 @@ swapped and RAG added later without touching callers.
 - **Two admin roles** (`Role` enum): `SUPER_ADMIN` (main admin — full access, manages
   admins + store settings + own credentials) and `ADMIN` (sub-admin — access limited to
   the sections in `User.permissions`). `USER` is a customer.
-- **Permission keys** (`lib/permissions.ts`): `products, stories, orders, categories,
-  coupons, inventory, customers, ai`. A sub-admin only reaches a section if its key is in
+- **Permission keys** (`lib/permissions.ts`): `products, stories, orders, returns, categories,
+  coupons, inventory, customers, ai, appearance`. A sub-admin only reaches a section if its key is in
   their `permissions` array; super admins always pass. Dashboard + Settings are available
   to every admin (the dashboard only renders widgets the admin is permitted to see).
 - **Enforcement is layered & DB-fresh** (a stale JWT can't grant access):
@@ -569,6 +569,35 @@ See `PROGRESS.md` for the live tracker (status, blockers, next task).
   admin; `?download=1` → attachment), and attached best-effort to the confirmation email. The
   PDF route is `runtime = "nodejs"`; `next.config.ts` lists `@react-pdf/renderer` in
   `serverExternalPackages`. Money in the PDF is ASCII (`Rs. …`) since Helvetica lacks ₹.
+- **Returns & refunds** (Amazon/Flipkart-style; a **separate lifecycle layered on orders** — a
+  delivered order stays `DELIVERED` while the return progresses through its own status). Models:
+  `ReturnRequest` (RMA-YYMMDD-XXXXXX, `media[]` proof, `refundAmount`/`refundedAmount`,
+  `refundMethod`/`refundStatus`/`refundRef`, pickup + `adminNotes` + `rejectionReason`),
+  `ReturnRequestItem` (per-item qty → **partial refunds**), `ReturnEvent` (append-only audit log),
+  `CreditNote` (mirrors `Invoice`: `CN-<FY>-<seq>`, seller snapshot, idempotent `ensureCreditNote`),
+  `Notification` (in-app bell). Status config + engine mirror the order ones:
+  `lib/return-status.ts` (`RETURN_FLOW`, labels, `isReturnTerminal`, `canCustomerCancelReturn`) +
+  `lib/returns.ts` (`getReturnEligibility`, `transitionReturnStatus`, `processRefund`). **Eligibility**:
+  `StoreSetting.returnsEnabled`/`returnWindowDays` (default 7, edited at `/admin/shipping`) gated by
+  per-product `Product.returnable`/`returnWindowDays` **and** per-category `Category.returnable`;
+  only `DELIVERED`, in-window, not-already-returned items (eligibility computed from the latest
+  `DELIVERED` OrderEvent). **Payments**: prepaid+`ORIGINAL` → `lib/razorpay.ts#refundPayment`
+  (`payments.refund`, keyless mock id); COD/manual → admin records `RefundMethod` (UPI/Bank/…) +
+  reference. `processRefund` restocks returned qty (once, guarded by `stockDeducted`); a full-order
+  return closes the order `RETURNED` + `paymentStatus REFUNDED`; partial leaves the order open. Every
+  transition emails (`returnStatusEmail`) **and** notifies in-app (`lib/notifications.ts#notify`).
+  **Customer**: `lib/actions/returns.ts` (request/cancel/submit-info), proof upload at
+  `POST /api/returns/upload` (any signed-in user, images+video, `nutriyet/returns`), UI at
+  `/account/returns(/[returnNumber])` (`return-request-button`, `return-timeline`,
+  `return-media-upload`, `return-customer-actions`) + the request button on the order page; the
+  **notification bell** (`components/account/notification-bell.tsx`) mounts in the storefront header
+  for signed-in users (layout fetches `getNotifications`/`getUnreadCount`). **Admin** (`returns`
+  RBAC permission): `lib/actions/admin/returns.ts` (review/approve/reject/request-info/
+  schedule-pickup/add-note/process-refund), `/admin/returns` list (status/date/customer/payment
+  filters + **CSV** at `/admin/returns/export` via `lib/csv.ts`) + detail (proof gallery, audit log,
+  internal notes, `return-actions`). **Credit-note PDF** (`lib/pdf/credit-note-pdf.tsx`) at
+  `GET /api/credit-notes/[returnNumber]` (owner or `returns` admin). All sections render nothing /
+  hide when empty or `returnsEnabled=false`.
 - Admin **product image management is URL-based** for now; real Cloudinary uploads
   land in M5. Product edits preserve variant/image ids (cart links survive) and
   delete only the variants/images the admin removed.

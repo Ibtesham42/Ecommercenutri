@@ -18,6 +18,7 @@ import { Logo } from "@/components/storefront/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CartCount } from "@/components/storefront/cart-count";
 import { SearchBox } from "@/components/storefront/search-box";
+import { NotificationBell, type BellNotification } from "@/components/account/notification-bell";
 
 export function SiteHeader({
   logoUrl,
@@ -25,12 +26,16 @@ export function SiteHeader({
   logoHeight,
   logoHeightMobile,
   logoMaxWidth,
+  notifications,
+  unreadCount = 0,
 }: {
   logoUrl?: string | null;
   siteName?: string;
   logoHeight?: number | null;
   logoHeightMobile?: number | null;
   logoMaxWidth?: number | null;
+  notifications?: BellNotification[];
+  unreadCount?: number;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -116,6 +121,9 @@ export function SiteHeader({
         </div>
 
         <div className="ml-auto flex items-center gap-0.5">
+          {notifications && (
+            <NotificationBell initialUnread={unreadCount} items={notifications} />
+          )}
           <Button
             asChild
             variant="ghost"

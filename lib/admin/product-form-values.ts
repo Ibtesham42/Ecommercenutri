@@ -20,6 +20,8 @@ export type ProductFormValues = {
   isActive: boolean;
   isFeatured: boolean;
   isBestSeller: boolean;
+  returnable: boolean; // eligible for returns
+  returnWindowDays?: number | null; // override; null/blank = store default
   gstRate?: number | null; // percent; null/blank = store default
   deliveryRupees?: number | null; // rupees; null/blank = store default
   metaTitle?: string;
@@ -54,6 +56,8 @@ export function productToFormValues(p: {
   isActive: boolean;
   isFeatured: boolean;
   isBestSeller: boolean;
+  returnable: boolean;
+  returnWindowDays: number | null;
   gstRate: number | null;
   deliveryCharge: number | null;
   metaTitle: string | null;
@@ -89,6 +93,8 @@ export function productToFormValues(p: {
     isActive: p.isActive,
     isFeatured: p.isFeatured,
     isBestSeller: p.isBestSeller,
+    returnable: p.returnable,
+    returnWindowDays: p.returnWindowDays,
     gstRate: p.gstRate,
     deliveryRupees: p.deliveryCharge != null ? paiseToRupees(p.deliveryCharge) : null,
     metaTitle: p.metaTitle ?? "",
