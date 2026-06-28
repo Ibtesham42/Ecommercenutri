@@ -9,6 +9,7 @@ import { cldUrl } from "@/lib/cld";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@/components/analytics";
+import { Analytics as VercelAnalytics } from "@vercel/analytics/next";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 
 const fontSans = Geist({ subsets: ["latin"], variable: "--font-sans" });
@@ -108,7 +109,10 @@ export default function RootLayout({
           {children}
           <Toaster richColors position="top-center" />
         </ThemeProvider>
+        {/* Project's pluggable (Plausible/Umami-style) analytics — env-gated. */}
         <Analytics />
+        {/* Vercel Web Analytics — production only; auto-tracks App Router page views. */}
+        {process.env.NODE_ENV === "production" && <VercelAnalytics />}
         <ServiceWorkerRegister />
       </body>
     </html>
