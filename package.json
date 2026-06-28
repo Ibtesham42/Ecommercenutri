@@ -37,6 +37,7 @@
     "@react-three/postprocessing": "^3.0.4",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
+    "@vercel/analytics": "^2.0.1",
     "ai": "^6.0.209",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
