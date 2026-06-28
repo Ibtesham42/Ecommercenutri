@@ -131,6 +131,7 @@ export type ShowcaseDisplayItem = {
   title: string;
   tagline: string | null;
   image: string;
+  imagePng: string | null; // bg-removed cutout (preferred by the WebGL stage)
   href: string | null;
   price: number | null; // paise
   ctaText: string;
@@ -182,6 +183,7 @@ export async function getActiveShowcase(): Promise<{
         title: r.title,
         tagline: r.tagline,
         image: r.image,
+        imagePng: r.imagePng,
         href: r.product?.slug ? `/products/${r.product.slug}` : r.ctaUrl || null,
         price: prices.length ? Math.min(...prices) : null,
         ctaText: r.ctaText || "Shop Now",

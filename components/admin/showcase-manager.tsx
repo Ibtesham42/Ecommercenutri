@@ -26,7 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { ShowcaseImageField } from "@/components/admin/showcase-image-field";
 import { Showcase3D } from "@/components/storefront/showcase-3d";
 import { SHOWCASE_ANIMATIONS, SHOWCASE_BACKGROUNDS } from "@/lib/showcase";
 import { cldUrl } from "@/lib/cld";
@@ -45,6 +45,7 @@ export type ShowcaseRow = {
   title: string;
   tagline: string | null;
   image: string;
+  imagePng: string | null;
   productId: string | null;
   ctaText: string | null;
   ctaUrl: string | null;
@@ -63,6 +64,7 @@ type FormValues = {
   title: string;
   tagline: string;
   image: string;
+  imagePng: string;
   productId: string;
   ctaText: string;
   ctaUrl: string;
@@ -80,6 +82,7 @@ function toPreview(v: FormValues): ShowcaseDisplayItem {
     title: v.title || "Your product",
     tagline: v.tagline || null,
     image: v.image || "https://placehold.co/900x900/16803c/ffffff?text=Product",
+    imagePng: v.imagePng || null,
     href: "#",
     price: null,
     ctaText: v.ctaText || "Shop Now",
@@ -114,7 +117,7 @@ export function ShowcaseManager({
     setOrder(items);
   }
 
-  const { register, handleSubmit, control, reset, watch } = useForm<FormValues>();
+  const { register, handleSubmit, control, reset, watch, setValue } = useForm<FormValues>();
 
   function openAdd() {
     setEditing(null);
@@ -122,6 +125,7 @@ export function ShowcaseManager({
       title: "",
       tagline: "",
       image: "",
+      imagePng: "",
       productId: "",
       ctaText: "",
       ctaUrl: "",
@@ -141,6 +145,7 @@ export function ShowcaseManager({
       title: s.title,
       tagline: s.tagline ?? "",
       image: s.image,
+      imagePng: s.imagePng ?? "",
       productId: s.productId ?? "",
       ctaText: s.ctaText ?? "",
       ctaUrl: s.ctaUrl ?? "",
@@ -161,6 +166,7 @@ export function ShowcaseManager({
       title: v.title,
       tagline: v.tagline || null,
       image: v.image,
+      imagePng: v.imagePng || null,
       productId: v.productId || null,
       ctaText: v.ctaText || null,
       ctaUrl: v.ctaUrl || null,
@@ -326,19 +332,19 @@ export function ShowcaseManager({
 
             <div className="space-y-1.5">
               <Label>Product image</Label>
-              <Controller
-                control={control}
-                name="image"
-                rules={{ required: true }}
-                render={({ field: f }) => (
-                  <ImageUploadField value={f.value} onChange={f.onChange} cloudinaryReady={cloudinaryReady} folder="showcase" />
-                )}
+              {/* RHF-registered values, driven by ShowcaseImageField via setValue. */}
+              <input type="hidden" {...register("image", { required: true })} />
+              <input type="hidden" {...register("imagePng")} />
+              <ShowcaseImageField
+                image={watch("image") || ""}
+                imagePng={watch("imagePng") || null}
+                cloudinaryReady={cloudinaryReady}
+                folder="showcase"
+                onChange={({ image, imagePng }) => {
+                  setValue("image", image, { shouldDirty: true, shouldValidate: true });
+                  setValue("imagePng", imagePng ?? "", { shouldDirty: true });
+                }}
               />
-              <p className="text-xs text-muted-foreground">
-                Upload any image (JPG, PNG, WebP — portrait, landscape or square).
-                It&rsquo;s automatically trimmed, centered and fitted into the 3D
-                showcase — no editing needed.
-              </p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">

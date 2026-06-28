@@ -1,28 +1,59 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import {
+  Component,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { formatPrice } from "@/lib/format";
-import { cldShowcaseImage } from "@/lib/cld";
-import { showcaseMotion, showcaseBackground, clampIntensity } from "@/lib/showcase";
+import { cldShowcaseImage, cldUrl } from "@/lib/cld";
+import { showcaseBackground } from "@/lib/showcase";
 import type { ShowcaseDisplayItem } from "@/lib/queries/home";
 import { cn } from "@/lib/utils";
+import { useInView } from "./showcase/use-in-view";
+import type { ShowcaseSceneItem } from "./showcase/types";
 
 /**
- * Premium 3D hero showcase — Apple/Tesla-style depth via GPU-accelerated CSS 3D
- * transforms (no heavy WebGL runtime). Reusable engine: it's preset-driven
- * (see `lib/showcase.ts`), auto-advances, pauses on hover (desktop), supports
- * swipe (mobile) and is fully gated by `prefers-reduced-motion`. Renders nothing
- * for an empty list, so it's safe to always mount.
+ * Premium 3D hero showcase — Apple/Tesla-style cinematic product presentation
+ * rendered with real WebGL (react-three-fiber: HDRI-style studio reflections, a
+ * mirror floor, soft shadows, PBR/clearcoat material, idle float, cursor/gyro
+ * parallax, slow camera drift and subtle bloom/DoF/vignette, crossfading between
+ * products). This wrapper is the SSR-friendly chrome (copy/CTA/dots + a flat
+ * fallback image); the heavy WebGL stage is lazy, client-only (next/dynamic
+ * ssr:false) and only mounts once scrolled into view. Renders nothing for an
+ * empty list, so it's safe to always mount.
  */
+
+// Client-only WebGL stage — never SSR'd, code-split so first paint never waits.
+const ShowcaseStage = dynamic(() => import("./showcase/showcase-stage"), {
+  ssr: false,
+});
+
+/** If WebGL init/render throws, keep showing the flat fallback image (children
+ *  render nothing). The hero must never blank. */
+class StageErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
 export function Showcase3D({ items }: { items: ShowcaseDisplayItem[] }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(false);
-  // Pointer parallax (-1..1), eased toward 0 when the pointer leaves.
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const stageRef = useRef<HTMLDivElement>(null);
+  const [armed, setArmed] = useState(false); // mount WebGL only once visible
+  const { ref, active } = useInView<HTMLDivElement>();
   const touchStart = useRef<number | null>(null);
 
   useEffect(() => {
@@ -33,57 +64,107 @@ export function Showcase3D({ items }: { items: ShowcaseDisplayItem[] }) {
     return () => mq.removeEventListener("change", set);
   }, []);
 
+  useEffect(() => {
+    if (active) setArmed(true);
+  }, [active]);
+
   const count = items.length;
   const next = useCallback(() => setIndex((i) => (i + 1) % count), [count]);
   const go = (i: number) => setIndex(((i % count) + count) % count);
 
-  // Auto-advance (slow, premium). Paused on hover / reduced-motion / single item.
+  // Auto-advance (slow, premium). Paused on hover / reduced-motion / off-screen.
   useEffect(() => {
-    if (paused || reduced || count <= 1) return;
+    if (paused || reduced || !active || count <= 1) return;
     const t = setInterval(next, 6000);
     return () => clearInterval(t);
-  }, [paused, reduced, count, next]);
+  }, [paused, reduced, active, count, next]);
 
-  function onPointerMove(e: React.PointerEvent) {
-    if (reduced) return;
-    const el = stageRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const x = ((e.clientX - r.left) / r.width) * 2 - 1;
-    const y = ((e.clientY - r.top) / r.height) * 2 - 1;
-    setTilt({ x: Math.max(-1, Math.min(1, x)), y: Math.max(-1, Math.min(1, y)) });
-  }
+  const item = count > 0 ? items[index] : null;
 
-  if (count === 0) return null;
+  // Prefer the bg-removed cutout (true floating product); fall back to the raw
+  // image (auto-trimmed/fit). Cutout delivered with alpha preserved.
+  const sceneSrc = useMemo(() => {
+    if (!item) return "";
+    return item.imagePng
+      ? cldUrl(item.imagePng, { w: 1200, crop: "fit" })
+      : cldShowcaseImage(item.image, { size: 1100 });
+  }, [item]);
 
-  const item = items[index];
-  const motion = showcaseMotion(item.animation);
+  const sceneItem: ShowcaseSceneItem | null = useMemo(
+    () =>
+      item
+        ? {
+            id: item.id,
+            src: sceneSrc,
+            animation: item.animation,
+            background: item.background,
+            rotationSpeed: item.rotationSpeed,
+            floatIntensity: item.floatIntensity,
+            zoom: item.zoom,
+          }
+        : null,
+    [item, sceneSrc],
+  );
+
+  if (!item || !sceneItem) return null;
+
   const bg = showcaseBackground(item.background);
-  const float = clampIntensity(item.floatIntensity);
-  const spin = clampIntensity(item.rotationSpeed);
-  const zoom = clampIntensity(item.zoom);
-
-  // Map 0-100 knobs → concrete motion values.
-  const floatPx = motion.float && !reduced ? 6 + (float / 100) * 22 : 0;
-  const spinDur = motion.spin ? 60 - (spin / 100) * 45 : 0; // 60s … 15s
-  const tiltMax = motion.tilt && !reduced ? 10 : 0;
-  const cardScale = 0.86 + (zoom / 100) * 0.16;
-  // Any uploaded image (any size/format/aspect) is auto-trimmed, centered and
-  // fit into a consistent square — no transparent PNG or manual editing needed.
-  const productSrc = cldShowcaseImage(item.image);
   const textLight = bg.dark;
+  const fallbackSrc = item.imagePng
+    ? cldUrl(item.imagePng, { w: 900, crop: "fit" })
+    : cldShowcaseImage(item.image, { size: 900 });
 
   return (
     <section
       aria-label="Featured product showcase"
-      className={cn("relative overflow-hidden border-y", bg.className)}
+      className={cn(
+        "relative isolate min-h-[560px] overflow-hidden border-y sm:min-h-[620px] lg:min-h-[680px]",
+        bg.className,
+      )}
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onTouchStart={(e) => (touchStart.current = e.touches[0]?.clientX ?? null)}
+      onTouchEnd={(e) => {
+        const start = touchStart.current;
+        if (start == null) return;
+        const dx = (e.changedTouches[0]?.clientX ?? start) - start;
+        if (Math.abs(dx) > 40) go(index + (dx < 0 ? 1 : -1));
+        touchStart.current = null;
+      }}
     >
-      <div className="mx-auto grid w-full max-w-7xl items-center gap-6 px-4 py-10 sm:py-14 lg:grid-cols-2 lg:gap-8">
-        {/* Copy */}
-        <div className={cn("order-2 lg:order-1", textLight && "text-white")}>
+      {/* Full-bleed stage: a flat fallback image, with the WebGL canvas painting
+          opaquely over it once it has initialised. */}
+      <div ref={ref} className="absolute inset-0 -z-10">
+        <div className="absolute inset-0 grid place-items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element -- transform-friendly, optimized via cld */}
+          <img
+            src={fallbackSrc}
+            alt=""
+            aria-hidden
+            loading="lazy"
+            decoding="async"
+            className="max-h-[68%] max-w-[60%] object-contain drop-shadow-[0_22px_34px_rgba(0,0,0,0.22)]"
+          />
+        </div>
+        {armed && (
+          <StageErrorBoundary>
+            <ShowcaseStage item={sceneItem} active={active} reduced={reduced} />
+          </StageErrorBoundary>
+        )}
+      </div>
+
+      {/* Copy overlay */}
+      <div className="relative z-10 mx-auto flex min-h-[inherit] w-full max-w-7xl items-center px-4 py-12">
+        <div
+          key={item.id}
+          className={cn(
+            "max-w-md animate-fade-up",
+            textLight ? "text-white" : "text-foreground",
+          )}
+        >
           <p
             className={cn(
-              "mb-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium",
+              "mb-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium backdrop-blur-sm",
               textLight ? "border-white/25 text-white/80" : "border-primary/20 text-primary",
             )}
           >
@@ -130,113 +211,12 @@ export function Showcase3D({ items }: { items: ShowcaseDisplayItem[] }) {
                   aria-current={i === index}
                   className={cn(
                     "h-1.5 rounded-full transition-all",
-                    i === index
-                      ? "w-7 bg-current"
-                      : "w-3 bg-current/30 hover:bg-current/50",
+                    i === index ? "w-7 bg-current" : "w-3 bg-current/30 hover:bg-current/50",
                   )}
                 />
               ))}
             </div>
           )}
-        </div>
-
-        {/* 3D stage */}
-        <div
-          ref={stageRef}
-          className="order-1 lg:order-2"
-          style={{ perspective: "1200px" }}
-          onMouseEnter={() => setPaused(true)}
-          onMouseLeave={() => {
-            setPaused(false);
-            setTilt({ x: 0, y: 0 });
-          }}
-          onPointerMove={onPointerMove}
-          onTouchStart={(e) => (touchStart.current = e.touches[0]?.clientX ?? null)}
-          onTouchEnd={(e) => {
-            const start = touchStart.current;
-            if (start == null) return;
-            const dx = (e.changedTouches[0]?.clientX ?? start) - start;
-            if (Math.abs(dx) > 40) go(index + (dx < 0 ? 1 : -1));
-            touchStart.current = null;
-          }}
-        >
-          <div
-            className="relative mx-auto aspect-square w-full max-w-md"
-            style={{
-              transformStyle: "preserve-3d",
-              transform: `rotateX(${tilt.y * -tiltMax}deg) rotateY(${tilt.x * tiltMax}deg)`,
-              transition: "transform 300ms ease-out",
-            }}
-          >
-            {/* Spotlight beam */}
-            {motion.spotlight && (
-              <div
-                className="absolute inset-0 -z-10"
-                style={{
-                  background:
-                    "radial-gradient(closest-side, color-mix(in oklch, var(--gold) 35%, transparent), transparent 70%)",
-                  transform: "translateZ(-60px) scale(1.1)",
-                }}
-              />
-            )}
-            {/* Glass plate */}
-            {motion.glass && (
-              <div
-                className="absolute inset-6 -z-10 rounded-[2rem] border border-white/30 bg-white/10 backdrop-blur-md"
-                style={{ transform: "translateZ(-40px)" }}
-              />
-            )}
-
-            {/* Floating / spinning product */}
-            <div
-              key={item.id}
-              className="relative size-full"
-              style={{
-                transformStyle: "preserve-3d",
-                // At most one transform animation runs (presets never combine
-                // float + spin), so they never conflict on `transform`.
-                animation: reduced
-                  ? undefined
-                  : floatPx
-                    ? `showcase-float ${4 + (100 - float) / 50}s ease-in-out infinite`
-                    : spinDur
-                      ? `showcase-spin ${spinDur}s linear infinite`
-                      : undefined,
-                ["--float-px" as string]: `${floatPx}px`,
-              }}
-            >
-              {/* Universal premium product stage — any uploaded image (auto-trimmed,
-                  centered, fit) is presented on a soft glass pedestal with inner
-                  spotlight and glossy sheen. The product is always centered. */}
-              <div
-                className="relative grid size-full place-items-center overflow-hidden rounded-[1.75rem] bg-gradient-to-b from-white to-zinc-100 p-6 shadow-elev-3 ring-1 ring-black/5 dark:from-zinc-800 dark:to-zinc-900 dark:ring-white/10 sm:p-8"
-                style={{ transform: `scale(${cardScale})` }}
-              >
-                {/* Inner spotlight behind the product */}
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0"
-                  style={{
-                    background:
-                      "radial-gradient(58% 52% at 50% 45%, color-mix(in oklch, var(--primary) 12%, transparent), transparent 70%)",
-                  }}
-                />
-                {/* eslint-disable-next-line @next/next/no-img-element -- transform-friendly, lazy, optimized via cldShowcaseImage */}
-                <img
-                  src={productSrc}
-                  alt={item.title}
-                  loading="lazy"
-                  decoding="async"
-                  className="relative col-start-1 row-start-1 max-h-full max-w-full self-center justify-self-center object-contain drop-shadow-[0_22px_34px_rgba(0,0,0,0.22)]"
-                />
-                {/* Glossy top sheen */}
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/55 to-transparent dark:from-white/10"
-                />
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </section>
