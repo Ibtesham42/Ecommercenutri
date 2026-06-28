@@ -67,6 +67,7 @@ export function ProductForm({
       isActive: true,
       isFeatured: false,
       isBestSeller: false,
+      returnable: true,
       nutritionFacts: [],
       variants: [{ ...emptyVariant(), isDefault: true }],
       images: [],
@@ -105,6 +106,8 @@ export function ProductForm({
       isActive: values.isActive,
       isFeatured: values.isFeatured,
       isBestSeller: values.isBestSeller,
+      returnable: values.returnable,
+      returnWindowDays: optNum(values.returnWindowDays),
       gstRate: optNum(values.gstRate),
       deliveryCharge: (() => {
         const d = optNum(values.deliveryRupees);
@@ -568,6 +571,7 @@ export function ProductForm({
                 ["isActive", "Active"],
                 ["isFeatured", "Featured"],
                 ["isBestSeller", "Best seller"],
+                ["returnable", "Returnable"],
               ] as const
             ).map(([name, label]) => (
               <Controller
@@ -582,6 +586,30 @@ export function ProductForm({
                 )}
               />
             ))}
+            <Controller
+              control={control}
+              name="returnWindowDays"
+              render={({ field: f }) => (
+                <div className="space-y-1.5 pt-1">
+                  <Label htmlFor="returnWindowDays">Return window override (days)</Label>
+                  <Input
+                    id="returnWindowDays"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={365}
+                    placeholder="Store default"
+                    value={f.value ?? ""}
+                    onChange={(e) =>
+                      f.onChange(e.target.value === "" ? null : Number(e.target.value))
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Leave blank to use the store default. Only applies when returnable.
+                  </p>
+                </div>
+              )}
+            />
           </div>
 
           <div className={sectionClass}>

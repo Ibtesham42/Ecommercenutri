@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller, type Control } from "react-hook-form";
-import { Loader2, Truck, Banknote } from "lucide-react";
+import { Loader2, Truck, Banknote, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,9 +22,14 @@ export type ShippingValues = {
   codEnabled: boolean;
   codMinOrder: number | null; // rupees
   codMaxOrder: number | null; // rupees
+  returnsEnabled: boolean;
+  returnWindowDays: number | null; // days
 };
 
-type MoneyName = Exclude<keyof ShippingValues, "freeShippingEnabled" | "codEnabled">;
+type MoneyName = Exclude<
+  keyof ShippingValues,
+  "freeShippingEnabled" | "codEnabled" | "returnsEnabled" | "returnWindowDays"
+>;
 
 function MoneyField({
   control,
@@ -84,6 +89,8 @@ export function ShippingForm({ initial }: { initial: ShippingValues }) {
       codEnabled: v.codEnabled,
       codMinOrder: toPaise(v.codMinOrder),
       codMaxOrder: toPaise(v.codMaxOrder),
+      returnsEnabled: v.returnsEnabled,
+      returnWindowDays: v.returnWindowDays ?? 7,
     });
     setSaving(false);
     if (res.ok) {
@@ -188,6 +195,48 @@ export function ShippingForm({ initial }: { initial: ShippingValues }) {
             label="Max order for COD (₹)"
             placeholder="Optional"
             hint="Above this, COD is hidden"
+          />
+        </div>
+      </section>
+
+      <section className="rounded-xl border bg-background p-5">
+        <h2 className="mb-4 flex items-center gap-2 font-semibold">
+          <RotateCcw className="size-4 text-primary" /> Returns &amp; refunds
+        </h2>
+        <Controller
+          control={control}
+          name="returnsEnabled"
+          render={({ field }) => (
+            <label className="flex items-center justify-between text-sm">
+              Allow customers to request returns on delivered orders
+              <Switch checked={field.value} onCheckedChange={field.onChange} />
+            </label>
+          )}
+        />
+        <div className="mt-4 max-w-xs">
+          <Controller
+            control={control}
+            name="returnWindowDays"
+            render={({ field }) => (
+              <div className="space-y-1.5">
+                <Label htmlFor="returnWindowDays">Return window (days)</Label>
+                <Input
+                  id="returnWindowDays"
+                  type="number"
+                  min={0}
+                  max={365}
+                  step={1}
+                  placeholder="7"
+                  value={field.value ?? ""}
+                  onChange={(e) =>
+                    field.onChange(e.target.value === "" ? null : Number(e.target.value))
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Days after delivery a return can be requested. Products can override this.
+                </p>
+              </div>
+            )}
           />
         </div>
       </section>

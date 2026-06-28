@@ -136,6 +136,8 @@ export async function updateShippingSettings(input: unknown): Promise<AdminResul
     codEnabled: d.codEnabled,
     codMinOrder: d.codMinOrder ?? null,
     codMaxOrder: d.codMaxOrder ?? null,
+    returnsEnabled: d.returnsEnabled,
+    returnWindowDays: d.returnWindowDays,
   };
 
   await prisma.storeSetting.upsert({

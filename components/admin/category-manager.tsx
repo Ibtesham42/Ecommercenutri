@@ -38,6 +38,7 @@ export type CategoryRow = {
   parentId: string | null;
   sortOrder: number;
   isActive: boolean;
+  returnable: boolean;
   productCount: number;
   parentName: string | null;
 };
@@ -51,6 +52,7 @@ type FormValues = {
   parentId?: string;
   sortOrder: number;
   isActive: boolean;
+  returnable: boolean;
   metaTitle?: string;
   metaDescription?: string;
 };
@@ -72,7 +74,7 @@ export function CategoryManager({
 
   function openAdd() {
     setEditing(null);
-    reset({ name: "", slug: "", sortOrder: 0, isActive: true, parentId: "" });
+    reset({ name: "", slug: "", sortOrder: 0, isActive: true, returnable: true, parentId: "" });
     setOpen(true);
   }
   function openEdit(c: CategoryRow) {
@@ -86,6 +88,7 @@ export function CategoryManager({
       parentId: c.parentId ?? "",
       sortOrder: c.sortOrder,
       isActive: c.isActive,
+      returnable: c.returnable,
     });
     setOpen(true);
   }
@@ -252,6 +255,16 @@ export function CategoryManager({
               render={({ field }) => (
                 <label className="flex items-center justify-between text-sm">
                   Active (visible in store)
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                </label>
+              )}
+            />
+            <Controller
+              control={control}
+              name="returnable"
+              render={({ field }) => (
+                <label className="flex items-center justify-between text-sm">
+                  Returnable (products in this category can be returned)
                   <Switch checked={field.value} onCheckedChange={field.onChange} />
                 </label>
               )}

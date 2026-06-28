@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   ShoppingBag,
   Package,
+  RotateCcw,
   Boxes,
   FolderTree,
   TicketPercent,
@@ -48,6 +49,7 @@ type NavItem = {
 const nav: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/orders", label: "Orders", icon: ShoppingBag, permission: "orders" },
+  { href: "/admin/returns", label: "Refunds & Returns", icon: RotateCcw, permission: "returns" },
   { href: "/admin/products", label: "Products", icon: Package, permission: "products" },
   { href: "/admin/inventory", label: "Inventory", icon: Boxes, permission: "inventory" },
   { href: "/admin/categories", label: "Categories", icon: FolderTree, permission: "categories" },

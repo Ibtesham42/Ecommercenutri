@@ -149,6 +149,9 @@ export const shippingSettingsSchema = z
     codFee: optInt(0, 10_000_00, "COD charge"),
     codMinOrder: optInt(0, 1_000_000_00, "COD min order"),
     codMaxOrder: optInt(0, 1_000_000_00, "COD max order"),
+    // Returns & refunds
+    returnsEnabled: z.boolean().default(true),
+    returnWindowDays: z.coerce.number().int().min(0).max(365).default(7),
   })
   .refine(
     (d) => d.codMinOrder == null || d.codMaxOrder == null || d.codMaxOrder >= d.codMinOrder,
@@ -430,6 +433,9 @@ export const productInputSchema = z.object({
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
   isBestSeller: z.boolean().default(false),
+  // Returns eligibility; window override null = use the store default.
+  returnable: z.boolean().default(true),
+  returnWindowDays: z.number().int().min(0).max(365).nullable().optional(),
   // Tax & shipping overrides; null = use the global store default.
   gstRate: z.number().int().min(0, "GST can't be negative").max(100, "GST max 100%").nullable().optional(),
   deliveryCharge: z.number().int().min(0, "Delivery can't be negative").nullable().optional(), // paise
@@ -451,6 +457,7 @@ export const categoryInputSchema = z.object({
   parentId: z.string().nullable().optional(),
   sortOrder: z.number().int().default(0),
   isActive: z.boolean().default(true),
+  returnable: z.boolean().default(true),
   metaTitle: z.string().max(70).nullable().optional(),
   metaDescription: z.string().max(160).nullable().optional(),
 });

@@ -3,6 +3,9 @@ import { SiteFooter } from "@/components/storefront/site-footer";
 import { AnnouncementBar } from "@/components/storefront/announcement-bar";
 import { WhatsAppButton } from "@/components/storefront/whatsapp-button";
 import { getStoreSettings } from "@/lib/queries/settings";
+import { getCurrentUser } from "@/lib/auth";
+import { getNotifications, getUnreadCount } from "@/lib/queries/notifications";
+import type { BellNotification } from "@/components/account/notification-bell";
 
 export default async function StorefrontLayout({
   children,
@@ -10,6 +13,26 @@ export default async function StorefrontLayout({
   children: React.ReactNode;
 }) {
   const settings = await getStoreSettings();
+
+  // Notification bell (signed-in users). Best-effort — never blocks the layout.
+  const user = await getCurrentUser();
+  let notifications: BellNotification[] | undefined;
+  let unreadCount = 0;
+  if (user?.id) {
+    const [list, unread] = await Promise.all([
+      getNotifications(user.id),
+      getUnreadCount(user.id),
+    ]);
+    notifications = list.map((n) => ({
+      id: n.id,
+      title: n.title,
+      body: n.body,
+      link: n.link,
+      read: n.read,
+      createdAt: n.createdAt.toISOString(),
+    }));
+    unreadCount = unread;
+  }
 
   // Admin-chosen theme colors override the brand palette across the storefront.
   const themeVars = [
@@ -35,6 +58,8 @@ export default async function StorefrontLayout({
         logoHeight={settings.logoHeight}
         logoHeightMobile={settings.logoHeightMobile}
         logoMaxWidth={settings.logoMaxWidth}
+        notifications={notifications}
+        unreadCount={unreadCount}
       />
       <main className="flex-1">{children}</main>
       <SiteFooter />

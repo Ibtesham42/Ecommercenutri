@@ -46,3 +46,23 @@ export function verifyWebhookSignature(body: string, signature: string): boolean
     .digest("hex");
   return safeEqual(expected, signature);
 }
+
+/**
+ * Issue a refund against a captured Razorpay payment. `amountPaise` omitted = full
+ * refund; pass a smaller amount for a partial refund. Returns the Razorpay refund id
+ * + status. Keyless fallback (no configured client) returns a mock id so the admin
+ * refund flow works end-to-end without keys — parallels the mock checkout.
+ */
+export async function refundPayment(
+  paymentId: string,
+  amountPaise?: number,
+): Promise<{ id: string; status: string }> {
+  if (!razorpay) {
+    return { id: `rfnd_mock_${Date.now()}`, status: "processed" };
+  }
+  const refund = await razorpay.payments.refund(paymentId, {
+    ...(amountPaise ? { amount: amountPaise } : {}),
+    speed: "normal",
+  });
+  return { id: refund.id, status: String(refund.status ?? "processed") };
+}

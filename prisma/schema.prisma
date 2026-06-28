@@ -84,6 +84,46 @@ enum UserEventType {
   CLICK
 }
 
+// Returns & refunds -----------------------------------------------------------
+
+enum ReturnStatus {
+  REQUESTED // Request submitted by the customer
+  UNDER_REVIEW // Admin is reviewing
+  INFO_REQUESTED // Admin asked the customer for more info
+  APPROVED // Approved for return/refund
+  REJECTED // Rejected (terminal; rejectionReason shown to customer)
+  PICKUP_SCHEDULED // Reverse pickup scheduled
+  ITEM_RECEIVED // Returned item received back
+  REFUNDED // Refund issued (terminal)
+  CANCELLED // Withdrawn by the customer (terminal)
+}
+
+enum ReturnType {
+  REFUND
+  REPLACEMENT // future-ready; v1 handles REFUND
+}
+
+enum RefundMethod {
+  ORIGINAL // back to the original payment (Razorpay) for prepaid orders
+  UPI
+  BANK_TRANSFER
+  STORE_CREDIT
+  OTHER
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum NotificationType {
+  RETURN_UPDATE
+  ORDER_UPDATE
+  GENERAL
+}
+
 // ---------------------------------------------------------------------------
 // Auth (NextAuth v5 / Auth.js Prisma adapter)
 // ---------------------------------------------------------------------------
@@ -114,6 +154,8 @@ model User {
   wishlist WishlistItem[]
   aiChats  AIChat[]
   cart     Cart?
+  returns       ReturnRequest[]
+  notifications Notification[]
 }
 
 model Account {
@@ -178,6 +220,7 @@ model Category {
   parentId        String?
   sortOrder       Int      @default(0)
   isActive        Boolean  @default(true)
+  returnable      Boolean  @default(true) // per-category return eligibility gate
   metaTitle       String?
   metaDescription String?
   createdAt       DateTime @default(now())
@@ -225,6 +268,10 @@ model Product {
   // listed price already contains tax at this rate.
   gstRate          Int? // GST percent for this product (e.g. 0,5,12,18,28); null = store default
   deliveryCharge   Int? // paise; per-product delivery override; null = store default, 0 = free
+  // Returns: product-level eligibility. `returnable=false` disables returns for
+  // this item; `returnWindowDays` overrides the store default window (null = use store).
+  returnable       Boolean  @default(true)
+  returnWindowDays Int?
   ratingAvg        Float    @default(0)
   ratingCount      Int      @default(0)
   metaTitle        String?
@@ -428,6 +475,7 @@ model Order {
   items   OrderItem[]
   invoice Invoice?
   events  OrderEvent[]
+  returns ReturnRequest[]
 
   @@index([userId])
   @@index([status])
@@ -462,6 +510,7 @@ model OrderItem {
   order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
   variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  returnItems ReturnRequestItem[]
 
   @@index([orderId])
 }
@@ -484,6 +533,118 @@ model Invoice {
   sellerPhone   String?
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// Returns & refunds (post-delivery; a separate lifecycle from order fulfilment)
+// ---------------------------------------------------------------------------
+
+// A customer's return/refund request against a delivered order. Its `status` is
+// independent of the order's fulfilment status — the order stays DELIVERED while
+// the return progresses through its own flow (see lib/return-status.ts).
+model ReturnRequest {
+  id           String       @id @default(cuid())
+  returnNumber String       @unique // RMA-YYMMDD-XXXXXX
+  orderId      String
+  userId       String
+  status       ReturnStatus @default(REQUESTED)
+  type         ReturnType   @default(REFUND)
+  reason       String // customer-selected reason
+  description  String?      @db.Text // optional customer detail
+  media        String[]     @default([]) // Cloudinary image/video proof URLs
+
+  // Money (paise). `refundAmount` = requested (Σ selected item line totals, admin-adjustable);
+  // `refundedAmount` = actually refunded (supports partial refunds).
+  refundAmount   Int          @default(0)
+  refundedAmount Int          @default(0)
+  refundMethod   RefundMethod?
+  refundStatus   RefundStatus @default(PENDING)
+  refundRef      String? // Razorpay refund id, or manual UTR/UPI reference
+
+  pickupScheduledAt DateTime?
+  pickupNote        String?
+  adminNotes        String? @db.Text // internal notes (never shown to the customer)
+  rejectionReason   String? // shown to the customer when REJECTED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order      Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user       User                @relation(fields: [userId], references: [id])
+  items      ReturnRequestItem[]
+  events     ReturnEvent[]
+  creditNote CreditNote?
+
+  @@index([userId])
+  @@index([orderId])
+  @@index([status])
+}
+
+// The specific order items (and quantities) being returned — enables partial refunds.
+model ReturnRequestItem {
+  id          String @id @default(cuid())
+  returnId    String
+  orderItemId String
+  quantity    Int // qty being returned (<= ordered qty)
+  unitPrice   Int // paise, snapshot of the unit price paid
+  productName String // snapshot
+  variantLabel String // snapshot
+  image       String?
+
+  returnRequest ReturnRequest @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  orderItem     OrderItem     @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  @@index([returnId])
+}
+
+// Append-only audit timeline for a return (one row per transition + internal notes).
+model ReturnEvent {
+  id        String       @id @default(cuid())
+  returnId  String
+  status    ReturnStatus
+  note      String?
+  actor     String? // "customer" | "admin" | "system"
+  createdAt DateTime     @default(now())
+
+  returnRequest ReturnRequest @relation(fields: [returnId], references: [id], onDelete: Cascade)
+
+  @@index([returnId])
+}
+
+// One persistent credit note per refunded return (mirrors Invoice). `seq` is a DB
+// autoincrement → `number` (CN-<FY>-<seq>) is collision-free. Seller snapshot frozen
+// at issue time so later store edits don't rewrite history.
+model CreditNote {
+  id              String   @id @default(cuid())
+  returnRequestId String   @unique
+  seq             Int      @unique @default(autoincrement())
+  number          String   @unique
+  issuedAt        DateTime @default(now())
+  amount          Int // paise refunded
+  sellerName      String
+  sellerAddress   String?
+  sellerGstin     String?
+  sellerEmail     String?
+  sellerPhone     String?
+
+  returnRequest ReturnRequest @relation(fields: [returnRequestId], references: [id], onDelete: Cascade)
+}
+
+// In-app notification (the account bell). Email is sent separately; this is the
+// persistent in-app feed.
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType @default(GENERAL)
+  title     String
+  body      String?
+  link      String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
 }
 
 // ---------------------------------------------------------------------------
@@ -795,6 +956,9 @@ model StoreSetting {
   codMaxOrder           Int?     // paise, max subtotal for COD (null = no maximum)
   codPincodes           String[] @default([]) // future-ready pincode allowlist (empty = all)
   gstin                 String? // seller GSTIN shown on the tax invoice
+  // Returns & refunds policy
+  returnsEnabled    Boolean @default(true) // master switch for customer returns
+  returnWindowDays  Int     @default(7)    // days after delivery a return can be requested
   // Contact
   supportEmail String?
   supportPhone String?
