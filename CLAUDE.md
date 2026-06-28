@@ -355,16 +355,31 @@ all gated by the **`appearance`** permission (super admins always pass).
   in the Section Builder with the heading editor, drag-reorder and enable toggle like any other
   section (add a key to `HOME_SECTIONS` + content default + a keyed node in `page.tsx`).
 - **3D Showcase (done)** — premium Apple/Tesla-style hero product showcase at the top of the
-  homepage, **CSS/GPU 3D transforms (no WebGL runtime / no heavy deps)**, fully reduced-motion
-  gated, auto-advance + pause-on-hover + swipe. Engine is the reusable, preset-driven
-  `components/storefront/showcase-3d.tsx` (config in `lib/showcase.ts`: 10 animation presets,
-  background styles, per-style motion flags + 0-100 intensity knobs). Admin `/admin/showcase`
-  (`components/admin/showcase-manager.tsx`, `lib/actions/admin/showcase.ts`) — global enable
-  (`StoreSetting.showcase3dEnabled`) + unlimited `ShowcaseItem` rows with image + optional
-  transparent PNG (Cloudinary), featured-product link, animation/background, rotation/float/zoom
-  sliders, native HTML5 drag-reorder, duplicate, publish toggle and a **live 3D preview** (reuses
-  the storefront component). Storefront reads `getActiveShowcase()`; renders nothing unless
-  enabled with published items, so the homepage is unchanged by default.
+  homepage, **true WebGL** via `@react-three/fiber` + `drei` + `@react-three/postprocessing`
+  (HDRI-style studio reflections built procedurally from `<Lightformer>`s — no external HDRI/CDN
+  asset; a `MeshReflectorMaterial` mirror floor; PBR/clearcoat product plane; soft alpha-shaped
+  contact shadow; idle float + cursor/gyro parallax + slow cinematic camera drift; subtle
+  bloom/DoF/vignette; crossfade between products). Fully reduced-motion gated. **The whole WebGL
+  stage is lazy** (`next/dynamic` `ssr:false`, mounts only once scrolled into view) so it never
+  blocks first paint and shared First-Load JS stays ~103 kB; the render loop pauses off-screen /
+  tab-hidden (IntersectionObserver + `frameloop`), is **perf-tiered** (mobile/low-power drops DoF,
+  shadows, resolutions — lightweight heuristic, no `detect-gpu`), disposes textures on swap/unmount,
+  and survives WebGL context loss (error boundary → flat fallback image). Engine:
+  `components/storefront/showcase-3d.tsx` (SSR chrome + lazy boundary) + `components/storefront/showcase/*`
+  (stage/scene/product-plane/lighting/floor/effects/environment/camera + hooks). **Catalog** of
+  presets/flags stays in `lib/showcase.ts` (10 animations, 5 backgrounds, motion flags, 0-100 knobs);
+  **all numeric look/motion constants** live in `lib/showcase-config.ts` (one tunable place). Admin
+  `/admin/showcase` (`components/admin/showcase-manager.tsx`, `lib/actions/admin/showcase.ts`) —
+  global enable (`StoreSetting.showcase3dEnabled`) + unlimited `ShowcaseItem` rows. **Admin uploads
+  ONE image**: `components/admin/showcase-image-field.tsx` + `lib/showcase-image.ts` EXIF-correct it,
+  remove the background **in-browser** (`@imgly/background-removal`, lazy-imported WASM; needs the
+  `onnxruntime-web` peer dep), alpha-bbox auto-frame (center/pad, undistorted), and upload BOTH the
+  original (→ `ShowcaseItem.image`) and the cutout (→ `ShowcaseItem.imagePng`); the stage prefers the
+  cutout. Low-confidence removal falls back to the original (toggle + URL-paste keyless fallback).
+  Featured-product link, animation/background, rotation/float/zoom sliders, native HTML5 drag-reorder,
+  duplicate, publish toggle and a **live WebGL preview** (reuses the storefront component). Storefront
+  reads `getActiveShowcase()`; renders nothing unless enabled with published items, so the homepage is
+  unchanged by default.
 - **Content pages (foundation done)** — storefront pages for every footer/nav link, all
   CMS-ready data models in place (admin editors are a later phase):
   - `/blog` + `/blog/[slug]` — `BlogPost` model, `lib/queries/blog.ts`; renders published

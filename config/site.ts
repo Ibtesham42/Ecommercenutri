@@ -28,6 +28,7 @@ export const siteConfig = {
     youtube: "https://youtube.com/@nutriyet",
   },
   mainNav: [
+    { title: "Home", href: "/" },
     { title: "Shop", href: "/products" },
     { title: "Categories", href: "/categories" },
     { title: "Best Sellers", href: "/products?sort=best-sellers" },

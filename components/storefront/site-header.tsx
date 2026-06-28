@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Heart, Menu, ShoppingCart, User } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -31,6 +33,16 @@ export function SiteHeader({
   logoMaxWidth?: number | null;
 }) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  // Active when on the item's route. Home matches "/" exactly; section links
+  // match their path and any sub-route. Query-bearing links (e.g. Best Sellers)
+  // share a path with their base link, so we don't path-highlight them (would
+  // need useSearchParams, which deopts this layout-mounted client component).
+  const isActiveNav = (href: string) => {
+    if (href === "/") return pathname === "/";
+    if (href.includes("?")) return false;
+    return pathname === href || pathname.startsWith(href + "/");
+  };
   const logoSize = {
     height: logoHeight,
     mobileHeight: logoHeightMobile,
@@ -63,7 +75,11 @@ export function SiteHeader({
                   key={item.href}
                   href={item.href}
                   onClick={() => setOpen(false)}
-                  className="rounded-md px-3 py-2.5 text-sm font-medium transition-colors hover:bg-accent"
+                  aria-current={isActiveNav(item.href) ? "page" : undefined}
+                  className={cn(
+                    "rounded-md px-3 py-2.5 text-sm font-medium transition-colors hover:bg-accent",
+                    isActiveNav(item.href) && "bg-accent text-foreground",
+                  )}
                 >
                   {item.title}
                 </Link>
@@ -75,15 +91,24 @@ export function SiteHeader({
         <Logo logoUrl={logoUrl} name={siteName} {...logoSize} />
 
         <nav className="ml-6 hidden items-center gap-1 md:flex">
-          {siteConfig.mainNav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              {item.title}
-            </Link>
-          ))}
+          {siteConfig.mainNav.map((item) => {
+            const active = isActiveNav(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-foreground",
+                  active
+                    ? "bg-accent font-semibold text-foreground"
+                    : "text-muted-foreground",
+                )}
+              >
+                {item.title}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="mx-4 hidden flex-1 lg:block lg:max-w-sm xl:max-w-md">

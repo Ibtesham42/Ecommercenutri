@@ -1,8 +1,9 @@
-/** 3D hero showcase config — the single source of truth for animation presets,
- *  background styles and per-style behavior. Client-safe (no imports) so both the
- *  admin manager (select options) and the storefront engine share it. The engine
- *  (components/storefront/showcase-3d) is preset-driven, so new looks are added
- *  here without touching render code. */
+/** 3D hero showcase catalog — the single source of truth for animation presets,
+ *  background styles and per-style behavior. Client-safe (no imports) so the admin
+ *  manager (select options), the Zod schema and the WebGL engine all share it. The
+ *  engine is preset-driven (reads the motion flags), so new looks are added here
+ *  without touching render code. Numeric look/motion constants live in
+ *  lib/showcase-config.ts. */
 
 export const SHOWCASE_ANIMATIONS = [
   { key: "float", label: "Floating Product" },
@@ -39,8 +40,9 @@ export function isShowcaseBackground(v: string): v is ShowcaseBackground {
   return (SHOWCASE_BACKGROUND_KEYS as string[]).includes(v);
 }
 
-/** How a preset behaves. The engine reads these flags + the per-item intensities
- *  (0-100) to drive GPU-accelerated CSS 3D transforms — no heavy WebGL runtime. */
+/** How a preset behaves. The WebGL engine (components/storefront/showcase/*) reads
+ *  these flags + the per-item intensities (0-100) to drive float / turntable /
+ *  parallax / spotlight / glass behavior. */
 export type ShowcaseMotion = {
   float: boolean; // vertical floating bob
   spin: boolean; // continuous Y-axis rotation

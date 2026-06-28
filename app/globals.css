@@ -251,26 +251,6 @@
     }
   }
 
-  /* 3D hero showcase motion (components/storefront/showcase-3d.tsx). Defined only
-     under no-preference, so reduced-motion users get a clean static stage. */
-  @keyframes showcase-float {
-    0%,
-    100% {
-      transform: translateY(calc(var(--float-px, 12px) * -1));
-    }
-    50% {
-      transform: translateY(var(--float-px, 12px));
-    }
-  }
-  @keyframes showcase-spin {
-    from {
-      transform: rotateY(0deg);
-    }
-    to {
-      transform: rotateY(360deg);
-    }
-  }
-
   .animate-fade-up {
     animation: nutri-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
