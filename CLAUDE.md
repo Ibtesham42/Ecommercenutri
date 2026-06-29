@@ -525,7 +525,9 @@ permission. Built modular so Push/WhatsApp/SMS and recurring/automation slot in 
   Compose shows a "needs setup" hint for any selected-but-unconfigured channel (those recipients are skipped).
 - **Delivery is cron-ready**: "Send now" dispatches immediately; **scheduled** campaigns set
   `status=SCHEDULED`+`scheduledFor` and are processed by `GET/POST /api/cron/marketing` (guarded by
-  `CRON_SECRET`, wired in `vercel.json` every 5 min). Tracking: `/api/marketing/open/[id]` (1×1 pixel →
+  `CRON_SECRET`, wired in `vercel.json`). **Schedule is `0 3 * * *` (daily) — the max frequency the
+  Vercel Hobby plan allows; on Pro, bump it to `*/5 * * * *` for near-real-time, or point an external
+  cron (cron-job.org) at the endpoint with the `CRON_SECRET` bearer.** Tracking: `/api/marketing/open/[id]` (1×1 pixel →
   OPEN) and `/api/marketing/click/[id]` (CLICK + sets attribution cookie → redirect). Email links are
   click-wrapped; conversions/revenue accrue from orders placed within the 7-day cookie window.
 - **Recurring campaigns** (`Campaign.recurrence` = DAILY/WEEKLY/MONTHLY, null = one-off; set in Compose's

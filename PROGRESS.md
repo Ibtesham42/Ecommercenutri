@@ -140,7 +140,8 @@ every channel/cron is keyless-safe.
 - **AI** — `generateCampaignContent` via the Groq seam (generateText + JSON parse, heuristic fallback).
 - **Conversion attribution** — click-redirect drops a `nut_campaign` cookie; `recordCampaignConversion`
   credits conversions/revenue in `createOrder` (7-day window).
-- **Cron-ready dispatch** — `/api/cron/marketing` (CRON_SECRET, `vercel.json` every 5 min) runs
+- **Cron-ready dispatch** — `/api/cron/marketing` (CRON_SECRET, `vercel.json` daily `0 3 * * *` —
+  Hobby-plan max; Pro can use `*/5`) runs
   `dispatchDueCampaigns` + `runAutomations`.
 
 **Campaigns** — Compose (rich editor + image, AI assist, audience targeting with a **live recipient
