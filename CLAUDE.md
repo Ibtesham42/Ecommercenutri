@@ -508,6 +508,12 @@ permission. Built modular so Push/WhatsApp/SMS and recurring/automation slot in 
   `CRON_SECRET`, wired in `vercel.json` every 5 min). Tracking: `/api/marketing/open/[id]` (1×1 pixel →
   OPEN) and `/api/marketing/click/[id]` (CLICK + sets attribution cookie → redirect). Email links are
   click-wrapped; conversions/revenue accrue from orders placed within the 7-day cookie window.
+- **Recurring campaigns** (`Campaign.recurrence` = DAILY/WEEKLY/MONTHLY, null = one-off; set in Compose's
+  Repeat selector + first-run schedule): a recurring campaign is a **series parent** — it stays
+  SCHEDULED, and each due fire (in `dispatchDueCampaigns`) **spawns a one-off child snapshot** that's
+  dispatched for its own per-occurrence analytics/history, then the parent is re-armed via
+  `nextRun(recurrence, from)` (which skips missed windows). Cancel stops the series. One-off scheduled
+  campaigns still dispatch in place → SENT.
 - **Automation rules** (`AutomationRule` + `AutomationLog`, migration `marketing_automation`):
   trigger-based flows that send themselves — `WELCOME` / `ABANDONED_CART` / `WINBACK` / `POST_PURCHASE`,
   each with a `delayHours`, channels and content (+ optional coupon). `lib/marketing/automation.ts#runAutomations`

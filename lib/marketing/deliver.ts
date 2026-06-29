@@ -1,4 +1,5 @@
 import "server-only";
+import { Prisma } from "@prisma/client";
 import type { Campaign, CampaignChannel } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notify } from "@/lib/notifications";
@@ -116,17 +117,75 @@ export async function dispatchCampaign(
   }
 }
 
-/** Process all due scheduled campaigns — called by the Vercel Cron dispatch route. */
+const RECURRING = new Set(["DAILY", "WEEKLY", "MONTHLY"]);
+
+/** Next occurrence strictly after `now`, advancing from `from` by the cadence
+ *  (skips any missed windows so a slow cron doesn't fire a backlog). */
+export function nextRun(recurrence: string, from: Date, now = new Date()): Date {
+  const next = new Date(from);
+  const step = () => {
+    if (recurrence === "DAILY") next.setDate(next.getDate() + 1);
+    else if (recurrence === "WEEKLY") next.setDate(next.getDate() + 7);
+    else if (recurrence === "MONTHLY") next.setMonth(next.getMonth() + 1);
+  };
+  do {
+    step();
+  } while (next <= now);
+  return next;
+}
+
+/**
+ * Process all due scheduled campaigns. A one-off campaign is dispatched in place
+ * (→ SENT). A **recurring** campaign acts as a series: each due fire spawns a
+ * one-off child snapshot (dispatched for its own per-occurrence analytics) and the
+ * parent is re-armed to its next occurrence. Called by the Vercel Cron route.
+ */
 export async function dispatchDueCampaigns(now = new Date()): Promise<number> {
   const due = await prisma.campaign.findMany({
     where: { status: "SCHEDULED", scheduledFor: { lte: now } },
-    select: { id: true },
     take: 50,
   });
   let processed = 0;
-  for (const d of due) {
-    const res = await dispatchCampaign(d.id);
-    if (res.ok) processed++;
+
+  for (const c of due) {
+    const recurrence = c.recurrence ?? "NONE";
+    if (!RECURRING.has(recurrence)) {
+      const res = await dispatchCampaign(c.id);
+      if (res.ok) processed++;
+      continue;
+    }
+
+    // Recurring series: send a child occurrence, then advance the parent.
+    try {
+      const stamp = (c.scheduledFor ?? now).toISOString().slice(0, 16).replace("T", " ");
+      const child = await prisma.campaign.create({
+        data: {
+          name: `${c.name} · ${stamp}`,
+          type: c.type,
+          status: "DRAFT",
+          channels: c.channels,
+          title: c.title,
+          body: c.body,
+          imageUrl: c.imageUrl,
+          ctaText: c.ctaText,
+          ctaUrl: c.ctaUrl,
+          segmentType: c.segmentType,
+          segmentConfig: (c.segmentConfig as Prisma.InputJsonValue) ?? Prisma.JsonNull,
+          productId: c.productId,
+          couponId: c.couponId,
+          recurrence: null,
+        },
+      });
+      const res = await dispatchCampaign(child.id);
+      if (res.ok) processed++;
+      await prisma.campaign.update({
+        where: { id: c.id },
+        data: { scheduledFor: nextRun(recurrence, c.scheduledFor ?? now, now), sentAt: new Date() },
+      });
+    } catch (err) {
+      console.error("[marketing] recurring dispatch failed:", c.id, err);
+    }
   }
+
   return processed;
 }

@@ -32,6 +32,7 @@ export default async function ComposeEditPage({ params }: { params: Promise<{ id
     segmentConfig: (campaign.segmentConfig as EditorCampaign["segmentConfig"]) ?? null,
     productId: campaign.productId,
     couponId: campaign.couponId,
+    recurrence: campaign.recurrence,
   };
 
   return (

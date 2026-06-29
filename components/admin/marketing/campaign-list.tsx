@@ -35,7 +35,7 @@ import {
   deleteCampaign,
 } from "@/lib/actions/admin/marketing";
 import { formatPrice, formatDateTime } from "@/lib/format";
-import { CHANNEL_LABEL, STATUS_LABEL, STATUS_VARIANT } from "@/lib/marketing/channels";
+import { CHANNEL_LABEL, STATUS_LABEL, STATUS_VARIANT, RECURRENCE_LABEL, type Recurrence } from "@/lib/marketing/channels";
 import type { CampaignStatus, CampaignChannel } from "@prisma/client";
 
 export type CampaignRow = {
@@ -51,6 +51,7 @@ export type CampaignRow = {
   clickCount: number;
   conversionCount: number;
   revenue: number;
+  recurrence: string | null;
   scheduledFor: string | null;
   sentAt: string | null;
   createdAt: string;
@@ -162,10 +163,21 @@ export function CampaignList({ campaigns }: { campaigns: CampaignRow[] }) {
                     />
                   </TableCell>
                   <TableCell>
-                    <p className="font-medium">{c.name}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-medium">{c.name}</p>
+                      {c.recurrence && c.recurrence !== "NONE" && (
+                        <Badge variant="outline" className="gap-1 text-[10px]">
+                          <RefreshCw className="size-3" />
+                          {RECURRENCE_LABEL[c.recurrence as Recurrence]}
+                        </Badge>
+                      )}
+                    </div>
                     <p className="max-w-[260px] truncate text-xs text-muted-foreground">{c.title}</p>
                     {c.status === "SCHEDULED" && c.scheduledFor && (
-                      <p className="text-[11px] text-primary">Scheduled {formatDateTime(c.scheduledFor)}</p>
+                      <p className="text-[11px] text-primary">
+                        {c.recurrence && c.recurrence !== "NONE" ? "Next " : "Scheduled "}
+                        {formatDateTime(c.scheduledFor)}
+                      </p>
                     )}
                   </TableCell>
                   <TableCell>

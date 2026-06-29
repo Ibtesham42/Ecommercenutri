@@ -101,6 +101,16 @@ export const STATUS_VARIANT: Record<CampaignStatus, "default" | "secondary" | "d
   CANCELLED: "destructive",
 };
 
+export const RECURRENCE_VALUES = ["NONE", "DAILY", "WEEKLY", "MONTHLY"] as const;
+export type Recurrence = (typeof RECURRENCE_VALUES)[number];
+
+export const RECURRENCE_LABEL: Record<Recurrence, string> = {
+  NONE: "Does not repeat",
+  DAILY: "Daily",
+  WEEKLY: "Weekly",
+  MONTHLY: "Monthly",
+};
+
 export const TEMPLATE_CATEGORIES = [
   "PROMO",
   "PRODUCT_LAUNCH",

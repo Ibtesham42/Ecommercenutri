@@ -122,6 +122,15 @@ send/schedule/duplicate/resend), Compose (rich editor + image, AI assist, audien
 count, channels, attach product/coupon, send/schedule/draft), Segments, Templates. Typecheck/lint/
 build green; migration applied to Neon.
 
+## Latest: Marketing Hub — Recurring schedules
+Campaigns can now repeat Daily/Weekly/Monthly (reuses the existing `Campaign.recurrence` column — no
+migration). A recurring campaign is a **series parent**: it stays SCHEDULED, and each due fire in
+`dispatchDueCampaigns` spawns a one-off **child snapshot** (dispatched for its own per-occurrence
+analytics + history), then the parent re-arms via `nextRun()` (skips missed windows so a slow cron
+doesn't fire a backlog). Compose gets a Repeat selector + "first run" schedule; the campaigns list
+shows a recurrence badge + next-run time. Cancel stops the series. Same cron, no new deploy config.
+Typecheck/lint/build green. Remaining follow-up: live Push/WhatsApp/SMS adapters.
+
 ## Latest: Marketing Hub — Automation Rules
 Trigger-based flows (migration `marketing_automation`: AutomationRule + AutomationLog +
 AutomationTrigger enum). Triggers: WELCOME / ABANDONED_CART / WINBACK / POST_PURCHASE, each with a

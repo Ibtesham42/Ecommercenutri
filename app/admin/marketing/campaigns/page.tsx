@@ -42,6 +42,7 @@ export default async function MarketingCampaignsPage({
     clickCount: c.clickCount,
     conversionCount: c.conversionCount,
     revenue: c.revenue,
+    recurrence: c.recurrence,
     scheduledFor: c.scheduledFor ? c.scheduledFor.toISOString() : null,
     sentAt: c.sentAt ? c.sentAt.toISOString() : null,
     createdAt: c.createdAt.toISOString(),

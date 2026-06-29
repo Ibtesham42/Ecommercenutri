@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Sparkles, Send, CalendarClock, Save, Users } from "lucide-react";
+import { Loader2, Sparkles, Send, CalendarClock, Save, Users, Repeat } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,9 @@ import {
   SEGMENT_LABEL,
   SEGMENT_DESCRIPTION,
   SEGMENT_NEEDS,
+  RECURRENCE_VALUES,
+  RECURRENCE_LABEL,
+  type Recurrence,
 } from "@/lib/marketing/channels";
 import type { CampaignChannel, SegmentType } from "@prisma/client";
 
@@ -54,6 +57,7 @@ export type EditorCampaign = {
   segmentConfig: { productId?: string | null; categoryId?: string | null; userIds?: string[]; inactiveDays?: number | null } | null;
   productId: string | null;
   couponId: string | null;
+  recurrence: string | null;
 };
 
 export function CampaignEditor({
@@ -99,7 +103,11 @@ export function CampaignEditor({
   const [aiBusy, setAiBusy] = useState(false);
   const [audience, setAudience] = useState<number | null>(null);
   const [scheduleAt, setScheduleAt] = useState("");
+  const [recurrence, setRecurrence] = useState<Recurrence>(
+    (campaign?.recurrence as Recurrence) ?? "NONE",
+  );
   const [busy, setBusy] = useState(false);
+  const recurring = recurrence !== "NONE";
 
   const segmentConfig = () => ({
     productId: SEGMENT_NEEDS.product.includes(segmentType) ? segProduct || null : null,
@@ -195,6 +203,7 @@ export function CampaignEditor({
       segmentConfig: segmentConfig(),
       productId: productId || null,
       couponId: couponId || null,
+      recurrence,
     });
     if (!res.ok) {
       toast.error(res.error);
@@ -456,18 +465,40 @@ export function CampaignEditor({
 
         <section className="space-y-3 rounded-2xl border p-5">
           <h2 className="font-semibold">Send</h2>
-          <Button type="button" className="w-full gap-1.5" disabled={busy} onClick={onSendNow}>
-            {busy ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-            Send now
-          </Button>
+
           <div className="space-y-1.5">
             <Label className="flex items-center gap-1.5 text-xs">
-              <CalendarClock className="size-3.5" /> Or schedule for later
+              <Repeat className="size-3.5" /> Repeat
+            </Label>
+            <select className={field} value={recurrence} onChange={(e) => setRecurrence(e.target.value as Recurrence)}>
+              {RECURRENCE_VALUES.map((r) => (
+                <option key={r} value={r}>
+                  {RECURRENCE_LABEL[r]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {!recurring && (
+            <Button type="button" className="w-full gap-1.5" disabled={busy} onClick={onSendNow}>
+              {busy ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+              Send now
+            </Button>
+          )}
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-1.5 text-xs">
+              <CalendarClock className="size-3.5" /> {recurring ? "First run" : "Or schedule for later"}
             </Label>
             <Input type="datetime-local" value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)} />
             <Button type="button" variant="outline" className="w-full gap-1.5" disabled={busy || !scheduleAt} onClick={onSchedule}>
-              <CalendarClock className="size-4" /> Schedule
+              <CalendarClock className="size-4" /> {recurring ? `Schedule ${RECURRENCE_LABEL[recurrence].toLowerCase()}` : "Schedule"}
             </Button>
+            {recurring && (
+              <p className="text-[11px] text-muted-foreground">
+                Repeats {RECURRENCE_LABEL[recurrence].toLowerCase()} from the first run. Each send is
+                logged as its own campaign; cancel anytime from the list.
+              </p>
+            )}
           </div>
           <Button type="button" variant="ghost" className="w-full gap-1.5" disabled={busy} onClick={onSaveDraft}>
             <Save className="size-4" /> Save as draft

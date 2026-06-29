@@ -37,6 +37,7 @@ export const campaignSchema = z.object({
   segmentConfig: segmentConfigSchema.optional(),
   productId: z.string().optional().nullable(),
   couponId: z.string().optional().nullable(),
+  recurrence: z.enum(["NONE", "DAILY", "WEEKLY", "MONTHLY"]).optional().default("NONE"),
   scheduledFor: z.string().optional().nullable(),
 });
 

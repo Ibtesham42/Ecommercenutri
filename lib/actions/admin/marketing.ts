@@ -54,6 +54,7 @@ export async function saveCampaign(input: unknown): Promise<AdminResult<{ id: st
     segmentConfig: cleanConfig(d.segmentConfig),
     productId: d.productId || null,
     couponId: d.couponId || null,
+    recurrence: d.recurrence === "NONE" ? null : d.recurrence,
   };
 
   let id = d.id;
@@ -129,6 +130,7 @@ export async function duplicateCampaign(id: string): Promise<AdminResult<{ id: s
       segmentConfig: (c.segmentConfig as Prisma.InputJsonValue) ?? Prisma.JsonNull,
       productId: c.productId,
       couponId: c.couponId,
+      recurrence: c.recurrence,
     },
   });
   revalidate();
