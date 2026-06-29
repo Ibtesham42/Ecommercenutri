@@ -10,8 +10,8 @@ _Last updated: 2026-06-29 · Auto-maintained. Update at the end of every milesto
 | TypeScript          | ✅ `tsc --noEmit` clean                                         |
 | ESLint              | ✅ clean                                                        |
 | Runtime smoke       | ✅ Premium UI verified (home/products/PDP/search/cart 200; lightbox + blur-up + elevation/reveal present; search typeahead API returns suggestions; `/admin/messages` shows the contact message, guard 307) |
-| Database (Neon)     | ✅ live, migrated (…`affiliate_program`: Affiliate/Commission/Payout/MarketingAsset + StoreSetting affiliate fields), seeded |
-| Current milestone   | **M0–M6 + RBAC + CMS Phases 1–5 + content pages + Affiliate Program — production-ready** |
+| Database (Neon)     | ✅ live, migrated (…`affiliate_program`, `marketing_hub`, `marketing_automation`, `push_subscriptions`), seeded |
+| Current milestone   | **M0–M6 + RBAC + CMS + Affiliate Program + Admin bulk actions + Marketing Hub — production-ready** |
 
 ## Latest: Affiliate / Influencer Program (done)
 Full referral-marketing program layered additively on orders, gated by a new `affiliates`
@@ -108,50 +108,47 @@ phone, contact email, address); self email/password + editable store contact/soc
 `requirePermission`/`requireSuperAdmin` (actions), all DB-fresh; dashboard widgets scoped
 to permissions. (Deploy still requires `DATABASE_URL` at runtime — see the build fix.)
 
-## Latest: Marketing Hub (phase 1 — core)
-New `/admin/marketing` section (RBAC `marketing` permission), built modular for future channels.
-Migration `marketing_hub`: Campaign / CampaignEvent / CampaignTemplate / AudienceSegment (+ enums).
-**lib/marketing/**: channel adapter registry (In-App + Email live; Push/WhatsApp/SMS stubs), audience
-resolver (9 segments over existing user/order/wishlist/cart/affiliate data), dispatch engine, Groq
-AI copy generation (with heuristic fallback), built-in templates, conversion attribution. **Cron-ready
-delivery**: Send-now is immediate; scheduled campaigns processed by `/api/cron/marketing` (CRON_SECRET,
-`vercel.json` every 5 min). Open pixel + click-redirect tracking routes; conversions/revenue credited
-from a 7-day `nut_campaign` cookie in `createOrder`. **Admin UI** (tabbed): Overview/analytics
-(sent/delivered/opened/clicked/conversions/revenue), Campaigns (list+history, bulk delete/cancel,
-send/schedule/duplicate/resend), Compose (rich editor + image, AI assist, audience targeting w/ live
-count, channels, attach product/coupon, send/schedule/draft), Segments, Templates. Typecheck/lint/
-build green; migration applied to Neon.
+## Marketing Hub (complete — full multi-channel campaign system)
+A modular, production-ready marketing platform at **`/admin/marketing`**, gated by the new
+`marketing` RBAC permission. Built across four waves; reuses existing users/products/coupons/
+notifications/email/Groq. See CLAUDE.md §8d. Full gate green (typecheck/lint/build); all migrations
+applied to Neon. Degrades gracefully — email→console without Resend, AI→heuristic without Groq, and
+every channel/cron is keyless-safe.
 
-## Latest: Marketing Hub — Live Push / WhatsApp / SMS channels
-The 3 stub channels are now real, env-gated adapters (`lib/marketing/providers.ts`): Web Push
-(VAPID via `web-push`), WhatsApp (Meta Cloud API), SMS (Twilio) — each no-ops until its keys are set,
-matching the keyless philosophy. Wired into both the campaign dispatch registry (`deliver.ts`) and
-automations (`automation.ts`). Recipients now carry a phone (user.phone ?? latest address). Web Push
-pipeline: `PushSubscription` model (migration `push_subscriptions`) + `/api/push/(un)subscribe` +
-additive SW `push`/`notificationclick` handlers (VERSION→v3, fetch/cache invariant untouched) + an
-account opt-in card (renders only when VAPID configured + browser supports it). Channels are all
-selectable; Compose shows a "needs setup" hint for unconfigured ones. New env in `.env.example`
-(VAPID/WhatsApp/Twilio). Typecheck/lint/build green; migration applied. **Marketing Hub roadmap
-complete.**
+**Data** (migrations `marketing_hub`, `marketing_automation`, `push_subscriptions`): `Campaign`,
+`CampaignEvent`, `CampaignTemplate`, `AudienceSegment`, `AutomationRule`, `AutomationLog`,
+`PushSubscription` (+ CampaignType/Status/Channel, SegmentType, AutomationTrigger enums).
 
-## Latest: Marketing Hub — Recurring schedules
-Campaigns can now repeat Daily/Weekly/Monthly (reuses the existing `Campaign.recurrence` column — no
-migration). A recurring campaign is a **series parent**: it stays SCHEDULED, and each due fire in
-`dispatchDueCampaigns` spawns a one-off **child snapshot** (dispatched for its own per-occurrence
-analytics + history), then the parent re-arms via `nextRun()` (skips missed windows so a slow cron
-doesn't fire a backlog). Compose gets a Repeat selector + "first run" schedule; the campaigns list
-shows a recurrence badge + next-run time. Cancel stops the series. Same cron, no new deploy config.
-Typecheck/lint/build green. Remaining follow-up: live Push/WhatsApp/SMS adapters.
+**Engine** (`lib/marketing/`):
+- **Audience** — `resolveAudience`/`countAudience` over 9 segment types (All, Customers, Affiliates,
+  product/category buyers, Wishlist, Abandoned-cart, Inactive, Selected); recipients carry email +
+  phone (`user.phone` ?? latest address).
+- **Channels** — a per-channel **adapter registry** (`deliver.ts`). In-App (`notify`) + Email
+  (`marketingEmail`) always work; **Push (VAPID/`web-push`), WhatsApp (Meta Cloud API), SMS (Twilio)**
+  are real, **env-gated** adapters (`providers.ts`) that no-op until their keys are set.
+- **AI** — `generateCampaignContent` via the Groq seam (generateText + JSON parse, heuristic fallback).
+- **Conversion attribution** — click-redirect drops a `nut_campaign` cookie; `recordCampaignConversion`
+  credits conversions/revenue in `createOrder` (7-day window).
+- **Cron-ready dispatch** — `/api/cron/marketing` (CRON_SECRET, `vercel.json` every 5 min) runs
+  `dispatchDueCampaigns` + `runAutomations`.
 
-## Latest: Marketing Hub — Automation Rules
-Trigger-based flows (migration `marketing_automation`: AutomationRule + AutomationLog +
-AutomationTrigger enum). Triggers: WELCOME / ABANDONED_CART / WINBACK / POST_PURCHASE, each with a
-delay (h/d), channels and content (+ optional coupon, AI-assisted copy). `lib/marketing/automation.ts#
-runAutomations` runs from the same cron (after campaign dispatch), computes eligibility from existing
-user/order/cart/OrderEvent data, dedups via `AutomationLog @@unique([ruleId, key])` (one send per
-user, or per order for post-purchase), and delivers in-app + email with catch-up bounds + a per-run
-cap. Admin **Automations** tab: list + enable toggle + CRUD dialog + manual "Run now". Typecheck/lint/
-build green; migration applied. Remaining follow-ups: recurring schedules, live Push/WhatsApp/SMS.
+**Campaigns** — Compose (rich editor + image, AI assist, audience targeting with a **live recipient
+count**, channel toggles + "needs setup" hints, attach product/coupon). Send now / schedule / save
+draft. Tracking via `/api/marketing/open` (pixel) + `/click` (redirect). **Recurring** Daily/Weekly/
+Monthly: a recurring campaign is a *series parent* (stays SCHEDULED) that spawns a one-off **child
+snapshot** per occurrence (own per-occurrence analytics) and re-arms via `nextRun()` (skips missed
+windows). Campaigns list = history with bulk delete/cancel + per-row send/schedule/duplicate/resend.
+
+**Automations** — trigger-based flows (WELCOME / ABANDONED_CART / WINBACK / POST_PURCHASE) with a
+delay, channels, AI-assisted content + optional coupon. `runAutomations` (same cron) computes
+eligibility from user/order/cart/OrderEvent data, **dedups via `AutomationLog @@unique([ruleId, key])`**
+(once per user, or per order for post-purchase), with catch-up bounds + per-run cap. Enable toggle +
+"Run now".
+
+**Segments** (saved audiences with live counts), **Templates** (6 built-ins + custom), **Overview**
+analytics (sent/delivered/opened/clicked/conversions/revenue). **Web Push** opt-in on the account
+page + additive SW `push`/`notificationclick` handlers (`public/sw.js` VERSION→v3, fetch/cache
+invariant untouched). New env (`.env.example`): `CRON_SECRET`, VAPID keypair, `WHATSAPP_*`, `TWILIO_*`.
 
 ## Latest: Admin bulk actions (wave 3 — new moderation pages)
 Built the two admin tables that didn't exist yet, with bulk baked in. **Reviews**
