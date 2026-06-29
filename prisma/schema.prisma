@@ -1,161 +1,39 @@
-// Nutriyet — Prisma schema
-// All monetary values are stored as INTEGERS in paise (₹1 = 100 paise)
-// to avoid floating-point errors and to be Razorpay-ready (Razorpay uses paise).
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider  = "postgresql"
-  // Pooled connection used by the app at runtime (good for serverless).
   url       = env("DATABASE_URL")
-  // Direct (non-pooled) connection used by Prisma Migrate. For Neon this is
-  // the same host with "-pooler" removed.
   directUrl = env("DIRECT_URL")
 }
 
-// ---------------------------------------------------------------------------
-// Enums
-// ---------------------------------------------------------------------------
-
-enum Role {
-  USER
-  ADMIN // sub-admin: access limited by `permissions`
-  SUPER_ADMIN // main admin: full access, manages admins + store settings
-}
-
-enum AddressType {
-  HOME
-  WORK
-  OTHER
-}
-
-enum CouponType {
-  PERCENT
-  FIXED
-}
-
-enum OrderStatus {
-  PENDING
-  PAID // legacy (kept for existing rows); fulfilment uses the stages below
-  APPROVED
-  PROCESSING
-  PACKED
-  SHIPPED
-  OUT_FOR_DELIVERY
-  DELIVERED
-  CANCELLED
-  RETURNED // future-ready
-  REFUNDED
-}
-
-enum PaymentStatus {
-  PENDING
-  PAID
-  FAILED
-  REFUNDED
-}
-
-enum PaymentMethod {
-  RAZORPAY // online (Razorpay, or the keyless mock)
-  COD // cash on delivery — collected at delivery
-}
-
-enum StoryMediaType {
-  IMAGE
-  VIDEO
-}
-
-enum AIRole {
-  SYSTEM
-  USER
-  ASSISTANT
-}
-
-enum UserEventType {
-  PRODUCT_VIEW
-  CATEGORY_VIEW
-  SEARCH
-  CART_ADD
-  WISHLIST_ADD
-  PURCHASE
-  RECO_CLICK // clicked a recommended product
-  CLICK
-}
-
-// Returns & refunds -----------------------------------------------------------
-
-enum ReturnStatus {
-  REQUESTED // Request submitted by the customer
-  UNDER_REVIEW // Admin is reviewing
-  INFO_REQUESTED // Admin asked the customer for more info
-  APPROVED // Approved for return/refund
-  REJECTED // Rejected (terminal; rejectionReason shown to customer)
-  PICKUP_SCHEDULED // Reverse pickup scheduled
-  ITEM_RECEIVED // Returned item received back
-  REFUNDED // Refund issued (terminal)
-  CANCELLED // Withdrawn by the customer (terminal)
-}
-
-enum ReturnType {
-  REFUND
-  REPLACEMENT // future-ready; v1 handles REFUND
-}
-
-enum RefundMethod {
-  ORIGINAL // back to the original payment (Razorpay) for prepaid orders
-  UPI
-  BANK_TRANSFER
-  STORE_CREDIT
-  OTHER
-}
-
-enum RefundStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-}
-
-enum NotificationType {
-  RETURN_UPDATE
-  ORDER_UPDATE
-  GENERAL
-}
-
-// ---------------------------------------------------------------------------
-// Auth (NextAuth v5 / Auth.js Prisma adapter)
-// ---------------------------------------------------------------------------
-
 model User {
-  id            String    @id @default(cuid())
+  id            String          @id @default(cuid())
   name          String?
-  email         String    @unique
+  email         String          @unique
   emailVerified DateTime?
   passwordHash  String?
   image         String?
   phone         String?
-  role          Role      @default(USER)
-  // For sub-admins (role ADMIN): allowed admin section keys, e.g. ["products","stories"].
-  // Ignored for SUPER_ADMIN (full access) and USER.
-  permissions   String[]  @default([])
-  contactEmail  String? // optional admin contact, distinct from login email
-  address       String? // optional admin address
-  isActive      Boolean   @default(true) // deactivated admins/users cannot sign in
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  accounts Account[]
-  sessions Session[]
-  orders   Order[]
-  addresses Address[]
-  reviews  Review[]
-  wishlist WishlistItem[]
-  aiChats  AIChat[]
-  cart     Cart?
-  returns       ReturnRequest[]
+  role          Role            @default(USER)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  address       String?
+  contactEmail  String?
+  isActive      Boolean         @default(true)
+  permissions   String[]        @default([])
+  aiChats       AIChat[]
+  accounts      Account[]
+  addresses     Address[]
+  affiliate     Affiliate?
+  cart          Cart?
   notifications Notification[]
+  orders        Order[]
+  returns       ReturnRequest[]
+  reviews       Review[]
+  sessions      Session[]
+  wishlist      WishlistItem[]
 }
 
 model Account {
@@ -164,15 +42,14 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@index([userId])
@@ -183,8 +60,7 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -207,112 +83,101 @@ model PasswordResetToken {
   @@index([email])
 }
 
-// ---------------------------------------------------------------------------
-// Catalog
-// ---------------------------------------------------------------------------
-
 model Category {
-  id              String   @id @default(cuid())
+  id              String           @id @default(cuid())
   name            String
-  slug            String   @unique
+  slug            String           @unique
   description     String?
   image           String?
   parentId        String?
-  sortOrder       Int      @default(0)
-  isActive        Boolean  @default(true)
-  returnable      Boolean  @default(true) // per-category return eligibility gate
+  sortOrder       Int              @default(0)
+  isActive        Boolean          @default(true)
   metaTitle       String?
   metaDescription String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  parent     Category?   @relation("CategoryToSubcategory", fields: [parentId], references: [id])
-  children   Category[]  @relation("CategoryToSubcategory")
-  products   Product[]
-  heroSlides HeroSlide[]
-  banners    Banner[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  returnable      Boolean          @default(true)
+  banners         Banner[]
+  parent          Category?        @relation("CategoryToSubcategory", fields: [parentId], references: [id])
+  children        Category[]       @relation("CategoryToSubcategory")
+  commissionRules CommissionRule[]
+  heroSlides      HeroSlide[]
+  products        Product[]
 
   @@index([parentId])
 }
 
 model Brand {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   name        String
-  slug        String   @unique
+  slug        String    @unique
   logo        String?
   description String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  products Product[]
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
 }
 
 model Product {
-  id               String   @id @default(cuid())
+  id               String           @id @default(cuid())
   name             String
-  slug             String   @unique
-  sku              String?  @unique
+  slug             String           @unique
+  sku              String?          @unique
   shortDescription String?
-  description      String   @db.Text
-  benefits         String?  @db.Text
-  ingredients      String?  @db.Text
-  nutritionFacts   Json? // [{ label, value, unit, perServing? }]
+  description      String
+  benefits         String?
+  ingredients      String?
+  nutritionFacts   Json?
   categoryId       String
   brandId          String?
-  isActive         Boolean  @default(true)
-  isFeatured       Boolean  @default(false)
-  isBestSeller     Boolean  @default(false)
-  // Tax & shipping overrides. Null = fall back to the global store defaults
-  // (StoreSetting.defaultGstRate / defaultShippingFee). GST is inclusive: the
-  // listed price already contains tax at this rate.
-  gstRate          Int? // GST percent for this product (e.g. 0,5,12,18,28); null = store default
-  deliveryCharge   Int? // paise; per-product delivery override; null = store default, 0 = free
-  // Returns: product-level eligibility. `returnable=false` disables returns for
-  // this item; `returnWindowDays` overrides the store default window (null = use store).
-  returnable       Boolean  @default(true)
-  returnWindowDays Int?
-  ratingAvg        Float    @default(0)
-  ratingCount      Int      @default(0)
+  isActive         Boolean          @default(true)
+  isFeatured       Boolean          @default(false)
+  isBestSeller     Boolean          @default(false)
+  ratingAvg        Float            @default(0)
+  ratingCount      Int              @default(0)
   metaTitle        String?
   metaDescription  String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  category   Category         @relation(fields: [categoryId], references: [id])
-  brand      Brand?           @relation(fields: [brandId], references: [id])
-  variants   ProductVariant[]
-  images     ProductImage[]
-  reviews    Review[]
-  wishlist   WishlistItem[]
-  orderItems OrderItem[]
-  stories       Story[]
-  aiChats       AIChat[]
-  heroSlides    HeroSlide[]
-  banners       Banner[]
-  showcaseItems ShowcaseItem[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  deliveryCharge   Int?
+  gstRate          Int?
+  returnWindowDays Int?
+  returnable       Boolean          @default(true)
+  aiChats          AIChat[]
+  banners          Banner[]
+  commissionRules  CommissionRule[]
+  heroSlides       HeroSlide[]
+  orderItems       OrderItem[]
+  brand            Brand?           @relation(fields: [brandId], references: [id])
+  category         Category         @relation(fields: [categoryId], references: [id])
+  images           ProductImage[]
+  variants         ProductVariant[]
+  reviews          Review[]
+  showcaseItems    ShowcaseItem[]
+  stories          Story[]
+  wishlist         WishlistItem[]
 
   @@index([categoryId])
   @@index([brandId])
 }
 
 model ProductVariant {
-  id            String   @id @default(cuid())
+  id            String      @id @default(cuid())
   productId     String
-  weightLabel   String // e.g. "100g", "250g", "500g", "1kg"
-  weightInGrams Int? // for sorting / filtering
-  price         Int // paise (MRP)
-  discountPrice Int? // paise (sale price, <= price)
-  stock         Int      @default(0)
-  sku           String?  @unique
-  isDefault     Boolean  @default(false)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
-  cartItems  CartItem[]
-  orderItems OrderItem[]
+  weightLabel   String
+  weightInGrams Int?
+  price         Int
+  discountPrice Int?
+  stock         Int         @default(0)
+  sku           String?     @unique
+  isDefault     Boolean     @default(false)
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  product       Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId])
 }
@@ -325,8 +190,7 @@ model ProductImage {
   sortOrder Int      @default(0)
   isMain    Boolean  @default(false)
   createdAt DateTime @default(now())
-
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productId])
 }
@@ -335,23 +199,18 @@ model Review {
   id         String   @id @default(cuid())
   productId  String
   userId     String
-  rating     Int // 1..5
+  rating     Int
   title      String?
-  comment    String?  @db.Text
+  comment    String?
   isApproved Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([productId, userId])
   @@index([productId])
 }
-
-// ---------------------------------------------------------------------------
-// Customer data
-// ---------------------------------------------------------------------------
 
 model Address {
   id        String      @id @default(cuid())
@@ -368,34 +227,31 @@ model Address {
   isDefault Boolean     @default(false)
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
-
-  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orders Order[]
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders    Order[]
 
   @@index([userId])
 }
 
 model Cart {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items CartItem[]
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
 }
 
 model CartItem {
-  id            String   @id @default(cuid())
+  id            String         @id @default(cuid())
   cartId        String
   variantId     String
-  quantity      Int      @default(1)
-  savedForLater Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  cart    Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity      Int            @default(1)
+  savedForLater Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  cart          Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variant       ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
   @@unique([cartId, variantId])
   @@index([cartId])
@@ -406,27 +262,22 @@ model WishlistItem {
   userId    String
   productId String
   createdAt DateTime @default(now())
-
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
   @@index([userId])
 }
-
-// ---------------------------------------------------------------------------
-// Commerce
-// ---------------------------------------------------------------------------
 
 model Coupon {
   id           String     @id @default(cuid())
   code         String     @unique
   description  String?
   type         CouponType
-  value        Int // PERCENT: 1-100, FIXED: paise
-  minOrder     Int? // paise
-  maxDiscount  Int? // paise (cap for percentage coupons)
-  usageLimit   Int? // total redemptions allowed
+  value        Int
+  minOrder     Int?
+  maxDiscount  Int?
+  usageLimit   Int?
   usedCount    Int        @default(0)
   perUserLimit Int?
   startsAt     DateTime?
@@ -434,204 +285,173 @@ model Coupon {
   isActive     Boolean    @default(true)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-
-  orders Order[]
+  categoryIds  String[]   @default([])
+  productIds   String[]   @default([])
+  affiliate    Affiliate?
+  orders       Order[]
 }
 
 model Order {
-  id              String        @id @default(cuid())
-  orderNumber     String        @unique
-  userId          String
-  status          OrderStatus   @default(PENDING)
-  paymentStatus   PaymentStatus @default(PENDING)
-  paymentMethod   PaymentMethod @default(RAZORPAY)
-  subtotal        Int // paise
-  discount        Int           @default(0)
-  shipping        Int           @default(0)
-  shippingSaved   Int           @default(0) // paise waived by free-delivery (for "you saved" copy)
-  codFee          Int           @default(0) // paise, COD handling fee (0 for online)
-  tax             Int           @default(0)
-  total           Int // paise
-  // True once stock has been decremented for this order (at PAID for online, at
-  // confirmation for COD). Drives confirm-idempotency and restock-on-cancel.
-  stockDeducted   Boolean       @default(false)
-  cancelReason    String? // why the order was cancelled (shown in the timeline)
-  couponId        String?
-  couponCode      String?
-  addressId       String?
-  shippingAddress Json // snapshot of the address at purchase time
-
+  id                String          @id @default(cuid())
+  orderNumber       String          @unique
+  userId            String
+  status            OrderStatus     @default(PENDING)
+  paymentStatus     PaymentStatus   @default(PENDING)
+  subtotal          Int
+  discount          Int             @default(0)
+  shipping          Int             @default(0)
+  tax               Int             @default(0)
+  total             Int
+  couponId          String?
+  couponCode        String?
+  addressId         String?
+  shippingAddress   Json
   razorpayOrderId   String?
   razorpayPaymentId String?
   razorpaySignature String?
-
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user    User        @relation(fields: [userId], references: [id])
-  coupon  Coupon?     @relation(fields: [couponId], references: [id])
-  address Address?    @relation(fields: [addressId], references: [id])
-  items   OrderItem[]
-  invoice Invoice?
-  events  OrderEvent[]
-  returns ReturnRequest[]
+  notes             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  shippingSaved     Int             @default(0)
+  codFee            Int             @default(0)
+  paymentMethod     PaymentMethod   @default(RAZORPAY)
+  stockDeducted     Boolean         @default(false)
+  cancelReason      String?
+  affiliateId       String?
+  referralCode      String?
+  commission        Commission?
+  invoice           Invoice?
+  address           Address?        @relation(fields: [addressId], references: [id])
+  affiliate         Affiliate?      @relation(fields: [affiliateId], references: [id])
+  coupon            Coupon?         @relation(fields: [couponId], references: [id])
+  user              User            @relation(fields: [userId], references: [id])
+  events            OrderEvent[]
+  items             OrderItem[]
+  returns           ReturnRequest[]
 
   @@index([userId])
   @@index([status])
+  @@index([affiliateId])
 }
 
-// Append-only status timeline for an order (one row per transition). Powers the
-// customer order tracker with timestamps and the cancellation reason.
 model OrderEvent {
   id        String      @id @default(cuid())
   orderId   String
   status    OrderStatus
-  note      String? // e.g. cancellation reason
-  actor     String? // "customer" | "admin" | "system"
+  note      String?
+  actor     String?
   createdAt DateTime    @default(now())
-
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
 }
 
 model OrderItem {
-  id           String  @id @default(cuid())
+  id           String              @id @default(cuid())
   orderId      String
   productId    String?
   variantId    String?
-  productName  String // snapshot
-  variantLabel String // snapshot
-  image        String? // snapshot
-  price        Int // paise, snapshot of unit price paid
+  productName  String
+  variantLabel String
+  image        String?
+  price        Int
   quantity     Int
-
-  order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
-  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
-  returnItems ReturnRequestItem[]
+  order        Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      Product?            @relation(fields: [productId], references: [id])
+  variant      ProductVariant?     @relation(fields: [variantId], references: [id])
+  returnItems  ReturnRequestItem[]
 
   @@index([orderId])
 }
 
-// One persistent tax invoice per order (created at order confirmation, or lazily
-// on first view for legacy orders). The PDF is rendered on demand from the
-// immutable order + this seller snapshot, so it never changes once issued.
-// `seq` is a DB autoincrement → `invoiceNumber` (INV-<FY>-<seq>) is collision-free.
 model Invoice {
   id            String   @id @default(cuid())
   orderId       String   @unique
   seq           Int      @unique @default(autoincrement())
   invoiceNumber String   @unique
   issuedAt      DateTime @default(now())
-  // Seller details snapshot at issue time (so later store edits don't rewrite history).
   sellerName    String
   sellerAddress String?
   sellerGstin   String?
   sellerEmail   String?
   sellerPhone   String?
-
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
-// ---------------------------------------------------------------------------
-// Returns & refunds (post-delivery; a separate lifecycle from order fulfilment)
-// ---------------------------------------------------------------------------
-
-// A customer's return/refund request against a delivered order. Its `status` is
-// independent of the order's fulfilment status — the order stays DELIVERED while
-// the return progresses through its own flow (see lib/return-status.ts).
 model ReturnRequest {
-  id           String       @id @default(cuid())
-  returnNumber String       @unique // RMA-YYMMDD-XXXXXX
-  orderId      String
-  userId       String
-  status       ReturnStatus @default(REQUESTED)
-  type         ReturnType   @default(REFUND)
-  reason       String // customer-selected reason
-  description  String?      @db.Text // optional customer detail
-  media        String[]     @default([]) // Cloudinary image/video proof URLs
-
-  // Money (paise). `refundAmount` = requested (Σ selected item line totals, admin-adjustable);
-  // `refundedAmount` = actually refunded (supports partial refunds).
-  refundAmount   Int          @default(0)
-  refundedAmount Int          @default(0)
-  refundMethod   RefundMethod?
-  refundStatus   RefundStatus @default(PENDING)
-  refundRef      String? // Razorpay refund id, or manual UTR/UPI reference
-
+  id                String              @id @default(cuid())
+  returnNumber      String              @unique
+  orderId           String
+  userId            String
+  status            ReturnStatus        @default(REQUESTED)
+  type              ReturnType          @default(REFUND)
+  reason            String
+  description       String?
+  media             String[]            @default([])
+  refundAmount      Int                 @default(0)
+  refundedAmount    Int                 @default(0)
+  refundMethod      RefundMethod?
+  refundStatus      RefundStatus        @default(PENDING)
+  refundRef         String?
   pickupScheduledAt DateTime?
   pickupNote        String?
-  adminNotes        String? @db.Text // internal notes (never shown to the customer)
-  rejectionReason   String? // shown to the customer when REJECTED
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  order      Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  user       User                @relation(fields: [userId], references: [id])
-  items      ReturnRequestItem[]
-  events     ReturnEvent[]
-  creditNote CreditNote?
+  adminNotes        String?
+  rejectionReason   String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  creditNote        CreditNote?
+  events            ReturnEvent[]
+  order             Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user              User                @relation(fields: [userId], references: [id])
+  items             ReturnRequestItem[]
 
   @@index([userId])
   @@index([orderId])
   @@index([status])
 }
 
-// The specific order items (and quantities) being returned — enables partial refunds.
 model ReturnRequestItem {
-  id          String @id @default(cuid())
-  returnId    String
-  orderItemId String
-  quantity    Int // qty being returned (<= ordered qty)
-  unitPrice   Int // paise, snapshot of the unit price paid
-  productName String // snapshot
-  variantLabel String // snapshot
-  image       String?
-
-  returnRequest ReturnRequest @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  id            String        @id @default(cuid())
+  returnId      String
+  orderItemId   String
+  quantity      Int
+  unitPrice     Int
+  productName   String
+  variantLabel  String
+  image         String?
   orderItem     OrderItem     @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
-
-  @@index([returnId])
-}
-
-// Append-only audit timeline for a return (one row per transition + internal notes).
-model ReturnEvent {
-  id        String       @id @default(cuid())
-  returnId  String
-  status    ReturnStatus
-  note      String?
-  actor     String? // "customer" | "admin" | "system"
-  createdAt DateTime     @default(now())
-
   returnRequest ReturnRequest @relation(fields: [returnId], references: [id], onDelete: Cascade)
 
   @@index([returnId])
 }
 
-// One persistent credit note per refunded return (mirrors Invoice). `seq` is a DB
-// autoincrement → `number` (CN-<FY>-<seq>) is collision-free. Seller snapshot frozen
-// at issue time so later store edits don't rewrite history.
+model ReturnEvent {
+  id            String        @id @default(cuid())
+  returnId      String
+  status        ReturnStatus
+  note          String?
+  actor         String?
+  createdAt     DateTime      @default(now())
+  returnRequest ReturnRequest @relation(fields: [returnId], references: [id], onDelete: Cascade)
+
+  @@index([returnId])
+}
+
 model CreditNote {
-  id              String   @id @default(cuid())
-  returnRequestId String   @unique
-  seq             Int      @unique @default(autoincrement())
-  number          String   @unique
-  issuedAt        DateTime @default(now())
-  amount          Int // paise refunded
+  id              String        @id @default(cuid())
+  returnRequestId String        @unique
+  seq             Int           @unique @default(autoincrement())
+  number          String        @unique
+  issuedAt        DateTime      @default(now())
+  amount          Int
   sellerName      String
   sellerAddress   String?
   sellerGstin     String?
   sellerEmail     String?
   sellerPhone     String?
-
-  returnRequest ReturnRequest @relation(fields: [returnRequestId], references: [id], onDelete: Cascade)
+  returnRequest   ReturnRequest @relation(fields: [returnRequestId], references: [id], onDelete: Cascade)
 }
 
-// In-app notification (the account bell). Email is sent separately; this is the
-// persistent in-app feed.
 model Notification {
   id        String           @id @default(cuid())
   userId    String
@@ -641,190 +461,279 @@ model Notification {
   link      String?
   read      Boolean          @default(false)
   createdAt DateTime         @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read])
 }
 
-// ---------------------------------------------------------------------------
-// Homepage hero slider (CMS-managed)
-// ---------------------------------------------------------------------------
+model Affiliate {
+  id              String           @id @default(cuid())
+  userId          String           @unique
+  role            AffiliateRole    @default(AFFILIATE)
+  status          AffiliateStatus  @default(PENDING)
+  code            String           @unique
+  couponId        String?          @unique
+  commissionType  CommissionType?
+  commissionValue Int?
+  displayName     String
+  bio             String?
+  website         String?
+  socials         Json?
+  audienceSize    Int?
+  pitch           String?
+  payoutMethod    PayoutMethod?
+  upiId           String?
+  bankName        String?
+  bankAccount     String?
+  bankIfsc        String?
+  accountName     String?
+  rejectionReason String?
+  suspendReason   String?
+  approvedAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  coupon          Coupon?          @relation(fields: [couponId], references: [id])
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clicks          AffiliateClick[]
+  commissions     Commission[]
+  orders          Order[]
+  payouts         Payout[]
+
+  @@index([status])
+  @@index([role])
+}
+
+model AffiliateClick {
+  id          String    @id @default(cuid())
+  affiliateId String
+  anonId      String?
+  userId      String?
+  landingPath String
+  referrer    String?
+  device      String?
+  browser     String?
+  ipHash      String?
+  createdAt   DateTime  @default(now())
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  @@index([affiliateId])
+  @@index([affiliateId, anonId])
+}
+
+model CommissionRule {
+  id         String          @id @default(cuid())
+  scope      CommissionScope
+  role       AffiliateRole?
+  productId  String?
+  categoryId String?
+  type       CommissionType  @default(PERCENT)
+  value      Int
+  isActive   Boolean         @default(true)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  category   Category?       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  product    Product?        @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([scope, role, productId, categoryId])
+  @@index([scope])
+}
+
+model Commission {
+  id          String           @id @default(cuid())
+  affiliateId String
+  orderId     String           @unique
+  userId      String
+  base        Int
+  amount      Int
+  status      CommissionStatus @default(PENDING)
+  matureAt    DateTime?
+  paidAt      DateTime?
+  payoutId    String?
+  meta        Json?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  affiliate   Affiliate        @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  order       Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  payout      Payout?          @relation(fields: [payoutId], references: [id])
+
+  @@index([affiliateId])
+  @@index([status])
+}
+
+model Payout {
+  id           String        @id @default(cuid())
+  payoutNumber String        @unique
+  affiliateId  String
+  amount       Int
+  status       PayoutStatus  @default(REQUESTED)
+  method       PayoutMethod?
+  reference    String?
+  notes        String?
+  periodStart  DateTime?
+  periodEnd    DateTime?
+  paidAt       DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  commissions  Commission[]
+  affiliate    Affiliate     @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  @@index([affiliateId])
+  @@index([status])
+}
+
+model MarketingAsset {
+  id           String             @id @default(cuid())
+  title        String
+  description  String?
+  type         MarketingAssetType
+  fileUrl      String
+  thumbnailUrl String?
+  fileType     String?
+  sizeBytes    Int?
+  sortOrder    Int                @default(0)
+  isActive     Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([isActive])
+}
 
 model HeroSlide {
   id           String    @id @default(cuid())
   title        String?
   subtitle     String?
-  description  String?   @db.Text
+  description  String?
   desktopImage String
-  mobileImage  String? // falls back to desktopImage when blank
+  mobileImage  String?
   ctaText      String?
-  ctaUrl       String? // explicit link; product/category below take precedence if set
+  ctaUrl       String?
   productId    String?
   categoryId   String?
-  overlay      Int       @default(40) // dark overlay opacity, 0-100
-  buttonColor  String? // optional CTA background (hex); defaults to brand
-  textAlign    String    @default("left") // left | center | right
+  overlay      Int       @default(40)
+  buttonColor  String?
+  textAlign    String    @default("left")
   sortOrder    Int       @default(0)
   isActive     Boolean   @default(true)
   startsAt     DateTime?
   expiresAt    DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
-
-  product  Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
-  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category     Category? @relation(fields: [categoryId], references: [id])
+  product      Product?  @relation(fields: [productId], references: [id])
 
   @@index([isActive])
 }
 
-// Premium 3D hero showcase items (admin-managed, rendered below the homepage
-// search/hero via the CSS/GPU 3D engine — components/storefront/showcase-3d).
-// The global on/off lives on StoreSetting.showcase3dEnabled.
 model ShowcaseItem {
   id             String   @id @default(cuid())
   title          String
   tagline        String?
-  image          String // product image (Cloudinary)
-  imagePng       String? // optional transparent PNG/WebP for a true cut-out look
+  image          String
+  imagePng       String?
   productId      String?
-  ctaText        String? // defaults to "Shop Now"
-  ctaUrl         String? // explicit link; product takes precedence when set
-  animation      String   @default("float") // preset key (see lib/showcase.ts)
-  background     String   @default("aurora") // background style key
-  rotationSpeed  Int      @default(50) // 0-100
-  floatIntensity Int      @default(50) // 0-100
-  zoom           Int      @default(50) // 0-100
+  ctaText        String?
+  ctaUrl         String?
+  animation      String   @default("float")
+  background     String   @default("aurora")
+  rotationSpeed  Int      @default(50)
+  floatIntensity Int      @default(50)
+  zoom           Int      @default(50)
   sortOrder      Int      @default(0)
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-
-  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  product        Product? @relation(fields: [productId], references: [id])
 
   @@index([isActive])
 }
 
-// Promotional banners rendered at named placements (see lib/banners.ts).
 model Banner {
-  id           String    @id @default(cuid())
-  title        String?
-  subtitle     String?
-  description  String?   @db.Text
-  desktopImage String
-  mobileImage  String?
-  // Optional dark-mode variants; the light image is used as a fallback.
+  id               String    @id @default(cuid())
+  title            String?
+  subtitle         String?
+  description      String?
+  desktopImage     String
+  mobileImage      String?
+  ctaText          String?
+  ctaUrl           String?
+  productId        String?
+  categoryId       String?
+  position         String    @default("homeTop")
+  priority         Int       @default(0)
+  isActive         Boolean   @default(true)
+  startsAt         DateTime?
+  expiresAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
   desktopImageDark String?
   mobileImageDark  String?
-  ctaText      String?
-  ctaUrl       String?
-  productId    String?
-  categoryId   String?
-  position     String    @default("homeTop")
-  priority     Int       @default(0) // higher shows first within a position
-  isActive     Boolean   @default(true)
-  startsAt     DateTime?
-  expiresAt    DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  product  Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
-  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  category         Category? @relation(fields: [categoryId], references: [id])
+  product          Product?  @relation(fields: [productId], references: [id])
 
   @@index([position, isActive])
 }
 
-// Homepage section visibility + order (Homepage Section Builder). One row per
-// section key (see lib/home-sections.ts). Missing keys fall back to defaults.
 model HomeSection {
   id        String   @id @default(cuid())
   key       String   @unique
   enabled   Boolean  @default(true)
   sortOrder Int      @default(0)
-  // Per-section editable content (Homepage Section editor). Null = code defaults
-  // in lib/home-content.ts, so the homepage is unchanged until an admin edits.
-  content   Json?
   updatedAt DateTime @updatedAt
+  content   Json?
 }
 
-// ---------------------------------------------------------------------------
-// Content / CMS (blog, legal pages, contact inbox)
-// ---------------------------------------------------------------------------
-
-// Blog articles. CMS-ready: a future admin phase manages these rows; the
-// storefront renders only published posts (see lib/queries/blog.ts).
 model BlogPost {
-  id          String    @id @default(cuid())
-  slug        String    @unique
+  id          String   @id @default(cuid())
+  slug        String   @unique
   title       String
   excerpt     String?
-  content     String    @db.Text
+  content     String
   coverImage  String?
   author      String?
   tag         String?
-  isPublished Boolean   @default(true)
-  publishedAt DateTime  @default(now())
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  isPublished Boolean  @default(true)
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([isPublished, publishedAt])
 }
 
-// Editable legal/policy pages (privacy, terms, shipping). The slug is the page
-// key; when a row is absent the storefront falls back to the defaults in
-// lib/legal-content.ts. `body` is sanitized HTML rendered on the page.
 model ContentPage {
-  slug      String   @id // "privacy" | "terms" | "shipping"
+  slug      String   @id
   title     String
-  body      String   @db.Text
+  body      String
   updatedAt DateTime @updatedAt
 }
 
-// Contact-form submissions (the admin inbox). Persisted so messages survive
-// even when email delivery isn't configured.
-enum ContactStatus {
-  NEW
-  IN_PROGRESS
-  REPLIED
-  CLOSED
-}
-
 model ContactMessage {
-  id        String        @id @default(cuid())
+  id        String         @id @default(cuid())
   name      String
   email     String
   subject   String?
-  message   String        @db.Text
-  handled   Boolean       @default(false) // legacy; status is authoritative
-  status    ContactStatus @default(NEW)
-  createdAt DateTime      @default(now())
-
-  replies ContactReply[]
+  message   String
+  handled   Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  status    ContactStatus  @default(NEW)
+  replies   ContactReply[]
 
   @@index([createdAt])
   @@index([status])
 }
 
-// One admin reply in a contact conversation (full support history). Records the
-// sender admin, the body, and the email delivery outcome.
 model ContactReply {
-  id        String   @id @default(cuid())
+  id        String         @id @default(cuid())
   messageId String
-  body      String   @db.Text
+  body      String
   adminId   String?
   adminName String?
-  delivered Boolean  @default(false)
+  delivered Boolean        @default(false)
   error     String?
-  createdAt DateTime @default(now())
-
-  message ContactMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  createdAt DateTime       @default(now())
+  message   ContactMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
   @@index([messageId])
 }
-
-// ---------------------------------------------------------------------------
-// Instagram-style stories
-// ---------------------------------------------------------------------------
 
 model Story {
   id          String         @id @default(cuid())
@@ -833,16 +742,15 @@ model Story {
   mediaUrl    String
   mediaType   StoryMediaType @default(IMAGE)
   productId   String?
-  ctaText     String? // e.g. "Shop now"
+  ctaText     String?
   isPublished Boolean        @default(false)
   sortOrder   Int            @default(0)
   viewCount   Int            @default(0)
   expiresAt   DateTime?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
-
-  product Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
-  views   StoryView[]
+  product     Product?       @relation(fields: [productId], references: [id])
+  views       StoryView[]
 
   @@index([isPublished])
 }
@@ -853,20 +761,11 @@ model StoryView {
   userId   String?
   anonId   String?
   viewedAt DateTime @default(now())
-
-  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  story    Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
 
   @@index([storyId])
 }
 
-// ---------------------------------------------------------------------------
-// Behavior tracking (powers the recommendation service + admin AI insights)
-// ---------------------------------------------------------------------------
-
-// Append-only behavioral signal log. Privacy-preserving: keyed by the session
-// userId when signed in, else an anonymous cookie id; never stores PII. Product/
-// category are plain ids (no FK) so the log is fully additive and survives
-// catalog edits — reads filter to active products. See lib/recommendations/*.
 model UserEvent {
   id         String        @id @default(cuid())
   type       UserEventType
@@ -874,8 +773,8 @@ model UserEvent {
   anonId     String?
   productId  String?
   categoryId String?
-  query      String? // for SEARCH
-  source     String? // section/page that produced a RECO_CLICK (e.g. "fbt", "trending")
+  query      String?
+  source     String?
   createdAt  DateTime      @default(now())
 
   @@index([type, createdAt])
@@ -884,22 +783,17 @@ model UserEvent {
   @@index([categoryId, createdAt])
 }
 
-// ---------------------------------------------------------------------------
-// AI (Groq)
-// ---------------------------------------------------------------------------
-
 model AIChat {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   userId    String?
   productId String?
   sessionId String
   title     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user     User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  product  Product?    @relation(fields: [productId], references: [id], onDelete: SetNull)
-  messages AIMessage[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  product   Product?    @relation(fields: [productId], references: [id])
+  user      User?       @relation(fields: [userId], references: [id])
+  messages  AIMessage[]
 
   @@index([userId])
   @@index([sessionId])
@@ -909,77 +803,64 @@ model AIMessage {
   id        String   @id @default(cuid())
   chatId    String
   role      AIRole
-  content   String   @db.Text
+  content   String
   createdAt DateTime @default(now())
-
-  chat AIChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  chat      AIChat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
 
   @@index([chatId])
 }
 
-// Single-row, editable store details (branding, contact, socials, SEO). Read
-// with a fallback to `config/site.ts`, so the storefront works before any
-// values are set. Managed from /admin/appearance.
 model StoreSetting {
-  id           String   @id @default("singleton")
-  // Branding
-  siteName     String?
-  tagline      String?
-  logo         String? // light logo image URL
-  logoDark     String? // optional dark-mode logo
-  favicon      String?
-  // Logo display size (storefront header/footer), px
-  logoHeight       Int? // height on desktop
-  logoHeightMobile Int? // height on mobile
-  logoMaxWidth     Int? // max width
-  // Theme
-  primaryColor   String? // hex override for --primary
-  secondaryColor String? // hex override for --secondary
-  // Announcement bar
-  announcement       String? // banner text
-  announcementActive Boolean @default(false)
-  announcementLink   String?
-  // 3D hero showcase (managed at /admin/showcase; items are ShowcaseItem rows)
-  showcase3dEnabled  Boolean @default(false)
-  // Pricing & tax defaults (used when a product doesn't override). GST is
-  // inclusive of the listed price. Money is paise.
-  defaultGstRate        Int     @default(0)     // GST percent applied by default
-  defaultShippingFee    Int     @default(4900)  // paise, standard/default fee below the free threshold
-  freeShippingThreshold Int     @default(49900) // paise, subtotal at/above ships free
-  freeShippingEnabled   Boolean @default(true)  // master switch for the free-delivery rule
-  localDeliveryFee      Int?    // paise, configurable delivery option (managed in /admin/shipping)
-  expressDeliveryFee    Int?    // paise, configurable delivery option
-  // Cash on Delivery
-  codFee                Int?     // paise, COD handling fee
-  codEnabled            Boolean  @default(false) // offer COD at checkout
-  codMinOrder           Int?     // paise, min subtotal for COD (null = no minimum)
-  codMaxOrder           Int?     // paise, max subtotal for COD (null = no maximum)
-  codPincodes           String[] @default([]) // future-ready pincode allowlist (empty = all)
-  gstin                 String? // seller GSTIN shown on the tax invoice
-  // Returns & refunds policy
-  returnsEnabled    Boolean @default(true) // master switch for customer returns
-  returnWindowDays  Int     @default(7)    // days after delivery a return can be requested
-  // Contact
-  supportEmail String?
-  supportPhone String?
-  whatsapp     String? // digits for wa.me link
-  address      String?
-  businessHours String?
-  mapsEmbedUrl String? // Google Maps embed src
-  // Social
-  instagram String?
-  facebook  String?
-  twitter   String?
-  youtube   String?
-  // SEO defaults
-  metaTitle       String?
-  metaDescription String?
-  ogImage         String?
-  updatedAt       DateTime @updatedAt
+  id                              String         @id @default("singleton")
+  supportEmail                    String?
+  supportPhone                    String?
+  address                         String?
+  instagram                       String?
+  facebook                        String?
+  twitter                         String?
+  youtube                         String?
+  announcement                    String?
+  updatedAt                       DateTime       @updatedAt
+  announcementActive              Boolean        @default(false)
+  announcementLink                String?
+  businessHours                   String?
+  favicon                         String?
+  logo                            String?
+  logoDark                        String?
+  mapsEmbedUrl                    String?
+  metaDescription                 String?
+  metaTitle                       String?
+  ogImage                         String?
+  primaryColor                    String?
+  secondaryColor                  String?
+  siteName                        String?
+  tagline                         String?
+  whatsapp                        String?
+  logoHeight                      Int?
+  logoHeightMobile                Int?
+  logoMaxWidth                    Int?
+  defaultGstRate                  Int            @default(0)
+  defaultShippingFee              Int            @default(4900)
+  freeShippingThreshold           Int            @default(49900)
+  gstin                           String?
+  codFee                          Int?
+  expressDeliveryFee              Int?
+  freeShippingEnabled             Boolean        @default(true)
+  localDeliveryFee                Int?
+  codEnabled                      Boolean        @default(false)
+  codMaxOrder                     Int?
+  codMinOrder                     Int?
+  codPincodes                     String[]       @default([])
+  showcase3dEnabled               Boolean        @default(false)
+  returnWindowDays                Int            @default(7)
+  returnsEnabled                  Boolean        @default(true)
+  affiliateCookieDays             Int            @default(30)
+  affiliateDefaultCommissionType  CommissionType @default(PERCENT)
+  affiliateDefaultCommissionValue Int            @default(10)
+  affiliateEnabled                Boolean        @default(true)
+  affiliateMinPayout              Int            @default(50000)
 }
 
-// Single-row settings table. The Groq API key itself is NEVER stored here —
-// it lives only in the GROQ_API_KEY environment variable.
 model AISetting {
   id                      String   @id @default("singleton")
   model                   String   @default("llama-3.3-70b-versatile")
@@ -987,10 +868,183 @@ model AISetting {
   assistantEnabled        Boolean  @default(true)
   searchEnabled           Boolean  @default(true)
   productAssistantEnabled Boolean  @default(true)
-  systemPrompt            String?  @db.Text
+  systemPrompt            String?
   temperature             Float    @default(0.7)
   maxTokens               Int      @default(1024)
   totalRequests           Int      @default(0)
   totalTokens             Int      @default(0)
   updatedAt               DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AddressType {
+  HOME
+  WORK
+  OTHER
+}
+
+enum CouponType {
+  PERCENT
+  FIXED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+  APPROVED
+  PACKED
+  OUT_FOR_DELIVERY
+  RETURNED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  RAZORPAY
+  COD
+}
+
+enum StoryMediaType {
+  IMAGE
+  VIDEO
+}
+
+enum AIRole {
+  SYSTEM
+  USER
+  ASSISTANT
+}
+
+enum UserEventType {
+  PRODUCT_VIEW
+  CATEGORY_VIEW
+  SEARCH
+  CART_ADD
+  WISHLIST_ADD
+  PURCHASE
+  RECO_CLICK
+  CLICK
+}
+
+enum ReturnStatus {
+  REQUESTED
+  UNDER_REVIEW
+  INFO_REQUESTED
+  APPROVED
+  REJECTED
+  PICKUP_SCHEDULED
+  ITEM_RECEIVED
+  REFUNDED
+  CANCELLED
+}
+
+enum ReturnType {
+  REFUND
+  REPLACEMENT
+}
+
+enum RefundMethod {
+  ORIGINAL
+  UPI
+  BANK_TRANSFER
+  STORE_CREDIT
+  OTHER
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum NotificationType {
+  RETURN_UPDATE
+  ORDER_UPDATE
+  GENERAL
+  AFFILIATE_UPDATE
+}
+
+enum AffiliateRole {
+  INFLUENCER
+  AFFILIATE
+  BRAND_AMBASSADOR
+  NUTRITIONIST
+  GYM_PARTNER
+  BLOGGER
+  YOUTUBE_CREATOR
+  INSTAGRAM_CREATOR
+}
+
+enum AffiliateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum CommissionType {
+  PERCENT
+  FIXED
+}
+
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+enum CommissionScope {
+  ROLE
+  PRODUCT
+  CATEGORY
+}
+
+enum PayoutStatus {
+  REQUESTED
+  APPROVED
+  PROCESSING
+  PAID
+  REJECTED
+}
+
+enum PayoutMethod {
+  UPI
+  BANK_TRANSFER
+  RAZORPAYX
+}
+
+enum MarketingAssetType {
+  PRODUCT_IMAGE
+  BANNER
+  LOGO
+  PDF
+  SOCIAL_CREATIVE
+  STORY_TEMPLATE
+  REEL_ASSET
+  VIDEO
+  CATALOGUE
+}
+
+enum ContactStatus {
+  NEW
+  IN_PROGRESS
+  REPLIED
+  CLOSED
 }

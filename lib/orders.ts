@@ -7,6 +7,11 @@ import { sendEmail } from "@/lib/email";
 import { ensureInvoice, getInvoiceData } from "@/lib/invoices";
 import { isClosed } from "@/lib/order-status";
 import { trackEvent } from "@/lib/recommendations/events";
+import {
+  createOrderCommission,
+  setCommissionMature,
+  voidCommission,
+} from "@/lib/affiliate/commissions";
 import type { CheckoutItem } from "@/lib/validations/checkout";
 
 export {
@@ -202,6 +207,10 @@ export async function confirmOrder(
       await trackEvent({ type: "PURCHASE", userId: order.userId, productId: item.productId });
     }
   }
+
+  // Create the affiliate commission (PENDING) if this order was referred. Idempotent
+  // and best-effort — never blocks order completion.
+  await createOrderCommission(order.id);
 }
 
 /** Transition an order to PAID (online payment). Thin wrapper over confirmOrder. */
@@ -296,6 +305,14 @@ export async function transitionOrderStatus(
     });
     return o;
   });
+
+  // Affiliate commission lifecycle (best-effort, after the tx): set maturity on
+  // delivery, void on cancellation/return/refund.
+  if (status === "DELIVERED") {
+    await setCommissionMature(orderId, new Date());
+  } else if (closing) {
+    await voidCommission(orderId);
+  }
 
   return updated;
 }

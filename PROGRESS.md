@@ -1,17 +1,33 @@
 # Nutriyet — Progress Tracker
 
-_Last updated: 2026-06-25 · Auto-maintained. Update at the end of every milestone._
+_Last updated: 2026-06-29 · Auto-maintained. Update at the end of every milestone._
 
 ## Snapshot
 
 | Item                | Status                                                          |
 | ------------------- | -------------------------------------------------------------- |
-| Build               | ✅ passing (`next build`, 52 routes)                            |
+| Build               | ✅ passing (`next build`; affiliate routes included)            |
 | TypeScript          | ✅ `tsc --noEmit` clean                                         |
 | ESLint              | ✅ clean                                                        |
 | Runtime smoke       | ✅ Premium UI verified (home/products/PDP/search/cart 200; lightbox + blur-up + elevation/reveal present; search typeahead API returns suggestions; `/admin/messages` shows the contact message, guard 307) |
-| Database (Neon)     | ✅ live, migrated (…`banner` dark variants, `home_section.content`, store logo-size), seeded |
-| Current milestone   | **M0–M6 + RBAC + CMS Phases 1–5 + content pages + CMS fixes — production-ready** |
+| Database (Neon)     | ✅ live, migrated (…`affiliate_program`: Affiliate/Commission/Payout/MarketingAsset + StoreSetting affiliate fields), seeded |
+| Current milestone   | **M0–M6 + RBAC + CMS Phases 1–5 + content pages + Affiliate Program — production-ready** |
+
+## Latest: Affiliate / Influencer Program (done)
+Full referral-marketing program layered additively on orders, gated by a new `affiliates`
+RBAC permission + `StoreSetting.affiliateEnabled`. Migration `20260628201357_affiliate_program`
+(Affiliate, AffiliateClick, CommissionRule, Commission, Payout, MarketingAsset + enums +
+StoreSetting fields: cookieDays/defaultCommission/minPayout). **Attribution**: `?ref=` last-click
+`nut_ref` cookie (middleware) + `/ref/[code]` + click beacon; coupon-affiliate wins else cookie,
+self-referrals excluded, snapshotted on `Order.affiliateId`. **Commission engine**
+(`lib/affiliate/commissions.ts`): per-line on post-discount value (excl. tax/shipping), rate
+precedence PRODUCT→CATEGORY→affiliate-override→ROLE→default; PENDING on confirm → mature after
+return window at DELIVERED → APPROVED (lazy sweep, no cron) → batched into Payouts; voided on
+cancel/refund. Notifies in-app + email each step. **Affiliate** UI at `/account/affiliate`
+(apply, dashboard, QR, payout request); **admin** at `/admin/affiliates` (list/detail, rules,
+payouts, settings, marketing-kit, analytics, CSV export). See CLAUDE.md §8c. Full gate green
+(typecheck/lint/build); migration applied to Neon. Renders nothing when disabled — homepage/
+checkout unchanged for non-referred orders.
 
 ## CMS roadmap (WordPress-style admin management; one phase per turn)
 ✅ **Phase 1 — Hero Slider Manager**: `HeroSlide` model + `/admin/hero` (drag-drop reorder,

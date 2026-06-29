@@ -30,6 +30,7 @@ export async function validateCoupon(
   rawCode: string,
   subtotal: number,
   userId: string,
+  cart?: { productIds: string[]; categoryIds: string[] },
 ): Promise<CouponResult> {
   const code = rawCode.trim().toUpperCase();
   if (!code) return { ok: false, error: "Enter a coupon code." };
@@ -37,6 +38,20 @@ export async function validateCoupon(
   const coupon = await prisma.coupon.findUnique({ where: { code } });
   if (!coupon || !coupon.isActive) {
     return { ok: false, error: "This coupon code is not valid." };
+  }
+
+  // Product/category restrictions (used by affiliate + targeted coupons). The cart
+  // must contain at least one allowed product or a product in an allowed category.
+  if (coupon.productIds.length > 0 || coupon.categoryIds.length > 0) {
+    const pIds = cart?.productIds ?? [];
+    const cIds = cart?.categoryIds ?? [];
+    const matchProduct =
+      coupon.productIds.length > 0 && coupon.productIds.some((id) => pIds.includes(id));
+    const matchCategory =
+      coupon.categoryIds.length > 0 && coupon.categoryIds.some((id) => cIds.includes(id));
+    if (!matchProduct && !matchCategory) {
+      return { ok: false, error: "This coupon doesn't apply to the items in your cart." };
+    }
   }
 
   const now = new Date();

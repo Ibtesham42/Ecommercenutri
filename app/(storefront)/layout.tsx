@@ -2,6 +2,7 @@ import { SiteHeader } from "@/components/storefront/site-header";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { AnnouncementBar } from "@/components/storefront/announcement-bar";
 import { WhatsAppButton } from "@/components/storefront/whatsapp-button";
+import { AffiliateTracker } from "@/components/storefront/affiliate-tracker";
 import { getStoreSettings } from "@/lib/queries/settings";
 import { getCurrentUser } from "@/lib/auth";
 import { getNotifications, getUnreadCount } from "@/lib/queries/notifications";
@@ -64,6 +65,7 @@ export default async function StorefrontLayout({
       <main className="flex-1">{children}</main>
       <SiteFooter />
       <WhatsAppButton number={settings.whatsapp} />
+      <AffiliateTracker />
     </div>
   );
 }

@@ -14,6 +14,7 @@ export const ADMIN_PERMISSIONS = [
   "coupons",
   "inventory",
   "customers",
+  "affiliates",
   "ai",
   "appearance",
 ] as const;
@@ -29,6 +30,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   coupons: "Coupons",
   inventory: "Inventory",
   customers: "Customers",
+  affiliates: "Affiliates",
   ai: "AI settings",
   appearance: "Appearance & CMS",
 };

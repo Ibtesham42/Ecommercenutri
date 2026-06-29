@@ -38,6 +38,12 @@ export type StoreSettings = {
   // Returns & refunds
   returnsEnabled: boolean;
   returnWindowDays: number;
+  // Affiliate program
+  affiliateEnabled: boolean;
+  affiliateCookieDays: number;
+  affiliateDefaultCommissionType: "PERCENT" | "FIXED";
+  affiliateDefaultCommissionValue: number;
+  affiliateMinPayout: number;
   // Contact
   supportEmail: string;
   supportPhone: string;
@@ -97,6 +103,11 @@ export async function getStoreSettings(): Promise<StoreSettings> {
     codPincodes: s?.codPincodes ?? [],
     returnsEnabled: s?.returnsEnabled ?? true,
     returnWindowDays: s?.returnWindowDays ?? 7,
+    affiliateEnabled: s?.affiliateEnabled ?? true,
+    affiliateCookieDays: s?.affiliateCookieDays ?? 30,
+    affiliateDefaultCommissionType: s?.affiliateDefaultCommissionType ?? "PERCENT",
+    affiliateDefaultCommissionValue: s?.affiliateDefaultCommissionValue ?? 10,
+    affiliateMinPayout: s?.affiliateMinPayout ?? 50000,
     supportEmail: s?.supportEmail || siteConfig.contact.email,
     supportPhone: s?.supportPhone || siteConfig.contact.phone,
     whatsapp: s?.whatsapp ?? null,
@@ -156,6 +167,48 @@ const COD_DEFAULTS: CodSettings = {
   codMaxOrder: null,
   codPincodes: [],
 };
+
+export type AffiliateSettings = {
+  affiliateEnabled: boolean;
+  affiliateCookieDays: number;
+  affiliateDefaultCommissionType: "PERCENT" | "FIXED";
+  affiliateDefaultCommissionValue: number;
+  affiliateMinPayout: number;
+};
+
+const AFFILIATE_DEFAULTS: AffiliateSettings = {
+  affiliateEnabled: true,
+  affiliateCookieDays: 30,
+  affiliateDefaultCommissionType: "PERCENT",
+  affiliateDefaultCommissionValue: 10,
+  affiliateMinPayout: 50000,
+};
+
+/** Affiliate-program settings. Falls back to defaults on DB error. */
+export async function getAffiliateSettings(): Promise<AffiliateSettings> {
+  try {
+    const s = await prisma.storeSetting.findUnique({
+      where: { id: "singleton" },
+      select: {
+        affiliateEnabled: true,
+        affiliateCookieDays: true,
+        affiliateDefaultCommissionType: true,
+        affiliateDefaultCommissionValue: true,
+        affiliateMinPayout: true,
+      },
+    });
+    if (!s) return AFFILIATE_DEFAULTS;
+    return {
+      affiliateEnabled: s.affiliateEnabled,
+      affiliateCookieDays: s.affiliateCookieDays,
+      affiliateDefaultCommissionType: s.affiliateDefaultCommissionType,
+      affiliateDefaultCommissionValue: s.affiliateDefaultCommissionValue,
+      affiliateMinPayout: s.affiliateMinPayout,
+    };
+  } catch {
+    return AFFILIATE_DEFAULTS;
+  }
+}
 
 export type ReturnSettings = { returnsEnabled: boolean; returnWindowDays: number };
 

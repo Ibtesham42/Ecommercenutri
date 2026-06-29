@@ -256,3 +256,101 @@ export function returnStatusEmail(data: {
     text: `Return ${data.returnNumber} for order #${data.orderNumber} is now ${data.status}. View it: ${url}`,
   };
 }
+
+// --- Affiliate program --------------------------------------------------------
+
+const AFF_URL = `${siteConfig.url}/account/affiliate`;
+
+/** Affiliate application status change (approved / rejected / suspended). */
+export function affiliateStatusEmail(data: {
+  status: "APPROVED" | "REJECTED" | "SUSPENDED";
+  name?: string | null;
+  code?: string | null;
+  couponCode?: string | null;
+  reason?: string | null;
+}): Email | null {
+  const hi = `Hi${data.name ? ` ${data.name}` : ""},`;
+  const map: Record<string, { heading: string; intro: string }> = {
+    APPROVED: {
+      heading: "You're in — welcome to the Nutriyet Partner Program! 🎉",
+      intro: `${hi} your affiliate application has been approved.${
+        data.code ? ` Your referral link and${data.couponCode ? ` coupon <strong>${data.couponCode}</strong> are` : " QR code are"} ready in your dashboard.` : ""
+      } Start sharing and earning.`,
+    },
+    REJECTED: {
+      heading: "About your affiliate application",
+      intro: `${hi} thanks for applying to the Nutriyet Partner Program. Unfortunately we couldn't approve your application at this time.${
+        data.reason ? ` Reason: <em>${data.reason}</em>.` : ""
+      }`,
+    },
+    SUSPENDED: {
+      heading: "Your affiliate account has been suspended",
+      intro: `${hi} your affiliate account has been suspended.${
+        data.reason ? ` Reason: <em>${data.reason}</em>.` : ""
+      } Please contact support if you think this is a mistake.`,
+    },
+  };
+  const c = map[data.status];
+  if (!c) return null;
+  return {
+    subject: `Affiliate ${data.status.toLowerCase()} · ${siteConfig.name}`,
+    html: shell({ heading: c.heading, intro: c.intro, ctaLabel: "Open your dashboard", ctaUrl: AFF_URL }),
+    text: `Your affiliate application is ${data.status}. ${AFF_URL}`,
+  };
+}
+
+/** Commission earned / approved notification. */
+export function commissionEmail(data: {
+  name?: string | null;
+  amount: number;
+  kind: "earned" | "approved";
+}): Email {
+  const hi = `Hi${data.name ? ` ${data.name}` : ""},`;
+  const heading = data.kind === "earned" ? "You earned a commission! 💸" : "Commission approved ✅";
+  const intro =
+    data.kind === "earned"
+      ? `${hi} you earned <strong>${formatPrice(data.amount)}</strong> on a new referred order. It becomes payable after the order is delivered and the return window passes.`
+      : `${hi} <strong>${formatPrice(data.amount)}</strong> of commission is now approved and available to withdraw.`;
+  return {
+    subject: `Commission ${data.kind} · ${siteConfig.name}`,
+    html: shell({ heading, intro, ctaLabel: "View earnings", ctaUrl: AFF_URL }),
+    text: `Commission ${data.kind}: ${formatPrice(data.amount)}. ${AFF_URL}`,
+  };
+}
+
+/** Coupon used by a shopper. */
+export function couponUsedEmail(data: { name?: string | null; code: string }): Email {
+  const hi = `Hi${data.name ? ` ${data.name}` : ""},`;
+  return {
+    subject: `Your coupon ${data.code} was used · ${siteConfig.name}`,
+    html: shell({
+      heading: "Your coupon was just used 🎟️",
+      intro: `${hi} someone used your coupon <strong>${data.code}</strong> on an order. Keep sharing!`,
+      ctaLabel: "View your stats",
+      ctaUrl: AFF_URL,
+    }),
+    text: `Your coupon ${data.code} was used. ${AFF_URL}`,
+  };
+}
+
+/** Payout processed notification. */
+export function payoutEmail(data: {
+  name?: string | null;
+  amount: number;
+  method?: string | null;
+  reference?: string | null;
+}): Email {
+  const hi = `Hi${data.name ? ` ${data.name}` : ""},`;
+  return {
+    subject: `Payout processed · ${siteConfig.name}`,
+    html: shell({
+      heading: "Your payout is on the way 🏦",
+      intro: `${hi} we've processed your payout of <strong>${formatPrice(data.amount)}</strong>${
+        data.method ? ` via ${data.method.replace(/_/g, " ").toLowerCase()}` : ""
+      }${data.reference ? ` (ref ${data.reference})` : ""}.`,
+      ctaLabel: "View payout history",
+      ctaUrl: AFF_URL,
+    }),
+    text: `Payout of ${formatPrice(data.amount)} processed. ${AFF_URL}`,
+  };
+}

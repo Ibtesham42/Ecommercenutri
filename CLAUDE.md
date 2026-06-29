@@ -398,6 +398,52 @@ all gated by the **`appearance`** permission (super admins always pass).
   Cloudinary, `cldUrl` for delivery. Reordering uses native HTML5 DnD + a `reorder(ids[])`
   action (no DnD library). Singletons extend `StoreSetting`; lists are new additive models.
 
+## 8c. Affiliate / Influencer Program (done)
+
+A full referral-marketing program (Amazon-Associates / influencer style) layered additively on
+orders. Gated by a new **`affiliates`** RBAC permission (`lib/permissions.ts`); super admins
+always pass. Everything degrades to nothing when `StoreSetting.affiliateEnabled = false`.
+
+- **Models** (`prisma/schema.prisma`): `Affiliate` (one per `User`, `@unique`; `code`, optional
+  linked `Coupon`, role/status, per-affiliate commission override, payout details — UPI/bank),
+  `AffiliateClick` (referral click log, anon/user, device/ipHash), `CommissionRule`
+  (PRODUCT/CATEGORY/ROLE-scoped rate overrides, unique per scope tuple), `Commission`
+  (one per order `@unique`, base/amount, lifecycle status, `matureAt`, `payoutId`, `meta` JSON
+  audit of per-line math), `Payout` (`PAY-…` number, batches APPROVED commissions, method/reference),
+  `MarketingAsset` (the marketing kit — banners/logos/captions). Enums: `AffiliateRole`
+  (INFLUENCER/AFFILIATE/BRAND_AMBASSADOR/NUTRITIONIST/GYM_PARTNER/BLOGGER/YOUTUBE_CREATOR/
+  INSTAGRAM_CREATOR), `AffiliateStatus`, `CommissionType` (PERCENT/FIXED), `CommissionStatus`
+  (PENDING→APPROVED→PAID / CANCELLED), `CommissionScope`, `PayoutStatus`, `PayoutMethod`,
+  `MarketingAssetType`. Settings live on `StoreSetting`: `affiliateEnabled`, `affiliateCookieDays`
+  (default 30), `affiliateDefaultCommissionType/Value` (PERCENT 10%), `affiliateMinPayout` (₹500).
+- **Attribution** (`lib/affiliate/attribution.ts`, `middleware.ts`): a `?ref=<code>` visit sets the
+  edge `nut_ref` last-click cookie (cookie-only in middleware; click row logged by `/ref/[code]`
+  route + the `AffiliateTracker` client beacon → `/api/affiliate/click`). At checkout
+  (`lib/actions/checkout.ts#createOrder`) `resolveAttribution` picks the **coupon's affiliate first,
+  else the cookie referral**, excludes self-referrals, and snapshots `Order.affiliateId`/`referralCode`.
+- **Commission engine** (`lib/affiliate/commissions.ts`): `createOrderCommission` (called from
+  `lib/orders.ts#confirmOrder`, idempotent via `orderId @unique`) computes **per line** = rate ×
+  post-discount line value (PERCENT) or value × qty (FIXED), **excluding tax & shipping**. Rate
+  precedence: **PRODUCT rule → CATEGORY rule → affiliate override → ROLE rule → store default**.
+  Lifecycle: created **PENDING**; `setCommissionMature` (at DELIVERED) stamps `matureAt = delivered +
+  returnWindowDays`; `matureCommissions()` flips due PENDING→APPROVED (payable) — invoked lazily
+  on the affiliate dashboard + payout request and via an explicit admin "run maturation" action
+  (no cron needed); `voidCommission` (at cancel/refund) → CANCELLED. Every transition notifies
+  in-app (`lib/notifications.ts`) + emails (`lib/emails.ts`).
+- **Affiliate-facing** (`/account/affiliate`, `lib/actions/affiliate.ts`): apply form (role + pitch),
+  dashboard (clicks/visitors/orders/revenue/conversion, balances, monthly series, referral link +
+  QR via `/api/affiliate/qr`, coupon, marketing kit), payout-details form, request-payout
+  (gated by `affiliateMinPayout`). Sidebar entry in `components/account/account-sidebar.tsx`.
+- **Admin** (`/admin/affiliates`, `lib/actions/admin/affiliates.ts`, `lib/queries/affiliate.ts`):
+  list/detail (approve/reject/suspend/reactivate, set per-affiliate commission), `rules` (commission
+  rules manager), `payouts` (approve/reject/mark-paid + run-maturation), `settings`, `marketing-kit`
+  (`MarketingAsset` CRUD, upload via `/api/admin/affiliate-asset`), `analytics`, CSV `export`.
+- **Conventions:** reuses `AdminResult` actions, Zod (`lib/validations/affiliate.ts`),
+  `requirePermission("affiliates")`/`guardSection`, Cloudinary upload + `cldUrl`, in-app
+  notifications. Display labels are client-safe in `lib/affiliate/labels.ts` (type-only Prisma
+  imports). Renders nothing when disabled or empty (fully additive — homepage/checkout unchanged
+  for non-referred orders).
+
 ## 9. Security Rules
 
 - **All secrets in env vars** (`.env`, gitignored). Never print, log, or commit

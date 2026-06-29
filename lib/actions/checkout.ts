@@ -6,6 +6,7 @@ import { razorpay, razorpayEnabled, verifyPaymentSignature } from "@/lib/razorpa
 import { siteConfig } from "@/config/site";
 import { env } from "@/lib/env";
 import { validateCoupon } from "@/lib/coupons";
+import { resolveAttribution } from "@/lib/affiliate/attribution";
 import { computeBreakdown, isCodAvailable, type PriceBreakdown } from "@/lib/pricing";
 import {
   getPricingSettings,
@@ -30,6 +31,18 @@ export type CouponPreview =
   | { ok: true; code: string; discount: number; description: string | null }
   | { ok: false; error: string };
 
+/** Product + category ids in the cart — used for coupon product/category restrictions. */
+async function cartContext(
+  lines: { productId: string }[],
+): Promise<{ productIds: string[]; categoryIds: string[] }> {
+  const productIds = [...new Set(lines.map((l) => l.productId))];
+  const products = await prisma.product.findMany({
+    where: { id: { in: productIds } },
+    select: { categoryId: true },
+  });
+  return { productIds, categoryIds: [...new Set(products.map((p) => p.categoryId))] };
+}
+
 /** Live coupon preview shown on the checkout page (re-priced server-side). */
 export async function applyCoupon(input: unknown): Promise<CouponPreview> {
   const user = await getCurrentUser();
@@ -43,7 +56,12 @@ export async function applyCoupon(input: unknown): Promise<CouponPreview> {
   const priced = await priceCart(parsed.data.items);
   if (!priced.ok) return { ok: false, error: priced.error };
 
-  const result = await validateCoupon(parsed.data.code, priced.subtotal, user.id);
+  const result = await validateCoupon(
+    parsed.data.code,
+    priced.subtotal,
+    user.id,
+    await cartContext(priced.lines),
+  );
   if (!result.ok) return { ok: false, error: result.error };
 
   return {
@@ -81,7 +99,12 @@ export async function previewOrderPricing(input: unknown): Promise<PricingPrevie
   if (parsed.data.couponCode) {
     const user = await getCurrentUser();
     if (user) {
-      const res = await validateCoupon(parsed.data.couponCode, priced.subtotal, user.id);
+      const res = await validateCoupon(
+        parsed.data.couponCode,
+        priced.subtotal,
+        user.id,
+        await cartContext(priced.lines),
+      );
       if (res.ok) discount = res.discount;
     }
   }
@@ -151,17 +174,25 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
   });
   if (!address) return { ok: false, error: "Select a valid delivery address." };
 
+  // Cart product/category context (for coupon restrictions).
+  const cart = await cartContext(priced.lines);
+
   // Optional coupon.
   let discount = 0;
   let couponId: string | null = null;
   let resolvedCouponCode: string | null = null;
   if (couponCode) {
-    const result = await validateCoupon(couponCode, priced.subtotal, user.id);
+    const result = await validateCoupon(couponCode, priced.subtotal, user.id, cart);
     if (!result.ok) return { ok: false, error: result.error };
     discount = result.discount;
     couponId = result.coupon.id;
     resolvedCouponCode = result.coupon.code;
   }
+
+  // Affiliate attribution: the coupon's affiliate wins, else the last-click referral
+  // cookie (self-referrals excluded). Persisted on the order; commission is created
+  // at confirmation.
+  const attribution = await resolveAttribution({ buyerUserId: user.id, couponId });
 
   // Compute shipping + (inclusive) GST + any COD fee authoritatively from the
   // re-priced lines and the store's settings — never trust client-sent totals.
@@ -220,6 +251,8 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
       total,
       couponId,
       couponCode: resolvedCouponCode,
+      affiliateId: attribution?.affiliateId ?? null,
+      referralCode: attribution?.referralCode ?? null,
       addressId: address.id,
       shippingAddress,
       notes: notes ?? null,

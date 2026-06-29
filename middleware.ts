@@ -30,16 +30,30 @@ export default auth((req) => {
   const isLoggedIn = Boolean(req.auth);
   const role = req.auth?.user?.role;
 
+  // Affiliate referral capture: persist `?ref=<code>` into the nut_ref cookie (edge,
+  // cookie-only — the click row is logged by the client beacon / the /ref route).
+  const ref = nextUrl.searchParams.get("ref");
+  const finalize = (res: NextResponse): NextResponse => {
+    if (ref && /^[A-Za-z0-9]{2,40}$/.test(ref)) {
+      res.cookies.set("nut_ref", ref, {
+        maxAge: 60 * 60 * 24 * 30, // 30-day attribution window
+        path: "/",
+        sameSite: "lax",
+      });
+    }
+    return withSecurityHeaders(res);
+  };
+
   // Admin area — must be a logged-in admin (sub-admin or main admin).
   // Per-section permissions are enforced server-side (layout + pages + actions).
   if (path.startsWith("/admin")) {
     if (!isLoggedIn) {
       const url = new URL("/login", nextUrl);
       url.searchParams.set("callbackUrl", path);
-      return withSecurityHeaders(NextResponse.redirect(url));
+      return finalize(NextResponse.redirect(url));
     }
     if (role !== "ADMIN" && role !== "SUPER_ADMIN") {
-      return withSecurityHeaders(NextResponse.redirect(new URL("/", nextUrl)));
+      return finalize(NextResponse.redirect(new URL("/", nextUrl)));
     }
   }
 
@@ -48,11 +62,11 @@ export default auth((req) => {
     if (!isLoggedIn) {
       const url = new URL("/login", nextUrl);
       url.searchParams.set("callbackUrl", path);
-      return withSecurityHeaders(NextResponse.redirect(url));
+      return finalize(NextResponse.redirect(url));
     }
   }
 
-  return withSecurityHeaders(NextResponse.next());
+  return finalize(NextResponse.next());
 });
 
 export const config = {
