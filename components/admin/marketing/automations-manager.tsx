@@ -184,6 +184,16 @@ export function AutomationsManager({
   }
 
   function onToggle(r: AutomationRow) {
+    // Activating starts sending on the next cron run — including existing customers
+    // who already match the trigger (e.g. recent sign-ups for Welcome). Confirm first.
+    if (
+      !r.enabled &&
+      !confirm(
+        `Activate "${r.name}"?\n\nIt will start sending automatically, including to existing customers who already match this trigger (e.g. recent sign-ups, inactive customers). Each recipient is messaged only once.`,
+      )
+    ) {
+      return;
+    }
     toggleAutomationRule(r.id, !r.enabled).then((res) => {
       if (res.ok) {
         toast.success(r.enabled ? "Paused" : "Activated");
@@ -201,6 +211,13 @@ export function AutomationsManager({
     });
   }
   function onRunNow() {
+    if (
+      !confirm(
+        "Run all enabled automations now?\n\nThis sends immediately to every currently-eligible recipient (including existing customers who match a trigger). Each recipient is messaged once per rule.",
+      )
+    ) {
+      return;
+    }
     setRunning(true);
     runAutomationsNow().then((res) => {
       setRunning(false);
@@ -214,8 +231,9 @@ export function AutomationsManager({
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-2">
-        <p className="text-sm text-muted-foreground">
-          Rules run automatically (every ~5 min). Dedup ensures each recipient gets a rule once.
+        <p className="max-w-xl text-sm text-muted-foreground">
+          Rules run automatically (every ~5 min). When activated, a rule also sends to existing
+          customers who already match its trigger — each recipient is messaged only once.
         </p>
         <div className="flex gap-2">
           <Button variant="outline" className="gap-1.5" disabled={running} onClick={onRunNow}>
@@ -278,6 +296,12 @@ export function AutomationsManager({
             <DialogTitle>{editing ? "Edit automation" : "New automation"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            {!editing && (
+              <p className="rounded-lg border border-amber-300/60 bg-amber-50 p-2.5 text-xs text-amber-700">
+                New automations are active on save and start sending on the next run — including to
+                existing customers who already match this trigger. Each recipient is messaged only once.
+              </p>
+            )}
             <div className="space-y-1.5">
               <Label>Name</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Welcome series" />
