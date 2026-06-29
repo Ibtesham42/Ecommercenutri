@@ -1,6 +1,7 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { Resend } from "resend";
 import { env, isConfigured } from "@/lib/env";
+import { EMAIL_BRAND_MARKER, getEmailBrandHtml } from "@/lib/email-brand";
 
 /**
  * Transactional email with a graceful provider chain:
@@ -45,6 +46,18 @@ export async function sendEmail({
   attachments,
 }: SendEmailArgs) {
   const hasAttachments = !!attachments && attachments.length > 0;
+
+  // Brand the email header with the admin-uploaded logo (or the wordmark fallback).
+  // Best-effort: a failure here must never block the send.
+  if (html.includes(EMAIL_BRAND_MARKER)) {
+    try {
+      const brand = await getEmailBrandHtml();
+      html = html.split(EMAIL_BRAND_MARKER).join(brand);
+    } catch {
+      /* leave the marker out rather than fail the send */
+      html = html.split(EMAIL_BRAND_MARKER).join("");
+    }
+  }
 
   if (transporter) {
     const info = await transporter.sendMail({

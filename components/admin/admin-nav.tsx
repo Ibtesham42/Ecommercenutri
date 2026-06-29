@@ -111,12 +111,16 @@ export function AdminNav({
             key={item.href}
             href={item.href}
             onClick={onNavigate}
+            aria-current={active ? "page" : undefined}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent",
-              active && "bg-accent font-medium text-primary",
+              "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground",
+              active && "bg-primary/10 font-medium text-primary hover:bg-primary/15 hover:text-primary",
             )}
           >
-            <item.icon className="size-4" />
+            {active && (
+              <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
+            )}
+            <item.icon className="size-4 shrink-0 transition-transform duration-200 motion-safe:group-hover:scale-110" />
             {item.label}
           </Link>
         );

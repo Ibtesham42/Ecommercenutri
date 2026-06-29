@@ -108,6 +108,18 @@ phone, contact email, address); self email/password + editable store contact/soc
 `requirePermission`/`requireSuperAdmin` (actions), all DB-fresh; dashboard widgets scoped
 to permissions. (Deploy still requires `DATABASE_URL` at runtime — see the build fix.)
 
+## Latest: Admin UI/UX polish + email logo branding
+Purely presentational admin uplift (no logic/workflow changes): `app/admin/loading.tsx` skeleton on
+every admin navigation; `AdminPageTransition` (pathname-keyed `animate-fade-up`, reduced-motion gated);
+admin header now shows the **admin-uploaded store logo** (+ backdrop-blur + elevation); nav items get
+premium hover/active (primary-tint pill, left accent bar, motion-safe icon scale); `PageHeader` gains a
+divider for hierarchy; shared `Table` header gets a faint strip. Buttons/tables/dialogs/dropdowns
+already had micro-interactions + mobile overflow. **Email branding**: the email shell now renders the
+admin-uploaded logo (white pill on the green header, wordmark fallback) via a `<!--NUTRIYET_BRAND-->`
+marker replaced in `sendEmail` (cached 5 min, fail-safe). Header/footer/invoice-PDF already used the
+store logo, so the uploaded logo now flows everywhere customer-facing and auto-reflects on change.
+Typecheck/lint/build green.
+
 ## Latest: CMS content editors (Blog + Legal)
 Built the two missing admin content editors (CLAUDE.md §8b backlog), gated by `appearance`.
 **Blog** (`/admin/blog`): `BlogPost` CRUD — title/auto-slug, excerpt, HTML content, cover image,

@@ -18,7 +18,7 @@ function shell(opts: {
       <tr><td align="center">
         <table role="presentation" width="100%" style="max-width:480px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e3ece6">
           <tr><td style="background:#16803c;padding:20px 28px">
-            <span style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:-0.5px">Nutri<span style="color:#c8f5d6">yet</span></span>
+            <!--NUTRIYET_BRAND-->
           </td></tr>
           <tr><td style="padding:28px">
             <h1 style="margin:0 0 12px;font-size:20px;color:#13241c">${heading}</h1>
@@ -416,7 +416,7 @@ export function marketingEmail(data: {
       <tr><td align="center">
         <table role="presentation" width="100%" style="max-width:480px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e3ece6">
           <tr><td style="background:#16803c;padding:18px 28px">
-            <span style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:-0.5px">Nutri<span style="color:#c8f5d6">yet</span></span>
+            <!--NUTRIYET_BRAND-->
           </td></tr>
           ${image}
           <tr><td style="padding:28px">
