@@ -25,6 +25,17 @@ export const ADMIN_STATUS_OPTIONS = [
 /** Terminal states that release reserved stock back to inventory. */
 export const CLOSED_STATUSES: OrderStatus[] = ["CANCELLED", "REFUNDED", "RETURNED"];
 
+/**
+ * Statuses for which an order may be permanently deleted: completed (DELIVERED) or
+ * closed (CANCELLED / REFUNDED / RETURNED). In-flight orders (PENDING, APPROVED,
+ * PROCESSING, PACKED, SHIPPED, OUT_FOR_DELIVERY, PAID) are never deletable.
+ */
+export const DELETABLE_STATUSES: OrderStatus[] = ["DELIVERED", "CANCELLED", "REFUNDED", "RETURNED"];
+
+export function isOrderDeletable(status: OrderStatus): boolean {
+  return DELETABLE_STATUSES.includes(status);
+}
+
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   PENDING: "Pending",
   PAID: "Paid",

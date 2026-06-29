@@ -1,12 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { orderStatusSchema } from "@/lib/validations/admin";
 import { orderStatusEmail } from "@/lib/emails";
 import { sendEmail } from "@/lib/email";
 import { transitionOrderStatus } from "@/lib/orders";
-import { ADMIN_STATUS_OPTIONS } from "@/lib/order-status";
+import { ADMIN_STATUS_OPTIONS, isOrderDeletable, statusLabel } from "@/lib/order-status";
 import type { OrderStatus } from "@prisma/client";
 import type { AdminResult, BulkOutcome } from "@/lib/actions/admin/types";
 
@@ -109,4 +110,66 @@ export async function bulkUpdateOrderStatus(
   revalidatePath("/admin/orders");
   revalidatePath("/account/orders");
   return { ok: true, data: { done, skipped: ids.length - done } };
+}
+
+/**
+ * Permanently delete an order. Allowed only for completed/closed orders
+ * (DELIVERED / CANCELLED / REFUNDED / RETURNED) — in-flight orders are protected.
+ * All related records (items, events, invoice, commission, returns + their
+ * sub-records) cascade via FK `onDelete: Cascade`, so nothing is orphaned.
+ */
+export async function deleteOrder(id: string): Promise<AdminResult> {
+  await requirePermission("orders");
+  const order = await prisma.order.findUnique({ where: { id }, select: { status: true, orderNumber: true } });
+  if (!order) return { ok: false, error: "Order not found." };
+  if (!isOrderDeletable(order.status)) {
+    return {
+      ok: false,
+      error: `Can't delete an order that is ${statusLabel(order.status)}. Only completed or closed orders (Delivered, Cancelled, Refunded, Returned) can be deleted.`,
+    };
+  }
+  try {
+    await prisma.order.delete({ where: { id } });
+    revalidatePath("/admin/orders");
+    revalidatePath("/account/orders");
+    return { ok: true };
+  } catch (err) {
+    console.error("[admin] deleteOrder failed:", err);
+    return { ok: false, error: "Could not delete the order." };
+  }
+}
+
+/**
+ * Bulk-delete selected orders. Deletes only the deletable (completed/closed) ones
+ * and reports how many were kept because they're still in progress.
+ */
+export async function bulkDeleteOrders(ids: string[]): Promise<AdminResult<BulkOutcome>> {
+  await requirePermission("orders");
+  if (!Array.isArray(ids) || ids.length === 0) return { ok: false, error: "Nothing selected." };
+
+  try {
+    const orders = await prisma.order.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, status: true },
+    });
+    const deletable = orders.filter((o) => isOrderDeletable(o.status)).map((o) => o.id);
+    let done = 0;
+    if (deletable.length) {
+      done = (await prisma.order.deleteMany({ where: { id: { in: deletable } } })).count;
+    }
+    const skipped = ids.length - done;
+    revalidatePath("/admin/orders");
+    revalidatePath("/account/orders");
+    return {
+      ok: true,
+      data: {
+        done,
+        skipped,
+        note: skipped ? `${done} deleted · ${skipped} kept (still in progress — only completed/closed orders can be deleted).` : undefined,
+      },
+    };
+  } catch (err) {
+    console.error("[admin] bulkDeleteOrders failed:", err);
+    return { ok: false, error: "Bulk delete failed." };
+  }
 }
