@@ -31,6 +31,7 @@ const footerCols = [
     links: [
       { label: "About Us", href: "/about" },
       { label: "AI Assistant", href: "/assistant" },
+      { label: "Affiliate Program", href: "/affiliate" },
       { label: "Contact", href: "/contact" },
       { label: "Blog", href: "/blog" },
     ],

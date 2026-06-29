@@ -430,6 +430,10 @@ always pass. Everything degrades to nothing when `StoreSetting.affiliateEnabled 
   on the affiliate dashboard + payout request and via an explicit admin "run maturation" action
   (no cron needed); `voidCommission` (at cancel/refund) → CANCELLED. Every transition notifies
   in-app (`lib/notifications.ts`) + emails (`lib/emails.ts`).
+- **Public landing** (`/affiliate`, storefront route group): marketing page (hero with the live
+  default commission rate, how-it-works, feature grid, FAQ) with a smart CTA → `/account/affiliate`
+  (middleware sends logged-out visitors through login and back). Linked from the footer (Company →
+  Affiliate Program) + sitemap; shows "applications paused" when `affiliateEnabled = false`.
 - **Affiliate-facing** (`/account/affiliate`, `lib/actions/affiliate.ts`): apply form (role + pitch),
   dashboard (clicks/visitors/orders/revenue/conversion, balances, monthly series, referral link +
   QR via `/api/affiliate/qr`, coupon, marketing kit), payout-details form, request-payout
