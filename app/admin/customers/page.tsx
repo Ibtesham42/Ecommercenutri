@@ -1,20 +1,10 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import type { Prisma } from "@prisma/client";
 import { PageHeader } from "@/components/admin/page-header";
 import { guardSection } from "@/lib/admin-guard";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { CustomerTable, type CustomerRow } from "@/components/admin/customer-table";
 import { prisma } from "@/lib/prisma";
-import { formatPrice, formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Customers", robots: { index: false } };
 
@@ -46,14 +36,20 @@ export default async function AdminCustomersPage({
       id: true,
       name: true,
       email: true,
+      isActive: true,
       createdAt: true,
       _count: { select: { orders: true } },
       orders: { where: { paymentStatus: "PAID" }, select: { total: true } },
     },
   });
 
-  const rows = users.map((u) => ({
-    ...u,
+  const rows: CustomerRow[] = users.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    isActive: u.isActive,
+    createdAt: u.createdAt.toISOString(),
+    orders: u._count.orders,
     spend: u.orders.reduce((n, o) => n + o.total, 0),
   }));
 
@@ -65,50 +61,7 @@ export default async function AdminCustomersPage({
         <Input name="q" placeholder="Search by name or email…" defaultValue={q} />
       </form>
 
-      <div className="rounded-xl border bg-background">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Customer</TableHead>
-              <TableHead>Joined</TableHead>
-              <TableHead>Orders</TableHead>
-              <TableHead className="text-right">Total spend</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
-                  No customers found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              rows.map((u) => (
-                <TableRow key={u.id}>
-                  <TableCell>
-                    <Link
-                      href={`/admin/customers/${u.id}`}
-                      className="font-medium hover:text-primary"
-                    >
-                      {u.name ?? "—"}
-                    </Link>
-                    <p className="text-xs text-muted-foreground">{u.email}</p>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(u.createdAt)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{u._count.orders}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right font-semibold">
-                    {formatPrice(u.spend)}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <CustomerTable customers={rows} />
     </div>
   );
 }

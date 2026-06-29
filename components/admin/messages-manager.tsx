@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Mail,
@@ -12,12 +12,14 @@ import {
   CheckCircle2,
   AlertCircle,
   CornerDownRight,
+  CheckCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -25,13 +27,33 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { BulkBar, type BulkAction } from "@/components/admin/bulk/bulk-bar";
+import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
+import { toastBulk } from "@/lib/admin/run-bulk";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import {
   replyToMessage,
   setMessageStatus,
   deleteContactMessage,
+  bulkMessageAction,
 } from "@/lib/actions/admin/messages";
+
+const BULK_ACTIONS: BulkAction[] = [
+  { key: "close", label: "Mark closed", icon: CheckCheck },
+  {
+    key: "delete",
+    label: "Delete",
+    icon: Trash2,
+    destructive: true,
+    confirm: {
+      title: "Delete selected conversations?",
+      description: "This permanently removes the selected messages and their replies. This cannot be undone.",
+      actionLabel: "Delete",
+    },
+  },
+];
+const BULK_VERB: Record<string, string> = { close: "closed", delete: "deleted" };
 
 type Status = "NEW" | "IN_PROGRESS" | "REPLIED" | "CLOSED";
 
@@ -111,6 +133,19 @@ export function MessagesManager({ messages }: { messages: MessageRow[] }) {
     );
   }, [messages, filter, query]);
 
+  const sel = useBulkSelection(shown.map((m) => m.id));
+  const [bulkPending, startBulk] = useTransition();
+
+  function runBulk(key: string) {
+    startBulk(async () => {
+      const res = await bulkMessageAction(sel.selectedIds, key as "close" | "delete");
+      if (toastBulk(res, BULK_VERB[key] ?? "updated")) {
+        sel.clear();
+        router.refresh();
+      }
+    });
+  }
+
   function changeStatus(id: string, status: Status) {
     setMessageStatus(id, status).then((res) => {
       if (res.ok) {
@@ -171,11 +206,31 @@ export function MessagesManager({ messages }: { messages: MessageRow[] }) {
           </p>
         </div>
       ) : (
-        <ul className="space-y-3">
-          {shown.map((m) => (
-            <li key={m.id} className="rounded-xl border bg-background p-4 shadow-elev-1">
+        <>
+          <label className="flex w-fit items-center gap-2 px-1 text-sm text-muted-foreground">
+            <Checkbox
+              aria-label="Select all"
+              checked={sel.allSelected ? true : sel.someSelected ? "indeterminate" : false}
+              onCheckedChange={() => sel.toggleAll()}
+            />
+            Select all ({shown.length})
+          </label>
+          <ul className="space-y-3">
+            {shown.map((m) => (
+            <li
+              key={m.id}
+              className="rounded-xl border bg-background p-4 shadow-elev-1 data-[state=selected]:border-primary/50 data-[state=selected]:ring-1 data-[state=selected]:ring-primary/30"
+              data-state={sel.isSelected(m.id) ? "selected" : undefined}
+            >
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0">
+                <div className="flex min-w-0 gap-3">
+                  <Checkbox
+                    aria-label={`Select message from ${m.name}`}
+                    checked={sel.isSelected(m.id)}
+                    onCheckedChange={() => sel.toggle(m.id)}
+                    className="mt-1"
+                  />
+                  <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold">{m.name}</p>
                     <Badge className={cn("border-transparent", STATUS_META[m.status].className)}>
@@ -185,6 +240,7 @@ export function MessagesManager({ messages }: { messages: MessageRow[] }) {
                   <a href={`mailto:${m.email}`} className="text-sm text-primary hover:underline">
                     {m.email}
                   </a>
+                  </div>
                 </div>
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {formatDateTime(m.createdAt)}
@@ -245,8 +301,17 @@ export function MessagesManager({ messages }: { messages: MessageRow[] }) {
               </div>
             </li>
           ))}
-        </ul>
+          </ul>
+        </>
       )}
+
+      <BulkBar
+        count={sel.count}
+        actions={BULK_ACTIONS}
+        onRun={runBulk}
+        onClear={sel.clear}
+        pending={bulkPending}
+      />
 
       <ReplyDialog
         message={replyFor}

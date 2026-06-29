@@ -10,7 +10,7 @@ import {
   type VariantInput,
   type ImageInput,
 } from "@/lib/validations/admin";
-import type { AdminResult } from "@/lib/actions/admin/types";
+import type { AdminResult, BulkOutcome } from "@/lib/actions/admin/types";
 
 /** Turn the first validation issue into a readable, field-aware message. */
 function describeIssue(error: {
@@ -210,6 +210,44 @@ export async function toggleProductFlag(
   });
   revalidateCatalog(product.slug);
   return { ok: true };
+}
+
+const PRODUCT_BULK_ACTIONS = ["delete", "activate", "deactivate", "feature", "unfeature"] as const;
+type ProductBulkAction = (typeof PRODUCT_BULK_ACTIONS)[number];
+
+/** Bulk operation over selected products. Hard-deletes (orders keep their snapshots)
+ *  or flips isActive/isFeatured. Server-authoritative + permission-checked. */
+export async function bulkProductAction(
+  ids: string[],
+  action: ProductBulkAction,
+): Promise<AdminResult<BulkOutcome>> {
+  await requirePermission("products");
+  if (!Array.isArray(ids) || ids.length === 0) return { ok: false, error: "Nothing selected." };
+  if (!PRODUCT_BULK_ACTIONS.includes(action)) return { ok: false, error: "Unknown action." };
+
+  try {
+    let done = 0;
+    if (action === "delete") {
+      const res = await prisma.product.deleteMany({ where: { id: { in: ids } } });
+      done = res.count;
+    } else {
+      const data =
+        action === "activate"
+          ? { isActive: true }
+          : action === "deactivate"
+            ? { isActive: false }
+            : action === "feature"
+              ? { isFeatured: true }
+              : { isFeatured: false };
+      const res = await prisma.product.updateMany({ where: { id: { in: ids } }, data });
+      done = res.count;
+    }
+    revalidateCatalog();
+    return { ok: true, data: { done, skipped: ids.length - done } };
+  } catch (err) {
+    console.error("[admin] bulkProductAction failed:", err);
+    return { ok: false, error: "Bulk action failed. Some products may be in use." };
+  }
 }
 
 /** Inventory quick-edit: set absolute stock for a single variant. */

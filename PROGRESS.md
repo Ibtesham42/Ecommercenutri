@@ -108,6 +108,17 @@ phone, contact email, address); self email/password + editable store contact/soc
 `requirePermission`/`requireSuperAdmin` (actions), all DB-fresh; dashboard widgets scoped
 to permissions. (Deploy still requires `DATABASE_URL` at runtime — see the build fix.)
 
+## Latest: Admin bulk actions (wave 1)
+Reusable bulk-selection foundation (`useBulkSelection` hook, floating `<BulkBar>` with built-in
+confirm, `toastBulk`, client `downloadCsv`) + per-module `bulk<Entity>Action(ids, action)` server
+actions returning `AdminResult<BulkOutcome>`. Wired into **Products** (delete/activate/deactivate/
+feature/unfeature/export), **Categories** + **Coupons** (delete-safe/activate/deactivate),
+**Customers** (activate/deactivate/safe-delete/export), **Messages** (close/delete), **Affiliates**
+(suspend/reactivate/export) — each with select-all + per-row checkboxes. Delete policy: deactivate
++ safe hard-delete only (skip categories-with-products, deactivate used coupons, delete only
+order-free customers, never touch admins). Typecheck/lint/build green. Remaining modules
+(Orders/Returns/Stories/Hero/Banners/Reviews/Notifications) are follow-up waves.
+
 ## Milestones
 
 | Milestone | Scope                                                | Status        |

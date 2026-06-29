@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -26,8 +27,33 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
-import { saveCategory, deleteCategory } from "@/lib/actions/admin/categories";
+import { BulkBar, type BulkAction } from "@/components/admin/bulk/bulk-bar";
+import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
+import { toastBulk } from "@/lib/admin/run-bulk";
+import { saveCategory, deleteCategory, bulkCategoryAction } from "@/lib/actions/admin/categories";
 import { slugify } from "@/lib/format";
+
+const BULK_ACTIONS: BulkAction[] = [
+  { key: "activate", label: "Activate", icon: Eye },
+  { key: "deactivate", label: "Hide", icon: EyeOff },
+  {
+    key: "delete",
+    label: "Delete",
+    icon: Trash2,
+    destructive: true,
+    confirm: {
+      title: "Delete selected categories?",
+      description:
+        "Categories that still contain products are kept (move or delete those products first). This cannot be undone.",
+      actionLabel: "Delete",
+    },
+  },
+];
+const BULK_VERB: Record<string, string> = {
+  activate: "activated",
+  deactivate: "hidden",
+  delete: "deleted",
+};
 
 export type CategoryRow = {
   id: string;
@@ -68,6 +94,21 @@ export function CategoryManager({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<CategoryRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const sel = useBulkSelection(categories.map((c) => c.id));
+  const [bulkPending, startBulk] = useTransition();
+
+  function runBulk(key: string) {
+    startBulk(async () => {
+      const res = await bulkCategoryAction(
+        sel.selectedIds,
+        key as "delete" | "activate" | "deactivate",
+      );
+      if (toastBulk(res, BULK_VERB[key] ?? "updated")) {
+        sel.clear();
+        router.refresh();
+      }
+    });
+  }
 
   const { register, handleSubmit, control, reset, setValue, watch } =
     useForm<FormValues>();
@@ -135,6 +176,13 @@ export function CategoryManager({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  aria-label="Select all"
+                  checked={sel.allSelected ? true : sel.someSelected ? "indeterminate" : false}
+                  onCheckedChange={() => sel.toggleAll()}
+                />
+              </TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Slug</TableHead>
               <TableHead>Parent</TableHead>
@@ -146,13 +194,20 @@ export function CategoryManager({
           <TableBody>
             {categories.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
                   No categories yet.
                 </TableCell>
               </TableRow>
             ) : (
               categories.map((c) => (
-                <TableRow key={c.id}>
+                <TableRow key={c.id} data-state={sel.isSelected(c.id) ? "selected" : undefined}>
+                  <TableCell>
+                    <Checkbox
+                      aria-label={`Select ${c.name}`}
+                      checked={sel.isSelected(c.id)}
+                      onCheckedChange={() => sel.toggle(c.id)}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{c.name}</TableCell>
                   <TableCell className="text-muted-foreground">{c.slug}</TableCell>
                   <TableCell className="text-muted-foreground">{c.parentName ?? "—"}</TableCell>
@@ -184,6 +239,14 @@ export function CategoryManager({
           </TableBody>
         </Table>
       </div>
+
+      <BulkBar
+        count={sel.count}
+        actions={BULK_ACTIONS}
+        onRun={runBulk}
+        onClear={sel.clear}
+        pending={bulkPending}
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">

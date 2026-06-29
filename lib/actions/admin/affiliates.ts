@@ -25,7 +25,7 @@ import {
   affiliateSettingsSchema,
   marketingAssetSchema,
 } from "@/lib/validations/affiliate";
-import type { AdminResult } from "@/lib/actions/admin/types";
+import type { AdminResult, BulkOutcome } from "@/lib/actions/admin/types";
 
 function revalidate(affiliateId?: string) {
   revalidatePath("/admin/affiliates");
@@ -193,6 +193,57 @@ export async function reactivateAffiliate(input: unknown): Promise<AdminResult> 
   });
   revalidate(aff.id);
   return { ok: true };
+}
+
+const AFFILIATE_BULK_ACTIONS = ["suspend", "reactivate"] as const;
+type AffiliateBulkAction = (typeof AFFILIATE_BULK_ACTIONS)[number];
+
+/** Bulk suspend / reactivate affiliates. Suspend deactivates their coupon and blocks
+ *  attribution; reactivate restores APPROVED + the coupon. Only flips affiliates in the
+ *  opposite state (idempotent) and notifies each in-app. */
+export async function bulkAffiliateAction(
+  ids: string[],
+  action: AffiliateBulkAction,
+): Promise<AdminResult<BulkOutcome>> {
+  await requirePermission("affiliates");
+  if (!Array.isArray(ids) || ids.length === 0) return { ok: false, error: "Nothing selected." };
+  if (!AFFILIATE_BULK_ACTIONS.includes(action)) return { ok: false, error: "Unknown action." };
+
+  const suspend = action === "suspend";
+  const affs = await prisma.affiliate.findMany({
+    where: { id: { in: ids }, status: suspend ? { not: "SUSPENDED" } : "SUSPENDED" },
+    select: { id: true, userId: true, couponId: true },
+  });
+  if (affs.length === 0) {
+    return { ok: true, data: { done: 0, skipped: ids.length, note: "No affiliates changed." } };
+  }
+
+  const couponIds = affs.map((a) => a.couponId).filter((c): c is string => !!c);
+  await prisma.$transaction(async (tx) => {
+    await tx.affiliate.updateMany({
+      where: { id: { in: affs.map((a) => a.id) } },
+      data: suspend
+        ? { status: "SUSPENDED", suspendReason: "Suspended in a bulk action" }
+        : { status: "APPROVED", suspendReason: null },
+    });
+    if (couponIds.length) {
+      await tx.coupon.updateMany({ where: { id: { in: couponIds } }, data: { isActive: !suspend } });
+    }
+  });
+
+  for (const a of affs) {
+    await notifyAffiliate(
+      a.userId,
+      suspend ? "Affiliate account suspended" : "Affiliate account reactivated",
+      suspend
+        ? "Your affiliate account has been suspended. Contact support if you think this is a mistake."
+        : "Good news — your affiliate account is active again.",
+    );
+  }
+
+  revalidate();
+  revalidatePath("/account/affiliate");
+  return { ok: true, data: { done: affs.length, skipped: ids.length - affs.length } };
 }
 
 export async function setAffiliateCommission(input: unknown): Promise<AdminResult> {

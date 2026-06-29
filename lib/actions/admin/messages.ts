@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
 import { getStoreSettings } from "@/lib/queries/settings";
-import type { AdminResult } from "@/lib/actions/admin/types";
+import type { AdminResult, BulkOutcome } from "@/lib/actions/admin/types";
 
 function escapeHtml(s: string): string {
   return s
@@ -112,4 +112,32 @@ export async function deleteContactMessage(id: string): Promise<AdminResult> {
   await prisma.contactMessage.delete({ where: { id } });
   revalidatePath("/admin/messages");
   return { ok: true };
+}
+
+const MESSAGE_BULK_ACTIONS = ["close", "delete"] as const;
+type MessageBulkAction = (typeof MESSAGE_BULK_ACTIONS)[number];
+
+/** Bulk action over contact messages: close (mark handled) or permanently delete. */
+export async function bulkMessageAction(
+  ids: string[],
+  action: MessageBulkAction,
+): Promise<AdminResult<BulkOutcome>> {
+  await requirePermission("customers");
+  if (!Array.isArray(ids) || ids.length === 0) return { ok: false, error: "Nothing selected." };
+  if (!MESSAGE_BULK_ACTIONS.includes(action)) return { ok: false, error: "Unknown action." };
+
+  try {
+    const res =
+      action === "delete"
+        ? await prisma.contactMessage.deleteMany({ where: { id: { in: ids } } })
+        : await prisma.contactMessage.updateMany({
+            where: { id: { in: ids } },
+            data: { status: ContactStatus.CLOSED, handled: true },
+          });
+    revalidatePath("/admin/messages");
+    return { ok: true, data: { done: res.count, skipped: ids.length - res.count } };
+  } catch (err) {
+    console.error("[admin] bulkMessageAction failed:", err);
+    return { ok: false, error: "Bulk action failed." };
+  }
 }

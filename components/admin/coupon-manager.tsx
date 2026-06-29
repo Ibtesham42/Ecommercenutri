@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -23,8 +24,33 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { saveCoupon, deleteCoupon, toggleCoupon } from "@/lib/actions/admin/coupons";
+import { BulkBar, type BulkAction } from "@/components/admin/bulk/bulk-bar";
+import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
+import { toastBulk } from "@/lib/admin/run-bulk";
+import { saveCoupon, deleteCoupon, toggleCoupon, bulkCouponAction } from "@/lib/actions/admin/coupons";
 import { formatPrice, rupeesToPaise, paiseToRupees } from "@/lib/format";
+
+const BULK_ACTIONS: BulkAction[] = [
+  { key: "activate", label: "Activate", icon: Eye },
+  { key: "deactivate", label: "Deactivate", icon: EyeOff },
+  {
+    key: "delete",
+    label: "Delete",
+    icon: Trash2,
+    destructive: true,
+    confirm: {
+      title: "Delete selected coupons?",
+      description:
+        "Coupons already used by an order are deactivated (kept for history); unused ones are permanently deleted.",
+      actionLabel: "Delete",
+    },
+  },
+];
+const BULK_VERB: Record<string, string> = {
+  activate: "activated",
+  deactivate: "deactivated",
+  delete: "removed",
+};
 
 export type CouponRow = {
   id: string;
@@ -64,6 +90,21 @@ export function CouponManager({ coupons }: { coupons: CouponRow[] }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<CouponRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const sel = useBulkSelection(coupons.map((c) => c.id));
+  const [bulkPending, startBulk] = useTransition();
+
+  function runBulk(key: string) {
+    startBulk(async () => {
+      const res = await bulkCouponAction(
+        sel.selectedIds,
+        key as "delete" | "activate" | "deactivate",
+      );
+      if (toastBulk(res, BULK_VERB[key] ?? "updated")) {
+        sel.clear();
+        router.refresh();
+      }
+    });
+  }
 
   const { register, handleSubmit, control, reset, watch } = useForm<FormValues>();
   const type = watch("type");
@@ -146,6 +187,13 @@ export function CouponManager({ coupons }: { coupons: CouponRow[] }) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  aria-label="Select all"
+                  checked={sel.allSelected ? true : sel.someSelected ? "indeterminate" : false}
+                  onCheckedChange={() => sel.toggleAll()}
+                />
+              </TableHead>
               <TableHead>Code</TableHead>
               <TableHead>Discount</TableHead>
               <TableHead>Min order</TableHead>
@@ -158,13 +206,20 @@ export function CouponManager({ coupons }: { coupons: CouponRow[] }) {
           <TableBody>
             {coupons.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
                   No coupons yet.
                 </TableCell>
               </TableRow>
             ) : (
               coupons.map((c) => (
-                <TableRow key={c.id}>
+                <TableRow key={c.id} data-state={sel.isSelected(c.id) ? "selected" : undefined}>
+                  <TableCell>
+                    <Checkbox
+                      aria-label={`Select ${c.code}`}
+                      checked={sel.isSelected(c.id)}
+                      onCheckedChange={() => sel.toggle(c.id)}
+                    />
+                  </TableCell>
                   <TableCell className="font-mono font-medium">{c.code}</TableCell>
                   <TableCell>
                     {c.type === "PERCENT" ? `${c.value}%` : formatPrice(c.value)}
@@ -204,6 +259,14 @@ export function CouponManager({ coupons }: { coupons: CouponRow[] }) {
           </TableBody>
         </Table>
       </div>
+
+      <BulkBar
+        count={sel.count}
+        actions={BULK_ACTIONS}
+        onRun={runBulk}
+        onClear={sel.clear}
+        pending={bulkPending}
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">

@@ -253,6 +253,18 @@ npm run db:check      # scripts/db-check.ts — counts + relational sanity repor
   are entered in **rupees** in the UI and converted to **paise** before the call;
   the server schema (`lib/validations/admin.ts`) validates paise authoritatively.
 - **Errors:** return friendly messages to the UI; `console.error` details server-side.
+- **Bulk actions (admin tables)** use a shared, reusable foundation: `useBulkSelection(ids)`
+  (`lib/admin/use-bulk-selection.ts`, prunes stale ids), the floating `<BulkBar>`
+  (`components/admin/bulk/bulk-bar.tsx`, built-in confirm dialog for destructive actions),
+  `toastBulk` (`lib/admin/run-bulk.ts`) and client-side `downloadCsv` (`lib/admin/csv-export.ts`).
+  Each module exposes one `bulk<Entity>Action(ids, action)` server action returning
+  `AdminResult<BulkOutcome>` (`{ done, skipped, note? }`) that **reuses the existing single-record
+  guards**. **Delete policy = deactivate (reversible) + safe hard-delete only** (no soft-delete
+  column): categories with products and coupons used by orders are skipped/deactivated, customers
+  are deleted only with zero orders (else deactivate; scoped to `role:USER` so admins are never
+  touched). Wired into Products, Categories, Coupons, Customers, Messages, Affiliates (select-all +
+  per-row checkbox + Activate/Deactivate/Feature/Delete/Export-CSV as applicable). To add a module:
+  drop checkboxes + `<BulkBar>` into its (client) table and add a `bulk<Entity>Action`.
 
 ---
 

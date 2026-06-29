@@ -4,21 +4,12 @@ import { Download } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { guardSection } from "@/lib/admin-guard";
 import { AffiliateTabs } from "@/components/admin/affiliate-tabs";
-import { Badge } from "@/components/ui/badge";
+import { AffiliateTable, type AffiliateRow } from "@/components/admin/affiliate-table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { getAdminAffiliates, type AdminAffiliateFilters } from "@/lib/queries/affiliate";
-import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { AFFILIATE_ROLE_LABEL, AFFILIATE_STATUS_LABEL } from "@/lib/affiliate/labels";
+import { AFFILIATE_ROLE_LABEL } from "@/lib/affiliate/labels";
 import { AFFILIATE_ROLES } from "@/lib/validations/affiliate";
 
 export const metadata: Metadata = { title: "Affiliates", robots: { index: false } };
@@ -30,13 +21,6 @@ const STATUS_FILTERS = [
   { value: "REJECTED", label: "Rejected" },
   { value: "SUSPENDED", label: "Suspended" },
 ];
-
-const STATUS_VARIANT: Record<string, "secondary" | "default" | "destructive"> = {
-  PENDING: "secondary",
-  APPROVED: "default",
-  REJECTED: "destructive",
-  SUSPENDED: "destructive",
-};
 
 export default async function AdminAffiliatesPage({
   searchParams,
@@ -51,6 +35,17 @@ export default async function AdminAffiliatesPage({
     q: sp.q ?? "",
   };
   const affiliates = await getAdminAffiliates(filters);
+  const rows: AffiliateRow[] = affiliates.map((a) => ({
+    id: a.id,
+    displayName: a.displayName,
+    code: a.code,
+    email: a.user.email ?? "",
+    role: a.role,
+    clicks: a._count.clicks,
+    orders: a._count.orders,
+    status: a.status,
+    createdAt: a.createdAt.toISOString(),
+  }));
   const exportQs = new URLSearchParams(
     Object.entries(filters).filter(([, v]) => v) as [string, string][],
   ).toString();
@@ -103,53 +98,7 @@ export default async function AdminAffiliatesPage({
         </Button>
       </form>
 
-      <div className="rounded-xl border bg-background">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Affiliate</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Clicks</TableHead>
-              <TableHead>Orders</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Joined</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {affiliates.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                  No affiliates found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              affiliates.map((a) => (
-                <TableRow key={a.id}>
-                  <TableCell>
-                    <Link href={`/admin/affiliates/${a.id}`} className="font-medium hover:text-primary">
-                      {a.displayName}
-                    </Link>
-                    <p className="font-mono text-xs text-muted-foreground">{a.code}</p>
-                  </TableCell>
-                  <TableCell className="max-w-[180px] truncate text-muted-foreground">
-                    {a.user.email}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{AFFILIATE_ROLE_LABEL[a.role]}</TableCell>
-                  <TableCell>{a._count.clicks}</TableCell>
-                  <TableCell>{a._count.orders}</TableCell>
-                  <TableCell>
-                    <Badge variant={STATUS_VARIANT[a.status] ?? "secondary"}>
-                      {AFFILIATE_STATUS_LABEL[a.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(a.createdAt)}</TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <AffiliateTable affiliates={rows} />
     </div>
   );
 }
