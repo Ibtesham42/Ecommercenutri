@@ -543,3 +543,26 @@ export type CategoryInput = z.infer<typeof categoryInputSchema>;
 export type CouponInput = z.infer<typeof couponInputSchema>;
 export type StoryInput = z.infer<typeof storyInputSchema>;
 export type AISettingInput = z.infer<typeof aiSettingSchema>;
+
+// Blog + Legal (CMS content) -------------------------------------------------
+
+export const blogPostSchema = z.object({
+  id: z.string().optional(),
+  slug: z.string().min(1, "Slug is required").max(120).regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers and hyphens"),
+  title: z.string().min(2, "Title is too short").max(160),
+  excerpt: z.string().max(400).nullable().optional(),
+  content: z.string().min(1, "Add some content"),
+  coverImage: optionalUrl,
+  author: z.string().max(80).nullable().optional(),
+  tag: z.string().max(40).nullable().optional(),
+  isPublished: z.boolean().default(true),
+  publishedAt: z.coerce.date().optional(),
+});
+export type BlogPostInput = z.infer<typeof blogPostSchema>;
+
+export const contentPageSchema = z.object({
+  slug: z.enum(["privacy", "terms", "shipping"]),
+  title: z.string().min(1, "Title is required").max(160),
+  body: z.string().min(1, "Add some content"),
+});
+export type ContentPageInput = z.infer<typeof contentPageSchema>;

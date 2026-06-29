@@ -412,8 +412,18 @@ all gated by the **`appearance`** permission (super admins always pass).
   - `/track` — public guest order tracking: `trackOrder(orderNumber, email)` matches the
     checkout email and returns a trimmed DTO + status timeline (no auth).
   - `/support` — help hub linking the above. Footer "Track Order" now points at `/track`.
-- **Backlog (one phase per turn):** admin editors for Blog/Legal/Contact-inbox; Navigation
-  Builder (`MenuItem`); Footer Builder; Media Library (`MediaAsset` + Cloudinary); popups/ads.
+- **Content admin editors (done)** — all gated by `appearance`:
+  - **Blog** (`/admin/blog`, `components/admin/blog-manager.tsx`, `lib/actions/admin/blog.ts`):
+    `BlogPost` CRUD (title/auto-slug, excerpt, HTML content, cover via `ImageUploadField`, author,
+    tag, publish toggle, publish date) with the shared `<BulkBar>` (publish/unpublish/delete). Content
+    is `sanitizeRichText`-sanitized on save; saves revalidate `/blog` + `/blog/[slug]` + sitemap.
+  - **Legal** (`/admin/legal`, `legal-manager.tsx`, `lib/actions/admin/content.ts`): per-page editor
+    for Shipping/Privacy/Terms — `saveContentPage` upserts a `ContentPage` override (sanitized);
+    `resetContentPage` deletes it to fall back to the `lib/legal-content.ts` default. The editor
+    pre-fills from the default HTML (`legalDefaultHtml`) and shows Custom/Default status.
+  - **Contact inbox** — already shipped at `/admin/messages` (reply + status + delete + bulk).
+- **Backlog (one phase per turn):** Navigation Builder (`MenuItem`); Footer Builder; Media Library
+  (`MediaAsset` + Cloudinary); popups/ads.
 - **CMS conventions:** reuse RBAC (`requirePermission("appearance")` / `guardSection`),
   `AdminResult` actions, Zod schemas in `lib/validations/admin.ts`, `ImageUploadField` +
   Cloudinary, `cldUrl` for delivery. Reordering uses native HTML5 DnD + a `reorder(ids[])`

@@ -43,6 +43,11 @@ export async function getBlogPost(slug: string): Promise<BlogPostFull | null> {
   }
 }
 
+/** All posts (published + drafts) for the admin list, newest first. */
+export async function getAdminBlogPosts() {
+  return prisma.blogPost.findMany({ orderBy: { publishedAt: "desc" }, take: 500 });
+}
+
 /** Other recent posts to suggest at the end of an article. */
 export async function getRelatedPosts(excludeSlug: string, take = 3): Promise<BlogListItem[]> {
   try {

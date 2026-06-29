@@ -108,6 +108,17 @@ phone, contact email, address); self email/password + editable store contact/soc
 `requirePermission`/`requireSuperAdmin` (actions), all DB-fresh; dashboard widgets scoped
 to permissions. (Deploy still requires `DATABASE_URL` at runtime — see the build fix.)
 
+## Latest: CMS content editors (Blog + Legal)
+Built the two missing admin content editors (CLAUDE.md §8b backlog), gated by `appearance`.
+**Blog** (`/admin/blog`): `BlogPost` CRUD — title/auto-slug, excerpt, HTML content, cover image,
+author, tag, publish toggle + date — with the shared `<BulkBar>` (publish/unpublish/delete);
+content is `sanitizeRichText`-sanitized on save and revalidates `/blog` + `/blog/[slug]` + sitemap.
+**Legal** (`/admin/legal`): per-page editor for Shipping/Privacy/Terms — `saveContentPage` upserts a
+`ContentPage` override (sanitized), `resetContentPage` deletes it to fall back to the code default;
+the editor pre-fills from the default HTML and shows Custom/Default status. (Contact inbox was already
+shipped at `/admin/messages`.) Both added to the admin nav. No migration (models existed).
+Typecheck/lint/build green.
+
 ## Marketing Hub (complete — full multi-channel campaign system)
 A modular, production-ready marketing platform at **`/admin/marketing`**, gated by the new
 `marketing` RBAC permission. Built across four waves; reuses existing users/products/coupons/

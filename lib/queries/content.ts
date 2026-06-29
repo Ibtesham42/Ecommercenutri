@@ -1,9 +1,39 @@
 import { prisma } from "@/lib/prisma";
 import {
   LEGAL_CONTENT,
+  LEGAL_SLUGS,
+  legalDefaultHtml,
   type LegalSlug,
   type LegalPageContent,
 } from "@/lib/legal-content";
+
+export type AdminLegalPage = {
+  slug: LegalSlug;
+  title: string;
+  body: string; // current custom HTML, or the default rendered to HTML
+  isCustom: boolean;
+  updatedAt: string | null;
+};
+
+/** All three legal pages for the admin editor — custom row if present, else the
+ *  built-in default rendered to editable HTML. */
+export async function getAdminLegalPages(): Promise<AdminLegalPage[]> {
+  const rows = await prisma.contentPage.findMany({ where: { slug: { in: [...LEGAL_SLUGS] } } });
+  const bySlug = new Map(rows.map((r) => [r.slug, r]));
+  return LEGAL_SLUGS.map((slug) => {
+    const row = bySlug.get(slug);
+    if (row) {
+      return { slug, title: row.title, body: row.body, isCustom: true, updatedAt: row.updatedAt.toISOString() };
+    }
+    return {
+      slug,
+      title: LEGAL_CONTENT[slug].title,
+      body: legalDefaultHtml(slug),
+      isCustom: false,
+      updatedAt: null,
+    };
+  });
+}
 
 export type LegalPage =
   | { mode: "default"; title: string; content: LegalPageContent; updatedAt: Date | null }

@@ -159,3 +159,17 @@ export const LEGAL_CONTENT: Record<LegalSlug, LegalPageContent> = {
     ],
   },
 };
+
+/** Render a built-in legal page's structured default to an HTML string — used to
+ *  pre-fill the admin editor so an override starts from the existing copy. */
+export function legalDefaultHtml(slug: LegalSlug): string {
+  const c = LEGAL_CONTENT[slug];
+  const esc = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const parts: string[] = [`<p>${esc(c.intro)}</p>`];
+  for (const section of c.sections) {
+    parts.push(`<h2>${esc(section.heading)}</h2>`);
+    for (const p of section.body) parts.push(`<p>${esc(p)}</p>`);
+  }
+  return parts.join("\n");
+}
