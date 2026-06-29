@@ -150,7 +150,7 @@ export default async function AdminInsightsPage() {
           <MiniBars
             data={bi.trend.map((t) => t.revenue)}
             labels={bi.trend.map((t) => t.date.slice(5))}
-            format={(n) => formatPrice(n)}
+            valueLabels={bi.trend.map((t) => formatPrice(t.revenue))}
           />
         </div>
         <div className="rounded-2xl border bg-background p-5">

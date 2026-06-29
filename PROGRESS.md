@@ -122,6 +122,11 @@ seam, grounded in the computed facts, each with deterministic fallbacks (works w
 `askBusinessQuestion` server action powers the Q&A box. Charts are **dependency-free** SVG sparklines +
 hover-tooltip bars. Mobile-friendly. Typecheck/lint/build green. Follow-up wave: PDF/Excel export +
 scheduled weekly/monthly AI report emails.
+- **Prod crash fix**: the page (server component) passed a `format` **function** prop to the client
+  `MiniBars` — non-serializable across the RSC boundary → server-side exception in production. Replaced
+  with pre-formatted `valueLabels` strings. Hardened so it can never crash: `getBusinessIntelligence`
+  retries once (Neon cold start) then returns a safe empty snapshot; added an `app/admin/insights/
+  error.tsx` route error boundary (rest of admin stays functional); empty datasets render empty states.
 
 ## Latest: Admin UI/UX polish + email logo branding
 Purely presentational admin uplift (no logic/workflow changes): `app/admin/loading.tsx` skeleton on

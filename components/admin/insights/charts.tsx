@@ -41,16 +41,20 @@ export function Sparkline({
   );
 }
 
-/** Interactive bar chart — hover a bar for its value. Responsive, lightweight. */
+/**
+ * Interactive bar chart — hover a bar for its value. Responsive, lightweight.
+ * `valueLabels` are pre-formatted tooltip strings (passed from the server so no
+ * function crosses the client boundary). Falls back to the raw number.
+ */
 export function MiniBars({
   data,
   labels,
-  format,
+  valueLabels,
   className,
 }: {
   data: number[];
   labels?: string[];
-  format?: (n: number) => string;
+  valueLabels?: string[];
   className?: string;
 }) {
   const max = Math.max(1, ...data);
@@ -64,7 +68,7 @@ export function MiniBars({
           />
           <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md border bg-popover px-2 py-1 text-[11px] shadow-elev-2 group-hover:block">
             {labels?.[i] ? <span className="text-muted-foreground">{labels[i]} · </span> : null}
-            <span className="font-medium">{format ? format(v) : v}</span>
+            <span className="font-medium">{valueLabels?.[i] ?? v}</span>
           </div>
         </div>
       ))}

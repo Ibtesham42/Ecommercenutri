@@ -85,7 +85,47 @@ function pct(cur: number, prev: number): number {
 
 const DOW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
+/** Safe zeroed snapshot — rendered (with a friendly alert) if the data can't load,
+ *  so the dashboard never crashes on a DB outage / Neon cold start / empty store. */
+function emptyBI(): BusinessIntelligence {
+  const z: Period = { revenue: 0, orders: 0 };
+  const gz: GrowthPeriod = { revenue: 0, orders: 0, prevRevenue: 0, prevOrders: 0, revenueGrowth: 0, orderGrowth: 0 };
+  return {
+    generatedAt: new Date().toISOString(),
+    currency: "paise",
+    summary: { today: z, week: gz, month: gz, year: z },
+    trend: [],
+    forecast: { monthProjected: 0, monthSoFar: 0, runRatePerDay: 0, daysElapsed: 1, daysInMonth: 30 },
+    customers: { total: 0, withOrders: 0, new: 0, returning: 0, inactive: 0, highValue: 0, repeatRate: 0, newPerDay: [], topCustomers: [] },
+    inventory: { lowStock: 0, outOfStock: 0, predictedStockouts: [] },
+    products: { trending: [], declining: [], bestByCategory: [], promote: [] },
+    cart: { abandonedCarts: 0, cartAdds30d: 0, purchases30d: 0, abandonmentRate: 0 },
+    affiliates: { active: 0, revenue90d: 0, orders90d: 0, top: [] },
+    campaigns: { sent: 0, delivered: 0, opened: 0, clicked: 0, conversions: 0, revenue: 0, openRate: 0, clickRate: 0 },
+    refunds: { count30d: 0, amount30d: 0, rate: 0 },
+    bestTime: { day: "—", hour: "—" },
+    alerts: [{ level: "info", title: "Insights temporarily unavailable", detail: "Couldn't load store data just now — please refresh in a moment." }],
+  };
+}
+
+/**
+ * Never throws. Computes the BI snapshot with a one-shot retry (Neon scales to zero
+ * and the first query after idle can throw P1001 — retrying warms it up), and falls
+ * back to a safe empty snapshot on persistent failure so the page always renders.
+ */
 export async function getBusinessIntelligence(): Promise<BusinessIntelligence> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await computeBI();
+    } catch (err) {
+      console.error(`[bi] computeBI failed (attempt ${attempt + 1}/2):`, err);
+      if (attempt === 0) await new Promise((r) => setTimeout(r, 400));
+    }
+  }
+  return emptyBI();
+}
+
+async function computeBI(): Promise<BusinessIntelligence> {
   const now = new Date();
   const startToday = new Date(now);
   startToday.setHours(0, 0, 0, 0);
