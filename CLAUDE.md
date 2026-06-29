@@ -262,8 +262,13 @@ npm run db:check      # scripts/db-check.ts — counts + relational sanity repor
   guards**. **Delete policy = deactivate (reversible) + safe hard-delete only** (no soft-delete
   column): categories with products and coupons used by orders are skipped/deactivated, customers
   are deleted only with zero orders (else deactivate; scoped to `role:USER` so admins are never
-  touched). Wired into Products, Categories, Coupons, Customers, Messages, Affiliates (select-all +
-  per-row checkbox + Activate/Deactivate/Feature/Delete/Export-CSV as applicable). To add a module:
+  touched). `<BulkBar>` takes an optional `children` slot for inline controls (e.g. the Orders
+  status `<select>`). Wired into **Products, Categories, Coupons, Customers, Messages, Affiliates**
+  (wave 1) and **Orders** (status update via `bulkUpdateOrderStatus`/`transitionOrderStatus`,
+  sequential invoice PDF download, CSV export, shipping-label stub), **Returns** (approve/reject/
+  mark-refunded via `bulkReturnAction` reusing `transitionReturnStatus`/`processRefund`; bulk refund
+  settles to the original method and skips COD/manual), **Stories/Hero/Banners** (publish/unpublish/
+  delete; the card managers keep their existing per-item drag/priority ordering). To add a module:
   drop checkboxes + `<BulkBar>` into its (client) table and add a `bulk<Entity>Action`.
 
 ---

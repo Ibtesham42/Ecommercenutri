@@ -3,21 +3,11 @@ import type { Metadata } from "next";
 import type { Prisma, OrderStatus } from "@prisma/client";
 import { PageHeader } from "@/components/admin/page-header";
 import { guardSection } from "@/lib/admin-guard";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { OrderTable, type OrderRow } from "@/components/admin/order-table";
 import { prisma } from "@/lib/prisma";
-import { formatPrice, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { statusBadgeVariant, statusLabel } from "@/lib/order-status";
 
 export const metadata: Metadata = { title: "Orders", robots: { index: false } };
 
@@ -77,6 +67,17 @@ export default async function AdminOrdersPage({
     prisma.order.count({ where }),
   ]);
 
+  const rows: OrderRow[] = orders.map((o) => ({
+    id: o.id,
+    orderNumber: o.orderNumber,
+    customer: o.user.name ?? o.user.email ?? "—",
+    createdAt: o.createdAt.toISOString(),
+    paymentStatus: o.paymentStatus,
+    status: o.status,
+    total: o.total,
+    items: o._count.items,
+  }));
+
   const pageCount = Math.max(1, Math.ceil(total / PER_PAGE));
   const qs = (next: Record<string, string>) => {
     const p = new URLSearchParams({ status, q, ...next });
@@ -115,66 +116,7 @@ export default async function AdminOrdersPage({
         </form>
       </div>
 
-      <div className="rounded-xl border bg-background">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Order</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Payment</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {orders.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                  No orders found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              orders.map((o) => (
-                <TableRow key={o.id} className="cursor-pointer">
-                  <TableCell>
-                    <Link
-                      href={`/admin/orders/${o.orderNumber}`}
-                      className="font-medium hover:text-primary"
-                    >
-                      #{o.orderNumber}
-                    </Link>
-                    <p className="text-xs text-muted-foreground">
-                      {o._count.items} item{o._count.items === 1 ? "" : "s"}
-                    </p>
-                  </TableCell>
-                  <TableCell className="max-w-[200px] truncate">
-                    {o.user.name ?? o.user.email}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(o.createdAt)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={o.paymentStatus === "PAID" ? "default" : "secondary"}
-                    >
-                      {o.paymentStatus}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={statusBadgeVariant[o.status] ?? "secondary"}>
-                      {statusLabel(o.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right font-semibold">
-                    {formatPrice(o.total)}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <OrderTable orders={rows} />
 
       {pageCount > 1 && (
         <div className="mt-4 flex items-center justify-between text-sm">

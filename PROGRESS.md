@@ -108,6 +108,17 @@ phone, contact email, address); self email/password + editable store contact/soc
 `requirePermission`/`requireSuperAdmin` (actions), all DB-fresh; dashboard widgets scoped
 to permissions. (Deploy still requires `DATABASE_URL` at runtime — see the build fix.)
 
+## Latest: Admin bulk actions (wave 2)
+Extended the bulk foundation to commerce + CMS modules. **Orders**: bulk status update
+(`bulkUpdateOrderStatus` → shared `transitionOrderStatus`, emails per order) via a status
+`<select>` in the bulk bar, sequential invoice-PDF download, CSV export, shipping-label stub
+(future). **Returns**: bulk approve / reject / mark-refunded (`bulkReturnAction` reusing
+`transitionReturnStatus`/`processRefund` + notifications; bulk refund settles to the original
+method and skips COD/manual with a note). **Stories / Hero / Banners**: bulk publish / unpublish /
+delete (card managers keep their existing drag/priority ordering). `<BulkBar>` gained an optional
+`children` slot for inline controls. Typecheck/lint/build green. (Homepage Sections are a fixed
+registry — show/hide + reorder only, no bulk delete. Reviews/Notifications have no admin table yet.)
+
 ## Latest: Admin bulk actions (wave 1)
 Reusable bulk-selection foundation (`useBulkSelection` hook, floating `<BulkBar>` with built-in
 confirm, `toastBulk`, client `downloadCsv`) + per-module `bulk<Entity>Action(ids, action)` server

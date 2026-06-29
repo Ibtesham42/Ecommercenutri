@@ -3,21 +3,11 @@ import type { Metadata } from "next";
 import { Download } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { guardSection } from "@/lib/admin-guard";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ReturnTable, type ReturnRow } from "@/components/admin/return-table";
 import { getAdminReturns, type ReturnFilters } from "@/lib/queries/returns";
-import { formatPrice, formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { returnBadgeVariant, returnStatusLabel } from "@/lib/return-status";
 
 export const metadata: Metadata = { title: "Refunds & Returns", robots: { index: false } };
 
@@ -48,6 +38,17 @@ export default async function AdminReturnsPage({
     paymentMethod: sp.paymentMethod ?? "",
   };
   const returns = await getAdminReturns(filters);
+  const rows: ReturnRow[] = returns.map((r) => ({
+    id: r.id,
+    returnNumber: r.returnNumber,
+    orderNumber: r.order.orderNumber,
+    customer: r.user.name ?? r.user.email ?? "—",
+    createdAt: r.createdAt.toISOString(),
+    paymentMethod: r.order.paymentMethod,
+    status: r.status,
+    refund: r.refundedAmount || r.refundAmount,
+    items: r._count.items,
+  }));
 
   const exportQs = new URLSearchParams(
     Object.entries(filters).filter(([, v]) => v) as [string, string][],
@@ -104,64 +105,7 @@ export default async function AdminReturnsPage({
         </Button>
       </form>
 
-      <div className="rounded-xl border bg-background">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Return</TableHead>
-              <TableHead>Order</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Payment</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Refund</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {returns.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                  No return requests found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              returns.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell>
-                    <Link
-                      href={`/admin/returns/${r.returnNumber}`}
-                      className="font-medium hover:text-primary"
-                    >
-                      {r.returnNumber}
-                    </Link>
-                    <p className="text-xs text-muted-foreground">
-                      {r._count.items} item{r._count.items === 1 ? "" : "s"}
-                    </p>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">#{r.order.orderNumber}</TableCell>
-                  <TableCell className="max-w-[180px] truncate">
-                    {r.user.name ?? r.user.email}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(r.createdAt)}</TableCell>
-                  <TableCell>
-                    <Badge variant={r.order.paymentMethod === "COD" ? "secondary" : "outline"}>
-                      {r.order.paymentMethod === "COD" ? "COD" : "Prepaid"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={returnBadgeVariant[r.status]}>
-                      {returnStatusLabel(r.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right font-semibold">
-                    {formatPrice(r.refundedAmount || r.refundAmount)}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <ReturnTable returns={rows} />
     </div>
   );
 }

@@ -18,7 +18,7 @@ import {
   addNoteSchema,
   processRefundSchema,
 } from "@/lib/validations/returns";
-import type { AdminResult } from "@/lib/actions/admin/types";
+import type { AdminResult, BulkOutcome } from "@/lib/actions/admin/types";
 
 function revalidate(returnNumber: string) {
   revalidatePath("/admin/returns");
@@ -212,4 +212,89 @@ export async function processReturnRefund(input: unknown): Promise<AdminResult> 
   await notifyReturn(ret, "REFUNDED", { amount, method });
   revalidate(ret.returnNumber);
   return { ok: true };
+}
+
+const RETURN_BULK_ACTIONS = ["approve", "reject", "refund"] as const;
+type ReturnBulkAction = (typeof RETURN_BULK_ACTIONS)[number];
+
+/**
+ * Bulk approve / reject / refund return requests. Each item reuses the single-item
+ * lifecycle (`transitionReturnStatus` / `processRefund`) with notifications. Closed
+ * returns are skipped. Bulk refund settles the full returnable amount to the original
+ * payment method; COD / manual-only returns are skipped (refund them from the detail
+ * page with a UPI/Bank method).
+ */
+export async function bulkReturnAction(
+  ids: string[],
+  action: ReturnBulkAction,
+): Promise<AdminResult<BulkOutcome>> {
+  await requirePermission("returns");
+  if (!Array.isArray(ids) || ids.length === 0) return { ok: false, error: "Nothing selected." };
+  if (!RETURN_BULK_ACTIONS.includes(action)) return { ok: false, error: "Unknown action." };
+
+  let done = 0;
+  let skipped = 0;
+  let manualNeeded = 0;
+
+  for (const id of ids) {
+    try {
+      if (action === "approve") {
+        const found = await loadOpen(id);
+        if (!found.ok) { skipped++; continue; }
+        const ret = await transitionReturnStatus(id, "APPROVED", { actor: "admin", note: "Approved in bulk" });
+        await notifyReturn(ret, "APPROVED");
+        done++;
+      } else if (action === "reject") {
+        const found = await loadOpen(id);
+        if (!found.ok) { skipped++; continue; }
+        const reason = "Rejected by store";
+        const ret = await transitionReturnStatus(id, "REJECTED", {
+          actor: "admin",
+          note: reason,
+          data: { rejectionReason: reason },
+        });
+        await notifyReturn(ret, "REJECTED", { reason });
+        done++;
+      } else {
+        const current = await prisma.returnRequest.findUnique({
+          where: { id },
+          select: { status: true, refundAmount: true, refundStatus: true },
+        });
+        if (
+          !current ||
+          current.refundStatus === "COMPLETED" ||
+          current.status === "REJECTED" ||
+          current.status === "CANCELLED"
+        ) {
+          skipped++;
+          continue;
+        }
+        try {
+          const ret = await processRefund(id, { amount: current.refundAmount, method: "ORIGINAL" });
+          await notifyReturn(ret, "REFUNDED", { amount: current.refundAmount, method: "ORIGINAL" });
+          done++;
+        } catch (e) {
+          if ((e as Error)?.message === "NO_ORIGINAL_PAYMENT") manualNeeded++;
+          else throw e;
+        }
+      }
+    } catch (err) {
+      console.error("[admin/returns] bulkReturnAction item failed:", err);
+      skipped++;
+    }
+  }
+
+  revalidatePath("/admin/returns");
+  revalidatePath("/account/returns");
+  const totalSkipped = skipped + manualNeeded;
+  return {
+    ok: true,
+    data: {
+      done,
+      skipped: totalSkipped,
+      note: manualNeeded
+        ? `${done} refunded · ${manualNeeded} need a manual method (refund from the detail page)${skipped ? ` · ${skipped} skipped` : ""}.`
+        : undefined,
+    },
+  };
 }

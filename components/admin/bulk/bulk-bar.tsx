@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { X, Loader2, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,12 +35,15 @@ export function BulkBar({
   onRun,
   onClear,
   pending,
+  children,
 }: {
   count: number;
   actions: BulkAction[];
   onRun: (key: string) => void;
   onClear: () => void;
   pending?: boolean;
+  /** Optional extra controls (e.g. a status <select>) rendered before the action buttons. */
+  children?: ReactNode;
 }) {
   const [confirming, setConfirming] = useState<BulkAction | null>(null);
   if (count === 0) return null;
@@ -60,6 +63,7 @@ export function BulkBar({
           >
             <X className="size-4" />
           </Button>
+          {children}
           <div className="ml-auto flex flex-wrap items-center gap-1.5">
             {pending && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
             {actions.map((a) => (

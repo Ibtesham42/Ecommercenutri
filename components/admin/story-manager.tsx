@@ -1,16 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +19,27 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
-import { saveStory, deleteStory, toggleStoryPublish } from "@/lib/actions/admin/stories";
+import { BulkBar, type BulkAction } from "@/components/admin/bulk/bulk-bar";
+import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
+import { toastBulk } from "@/lib/admin/run-bulk";
+import { saveStory, deleteStory, toggleStoryPublish, bulkStoryAction } from "@/lib/actions/admin/stories";
+
+const BULK_ACTIONS: BulkAction[] = [
+  { key: "publish", label: "Publish", icon: Eye },
+  { key: "unpublish", label: "Unpublish", icon: EyeOff },
+  {
+    key: "delete",
+    label: "Delete",
+    icon: Trash2,
+    destructive: true,
+    confirm: {
+      title: "Delete selected stories?",
+      description: "This permanently removes the selected stories. This cannot be undone.",
+      actionLabel: "Delete",
+    },
+  },
+];
+const BULK_VERB: Record<string, string> = { publish: "published", unpublish: "unpublished", delete: "deleted" };
 
 export type StoryRow = {
   id: string;
@@ -62,6 +83,18 @@ export function StoryManager({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<StoryRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const sel = useBulkSelection(stories.map((s) => s.id));
+  const [bulkPending, startBulk] = useTransition();
+
+  function runBulk(key: string) {
+    startBulk(async () => {
+      const res = await bulkStoryAction(sel.selectedIds, key as "publish" | "unpublish" | "delete");
+      if (toastBulk(res, BULK_VERB[key] ?? "updated")) {
+        sel.clear();
+        router.refresh();
+      }
+    });
+  }
 
   const { register, handleSubmit, control, reset } = useForm<FormValues>();
 
@@ -131,7 +164,19 @@ export function StoryManager({
 
   return (
     <div>
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        {stories.length > 0 ? (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox
+              aria-label="Select all"
+              checked={sel.allSelected ? true : sel.someSelected ? "indeterminate" : false}
+              onCheckedChange={() => sel.toggleAll()}
+            />
+            Select all ({stories.length})
+          </label>
+        ) : (
+          <span />
+        )}
         <Button className="gap-1.5" onClick={openAdd}>
           <Plus className="size-4" /> New story
         </Button>
@@ -144,11 +189,22 @@ export function StoryManager({
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {stories.map((s) => (
-            <div key={s.id} className="overflow-hidden rounded-xl border bg-background">
+            <div
+              key={s.id}
+              className="overflow-hidden rounded-xl border bg-background data-[state=selected]:border-primary/60 data-[state=selected]:ring-1 data-[state=selected]:ring-primary/30"
+              data-state={sel.isSelected(s.id) ? "selected" : undefined}
+            >
               <div className="relative aspect-[3/4] bg-accent/30">
                 {s.coverImage && (
                   <Image src={s.coverImage} alt={s.title} fill sizes="240px" className="object-cover" />
                 )}
+                <div className="absolute left-2 top-2 rounded bg-background/80 p-1 backdrop-blur">
+                  <Checkbox
+                    aria-label={`Select ${s.title}`}
+                    checked={sel.isSelected(s.id)}
+                    onCheckedChange={() => sel.toggle(s.id)}
+                  />
+                </div>
                 <div className="absolute right-2 top-2">
                   <Badge variant={s.isPublished ? "default" : "secondary"}>
                     {s.isPublished ? "Live" : "Draft"}
@@ -183,6 +239,14 @@ export function StoryManager({
           ))}
         </div>
       )}
+
+      <BulkBar
+        count={sel.count}
+        actions={BULK_ACTIONS}
+        onRun={runBulk}
+        onClear={sel.clear}
+        pending={bulkPending}
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import {
@@ -9,6 +9,7 @@ import {
   Trash2,
   Copy,
   Eye,
+  EyeOff,
   GripVertical,
   Loader2,
   ImageOff,
@@ -22,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +31,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { BulkBar, type BulkAction } from "@/components/admin/bulk/bulk-bar";
+import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
+import { toastBulk } from "@/lib/admin/run-bulk";
 import {
   HeroSlideContent,
   type HeroSlideView,
@@ -42,7 +47,25 @@ import {
   toggleHeroSlide,
   duplicateHeroSlide,
   reorderHeroSlides,
+  bulkHeroAction,
 } from "@/lib/actions/admin/hero";
+
+const BULK_ACTIONS: BulkAction[] = [
+  { key: "publish", label: "Publish", icon: Eye },
+  { key: "unpublish", label: "Unpublish", icon: EyeOff },
+  {
+    key: "delete",
+    label: "Delete",
+    icon: Trash2,
+    destructive: true,
+    confirm: {
+      title: "Delete selected slides?",
+      description: "This permanently removes the selected hero slides. This cannot be undone.",
+      actionLabel: "Delete",
+    },
+  },
+];
+const BULK_VERB: Record<string, string> = { publish: "published", unpublish: "unpublished", delete: "deleted" };
 
 export type HeroSlideRow = {
   id: string;
@@ -128,6 +151,19 @@ export function HeroSliderManager({
   if (slides.map((s) => s.id).join() !== order.map((s) => s.id).join() && dragId === null) {
     // re-sync only when not mid-drag
     setOrder(slides);
+  }
+
+  const sel = useBulkSelection(order.map((s) => s.id));
+  const [bulkPending, startBulk] = useTransition();
+
+  function runBulk(key: string) {
+    startBulk(async () => {
+      const res = await bulkHeroAction(sel.selectedIds, key as "publish" | "unpublish" | "delete");
+      if (toastBulk(res, BULK_VERB[key] ?? "updated")) {
+        sel.clear();
+        router.refresh();
+      }
+    });
   }
 
   const { register, handleSubmit, control, reset, watch } = useForm<FormValues>();
@@ -233,7 +269,19 @@ export function HeroSliderManager({
 
   return (
     <div>
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        {order.length > 0 ? (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox
+              aria-label="Select all"
+              checked={sel.allSelected ? true : sel.someSelected ? "indeterminate" : false}
+              onCheckedChange={() => sel.toggleAll()}
+            />
+            Select all ({order.length})
+          </label>
+        ) : (
+          <span />
+        )}
         <Button className="gap-1.5" onClick={openAdd}>
           <Plus className="size-4" /> Add slide
         </Button>
@@ -260,6 +308,11 @@ export function HeroSliderManager({
                 dragId === s.id ? "opacity-50" : ""
               }`}
             >
+              <Checkbox
+                aria-label={`Select ${s.title || "slide"}`}
+                checked={sel.isSelected(s.id)}
+                onCheckedChange={() => sel.toggle(s.id)}
+              />
               <span className="cursor-grab text-muted-foreground active:cursor-grabbing" aria-hidden>
                 <GripVertical className="size-5" />
               </span>
@@ -320,6 +373,14 @@ export function HeroSliderManager({
           ))}
         </ul>
       )}
+
+      <BulkBar
+        count={sel.count}
+        actions={BULK_ACTIONS}
+        onRun={runBulk}
+        onClear={sel.clear}
+        pending={bulkPending}
+      />
 
       {/* Add/Edit dialog */}
       <Dialog open={open} onOpenChange={setOpen}>

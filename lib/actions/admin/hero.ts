@@ -4,11 +4,39 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { heroSlideSchema } from "@/lib/validations/admin";
-import type { AdminResult } from "@/lib/actions/admin/types";
+import type { AdminResult, BulkOutcome } from "@/lib/actions/admin/types";
 
 function revalidate() {
   revalidatePath("/admin/hero");
   revalidatePath("/", "layout"); // homepage renders the slider
+}
+
+const HERO_BULK_ACTIONS = ["publish", "unpublish", "delete"] as const;
+type HeroBulkAction = (typeof HERO_BULK_ACTIONS)[number];
+
+/** Bulk publish / unpublish / delete hero slides. */
+export async function bulkHeroAction(
+  ids: string[],
+  action: HeroBulkAction,
+): Promise<AdminResult<BulkOutcome>> {
+  await requirePermission("appearance");
+  if (!Array.isArray(ids) || ids.length === 0) return { ok: false, error: "Nothing selected." };
+  if (!HERO_BULK_ACTIONS.includes(action)) return { ok: false, error: "Unknown action." };
+
+  try {
+    const res =
+      action === "delete"
+        ? await prisma.heroSlide.deleteMany({ where: { id: { in: ids } } })
+        : await prisma.heroSlide.updateMany({
+            where: { id: { in: ids } },
+            data: { isActive: action === "publish" },
+          });
+    revalidate();
+    return { ok: true, data: { done: res.count, skipped: ids.length - res.count } };
+  } catch (err) {
+    console.error("[admin] bulkHeroAction failed:", err);
+    return { ok: false, error: "Bulk action failed." };
+  }
 }
 
 export async function saveHeroSlide(input: unknown): Promise<AdminResult> {

@@ -5,11 +5,39 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { bannerSchema } from "@/lib/validations/admin";
 import { isBannerPosition } from "@/lib/banners";
-import type { AdminResult } from "@/lib/actions/admin/types";
+import type { AdminResult, BulkOutcome } from "@/lib/actions/admin/types";
 
 function revalidate() {
   revalidatePath("/admin/banners");
   revalidatePath("/", "layout"); // banners render across storefront pages
+}
+
+const BANNER_BULK_ACTIONS = ["publish", "unpublish", "delete"] as const;
+type BannerBulkAction = (typeof BANNER_BULK_ACTIONS)[number];
+
+/** Bulk publish / unpublish / delete banners. */
+export async function bulkBannerAction(
+  ids: string[],
+  action: BannerBulkAction,
+): Promise<AdminResult<BulkOutcome>> {
+  await requirePermission("appearance");
+  if (!Array.isArray(ids) || ids.length === 0) return { ok: false, error: "Nothing selected." };
+  if (!BANNER_BULK_ACTIONS.includes(action)) return { ok: false, error: "Unknown action." };
+
+  try {
+    const res =
+      action === "delete"
+        ? await prisma.banner.deleteMany({ where: { id: { in: ids } } })
+        : await prisma.banner.updateMany({
+            where: { id: { in: ids } },
+            data: { isActive: action === "publish" },
+          });
+    revalidate();
+    return { ok: true, data: { done: res.count, skipped: ids.length - res.count } };
+  } catch (err) {
+    console.error("[admin] bulkBannerAction failed:", err);
+    return { ok: false, error: "Bulk action failed." };
+  }
 }
 
 export async function saveBanner(input: unknown): Promise<AdminResult> {

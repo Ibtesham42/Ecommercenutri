@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import {
@@ -14,6 +14,8 @@ import {
   Smartphone,
   Sun,
   Moon,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +33,9 @@ import {
 } from "@/components/ui/dialog";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { BannerCard, type BannerCardData } from "@/components/storefront/banner-card";
+import { BulkBar, type BulkAction } from "@/components/admin/bulk/bulk-bar";
+import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
+import { toastBulk } from "@/lib/admin/run-bulk";
 import { BANNER_POSITIONS, BANNER_POSITION_LABELS } from "@/lib/banners";
 import { cldUrl } from "@/lib/cld";
 import { cn } from "@/lib/utils";
@@ -39,7 +45,25 @@ import {
   deleteBanner,
   toggleBanner,
   duplicateBanner,
+  bulkBannerAction,
 } from "@/lib/actions/admin/banners";
+
+const BULK_ACTIONS: BulkAction[] = [
+  { key: "publish", label: "Publish", icon: Eye },
+  { key: "unpublish", label: "Unpublish", icon: EyeOff },
+  {
+    key: "delete",
+    label: "Delete",
+    icon: Trash2,
+    destructive: true,
+    confirm: {
+      title: "Delete selected banners?",
+      description: "This permanently removes the selected banners. This cannot be undone.",
+      actionLabel: "Delete",
+    },
+  },
+];
+const BULK_VERB: Record<string, string> = { publish: "published", unpublish: "unpublished", delete: "deleted" };
 
 export type BannerRow = {
   id: string;
@@ -100,6 +124,19 @@ export function BannerManager({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<BannerRow | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const sel = useBulkSelection(banners.map((b) => b.id));
+  const [bulkPending, startBulk] = useTransition();
+
+  function runBulk(key: string) {
+    startBulk(async () => {
+      const res = await bulkBannerAction(sel.selectedIds, key as "publish" | "unpublish" | "delete");
+      if (toastBulk(res, BULK_VERB[key] ?? "updated")) {
+        sel.clear();
+        router.refresh();
+      }
+    });
+  }
 
   const { register, handleSubmit, control, reset, watch } = useForm<FormValues>();
   const values = watch();
@@ -192,7 +229,19 @@ export function BannerManager({
 
   return (
     <div>
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        {banners.length > 0 ? (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox
+              aria-label="Select all"
+              checked={sel.allSelected ? true : sel.someSelected ? "indeterminate" : false}
+              onCheckedChange={() => sel.toggleAll()}
+            />
+            Select all ({banners.length})
+          </label>
+        ) : (
+          <span />
+        )}
         <Button className="gap-1.5" onClick={openAdd}>
           <Plus className="size-4" /> Add banner
         </Button>
@@ -209,7 +258,16 @@ export function BannerManager({
       ) : (
         <ul className="space-y-2">
           {banners.map((b) => (
-            <li key={b.id} className="flex items-center gap-3 rounded-xl border bg-background p-3">
+            <li
+              key={b.id}
+              className="flex items-center gap-3 rounded-xl border bg-background p-3 data-[state=selected]:border-primary/60 data-[state=selected]:ring-1 data-[state=selected]:ring-primary/30"
+              data-state={sel.isSelected(b.id) ? "selected" : undefined}
+            >
+              <Checkbox
+                aria-label={`Select ${b.title || "banner"}`}
+                checked={sel.isSelected(b.id)}
+                onCheckedChange={() => sel.toggle(b.id)}
+              />
               <div className="relative h-14 w-24 shrink-0 overflow-hidden rounded-lg bg-accent/30">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -269,6 +327,14 @@ export function BannerManager({
           ))}
         </ul>
       )}
+
+      <BulkBar
+        count={sel.count}
+        actions={BULK_ACTIONS}
+        onRun={runBulk}
+        onClear={sel.clear}
+        pending={bulkPending}
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
