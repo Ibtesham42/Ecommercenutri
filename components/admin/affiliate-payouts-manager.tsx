@@ -61,6 +61,8 @@ export function AffiliatePayoutsManager({ payouts }: { payouts: PayoutRow[] }) {
   const [payOpen, setPayOpen] = useState<string | null>(null);
   const [method, setMethod] = useState("UPI");
   const [reference, setReference] = useState("");
+  const [rejectId, setRejectId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   async function run(p: Promise<AdminResult>, ok: string, onDone?: () => void) {
     setPending(true);
@@ -184,7 +186,10 @@ export function AffiliatePayoutsManager({ payouts }: { payouts: PayoutRow[] }) {
                           variant="outline"
                           className="text-destructive"
                           disabled={pending}
-                          onClick={() => run(rejectPayout({ payoutId: p.id }), "Payout rejected")}
+                          onClick={() => {
+                            setRejectReason("");
+                            setRejectId(p.id);
+                          }}
                         >
                           Reject
                         </Button>
@@ -197,6 +202,47 @@ export function AffiliatePayoutsManager({ payouts }: { payouts: PayoutRow[] }) {
           })}
         </ul>
       )}
+
+      {/* Reject dialog */}
+      <Dialog open={!!rejectId} onOpenChange={(o) => !o && setRejectId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject payout request</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label>Reason (optional)</Label>
+            <Input
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="e.g. invalid bank details"
+            />
+            <p className="text-xs text-muted-foreground">
+              The affiliate is notified and the amount returns to their available balance.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectId(null)} disabled={pending}>
+              Keep it
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={pending}
+              className="gap-2"
+              onClick={() =>
+                rejectId &&
+                run(
+                  rejectPayout({ payoutId: rejectId, reason: rejectReason }),
+                  "Payout rejected",
+                  () => setRejectId(null),
+                )
+              }
+            >
+              {pending && <Loader2 className="size-4 animate-spin" />}
+              Reject payout
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -7,7 +7,8 @@ import { defaultCouponCode } from "@/lib/affiliate/codes";
 import { matureCommissions } from "@/lib/affiliate/commissions";
 import { notify } from "@/lib/notifications";
 import { sendEmail } from "@/lib/email";
-import { affiliateStatusEmail, payoutEmail } from "@/lib/emails";
+import { affiliateStatusEmail, payoutEmail, payoutUpdateEmail, commissionEmail } from "@/lib/emails";
+import { formatPrice } from "@/lib/format";
 import {
   approveAffiliateSchema,
   rejectAffiliateSchema,
@@ -16,6 +17,8 @@ import {
   setCommissionSchema,
   commissionRuleSchema,
   ruleIdSchema,
+  commissionIdSchema,
+  cancelCommissionSchema,
   payoutIdSchema,
   markPayoutPaidSchema,
   rejectPayoutSchema,
@@ -253,8 +256,79 @@ export async function runMaturation(): Promise<AdminResult<{ count: number }>> {
   await requirePermission("affiliates");
   const count = await matureCommissions();
   revalidatePath("/admin/affiliates");
+  revalidatePath("/admin/affiliates/commissions");
   revalidatePath("/admin/affiliates/payouts");
   return { ok: true, data: { count } };
+}
+
+/** Manually approve a PENDING commission early (before auto-maturation). Notifies. */
+export async function approveCommission(input: unknown): Promise<AdminResult> {
+  await requirePermission("affiliates");
+  const parsed = commissionIdSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid request." };
+
+  const c = await prisma.commission.findUnique({
+    where: { id: parsed.data.commissionId },
+    include: { affiliate: { select: { userId: true, user: { select: { email: true, name: true } } } } },
+  });
+  if (!c) return { ok: false, error: "Commission not found." };
+  if (c.status !== "PENDING") return { ok: false, error: "Only pending commissions can be approved." };
+
+  await prisma.commission.update({
+    where: { id: c.id },
+    data: { status: "APPROVED" },
+  });
+
+  await notifyAffiliate(
+    c.affiliate.userId,
+    "Commission approved",
+    `${formatPrice(c.amount)} is now approved and available for payout.`,
+  );
+  if (c.affiliate.user.email) {
+    try {
+      await sendEmail({
+        to: c.affiliate.user.email,
+        ...commissionEmail({ name: c.affiliate.user.name, amount: c.amount, kind: "approved" }),
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
+  revalidatePath("/admin/affiliates/commissions");
+  revalidatePath("/account/affiliate");
+  return { ok: true };
+}
+
+/** Manually cancel a PENDING/APPROVED commission (fraud / adjustment). Releases it
+ *  from any open payout and notifies the affiliate. PAID commissions can't be voided. */
+export async function cancelCommission(input: unknown): Promise<AdminResult> {
+  await requirePermission("affiliates");
+  const parsed = cancelCommissionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid request." };
+
+  const c = await prisma.commission.findUnique({
+    where: { id: parsed.data.commissionId },
+    include: { affiliate: { select: { userId: true } } },
+  });
+  if (!c) return { ok: false, error: "Commission not found." };
+  if (c.status === "PAID") return { ok: false, error: "A paid commission can't be cancelled." };
+  if (c.status === "CANCELLED") return { ok: false, error: "This commission is already cancelled." };
+
+  await prisma.commission.update({
+    where: { id: c.id },
+    data: { status: "CANCELLED", payoutId: null },
+  });
+
+  await notifyAffiliate(
+    c.affiliate.userId,
+    "Commission cancelled",
+    `A commission of ${formatPrice(c.amount)} was cancelled${parsed.data.reason ? `: ${parsed.data.reason}` : "."}`,
+  );
+
+  revalidatePath("/admin/affiliates/commissions");
+  revalidatePath("/account/affiliate");
+  return { ok: true };
 }
 
 // --- Payouts ------------------------------------------------------------------
@@ -263,11 +337,39 @@ export async function approvePayout(input: unknown): Promise<AdminResult> {
   await requirePermission("affiliates");
   const parsed = payoutIdSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid request." };
-  await prisma.payout.update({
+
+  const payout = await prisma.payout.findUnique({
     where: { id: parsed.data.payoutId },
+    include: { affiliate: { select: { userId: true, user: { select: { email: true, name: true } } } } },
+  });
+  if (!payout) return { ok: false, error: "Payout not found." };
+  if (payout.status !== "REQUESTED") {
+    return { ok: false, error: "Only a requested payout can be approved." };
+  }
+
+  await prisma.payout.update({
+    where: { id: payout.id },
     data: { status: "APPROVED" },
   });
+
+  await notifyAffiliate(
+    payout.affiliate.userId,
+    "Payout approved ✅",
+    `Your payout of ${formatPrice(payout.amount)} was approved and is being processed.`,
+  );
+  if (payout.affiliate.user.email) {
+    try {
+      await sendEmail({
+        to: payout.affiliate.user.email,
+        ...payoutUpdateEmail({ status: "APPROVED", name: payout.affiliate.user.name, amount: payout.amount }),
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
   revalidatePath("/admin/affiliates/payouts");
+  revalidatePath("/account/affiliate");
   return { ok: true };
 }
 
@@ -275,17 +377,49 @@ export async function rejectPayout(input: unknown): Promise<AdminResult> {
   await requirePermission("affiliates");
   const parsed = rejectPayoutSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid request." };
+
+  const payout = await prisma.payout.findUnique({
+    where: { id: parsed.data.payoutId },
+    include: { affiliate: { select: { userId: true, user: { select: { email: true, name: true } } } } },
+  });
+  if (!payout) return { ok: false, error: "Payout not found." };
+  if (payout.status === "PAID") return { ok: false, error: "A paid payout can't be rejected." };
+
   await prisma.$transaction(async (tx) => {
     await tx.payout.update({
-      where: { id: parsed.data.payoutId },
+      where: { id: payout.id },
       data: { status: "REJECTED", notes: parsed.data.reason || null },
     });
     // Release the commissions back to the available pool.
     await tx.commission.updateMany({
-      where: { payoutId: parsed.data.payoutId },
+      where: { payoutId: payout.id },
       data: { payoutId: null },
     });
   });
+
+  await notifyAffiliate(
+    payout.affiliate.userId,
+    "Payout request declined",
+    `Your payout of ${formatPrice(payout.amount)} wasn't approved${
+      parsed.data.reason ? `: ${parsed.data.reason}` : "."
+    } The amount is back in your available balance.`,
+  );
+  if (payout.affiliate.user.email) {
+    try {
+      await sendEmail({
+        to: payout.affiliate.user.email,
+        ...payoutUpdateEmail({
+          status: "REJECTED",
+          name: payout.affiliate.user.name,
+          amount: payout.amount,
+          reason: parsed.data.reason,
+        }),
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
   revalidatePath("/admin/affiliates/payouts");
   revalidatePath("/account/affiliate");
   return { ok: true };

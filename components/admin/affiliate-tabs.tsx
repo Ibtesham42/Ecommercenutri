@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "/admin/affiliates", label: "Affiliates", exact: true },
+  { href: "/admin/affiliates/commissions", label: "Commissions" },
   { href: "/admin/affiliates/rules", label: "Commission rules" },
   { href: "/admin/affiliates/payouts", label: "Payouts" },
   { href: "/admin/affiliates/marketing-kit", label: "Marketing kit" },

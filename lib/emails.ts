@@ -333,6 +333,31 @@ export function couponUsedEmail(data: { name?: string | null; code: string }): E
   };
 }
 
+/** Payout request status update (approved for processing / rejected). */
+export function payoutUpdateEmail(data: {
+  status: "APPROVED" | "REJECTED";
+  name?: string | null;
+  amount: number;
+  reason?: string | null;
+}): Email {
+  const hi = `Hi${data.name ? ` ${data.name}` : ""},`;
+  const approved = data.status === "APPROVED";
+  return {
+    subject: `Payout ${approved ? "approved" : "declined"} · ${siteConfig.name}`,
+    html: shell({
+      heading: approved ? "Your payout was approved ✅" : "About your payout request",
+      intro: approved
+        ? `${hi} your payout request of <strong>${formatPrice(data.amount)}</strong> has been approved and is queued for processing. We'll notify you once it's paid.`
+        : `${hi} your payout request of <strong>${formatPrice(data.amount)}</strong> couldn't be approved${
+            data.reason ? `: <em>${data.reason}</em>` : ""
+          }. The amount has been returned to your available balance — you can request it again.`,
+      ctaLabel: "View payouts",
+      ctaUrl: AFF_URL,
+    }),
+    text: `Payout ${approved ? "approved" : "declined"}: ${formatPrice(data.amount)}. ${AFF_URL}`,
+  };
+}
+
 /** Payout processed notification. */
 export function payoutEmail(data: {
   name?: string | null;

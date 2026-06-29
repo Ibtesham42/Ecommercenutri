@@ -438,9 +438,24 @@ always pass. Everything degrades to nothing when `StoreSetting.affiliateEnabled 
   dashboard (clicks/visitors/orders/revenue/conversion, balances, monthly series, referral link +
   QR via `/api/affiliate/qr`, coupon, marketing kit), payout-details form, request-payout
   (gated by `affiliateMinPayout`). Sidebar entry in `components/account/account-sidebar.tsx`.
+- **Commission approval is automatic**, not manual: `Commission` is created PENDING on order
+  confirm; `matureCommissions()` flips it PENDING→APPROVED once the order is DELIVERED and its
+  return window has passed (lazy-swept on the affiliate dashboard + payout request + an admin
+  "Run maturation" button). Cancel/refund voids it. The admin **Commissions** page
+  (`/admin/affiliates/commissions`, `getAdminCommissions`) is for *visibility + edge cases*:
+  status-filtered list with PENDING/APPROVED/PAID/CANCELLED totals, plus manual `approveCommission`
+  (force-mature early) and `cancelCommission` (fraud/adjustment — releases from any open payout),
+  both notifying the affiliate.
+- **Payout lifecycle**: affiliate `requestPayout` (≥ `affiliateMinPayout`, default ₹500, set in
+  Settings) batches APPROVED commissions into a `Payout` (REQUESTED). Admin **approves / rejects
+  (with reason) / marks paid (method + reference)** at `/admin/affiliates/payouts`. Reject releases
+  the commissions back to the available pool. **Every payout transition (approved/rejected/paid)
+  sends an in-app notification + email** (`payoutUpdateEmail`/`payoutEmail`). Payout history
+  (number, status, method, reference, amount, date) shows on both the affiliate dashboard and admin.
 - **Admin** (`/admin/affiliates`, `lib/actions/admin/affiliates.ts`, `lib/queries/affiliate.ts`):
-  list/detail (approve/reject/suspend/reactivate, set per-affiliate commission), `rules` (commission
-  rules manager), `payouts` (approve/reject/mark-paid + run-maturation), `settings`, `marketing-kit`
+  list/detail (approve/reject/suspend/reactivate, set per-affiliate commission), `commissions`
+  (management + manual approve/cancel), `rules` (commission rules manager), `payouts`
+  (approve/reject/mark-paid + run-maturation), `settings`, `marketing-kit`
   (`MarketingAsset` CRUD, upload via `/api/admin/affiliate-asset`), `analytics`, CSV `export`.
 - **Conventions:** reuses `AdminResult` actions, Zod (`lib/validations/affiliate.ts`),
   `requirePermission("affiliates")`/`guardSection`, Cloudinary upload + `cldUrl`, in-app

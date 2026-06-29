@@ -91,6 +91,13 @@ export const commissionRuleSchema = z.object({
 
 export const ruleIdSchema = z.object({ id: z.string().min(1) });
 
+export const commissionIdSchema = z.object({ commissionId: z.string().min(1) });
+
+export const cancelCommissionSchema = z.object({
+  commissionId: z.string().min(1),
+  reason: z.string().max(300).optional().default(""),
+});
+
 export const payoutIdSchema = z.object({ payoutId: z.string().min(1) });
 
 export const markPayoutPaidSchema = z.object({

@@ -1,5 +1,11 @@
 import { subMonths, startOfMonth, format } from "date-fns";
-import { Prisma, type AffiliateStatus, type AffiliateRole, type PayoutStatus } from "@prisma/client";
+import {
+  Prisma,
+  type AffiliateStatus,
+  type AffiliateRole,
+  type PayoutStatus,
+  type CommissionStatus,
+} from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { affiliateBalances } from "@/lib/affiliate/commissions";
 
@@ -207,6 +213,47 @@ export async function getAdminPayouts(status?: string) {
       },
     },
   });
+}
+
+export type AdminCommissionFilters = { status?: string; search?: string };
+
+/** All commissions for the admin commission-management page (filterable + totals). */
+export async function getAdminCommissions(f: AdminCommissionFilters = {}) {
+  const where: Prisma.CommissionWhereInput = {};
+  if (f.status && f.status !== "ALL") where.status = f.status as CommissionStatus;
+  if (f.search?.trim()) {
+    const q = f.search.trim();
+    where.OR = [
+      { order: { orderNumber: { contains: q, mode: "insensitive" } } },
+      { affiliate: { code: { contains: q, mode: "insensitive" } } },
+      { affiliate: { displayName: { contains: q, mode: "insensitive" } } },
+    ];
+  }
+
+  const [commissions, totals] = await Promise.all([
+    prisma.commission.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: 300,
+      include: {
+        order: { select: { orderNumber: true, status: true } },
+        affiliate: { select: { id: true, code: true, displayName: true } },
+      },
+    }),
+    prisma.commission.groupBy({ by: ["status"], _sum: { amount: true }, _count: true }),
+  ]);
+
+  const sumFor = (s: string) => totals.find((t) => t.status === s)?._sum.amount ?? 0;
+  const countFor = (s: string) => totals.find((t) => t.status === s)?._count ?? 0;
+  return {
+    commissions,
+    summary: {
+      pending: { amount: sumFor("PENDING"), count: countFor("PENDING") },
+      approved: { amount: sumFor("APPROVED"), count: countFor("APPROVED") },
+      paid: { amount: sumFor("PAID"), count: countFor("PAID") },
+      cancelled: { amount: sumFor("CANCELLED"), count: countFor("CANCELLED") },
+    },
+  };
 }
 
 /** Affiliate analytics aggregates (top affiliates, coupon performance, totals). */

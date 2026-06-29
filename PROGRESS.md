@@ -28,6 +28,12 @@ cancel/refund. Notifies in-app + email each step. **Affiliate** UI at `/account/
 payouts, settings, marketing-kit, analytics, CSV export). See CLAUDE.md §8c. Full gate green
 (typecheck/lint/build); migration applied to Neon. Renders nothing when disabled — homepage/
 checkout unchanged for non-referred orders.
+- **Public landing** `/affiliate` (footer + sitemap) drives applications; smart CTA → dashboard.
+- **Commission management** `/admin/affiliates/commissions`: status-filtered list + Pending/
+  Approved/Paid/Cancelled totals; commission approval is **automatic** (delivered + return window
+  → `matureCommissions`) with admin "Run maturation" + manual approve/cancel for edge cases.
+- **Payout notifications**: approve/reject/mark-paid each send in-app + email; reject captures a
+  reason and returns commissions to the available pool. Min withdrawal configurable in Settings.
 
 ## CMS roadmap (WordPress-style admin management; one phase per turn)
 ✅ **Phase 1 — Hero Slider Manager**: `HeroSlide` model + `/admin/hero` (drag-drop reorder,
