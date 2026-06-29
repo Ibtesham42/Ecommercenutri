@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { sanitizeRichText } from "@/lib/sanitize";
 import {
   LEGAL_CONTENT,
   LEGAL_SLUGS,
@@ -52,7 +53,10 @@ export async function getLegalPage(slug: LegalSlug): Promise<LegalPage> {
   }
 
   if (row) {
-    return { mode: "custom", title: row.title, html: row.body, updatedAt: row.updatedAt };
+    // Sanitize here so the raw body never flows into the rendered tree / RSC payload
+    // (defense-in-depth beyond the save-time sanitize). Keeps storefront pages from
+    // ever serializing unsanitized HTML, even for a legacy/externally-written row.
+    return { mode: "custom", title: row.title, html: sanitizeRichText(row.body), updatedAt: row.updatedAt };
   }
   return {
     mode: "default",
