@@ -122,6 +122,18 @@ send/schedule/duplicate/resend), Compose (rich editor + image, AI assist, audien
 count, channels, attach product/coupon, send/schedule/draft), Segments, Templates. Typecheck/lint/
 build green; migration applied to Neon.
 
+## Latest: Marketing Hub — Live Push / WhatsApp / SMS channels
+The 3 stub channels are now real, env-gated adapters (`lib/marketing/providers.ts`): Web Push
+(VAPID via `web-push`), WhatsApp (Meta Cloud API), SMS (Twilio) — each no-ops until its keys are set,
+matching the keyless philosophy. Wired into both the campaign dispatch registry (`deliver.ts`) and
+automations (`automation.ts`). Recipients now carry a phone (user.phone ?? latest address). Web Push
+pipeline: `PushSubscription` model (migration `push_subscriptions`) + `/api/push/(un)subscribe` +
+additive SW `push`/`notificationclick` handlers (VERSION→v3, fetch/cache invariant untouched) + an
+account opt-in card (renders only when VAPID configured + browser supports it). Channels are all
+selectable; Compose shows a "needs setup" hint for unconfigured ones. New env in `.env.example`
+(VAPID/WhatsApp/Twilio). Typecheck/lint/build green; migration applied. **Marketing Hub roadmap
+complete.**
+
 ## Latest: Marketing Hub — Recurring schedules
 Campaigns can now repeat Daily/Weekly/Monthly (reuses the existing `Campaign.recurrence` column — no
 migration). A recurring campaign is a **series parent**: it stays SCHEDULED, and each due fire in

@@ -495,14 +495,24 @@ permission. Built modular so Push/WhatsApp/SMS and recurring/automation slot in 
   counters audienceSize/sent/delivered/open/click/conversion/revenue), `CampaignEvent` (OPEN/CLICK/
   CONVERSION log), `CampaignTemplate` (built-in + custom), `AudienceSegment` (saved audiences). Enums:
   `CampaignType`, `CampaignStatus`, `CampaignChannel`, `SegmentType`.
-- **lib/marketing/**: `channels.ts` (client-safe labels + `CHANNEL_LIVE` — In-App/Email live,
-  Push/WhatsApp/SMS stubs), `audience.ts` (`resolveAudience`/`countAudience` — 9 segment types over
-  existing User/Order/WishlistItem/Cart/Affiliate data), `deliver.ts` (`dispatchCampaign` via a
-  per-channel **adapter registry**; In-App→`notify`, Email→`marketingEmail`+`sendEmail`, others no-op;
-  `dispatchDueCampaigns` for cron), `ai.ts` (`generateCampaignContent` via the Groq seam — generateText
+- **lib/marketing/**: `channels.ts` (client-safe labels; `CHANNEL_LIVE` = all channels selectable),
+  `audience.ts` (`resolveAudience`/`countAudience` — 9 segment types over existing User/Order/
+  WishlistItem/Cart/Affiliate data; Recipient carries `phone` = user.phone ?? latest address phone),
+  `deliver.ts` (`dispatchCampaign` via a per-channel **adapter registry**; In-App→`notify`, Email→
+  `marketingEmail`+`sendEmail`, Push/WhatsApp/SMS→`providers.ts`; `dispatchDueCampaigns` for cron),
+  `providers.ts` (**env-gated channel providers** — `sendPush` (Web Push/VAPID via `web-push`, prunes
+  dead subs), `sendWhatsApp` (Meta Cloud API), `sendSMS` (Twilio); each no-ops until its keys are set,
+  same keyless philosophy as email), `ai.ts` (`generateCampaignContent` via the Groq seam — generateText
   + JSON parse, heuristic fallback), `templates.ts` (built-ins, `ensureBuiltInTemplates` idempotent),
   `conversion.ts` (`recordCampaignConversion` — credits a campaign from the `nut_campaign` cookie,
   called best-effort in `createOrder`).
+- **Channels**: In-App + Email always work; **Push/WhatsApp/SMS are real adapters, env-gated**
+  (`isConfigured.webPush/whatsapp/sms`). Web Push: `PushSubscription` model + `/api/push/(un)subscribe`
+  + additive SW `push`/`notificationclick` handlers (`public/sw.js`, VERSION bumped — fetch/cache
+  invariant untouched) + an account opt-in (`components/account/push-optin.tsx`, renders only when VAPID
+  is configured + supported). Env keys (`.env.example`): `NEXT_PUBLIC_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/
+  `VAPID_SUBJECT`, `WHATSAPP_TOKEN`/`WHATSAPP_PHONE_ID`, `TWILIO_ACCOUNT_SID`/`TWILIO_AUTH_TOKEN`/`TWILIO_FROM`.
+  Compose shows a "needs setup" hint for any selected-but-unconfigured channel (those recipients are skipped).
 - **Delivery is cron-ready**: "Send now" dispatches immediately; **scheduled** campaigns set
   `status=SCHEDULED`+`scheduledFor` and are processed by `GET/POST /api/cron/marketing` (guarded by
   `CRON_SECRET`, wired in `vercel.json` every 5 min). Tracking: `/api/marketing/open/[id]` (1×1 pixel →

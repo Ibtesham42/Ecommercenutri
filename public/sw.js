@@ -9,7 +9,7 @@
  *   must be allowed to redirect — caching/returning that redirect would blank
  *   the page. Only clean same-origin 200s are cached.
  */
-const VERSION = "nutriyet-v2";
+const VERSION = "nutriyet-v3";
 const OFFLINE_URL = "/offline";
 
 self.addEventListener("install", (event) => {
@@ -94,4 +94,39 @@ self.addEventListener("fetch", (event) => {
       ),
     );
   }
+});
+
+// --- Web Push (marketing channel) — independent of the fetch/cache logic above ---
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: "Nutriyet", body: event.data ? event.data.text() : "" };
+  }
+  const title = data.title || "Nutriyet";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || "",
+      icon: data.icon || "/brand-icon",
+      badge: "/brand-icon",
+      data: { url: data.url || "/" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ("focus" in client) {
+          client.navigate(target);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(target);
+    }),
+  );
 });

@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "New campaign", robots: { index: fals
 
 export default async function ComposeNewPage() {
   await guardSection("marketing");
-  const { products, coupons, categories, segments, templates } = await getComposeData();
+  const { products, coupons, categories, segments, templates, channelConfig } = await getComposeData();
 
   return (
     <div>
@@ -23,6 +23,7 @@ export default async function ComposeNewPage() {
         categories={categories}
         templates={templates}
         segments={segments}
+        channelConfig={channelConfig}
         cloudinaryReady={isConfigured.cloudinary()}
       />
     </div>

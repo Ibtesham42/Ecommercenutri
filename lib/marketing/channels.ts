@@ -23,13 +23,17 @@ export const CHANNEL_LABEL: Record<CampaignChannel, string> = {
   SMS: "SMS",
 };
 
-/** Channels that actually deliver today; the rest are future-ready stubs. */
+/**
+ * Channels selectable in the UI. All are wired to a delivery adapter; the
+ * provider-backed ones (Push/WhatsApp/SMS) self-gate on their env config at send
+ * time and no-op until credentials are set (see `lib/marketing/providers.ts`).
+ */
 export const CHANNEL_LIVE: Record<CampaignChannel, boolean> = {
   IN_APP: true,
   EMAIL: true,
-  PUSH: false,
-  WHATSAPP: false,
-  SMS: false,
+  PUSH: true,
+  WHATSAPP: true,
+  SMS: true,
 };
 
 export const SEGMENTS: SegmentType[] = [

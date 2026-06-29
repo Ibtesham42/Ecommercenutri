@@ -3,6 +3,8 @@ import { BadgeCheck, AlertCircle } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ProfileForm } from "@/components/account/profile-form";
+import { PushOptIn } from "@/components/account/push-optin";
+import { env } from "@/lib/env";
 import { formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Profile" };
@@ -52,6 +54,8 @@ export default async function ProfilePage() {
           defaultPhone={user.phone ?? ""}
         />
       </div>
+
+      <PushOptIn vapidPublicKey={env.vapidPublicKey} />
     </div>
   );
 }

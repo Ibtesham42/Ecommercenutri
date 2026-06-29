@@ -5,12 +5,39 @@ import { notify } from "@/lib/notifications";
 import { sendEmail } from "@/lib/email";
 import { marketingEmail } from "@/lib/emails";
 import { CHANNEL_LIVE } from "./channels";
+import { sendPush, sendWhatsApp, sendSMS, type ChannelMessage } from "./providers";
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;
 const PER_RUN_CAP = 500; // safety cap per rule per run
 
-type Candidate = { userId: string; email: string | null; name: string | null; key: string };
+type Candidate = {
+  userId: string;
+  email: string | null;
+  name: string | null;
+  phone: string | null;
+  key: string;
+};
+
+const USER_SELECT = {
+  id: true,
+  email: true,
+  name: true,
+  phone: true,
+  addresses: { orderBy: { updatedAt: "desc" }, take: 1, select: { phone: true } },
+} as const;
+
+type UserPick = {
+  id: string;
+  email: string | null;
+  name: string | null;
+  phone: string | null;
+  addresses: { phone: string }[];
+};
+
+function toCandidate(u: UserPick, key: string): Candidate {
+  return { userId: u.id, email: u.email, name: u.name, phone: u.phone ?? u.addresses[0]?.phone ?? null, key };
+}
 
 /** New accounts older than the delay (bounded so enabling doesn't blast old users). */
 async function welcomeCandidates(delayHours: number): Promise<Candidate[]> {
@@ -19,10 +46,10 @@ async function welcomeCandidates(delayHours: number): Promise<Candidate[]> {
   const floor = new Date(now - delayHours * HOUR_MS - 14 * DAY_MS);
   const users = await prisma.user.findMany({
     where: { role: "USER", isActive: true, createdAt: { lte: cutoff, gte: floor } },
-    select: { id: true, email: true, name: true },
+    select: USER_SELECT,
     take: 2000,
   });
-  return users.map((u) => ({ userId: u.id, email: u.email, name: u.name, key: u.id }));
+  return users.map((u) => toCandidate(u, u.id));
 }
 
 /** Past customers with no order in the delay window. */
@@ -34,10 +61,10 @@ async function winbackCandidates(delayHours: number): Promise<Candidate[]> {
       isActive: true,
       orders: { some: {}, none: { createdAt: { gte: cutoff } } },
     },
-    select: { id: true, email: true, name: true },
+    select: USER_SELECT,
     take: 2000,
   });
-  return users.map((u) => ({ userId: u.id, email: u.email, name: u.name, key: u.id }));
+  return users.map((u) => toCandidate(u, u.id));
 }
 
 /** Carts sitting with items past the delay, with no order placed since. */
@@ -50,7 +77,18 @@ async function abandonedCartCandidates(delayHours: number): Promise<Candidate[]>
       items: { some: {} },
       user: { isActive: true, role: "USER" },
     },
-    select: { userId: true, updatedAt: true, user: { select: { email: true, name: true } } },
+    select: {
+      userId: true,
+      updatedAt: true,
+      user: {
+        select: {
+          email: true,
+          name: true,
+          phone: true,
+          addresses: { orderBy: { updatedAt: "desc" }, take: 1, select: { phone: true } },
+        },
+      },
+    },
     take: 2000,
   });
   const out: Candidate[] = [];
@@ -59,7 +97,13 @@ async function abandonedCartCandidates(delayHours: number): Promise<Candidate[]>
       where: { userId: c.userId, createdAt: { gte: c.updatedAt } },
     });
     if (ordered === 0) {
-      out.push({ userId: c.userId, email: c.user.email, name: c.user.name, key: c.userId });
+      out.push({
+        userId: c.userId,
+        email: c.user.email,
+        name: c.user.name,
+        phone: c.user.phone ?? c.user.addresses[0]?.phone ?? null,
+        key: c.userId,
+      });
     }
   }
   return out;
@@ -73,7 +117,19 @@ async function postPurchaseCandidates(delayHours: number): Promise<Candidate[]> 
     where: { status: "DELIVERED", createdAt: { lte: cutoff, gte: floor } },
     select: {
       orderId: true,
-      order: { select: { userId: true, user: { select: { email: true, name: true } } } },
+      order: {
+        select: {
+          userId: true,
+          user: {
+            select: {
+              email: true,
+              name: true,
+              phone: true,
+              addresses: { orderBy: { updatedAt: "desc" }, take: 1, select: { phone: true } },
+            },
+          },
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
     take: 2000,
@@ -82,6 +138,7 @@ async function postPurchaseCandidates(delayHours: number): Promise<Candidate[]> 
     userId: e.order.userId,
     email: e.order.user.email,
     name: e.order.user.name,
+    phone: e.order.user.phone ?? e.order.user.addresses[0]?.phone ?? null,
     key: e.orderId,
   }));
 }
@@ -102,31 +159,28 @@ async function candidatesFor(rule: AutomationRule): Promise<Candidate[]> {
 }
 
 async function deliver(rule: AutomationRule, c: Candidate): Promise<void> {
-  if (rule.channels.includes("IN_APP") && CHANNEL_LIVE.IN_APP) {
-    await notify(c.userId, {
-      type: "GENERAL",
-      title: rule.title,
-      body: rule.body,
-      link: rule.ctaUrl ?? null,
-    });
+  const msg: ChannelMessage = {
+    title: rule.title,
+    body: rule.body,
+    imageUrl: rule.imageUrl,
+    ctaText: rule.ctaText,
+    ctaUrl: rule.ctaUrl,
+  };
+  const has = (ch: (typeof rule.channels)[number]) => rule.channels.includes(ch) && CHANNEL_LIVE[ch];
+
+  if (has("IN_APP")) {
+    await notify(c.userId, { type: "GENERAL", title: rule.title, body: rule.body, link: rule.ctaUrl ?? null });
   }
-  if (rule.channels.includes("EMAIL") && CHANNEL_LIVE.EMAIL && c.email) {
+  if (has("EMAIL") && c.email) {
     try {
-      await sendEmail({
-        to: c.email,
-        ...marketingEmail({
-          title: rule.title,
-          body: rule.body,
-          imageUrl: rule.imageUrl,
-          ctaText: rule.ctaText,
-          ctaUrl: rule.ctaUrl,
-          name: c.name,
-        }),
-      });
+      await sendEmail({ to: c.email, ...marketingEmail({ ...msg, name: c.name }) });
     } catch (e) {
       console.error("[marketing] automation email failed:", e);
     }
   }
+  if (has("PUSH")) await sendPush(c, msg);
+  if (has("WHATSAPP")) await sendWhatsApp(c, msg);
+  if (has("SMS")) await sendSMS(c, msg);
 }
 
 /**

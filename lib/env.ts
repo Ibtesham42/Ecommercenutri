@@ -44,6 +44,21 @@ export const env = {
   // Privacy-friendly analytics (Plausible / Umami-compatible). All optional.
   analyticsSrc: process.env.NEXT_PUBLIC_ANALYTICS_SRC ?? "",
   analyticsDomain: process.env.NEXT_PUBLIC_ANALYTICS_DOMAIN ?? "",
+
+  // Marketing channels (all optional — each adapter no-ops until configured).
+  // Web Push (VAPID). Generate a keypair with `npx web-push generate-vapid-keys`.
+  vapidPublicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "",
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
+  vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:support@nutriyet.in",
+
+  // WhatsApp Cloud API (Meta).
+  whatsappToken: process.env.WHATSAPP_TOKEN ?? "",
+  whatsappPhoneId: process.env.WHATSAPP_PHONE_ID ?? "",
+
+  // SMS via Twilio.
+  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
+  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
+  twilioFrom: process.env.TWILIO_FROM ?? "",
 };
 
 export const isConfigured = {
@@ -60,4 +75,7 @@ export const isConfigured = {
   groq: () => Boolean(env.groqApiKey),
   redis: () => Boolean(env.upstashUrl && env.upstashToken),
   analytics: () => Boolean(env.analyticsSrc && env.analyticsDomain),
+  webPush: () => Boolean(env.vapidPublicKey && env.vapidPrivateKey),
+  whatsapp: () => Boolean(env.whatsappToken && env.whatsappPhoneId),
+  sms: () => Boolean(env.twilioAccountSid && env.twilioAuthToken && env.twilioFrom),
 };

@@ -46,6 +46,7 @@ export default async function ComposeEditPage({ params }: { params: Promise<{ id
         categories={data.categories}
         templates={data.templates}
         segments={data.segments}
+        channelConfig={data.channelConfig}
         cloudinaryReady={isConfigured.cloudinary()}
       />
     </div>

@@ -8,6 +8,7 @@ import { marketingEmail } from "@/lib/emails";
 import { env } from "@/lib/env";
 import { resolveAudience, type Recipient, type SegmentConfig } from "./audience";
 import { CHANNEL_LIVE } from "./channels";
+import { sendPush, sendWhatsApp, sendSMS, type ChannelMessage } from "./providers";
 
 function trackingUrls(campaignId: string, userId: string, ctaUrl: string | null) {
   const base = env.appUrl.replace(/\/$/, "");
@@ -62,15 +63,30 @@ const emailAdapter: Adapter = async (c, recipients) => {
   return delivered;
 };
 
-/** Push / WhatsApp / SMS — registered but not yet wired (future-ready, no-op). */
-const stubAdapter: Adapter = async () => 0;
+function campaignMessage(c: Campaign): ChannelMessage {
+  return { title: c.title, body: c.body, imageUrl: c.imageUrl, ctaText: c.ctaText, ctaUrl: c.ctaUrl };
+}
+
+/** Provider-backed adapter (Push/WhatsApp/SMS). Env-gated — no-ops when unconfigured. */
+function providerAdapter(
+  send: (t: Recipient, m: ChannelMessage) => Promise<boolean>,
+): Adapter {
+  return async (c, recipients) => {
+    let delivered = 0;
+    const msg = campaignMessage(c);
+    for (const r of recipients) {
+      if (await send(r, msg)) delivered++;
+    }
+    return delivered;
+  };
+}
 
 const ADAPTERS: Record<CampaignChannel, Adapter> = {
   IN_APP: inAppAdapter,
   EMAIL: emailAdapter,
-  PUSH: stubAdapter,
-  WHATSAPP: stubAdapter,
-  SMS: stubAdapter,
+  PUSH: providerAdapter(sendPush),
+  WHATSAPP: providerAdapter(sendWhatsApp),
+  SMS: providerAdapter(sendSMS),
 };
 
 /**

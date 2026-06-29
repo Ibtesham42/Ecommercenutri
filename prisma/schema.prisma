@@ -30,6 +30,7 @@ model User {
   cart          Cart?
   notifications Notification[]
   orders        Order[]
+  pushSubs      PushSubscription[]
   returns       ReturnRequest[]
   reviews       Review[]
   sessions      Session[]
@@ -1203,4 +1204,16 @@ model AutomationLog {
 
   @@unique([ruleId, key])
   @@index([ruleId])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

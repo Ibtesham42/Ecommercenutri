@@ -1,7 +1,19 @@
 import "server-only";
-import type { Prisma, CampaignStatus } from "@prisma/client";
+import type { Prisma, CampaignStatus, CampaignChannel } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ensureBuiltInTemplates } from "@/lib/marketing/templates";
+import { isConfigured } from "@/lib/env";
+
+/** Which channels have their provider configured (drives the "needs setup" hint). */
+export function getChannelConfig(): Record<CampaignChannel, boolean> {
+  return {
+    IN_APP: true,
+    EMAIL: isConfigured.email(),
+    PUSH: isConfigured.webPush(),
+    WHATSAPP: isConfigured.whatsapp(),
+    SMS: isConfigured.sms(),
+  };
+}
 
 export async function getCampaigns(filters: { status?: string; q?: string } = {}) {
   const where: Prisma.CampaignWhereInput = {};
@@ -80,5 +92,5 @@ export async function getComposeData() {
     prisma.audienceSegment.findMany({ orderBy: { name: "asc" } }),
     prisma.campaignTemplate.findMany({ orderBy: [{ isBuiltIn: "desc" }, { name: "asc" }] }),
   ]);
-  return { products, coupons, categories, segments, templates };
+  return { products, coupons, categories, segments, templates, channelConfig: getChannelConfig() };
 }

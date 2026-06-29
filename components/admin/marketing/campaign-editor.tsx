@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
 import {
   saveCampaign,
@@ -67,6 +66,7 @@ export function CampaignEditor({
   categories,
   templates,
   segments,
+  channelConfig,
   cloudinaryReady,
 }: {
   campaign: EditorCampaign | null;
@@ -75,6 +75,7 @@ export function CampaignEditor({
   categories: Option[];
   templates: TemplateOption[];
   segments: SegmentOption[];
+  channelConfig: Record<CampaignChannel, boolean>;
   cloudinaryReady: boolean;
 }) {
   const router = useRouter();
@@ -374,23 +375,26 @@ export function CampaignEditor({
           <div className="flex flex-wrap gap-1.5">
             {CHANNELS.map((ch) => {
               const on = channels.has(ch);
-              const live = CHANNEL_LIVE[ch];
               return (
                 <button
                   key={ch}
                   type="button"
-                  disabled={!live}
                   onClick={() => toggleChannel(ch)}
                   className={`rounded-full border px-3 py-1 text-sm transition ${
                     on ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-accent"
-                  } ${!live ? "cursor-not-allowed opacity-50" : ""}`}
+                  }`}
                 >
                   {CHANNEL_LABEL[ch]}
-                  {!live && " (soon)"}
                 </button>
               );
             })}
           </div>
+          {[...channels].some((c) => !channelConfig[c]) && (
+            <p className="text-xs text-amber-600">
+              Needs setup: {[...channels].filter((c) => !channelConfig[c]).map((c) => CHANNEL_LABEL[c]).join(", ")} —
+              add provider keys or these recipients are skipped.
+            </p>
+          )}
         </section>
 
         <section className="space-y-3 rounded-2xl border p-5">
@@ -503,11 +507,6 @@ export function CampaignEditor({
           <Button type="button" variant="ghost" className="w-full gap-1.5" disabled={busy} onClick={onSaveDraft}>
             <Save className="size-4" /> Save as draft
           </Button>
-          {channels.size > 0 && [...channels].some((c) => !CHANNEL_LIVE[c]) && (
-            <Badge variant="secondary" className="w-full justify-center">
-              Push/WhatsApp/SMS are coming soon — only live channels send.
-            </Badge>
-          )}
         </section>
       </aside>
     </div>

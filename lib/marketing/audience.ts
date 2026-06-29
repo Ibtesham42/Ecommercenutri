@@ -2,7 +2,12 @@ import "server-only";
 import type { Prisma, SegmentType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
-export type Recipient = { userId: string; email: string | null; name: string | null };
+export type Recipient = {
+  userId: string;
+  email: string | null;
+  name: string | null;
+  phone: string | null;
+};
 
 export type SegmentConfig = {
   productId?: string | null;
@@ -57,10 +62,21 @@ export async function resolveAudience(
 ): Promise<Recipient[]> {
   const users = await prisma.user.findMany({
     where: segmentWhere(type, config),
-    select: { id: true, email: true, name: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      phone: true,
+      addresses: { orderBy: { updatedAt: "desc" }, take: 1, select: { phone: true } },
+    },
     take: 50_000,
   });
-  return users.map((u) => ({ userId: u.id, email: u.email, name: u.name }));
+  return users.map((u) => ({
+    userId: u.id,
+    email: u.email,
+    name: u.name,
+    phone: u.phone ?? u.addresses[0]?.phone ?? null,
+  }));
 }
 
 /** Fast count for the audience preview (no row fetch). */
