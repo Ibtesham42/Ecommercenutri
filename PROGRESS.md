@@ -108,6 +108,16 @@ phone, contact email, address); self email/password + editable store contact/soc
 `requirePermission`/`requireSuperAdmin` (actions), all DB-fresh; dashboard widgets scoped
 to permissions. (Deploy still requires `DATABASE_URL` at runtime — see the build fix.)
 
+## Latest: Admin bulk actions (wave 3 — new moderation pages)
+Built the two admin tables that didn't exist yet, with bulk baked in. **Reviews**
+(`/admin/reviews`, `products` permission): moderation list (filter all/approved/hidden + search),
+per-row approve/hide/delete, bulk approve/hide/delete + CSV export; `bulkReviewAction` recomputes
+each product's rating aggregate so the storefront stays in sync (storefront shows only
+`isApproved`). **Notifications** (`/admin/notifications`, `customers` permission): oversight of all
+in-app `Notification` rows (filter all/unread/read + search by title/body/recipient), per-row delete,
+bulk mark read / unread / delete. Both added to the admin nav (Star / Bell icons). Typecheck/lint/
+build green.
+
 ## Latest: Admin bulk actions (wave 2)
 Extended the bulk foundation to commerce + CMS modules. **Orders**: bulk status update
 (`bulkUpdateOrderStatus` → shared `transitionOrderStatus`, emails per order) via a status

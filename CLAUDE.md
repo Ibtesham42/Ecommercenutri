@@ -268,8 +268,12 @@ npm run db:check      # scripts/db-check.ts — counts + relational sanity repor
   sequential invoice PDF download, CSV export, shipping-label stub), **Returns** (approve/reject/
   mark-refunded via `bulkReturnAction` reusing `transitionReturnStatus`/`processRefund`; bulk refund
   settles to the original method and skips COD/manual), **Stories/Hero/Banners** (publish/unpublish/
-  delete; the card managers keep their existing per-item drag/priority ordering). To add a module:
-  drop checkboxes + `<BulkBar>` into its (client) table and add a `bulk<Entity>Action`.
+  delete; the card managers keep their existing per-item drag/priority ordering) and **Reviews**
+  (`/admin/reviews`, `products` permission — moderate: approve/hide via `isApproved` + delete +
+  export; `bulkReviewAction` recomputes the product rating aggregate) and **Notifications**
+  (`/admin/notifications`, `customers` permission — admin oversight of all in-app `Notification`
+  rows: bulk mark read/unread/delete). To add a module: drop checkboxes + `<BulkBar>` into its
+  (client) table and add a `bulk<Entity>Action`.
 
 ---
 
