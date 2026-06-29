@@ -108,6 +108,21 @@ phone, contact email, address); self email/password + editable store contact/soc
 `requirePermission`/`requireSuperAdmin` (actions), all DB-fresh; dashboard widgets scoped
 to permissions. (Deploy still requires `DATABASE_URL` at runtime — see the build fix.)
 
+## Latest: AI Business Intelligence dashboard (insights upgrade)
+Transformed `/admin/insights` (`ai` permission) from basic stats into a BI dashboard — all
+**deterministic + lightweight**, reusing existing orders/products/users/carts/affiliates/campaigns/
+returns data (no new tables, no AI required for the numbers). `lib/queries/bi.ts#getBusinessIntelligence`
+(parallel aggregates, one ~90-day order fetch) computes: sales summary (today/week/month/year) + WoW/MoM
+growth, 30-day revenue trend, run-rate month forecast, customer segmentation (new/returning/inactive/
+high-value) + repeat rate + top customers, inventory velocity forecast (low/out-of-stock + days-to-
+stockout), trending/declining + best-by-category + "worth promoting" (high-view/low-sale), cart
+abandonment, affiliate + campaign snapshots, refund rate, best day/hour to promote, and rule-based
+**smart alerts**. `lib/ai/insights.ts` adds a **natural-language summary** + **AI Q&A** via the Groq
+seam, grounded in the computed facts, each with deterministic fallbacks (works with no key).
+`askBusinessQuestion` server action powers the Q&A box. Charts are **dependency-free** SVG sparklines +
+hover-tooltip bars. Mobile-friendly. Typecheck/lint/build green. Follow-up wave: PDF/Excel export +
+scheduled weekly/monthly AI report emails.
+
 ## Latest: Admin UI/UX polish + email logo branding
 Purely presentational admin uplift (no logic/workflow changes): `app/admin/loading.tsx` skeleton on
 every admin navigation; `AdminPageTransition` (pathname-keyed `animate-fade-up`, reduced-motion gated);
