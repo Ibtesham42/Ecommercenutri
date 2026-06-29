@@ -61,15 +61,39 @@ export const ownPasswordSchema = z
 
 // Store settings (editable contact + socials) --------------------------------
 
-const optUrl = z
-  .union([z.string().url("Enter a valid URL"), z.literal("")])
-  .nullable()
-  .optional();
+/** True for "" or a valid http(s) URL (incl. Cloudinary links). */
+function isBlankOrHttpUrl(v: string): boolean {
+  if (v === "") return true;
+  try {
+    const u = new URL(v);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
-const optImage = z
-  .union([z.string().url("Enter a valid image URL"), z.literal("")])
-  .nullable()
-  .optional();
+/**
+ * Optional link/image field: trims whitespace (pasted/uploaded URLs often carry a
+ * trailing newline that `.url()` would reject), treats null/blank as empty, and on a
+ * bad value returns a clear, field-named message — not Zod's generic "Invalid input".
+ */
+const optUrl = (label = "Link") =>
+  z.preprocess(
+    (v) => (typeof v === "string" ? v.trim() : v == null ? "" : v),
+    z
+      .string()
+      .refine(isBlankOrHttpUrl, { message: `${label} must be a valid link (https://…) or left blank` })
+      .optional(),
+  );
+
+const optImage = (label = "Image") =>
+  z.preprocess(
+    (v) => (typeof v === "string" ? v.trim() : v == null ? "" : v),
+    z
+      .string()
+      .refine(isBlankOrHttpUrl, { message: `${label} must be a valid image URL or left blank` })
+      .optional(),
+  );
 
 const optHex = z
   .union([z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Enter a hex color"), z.literal("")])
@@ -96,9 +120,9 @@ export const storeSettingsSchema = z.object({
   // Branding
   siteName: z.string().max(60).nullable().optional(),
   tagline: z.string().max(120).nullable().optional(),
-  logo: optImage,
-  logoDark: optImage,
-  favicon: optImage,
+  logo: optImage("Logo"),
+  logoDark: optImage("Dark logo"),
+  favicon: optImage("Favicon"),
   // Logo size (px)
   logoHeight: optPx(16, 64),
   logoHeightMobile: optPx(16, 64),
@@ -109,7 +133,7 @@ export const storeSettingsSchema = z.object({
   // Announcement
   announcement: z.string().max(200).nullable().optional(),
   announcementActive: z.boolean().default(false),
-  announcementLink: optUrl,
+  announcementLink: optUrl("Announcement link"),
   // Tax / GST (shipping lives in shippingSettingsSchema → /admin/shipping)
   defaultGstRate: optInt(0, 100, "GST %"),
   gstin: z.string().max(20).nullable().optional(),
@@ -119,16 +143,16 @@ export const storeSettingsSchema = z.object({
   whatsapp: z.string().max(20).nullable().optional(),
   address: z.string().max(200).nullable().optional(),
   businessHours: z.string().max(120).nullable().optional(),
-  mapsEmbedUrl: optUrl,
+  mapsEmbedUrl: optUrl("Google Maps URL"),
   // Social
-  instagram: optUrl,
-  facebook: optUrl,
-  twitter: optUrl,
-  youtube: optUrl,
+  instagram: optUrl("Instagram URL"),
+  facebook: optUrl("Facebook URL"),
+  twitter: optUrl("Twitter/X URL"),
+  youtube: optUrl("YouTube URL"),
   // SEO
-  metaTitle: z.string().max(70).nullable().optional(),
-  metaDescription: z.string().max(160).nullable().optional(),
-  ogImage: optImage,
+  metaTitle: z.string().max(120, "Default meta title is too long (max 120 characters)").nullable().optional(),
+  metaDescription: z.string().max(320, "Default meta description is too long (max 320 characters)").nullable().optional(),
+  ogImage: optImage("Default social share image"),
 });
 
 export type AdminCreateInput = z.infer<typeof adminCreateSchema>;
@@ -205,7 +229,7 @@ export const showcaseItemSchema = z.object({
   title: z.string().min(1, "Add a title").max(80),
   tagline: z.string().max(120).nullable().optional(),
   image: z.string().url("Add a product image"),
-  imagePng: optImage,
+  imagePng: optImage("Cutout image"),
   productId: optionalRelId,
   ctaText: z.string().max(40).nullable().optional(),
   ctaUrl: z
@@ -240,12 +264,9 @@ export const bannerSchema = z.object({
   subtitle: z.string().max(160).nullable().optional(),
   description: z.string().max(400).nullable().optional(),
   desktopImage: z.string().url("Add a desktop image"),
-  mobileImage: z
-    .union([z.string().url("Enter a valid image URL"), z.literal("")])
-    .nullable()
-    .optional(),
-  desktopImageDark: optImage,
-  mobileImageDark: optImage,
+  mobileImage: optImage("Mobile image"),
+  desktopImageDark: optImage("Dark desktop image"),
+  mobileImageDark: optImage("Dark mobile image"),
   ctaText: z.string().max(40).nullable().optional(),
   ctaUrl: z
     .union([
