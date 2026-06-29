@@ -9,7 +9,7 @@ _Last updated: 2026-06-29 · Auto-maintained. Update at the end of every milesto
 | Build               | ✅ passing (`next build`; affiliate routes included)            |
 | TypeScript          | ✅ `tsc --noEmit` clean                                         |
 | ESLint              | ✅ clean                                                        |
-| Runtime smoke       | ✅ Premium UI verified (home/products/PDP/search/cart 200; lightbox + blur-up + elevation/reveal present; search typeahead API returns suggestions; `/admin/messages` shows the contact message, guard 307) |
+| Runtime smoke       | ✅ Premium UI verified; **Marketing Hub verified end-to-end** (2026-06-29 — cron dispatch, recurring re-arm + child, automation dedup, open/click tracking, env-gated channel no-op; see Marketing Hub section) |
 | Database (Neon)     | ✅ live, migrated (…`affiliate_program`, `marketing_hub`, `marketing_automation`, `push_subscriptions`), seeded |
 | Current milestone   | **M0–M6 + RBAC + CMS + Affiliate Program + Admin bulk actions + Marketing Hub — production-ready** |
 
@@ -149,6 +149,21 @@ eligibility from user/order/cart/OrderEvent data, **dedups via `AutomationLog @@
 analytics (sent/delivered/opened/clicked/conversions/revenue). **Web Push** opt-in on the account
 page + additive SW `push`/`notificationclick` handlers (`public/sw.js` VERSION→v3, fetch/cache
 invariant untouched). New env (`.env.example`): `CRON_SECRET`, VAPID keypair, `WHATSAPP_*`, `TWILIO_*`.
+
+**Verified end-to-end (2026-06-29)** — ran the dev server against live Neon and drove the real HTTP
+surfaces with an isolated `@example.test` user (no real customer messaged): `GET /api/cron/marketing`
+→ `{processed:2, automated:8}` ran audience resolution + dispatch + automations in one call; one-off
+campaign went `SENT` (sent 2 / delivered 2, In-App + Email); recurring parent stayed SCHEDULED and
+re-armed exactly **+1 day** with a `SENT` child snapshot; automation logged 8 recipients and a 2nd run
+returned `automated:0` (**dedup confirmed**); `open` → `200 image/gif` (openCount+1, OPEN event);
+`click` → `307 /products` + `nut_campaign` cookie (clickCount+1, CLICK event); an all-channels send
+gave `sent 5 / delivered 2` with **Push/WhatsApp/SMS no-op'ing cleanly** when unconfigured (no errors);
+admin guard `307→/login`. Findings: (1) activating an automation also messages existing customers
+matching the trigger within the catch-up window → **added confirm dialogs + an amber note to the
+Automations UI** (commit `433de5c`); (2) campaign dispatch sends the audience synchronously per request
+(automations capped at 500/run; large broadcasts are a batching/queue scale follow-up). Conversion
+credit-on-order and AI copy generation are behind authenticated surfaces (cookie + Groq seam verified;
+the order/admin halves not driven via curl). Test data fully cleaned up.
 
 ## Latest: Admin bulk actions (wave 3 — new moderation pages)
 Built the two admin tables that didn't exist yet, with bulk baked in. **Reviews**
