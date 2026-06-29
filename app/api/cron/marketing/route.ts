@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { dispatchDueCampaigns } from "@/lib/marketing/deliver";
+import { runAutomations } from "@/lib/marketing/automation";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,8 +19,11 @@ async function handle(req: Request) {
     }
   }
   try {
-    const processed = await dispatchDueCampaigns();
-    return NextResponse.json({ ok: true, processed });
+    const [processed, automated] = await Promise.all([
+      dispatchDueCampaigns(),
+      runAutomations(),
+    ]);
+    return NextResponse.json({ ok: true, processed, automated });
   } catch (err) {
     console.error("[cron/marketing] failed:", err);
     return NextResponse.json({ ok: false, error: "Dispatch failed" }, { status: 500 });

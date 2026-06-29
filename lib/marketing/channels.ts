@@ -3,6 +3,7 @@ import type {
   CampaignStatus,
   CampaignType,
   SegmentType,
+  AutomationTrigger,
 } from "@prisma/client";
 
 /**
@@ -108,6 +109,27 @@ export const TEMPLATE_CATEGORIES = [
   "COUPON",
   "NEWSLETTER",
 ] as const;
+
+export const AUTOMATION_TRIGGERS: AutomationTrigger[] = [
+  "WELCOME",
+  "ABANDONED_CART",
+  "WINBACK",
+  "POST_PURCHASE",
+];
+
+export const AUTOMATION_TRIGGER_LABEL: Record<AutomationTrigger, string> = {
+  WELCOME: "Welcome new customer",
+  ABANDONED_CART: "Abandoned cart",
+  WINBACK: "Win back inactive",
+  POST_PURCHASE: "After purchase",
+};
+
+export const AUTOMATION_TRIGGER_DESCRIPTION: Record<AutomationTrigger, string> = {
+  WELCOME: "Sends once after a new account is created.",
+  ABANDONED_CART: "Sends when a cart sits with items and no order.",
+  WINBACK: "Sends to customers with no recent orders.",
+  POST_PURCHASE: "Sends after an order is delivered (per order).",
+};
 
 export const TEMPLATE_CATEGORY_LABEL: Record<string, string> = {
   PROMO: "Promotion",

@@ -508,6 +508,14 @@ permission. Built modular so Push/WhatsApp/SMS and recurring/automation slot in 
   `CRON_SECRET`, wired in `vercel.json` every 5 min). Tracking: `/api/marketing/open/[id]` (1×1 pixel →
   OPEN) and `/api/marketing/click/[id]` (CLICK + sets attribution cookie → redirect). Email links are
   click-wrapped; conversions/revenue accrue from orders placed within the 7-day cookie window.
+- **Automation rules** (`AutomationRule` + `AutomationLog`, migration `marketing_automation`):
+  trigger-based flows that send themselves — `WELCOME` / `ABANDONED_CART` / `WINBACK` / `POST_PURCHASE`,
+  each with a `delayHours`, channels and content (+ optional coupon). `lib/marketing/automation.ts#runAutomations`
+  (called by the same cron, after campaign dispatch) computes eligibility from existing user/order/cart/
+  OrderEvent data, **dedups via `AutomationLog @@unique([ruleId, key])`** (key = userId, or orderId for
+  post-purchase) so each recipient gets a rule once, and delivers via in-app + email (catch-up bounds
+  avoid blasting old users on first enable; per-run cap). Admin **Automations** tab manages rules
+  (enable toggle, trigger, delay h/d, channels, AI-assisted content, coupon) + a manual "Run now".
 - **Admin UI** (`lib/actions/admin/marketing.ts`, `lib/queries/marketing.ts`): tabbed
   (`MarketingTabs`) — **Overview** (sent/delivered/opened/clicked/conversions/revenue + recent),
   **Campaigns** (list + history, bulk delete/cancel via the shared `<BulkBar>`, per-row send/

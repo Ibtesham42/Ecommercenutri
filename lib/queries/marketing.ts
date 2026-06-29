@@ -59,6 +59,10 @@ export async function getSegments() {
   return prisma.audienceSegment.findMany({ orderBy: { createdAt: "desc" } });
 }
 
+export async function getAutomationRules() {
+  return prisma.automationRule.findMany({ orderBy: { createdAt: "desc" } });
+}
+
 export async function getTemplates() {
   await ensureBuiltInTemplates();
   return prisma.campaignTemplate.findMany({

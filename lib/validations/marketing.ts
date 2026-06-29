@@ -68,3 +68,20 @@ export const audiencePreviewSchema = z.object({
   type: z.enum(SEGMENT_VALUES),
   config: segmentConfigSchema.optional(),
 });
+
+export const AUTOMATION_TRIGGER_VALUES = ["WELCOME", "ABANDONED_CART", "WINBACK", "POST_PURCHASE"] as const;
+
+export const automationRuleSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, "Name the automation").max(120),
+  trigger: z.enum(AUTOMATION_TRIGGER_VALUES),
+  enabled: z.boolean().default(true),
+  delayHours: z.coerce.number().int().min(0).max(8760).default(24),
+  channels: z.array(z.enum(CHANNEL_VALUES)).min(1, "Pick at least one channel"),
+  title: z.string().min(1, "Add a title").max(140),
+  body: z.string().min(1, "Add a message").max(4000),
+  imageUrl: optStr,
+  ctaText: z.string().max(40).optional().default(""),
+  ctaUrl: z.string().max(400).optional().default(""),
+  couponId: z.string().optional().nullable(),
+});

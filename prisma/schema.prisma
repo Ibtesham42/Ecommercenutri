@@ -1163,3 +1163,44 @@ model AudienceSegment {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 }
+
+enum AutomationTrigger {
+  WELCOME
+  ABANDONED_CART
+  WINBACK
+  POST_PURCHASE
+}
+
+model AutomationRule {
+  id         String            @id @default(cuid())
+  name       String
+  trigger    AutomationTrigger
+  enabled    Boolean           @default(true)
+  delayHours Int               @default(24)
+  channels   CampaignChannel[] @default([IN_APP, EMAIL])
+  title      String
+  body       String
+  imageUrl   String?
+  ctaText    String?
+  ctaUrl     String?
+  couponId   String?
+  sentCount  Int               @default(0)
+  lastRunAt  DateTime?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  logs       AutomationLog[]
+
+  @@index([trigger, enabled])
+}
+
+model AutomationLog {
+  id        String         @id @default(cuid())
+  ruleId    String
+  userId    String
+  key       String // dedup key: userId (welcome/winback/cart) or orderId (post-purchase)
+  createdAt DateTime       @default(now())
+  rule      AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@unique([ruleId, key])
+  @@index([ruleId])
+}

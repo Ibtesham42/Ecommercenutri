@@ -7,12 +7,14 @@ import { requirePermission } from "@/lib/auth";
 import { dispatchCampaign } from "@/lib/marketing/deliver";
 import { countAudience, type SegmentConfig } from "@/lib/marketing/audience";
 import { generateCampaignContent } from "@/lib/marketing/ai";
+import { runAutomations } from "@/lib/marketing/automation";
 import {
   campaignSchema,
   segmentSchema,
   templateSchema,
   aiGenerateSchema,
   audiencePreviewSchema,
+  automationRuleSchema,
 } from "@/lib/validations/marketing";
 import type { AdminResult, BulkOutcome } from "@/lib/actions/admin/types";
 import type { GeneratedContent } from "@/lib/marketing/ai";
@@ -259,4 +261,52 @@ export async function deleteTemplate(id: string): Promise<AdminResult> {
   await prisma.campaignTemplate.delete({ where: { id } });
   revalidatePath("/admin/marketing/templates");
   return { ok: true };
+}
+
+// --- Automation rules ---------------------------------------------------------
+
+export async function saveAutomationRule(input: unknown): Promise<AdminResult> {
+  await requirePermission("marketing");
+  const parsed = automationRuleSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid rule." };
+  const d = parsed.data;
+  const data = {
+    name: d.name,
+    trigger: d.trigger,
+    enabled: d.enabled,
+    delayHours: d.delayHours,
+    channels: d.channels,
+    title: d.title,
+    body: d.body,
+    imageUrl: d.imageUrl || null,
+    ctaText: d.ctaText || null,
+    ctaUrl: d.ctaUrl || null,
+    couponId: d.couponId || null,
+  };
+  if (d.id) await prisma.automationRule.update({ where: { id: d.id }, data });
+  else await prisma.automationRule.create({ data });
+  revalidatePath("/admin/marketing/automations");
+  return { ok: true };
+}
+
+export async function toggleAutomationRule(id: string, enabled: boolean): Promise<AdminResult> {
+  await requirePermission("marketing");
+  await prisma.automationRule.update({ where: { id }, data: { enabled } });
+  revalidatePath("/admin/marketing/automations");
+  return { ok: true };
+}
+
+export async function deleteAutomationRule(id: string): Promise<AdminResult> {
+  await requirePermission("marketing");
+  await prisma.automationRule.delete({ where: { id } });
+  revalidatePath("/admin/marketing/automations");
+  return { ok: true };
+}
+
+/** Run all enabled automations now (manual trigger; cron does this on schedule). */
+export async function runAutomationsNow(): Promise<AdminResult<{ sent: number }>> {
+  await requirePermission("marketing");
+  const sent = await runAutomations();
+  revalidatePath("/admin/marketing/automations");
+  return { ok: true, data: { sent } };
 }

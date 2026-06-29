@@ -120,8 +120,17 @@ from a 7-day `nut_campaign` cookie in `createOrder`. **Admin UI** (tabbed): Over
 (sent/delivered/opened/clicked/conversions/revenue), Campaigns (list+history, bulk delete/cancel,
 send/schedule/duplicate/resend), Compose (rich editor + image, AI assist, audience targeting w/ live
 count, channels, attach product/coupon, send/schedule/draft), Segments, Templates. Typecheck/lint/
-build green; migration applied to Neon. Follow-up waves: Automation rules, recurring schedules, live
-Push/WhatsApp/SMS adapters.
+build green; migration applied to Neon.
+
+## Latest: Marketing Hub — Automation Rules
+Trigger-based flows (migration `marketing_automation`: AutomationRule + AutomationLog +
+AutomationTrigger enum). Triggers: WELCOME / ABANDONED_CART / WINBACK / POST_PURCHASE, each with a
+delay (h/d), channels and content (+ optional coupon, AI-assisted copy). `lib/marketing/automation.ts#
+runAutomations` runs from the same cron (after campaign dispatch), computes eligibility from existing
+user/order/cart/OrderEvent data, dedups via `AutomationLog @@unique([ruleId, key])` (one send per
+user, or per order for post-purchase), and delivers in-app + email with catch-up bounds + a per-run
+cap. Admin **Automations** tab: list + enable toggle + CRUD dialog + manual "Run now". Typecheck/lint/
+build green; migration applied. Remaining follow-ups: recurring schedules, live Push/WhatsApp/SMS.
 
 ## Latest: Admin bulk actions (wave 3 — new moderation pages)
 Built the two admin tables that didn't exist yet, with bulk baked in. **Reviews**
