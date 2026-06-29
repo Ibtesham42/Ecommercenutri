@@ -7,6 +7,7 @@ import { siteConfig } from "@/config/site";
 import { env } from "@/lib/env";
 import { validateCoupon } from "@/lib/coupons";
 import { resolveAttribution } from "@/lib/affiliate/attribution";
+import { recordCampaignConversion } from "@/lib/marketing/conversion";
 import { computeBreakdown, isCodAvailable, type PriceBreakdown } from "@/lib/pricing";
 import {
   getPricingSettings,
@@ -269,6 +270,9 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
       },
     },
   });
+
+  // Credit a marketing campaign if the buyer arrived via a tracked campaign click.
+  await recordCampaignConversion(user.id, total);
 
   // Cash on Delivery — place the order now (payment collected at delivery).
   // Confirm it (decrement stock, generate invoice, email) with payment PENDING.

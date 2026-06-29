@@ -484,6 +484,42 @@ always pass. Everything degrades to nothing when `StoreSetting.affiliateEnabled 
   imports). Renders nothing when disabled or empty (fully additive — homepage/checkout unchanged
   for non-referred orders).
 
+## 8d. Marketing Hub (phase 1 — core)
+
+Multi-channel campaign system at **`/admin/marketing`**, gated by the **`marketing`** RBAC
+permission. Built modular so Push/WhatsApp/SMS and recurring/automation slot in later.
+
+- **Models** (`prisma/schema.prisma`, migration `marketing_hub`): `Campaign` (type, status, channels[],
+  content title/body/imageUrl/ctaText/ctaUrl, `segmentType`+`segmentConfig` JSON targeting, optional
+  `productId`/`couponId` (plain ids, no FK), `scheduledFor`/`recurrence`/`sentAt`, and analytics
+  counters audienceSize/sent/delivered/open/click/conversion/revenue), `CampaignEvent` (OPEN/CLICK/
+  CONVERSION log), `CampaignTemplate` (built-in + custom), `AudienceSegment` (saved audiences). Enums:
+  `CampaignType`, `CampaignStatus`, `CampaignChannel`, `SegmentType`.
+- **lib/marketing/**: `channels.ts` (client-safe labels + `CHANNEL_LIVE` — In-App/Email live,
+  Push/WhatsApp/SMS stubs), `audience.ts` (`resolveAudience`/`countAudience` — 9 segment types over
+  existing User/Order/WishlistItem/Cart/Affiliate data), `deliver.ts` (`dispatchCampaign` via a
+  per-channel **adapter registry**; In-App→`notify`, Email→`marketingEmail`+`sendEmail`, others no-op;
+  `dispatchDueCampaigns` for cron), `ai.ts` (`generateCampaignContent` via the Groq seam — generateText
+  + JSON parse, heuristic fallback), `templates.ts` (built-ins, `ensureBuiltInTemplates` idempotent),
+  `conversion.ts` (`recordCampaignConversion` — credits a campaign from the `nut_campaign` cookie,
+  called best-effort in `createOrder`).
+- **Delivery is cron-ready**: "Send now" dispatches immediately; **scheduled** campaigns set
+  `status=SCHEDULED`+`scheduledFor` and are processed by `GET/POST /api/cron/marketing` (guarded by
+  `CRON_SECRET`, wired in `vercel.json` every 5 min). Tracking: `/api/marketing/open/[id]` (1×1 pixel →
+  OPEN) and `/api/marketing/click/[id]` (CLICK + sets attribution cookie → redirect). Email links are
+  click-wrapped; conversions/revenue accrue from orders placed within the 7-day cookie window.
+- **Admin UI** (`lib/actions/admin/marketing.ts`, `lib/queries/marketing.ts`): tabbed
+  (`MarketingTabs`) — **Overview** (sent/delivered/opened/clicked/conversions/revenue + recent),
+  **Campaigns** (list + history, bulk delete/cancel via the shared `<BulkBar>`, per-row send/
+  schedule/duplicate/resend/cancel), **Compose** (`campaign-editor.tsx` — rich content + image,
+  **AI assist**, channel toggles, audience targeting with a **live recipient count**, attach product/
+  coupon, send-now / schedule / save-draft), **Segments** (saved `AudienceSegment` CRUD with live
+  counts), **Templates** (built-in + custom CRUD). Sent campaigns are immutable (duplicate/resend
+  instead).
+- **Conventions:** reuses `AdminResult`/`BulkOutcome`, Zod (`lib/validations/marketing.ts`),
+  `requirePermission("marketing")`, `notify`/`sendEmail`, the Groq provider seam, `ImageUploadField`.
+  Degrades gracefully — Email no-ops to console without Resend, AI falls back to a heuristic without Groq.
+
 ## 9. Security Rules
 
 - **All secrets in env vars** (`.env`, gitignored). Never print, log, or commit

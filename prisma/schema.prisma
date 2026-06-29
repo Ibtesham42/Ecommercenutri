@@ -1048,3 +1048,118 @@ enum ContactStatus {
   REPLIED
   CLOSED
 }
+
+// --- Marketing Hub ------------------------------------------------------------
+
+enum CampaignType {
+  BROADCAST
+  PRODUCT
+  COUPON
+  AUTOMATION
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum CampaignChannel {
+  IN_APP
+  EMAIL
+  PUSH
+  WHATSAPP
+  SMS
+}
+
+enum SegmentType {
+  ALL_USERS
+  CUSTOMERS
+  AFFILIATES
+  PRODUCT_BUYERS
+  CATEGORY_BUYERS
+  WISHLIST
+  ABANDONED_CART
+  INACTIVE
+  SELECTED
+}
+
+model Campaign {
+  id              String            @id @default(cuid())
+  name            String
+  type            CampaignType      @default(BROADCAST)
+  status          CampaignStatus    @default(DRAFT)
+  channels        CampaignChannel[] @default([IN_APP])
+  // content
+  title           String
+  body            String
+  imageUrl        String?
+  ctaText         String?
+  ctaUrl          String?
+  // targeting (segmentConfig: { productId, categoryId, userIds[], inactiveDays })
+  segmentType     SegmentType       @default(ALL_USERS)
+  segmentConfig   Json?
+  // attachments (plain ids — resolved in queries, no FK to keep this additive)
+  productId       String?
+  couponId        String?
+  // scheduling
+  scheduledFor    DateTime?
+  recurrence      String?           // NONE | DAILY | WEEKLY | MONTHLY (future)
+  sentAt          DateTime?
+  // analytics
+  audienceSize    Int               @default(0)
+  sentCount       Int               @default(0)
+  deliveredCount  Int               @default(0)
+  openCount       Int               @default(0)
+  clickCount      Int               @default(0)
+  conversionCount Int               @default(0)
+  revenue         Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  events          CampaignEvent[]
+
+  @@index([status, scheduledFor])
+  @@index([createdAt])
+}
+
+model CampaignEvent {
+  id         String           @id @default(cuid())
+  campaignId String
+  userId     String?
+  type       String           // DELIVERED | OPEN | CLICK | CONVERSION
+  channel    CampaignChannel?
+  meta       Json?
+  createdAt  DateTime         @default(now())
+  campaign   Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, type])
+}
+
+model CampaignTemplate {
+  id        String            @id @default(cuid())
+  name      String
+  category  String            // PROMO | PRODUCT_LAUNCH | WELCOME | WINBACK | COUPON | NEWSLETTER
+  channels  CampaignChannel[] @default([IN_APP, EMAIL])
+  title     String
+  body      String
+  imageUrl  String?
+  ctaText   String?
+  isBuiltIn Boolean           @default(false)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@unique([name])
+}
+
+model AudienceSegment {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  type        SegmentType @default(ALL_USERS)
+  config      Json?
+  cachedCount Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}

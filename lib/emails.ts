@@ -379,3 +379,64 @@ export function payoutEmail(data: {
     text: `Payout of ${formatPrice(data.amount)} processed. ${AFF_URL}`,
   };
 }
+
+/**
+ * Marketing campaign email — supports a hero image, free-form body, a tracked CTA
+ * button and an open-tracking pixel. `ctaUrl` should already be the click-tracking
+ * URL; `openUrl` is the 1×1 pixel endpoint.
+ */
+export function marketingEmail(data: {
+  title: string;
+  body: string;
+  imageUrl?: string | null;
+  ctaText?: string | null;
+  ctaUrl?: string | null;
+  openUrl?: string | null;
+  name?: string | null;
+}): Email {
+  const bodyHtml = data.body
+    .split(/\n{2,}/)
+    .map((p) => `<p style="margin:0 0 14px;font-size:15px;line-height:24px;color:#3a4a41">${escapeBasic(p).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+  const image = data.imageUrl
+    ? `<tr><td><img src="${data.imageUrl}" alt="" width="480" style="display:block;width:100%;max-width:480px;height:auto"></td></tr>`
+    : "";
+  const cta =
+    data.ctaText && data.ctaUrl
+      ? `<a href="${data.ctaUrl}" style="display:inline-block;margin-top:6px;background:#16803c;color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:10px;font-size:15px;font-weight:700">${escapeBasic(data.ctaText)}</a>`
+      : "";
+  const pixel = data.openUrl
+    ? `<img src="${data.openUrl}" alt="" width="1" height="1" style="display:block;width:1px;height:1px;opacity:0">`
+    : "";
+
+  const html = `<!doctype html>
+<html>
+  <body style="margin:0;background:#f4f7f5;font-family:Arial,Helvetica,sans-serif;color:#1a2b22">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 0">
+      <tr><td align="center">
+        <table role="presentation" width="100%" style="max-width:480px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e3ece6">
+          <tr><td style="background:#16803c;padding:18px 28px">
+            <span style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:-0.5px">Nutri<span style="color:#c8f5d6">yet</span></span>
+          </td></tr>
+          ${image}
+          <tr><td style="padding:28px">
+            <h1 style="margin:0 0 14px;font-size:22px;color:#13241c">${escapeBasic(data.title)}</h1>
+            ${bodyHtml}
+            ${cta}
+          </td></tr>
+          <tr><td style="padding:18px 28px;border-top:1px solid #eef3f0;font-size:12px;color:#9aa79f">
+            © ${new Date().getFullYear()} ${siteConfig.name} · ${siteConfig.contact.email}
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+    ${pixel}
+  </body>
+</html>`;
+
+  return { subject: data.title, html, text: `${data.title}\n\n${data.body}${data.ctaUrl ? `\n\n${data.ctaUrl}` : ""}` };
+}
+
+function escapeBasic(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}

@@ -108,6 +108,21 @@ phone, contact email, address); self email/password + editable store contact/soc
 `requirePermission`/`requireSuperAdmin` (actions), all DB-fresh; dashboard widgets scoped
 to permissions. (Deploy still requires `DATABASE_URL` at runtime — see the build fix.)
 
+## Latest: Marketing Hub (phase 1 — core)
+New `/admin/marketing` section (RBAC `marketing` permission), built modular for future channels.
+Migration `marketing_hub`: Campaign / CampaignEvent / CampaignTemplate / AudienceSegment (+ enums).
+**lib/marketing/**: channel adapter registry (In-App + Email live; Push/WhatsApp/SMS stubs), audience
+resolver (9 segments over existing user/order/wishlist/cart/affiliate data), dispatch engine, Groq
+AI copy generation (with heuristic fallback), built-in templates, conversion attribution. **Cron-ready
+delivery**: Send-now is immediate; scheduled campaigns processed by `/api/cron/marketing` (CRON_SECRET,
+`vercel.json` every 5 min). Open pixel + click-redirect tracking routes; conversions/revenue credited
+from a 7-day `nut_campaign` cookie in `createOrder`. **Admin UI** (tabbed): Overview/analytics
+(sent/delivered/opened/clicked/conversions/revenue), Campaigns (list+history, bulk delete/cancel,
+send/schedule/duplicate/resend), Compose (rich editor + image, AI assist, audience targeting w/ live
+count, channels, attach product/coupon, send/schedule/draft), Segments, Templates. Typecheck/lint/
+build green; migration applied to Neon. Follow-up waves: Automation rules, recurring schedules, live
+Push/WhatsApp/SMS adapters.
+
 ## Latest: Admin bulk actions (wave 3 — new moderation pages)
 Built the two admin tables that didn't exist yet, with bulk baked in. **Reviews**
 (`/admin/reviews`, `products` permission): moderation list (filter all/approved/hidden + search),
