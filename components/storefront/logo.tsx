@@ -50,9 +50,11 @@ export function Logo({
       {logoUrl ? (
         <span
           className={cn(
-            "inline-flex items-center",
-            // Adaptive contrast chip on dark chrome so any logo reads cleanly.
-            onDark && "rounded-lg bg-white px-2.5 py-1.5 shadow-sm ring-1 ring-black/5",
+            "inline-flex shrink-0 items-center justify-center",
+            // Adaptive contrast plate on dark chrome: a clean light card so any
+            // dark/colored/transparent logo reads crisply, with breathing room.
+            onDark &&
+              "rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-black/5 sm:p-2",
           )}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
