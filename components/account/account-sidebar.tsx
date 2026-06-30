@@ -19,7 +19,7 @@ const nav = [
 export function AccountSidebar() {
   const pathname = usePathname();
   return (
-    <nav className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
+    <nav className="scroll-rail gap-1.5 md:flex md:flex-col md:overflow-visible">
       {nav.map((item) => {
         const active =
           item.href === "/account"
@@ -29,12 +29,15 @@ export function AccountSidebar() {
           <Link
             key={item.href}
             href={item.href}
+            aria-current={active ? "page" : undefined}
             className={cn(
-              "flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent",
-              active && "bg-accent font-medium text-primary",
+              "flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-colors hover:bg-accent",
+              active
+                ? "bg-primary/10 font-semibold text-primary"
+                : "text-foreground/80",
             )}
           >
-            <item.icon className="size-4" />
+            <item.icon className={cn("size-4", active && "text-primary")} />
             {item.label}
           </Link>
         );
@@ -42,7 +45,7 @@ export function AccountSidebar() {
       <form action={logoutAction} className="md:mt-2 md:border-t md:pt-2">
         <button
           type="submit"
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-destructive"
+          className="flex w-full shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
         >
           <LogOut className="size-4" />
           Sign out

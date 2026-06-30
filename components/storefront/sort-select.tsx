@@ -32,7 +32,7 @@ export function SortSelect() {
 
   return (
     <Select value={current} onValueChange={onChange}>
-      <SelectTrigger className="w-[180px]">
+      <SelectTrigger className="h-10 w-[150px] rounded-xl sm:w-[180px]">
         <SelectValue placeholder="Sort by" />
       </SelectTrigger>
       <SelectContent>

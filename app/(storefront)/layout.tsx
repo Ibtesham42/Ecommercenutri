@@ -2,6 +2,7 @@ import { SiteHeader } from "@/components/storefront/site-header";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { AnnouncementBar } from "@/components/storefront/announcement-bar";
 import { WhatsAppButton } from "@/components/storefront/whatsapp-button";
+import { MobileBottomNav } from "@/components/storefront/mobile-bottom-nav";
 import { AffiliateTracker } from "@/components/storefront/affiliate-tracker";
 import { getStoreSettings } from "@/lib/queries/settings";
 import { getCurrentUser } from "@/lib/auth";
@@ -62,9 +63,14 @@ export default async function StorefrontLayout({
         notifications={notifications}
         unreadCount={unreadCount}
       />
-      <main className="flex-1">{children}</main>
+      {/* Bottom padding on mobile leaves room for the sticky bottom tab bar. */}
+      <main className="flex-1 pb-20 md:pb-0">{children}</main>
       <SiteFooter />
-      <WhatsAppButton number={settings.whatsapp} />
+      {/* WhatsApp floats on desktop only; mobile uses the bottom tab bar. */}
+      <div className="hidden md:block">
+        <WhatsAppButton number={settings.whatsapp} />
+      </div>
+      <MobileBottomNav />
       <AffiliateTracker />
     </div>
   );

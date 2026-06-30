@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import { Hanken_Grotesk, Geist_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { siteConfig } from "@/config/site";
@@ -12,12 +12,19 @@ import { Analytics } from "@/components/analytics";
 import { Analytics as VercelAnalytics } from "@vercel/analytics/next";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 
-const fontSans = Geist({ subsets: ["latin"], variable: "--font-sans" });
+// Body sans — Hanken Grotesque (clean, premium grocery/retail feel).
+const fontSans = Hanken_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  weight: ["400", "500", "600", "700"],
+});
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
-const fontHeading = Plus_Jakarta_Sans({
+// Headings — Fraunces, an editorial optical-sized serif for the premium voice.
+// Loaded as a variable font (full weight range) with the optical-size axis.
+const fontHeading = Fraunces({
   subsets: ["latin"],
   variable: "--font-heading",
-  weight: ["500", "600", "700", "800"],
+  axes: ["opsz"],
 });
 
 export async function generateMetadata(): Promise<Metadata> {

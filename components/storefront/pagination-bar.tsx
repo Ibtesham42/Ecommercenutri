@@ -40,13 +40,13 @@ export function PaginationBar({
       {page > 1 ? (
         <Link
           href={hrefFor(page - 1)}
-          className="grid size-9 place-items-center rounded-md border hover:bg-accent"
+          className="grid size-10 place-items-center rounded-xl border transition-colors hover:border-primary/40 hover:bg-accent"
           aria-label="Previous page"
         >
           <ChevronLeft className="size-4" />
         </Link>
       ) : (
-        <span className="grid size-9 place-items-center rounded-md border opacity-40">
+        <span className="grid size-10 place-items-center rounded-xl border opacity-40">
           <ChevronLeft className="size-4" />
         </span>
       )}
@@ -61,8 +61,9 @@ export function PaginationBar({
             key={it}
             href={hrefFor(it)}
             className={cn(
-              "grid size-9 place-items-center rounded-md border text-sm hover:bg-accent",
-              it === page && "border-primary bg-primary text-primary-foreground",
+              "grid size-10 place-items-center rounded-xl border text-sm font-medium transition-colors hover:border-primary/40 hover:bg-accent",
+              it === page &&
+                "border-primary bg-primary font-semibold text-primary-foreground hover:bg-primary",
             )}
           >
             {it}
@@ -73,13 +74,13 @@ export function PaginationBar({
       {page < pageCount ? (
         <Link
           href={hrefFor(page + 1)}
-          className="grid size-9 place-items-center rounded-md border hover:bg-accent"
+          className="grid size-10 place-items-center rounded-xl border transition-colors hover:border-primary/40 hover:bg-accent"
           aria-label="Next page"
         >
           <ChevronRight className="size-4" />
         </Link>
       ) : (
-        <span className="grid size-9 place-items-center rounded-md border opacity-40">
+        <span className="grid size-10 place-items-center rounded-xl border opacity-40">
           <ChevronRight className="size-4" />
         </span>
       )}

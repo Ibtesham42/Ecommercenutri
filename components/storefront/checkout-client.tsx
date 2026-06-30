@@ -1,13 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Script from "next/script";
 import { toast } from "sonner";
-import { ShoppingBag, Plus, Tag, X, Loader2, MapPin, CreditCard, Banknote } from "lucide-react";
+import {
+  ShoppingBag,
+  Plus,
+  Tag,
+  X,
+  Loader2,
+  MapPin,
+  CreditCard,
+  Banknote,
+  Check,
+  ShieldCheck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -246,12 +258,21 @@ export function CheckoutClient({
     checkout.open();
   }
 
+  const placeLabel = placing
+    ? "Processing…"
+    : paymentMethod === "COD" || !razorpayEnabled
+      ? `Place order · ${formatPrice(total)}`
+      : `Pay ${formatPrice(total)}`;
+
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
+    <div className="space-y-6">
       {razorpayEnabled && (
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       )}
 
+      <CheckoutSteps />
+
+      <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
       {/* Left: address + items */}
       <div className="space-y-8">
         <section>
@@ -496,12 +517,32 @@ export function CheckoutClient({
             `Place order · ${formatPrice(total)}`
           )}
         </Button>
+        <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+          <ShieldCheck className="size-3.5 text-primary" /> 100% secure payments
+        </div>
         {!razorpayEnabled && paymentMethod === "RAZORPAY" && (
           <p className="text-center text-xs text-muted-foreground">
             Demo mode — no payment gateway configured. Orders are simulated.
           </p>
         )}
       </aside>
+      </div>
+
+      {/* Sticky mobile place-order bar (bottom nav hidden on /checkout). */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-4 py-3 backdrop-blur md:hidden"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      >
+        <Button
+          size="lg"
+          className="h-12 w-full gap-2 text-base"
+          onClick={onPlaceOrder}
+          disabled={placing || addresses.length === 0}
+        >
+          {placing && <Loader2 className="size-4 animate-spin" />}
+          {placeLabel}
+        </Button>
+      </div>
 
       <Dialog open={addressOpen} onOpenChange={setAddressOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
@@ -529,5 +570,51 @@ export function CheckoutClient({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/** Presentational checkout progress — Cart (done) → Checkout (active) → Confirmation. */
+function CheckoutSteps() {
+  const steps = [
+    { label: "Cart", state: "done" as const },
+    { label: "Checkout", state: "active" as const },
+    { label: "Confirmation", state: "upcoming" as const },
+  ];
+  return (
+    <ol className="flex items-center gap-2 sm:gap-3">
+      {steps.map((s, i) => (
+        <Fragment key={s.label}>
+          <li className="flex items-center gap-2">
+            <span
+              className={cn(
+                "grid size-7 place-items-center rounded-full border text-xs font-bold",
+                s.state === "done" && "border-primary bg-primary text-primary-foreground",
+                s.state === "active" && "border-primary bg-primary/10 text-primary",
+                s.state === "upcoming" && "border-border text-muted-foreground",
+              )}
+            >
+              {s.state === "done" ? <Check className="size-4" /> : i + 1}
+            </span>
+            <span
+              className={cn(
+                "text-sm font-medium",
+                s.state === "upcoming" ? "text-muted-foreground" : "text-foreground",
+                s.state === "upcoming" && "hidden sm:inline",
+              )}
+            >
+              {s.label}
+            </span>
+          </li>
+          {i < steps.length - 1 && (
+            <span
+              className={cn(
+                "h-px flex-1",
+                s.state === "done" ? "bg-primary/40" : "bg-border",
+              )}
+            />
+          )}
+        </Fragment>
+      ))}
+    </ol>
   );
 }

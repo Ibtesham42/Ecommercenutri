@@ -1,8 +1,8 @@
 import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Truck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ProductGrid } from "@/components/storefront/product-card";
+import { ProductGrid, ProductRail } from "@/components/storefront/product-card";
 import { BlurImage } from "@/components/storefront/blur-image";
 import { Reveal } from "@/components/storefront/reveal";
 import { StoriesRail } from "@/components/storefront/stories-rail";
@@ -156,6 +156,7 @@ export default async function HomePage() {
           <Reveal>
             <ProductGrid products={featured} wishlistedIds={wishlistIds} />
           </Reveal>
+          <PromoStrip />
         </section>
       ) : null,
 
@@ -170,7 +171,7 @@ export default async function HomePage() {
               ctaHref={content.bestSellers.ctaHref}
             />
             <Reveal>
-              <ProductGrid products={bestSellers} wishlistedIds={wishlistIds} />
+              <ProductRail products={bestSellers} wishlistedIds={wishlistIds} />
             </Reveal>
           </div>
         </section>
@@ -195,7 +196,7 @@ export default async function HomePage() {
           />
           <Reveal>
             <RecoClickArea source="trending">
-              <ProductGrid products={trendingFresh} wishlistedIds={wishlistIds} />
+              <ProductRail products={trendingFresh} wishlistedIds={wishlistIds} />
             </RecoClickArea>
           </Reveal>
         </section>
@@ -260,6 +261,37 @@ export default async function HomePage() {
         </Fragment>
       ))}
     </>
+  );
+}
+
+/** Presentational promo tiles (free shipping + AI expert) — reference-style. */
+function PromoStrip() {
+  return (
+    <div className="mt-8 grid gap-3 sm:grid-cols-2">
+      <div className="flex items-center gap-3 rounded-2xl border bg-accent/40 p-4">
+        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+          <Truck className="size-5" />
+        </span>
+        <div>
+          <p className="text-sm font-semibold">Free shipping</p>
+          <p className="text-xs text-muted-foreground">On orders over ₹499</p>
+        </div>
+      </div>
+      <Link
+        href="/assistant"
+        className="hover-lift flex items-center gap-3 rounded-2xl bg-surface-deep p-4 text-surface-deep-foreground shadow-elev-1"
+      >
+        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/10 text-gold">
+          <Sparkles className="size-5" />
+        </span>
+        <div>
+          <p className="text-sm font-semibold">Ask the AI expert</p>
+          <p className="text-xs text-surface-deep-foreground/70">
+            Not sure what to buy? Get picks →
+          </p>
+        </div>
+      </Link>
+    </div>
   );
 }
 

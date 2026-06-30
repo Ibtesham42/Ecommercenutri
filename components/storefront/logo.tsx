@@ -14,6 +14,8 @@ export function Logo({
   height,
   mobileHeight,
   maxWidth,
+  accentClassName = "text-primary",
+  onDark = false,
 }: {
   className?: string;
   logoUrl?: string | null;
@@ -21,6 +23,11 @@ export function Logo({
   height?: number | null;
   mobileHeight?: number | null;
   maxWidth?: number | null;
+  /** Accent color for the "yet" wordmark — override to `text-gold` on dark surfaces. */
+  accentClassName?: string;
+  /** On dark chrome (deep-green header/footer) an uploaded logo gets a subtle
+   *  light chip so any colored/transparent logo stays legible and crisp. */
+  onDark?: boolean;
 }) {
   const h = height ?? 32;
   const mh = mobileHeight ?? h;
@@ -41,20 +48,33 @@ export function Logo({
       )}
     >
       {logoUrl ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
-          src={cldUrl(logoUrl, { h: Math.min(Math.max(h, mh) * 2, 256) })}
-          alt={name}
-          style={sizeVars}
-          className="h-[var(--logo-mh)] w-auto max-w-[var(--logo-mw)] object-contain md:h-[var(--logo-h)]"
-        />
+        <span
+          className={cn(
+            "inline-flex items-center",
+            // Adaptive contrast chip on dark chrome so any logo reads cleanly.
+            onDark && "rounded-lg bg-white px-2.5 py-1.5 shadow-sm ring-1 ring-black/5",
+          )}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={cldUrl(logoUrl, { h: Math.min(Math.max(h, mh) * 2, 256) })}
+            alt={name}
+            style={sizeVars}
+            className="h-[var(--logo-mh)] w-auto max-w-[var(--logo-mw)] object-contain md:h-[var(--logo-h)]"
+          />
+        </span>
       ) : (
         <>
-          <span className="grid size-8 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+          <span
+            className={cn(
+              "grid size-8 place-items-center rounded-xl shadow-sm",
+              onDark ? "bg-white text-primary" : "bg-primary text-primary-foreground",
+            )}
+          >
             <Leaf className="size-5" />
           </span>
           <span>
-            Nutri<span className="text-primary">yet</span>
+            Nutri<span className={accentClassName}>yet</span>
           </span>
         </>
       )}

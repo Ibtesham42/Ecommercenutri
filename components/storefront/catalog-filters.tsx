@@ -43,22 +43,20 @@ export function CatalogFilters({
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Filters</h3>
-          {hasFilters && (
-            <Link
-              href={pathname}
-              className="text-xs text-muted-foreground hover:text-primary"
-            >
-              Clear all
-            </Link>
-          )}
-        </div>
+      <div className="flex items-center justify-between">
+        <h3 className="font-heading text-base font-semibold">Filters</h3>
+        {hasFilters && (
+          <Link
+            href={pathname}
+            className="text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+          >
+            Clear all
+          </Link>
+        )}
       </div>
 
       <div>
-        <h4 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
+        <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Category
         </h4>
         <ul className="space-y-1">
@@ -66,57 +64,68 @@ export function CatalogFilters({
             <Link
               href={buildHref({ category: undefined })}
               className={cn(
-                "block rounded-md px-2 py-1.5 text-sm hover:bg-accent",
-                !activeCategory && "bg-accent font-medium text-primary",
+                "block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent",
+                !activeCategory && "bg-primary/10 font-semibold text-primary",
               )}
             >
               All products
             </Link>
           </li>
-          {categories.map((c) => (
-            <li key={c.slug}>
-              <Link
-                href={buildHref({ category: c.slug })}
-                className={cn(
-                  "flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-accent",
-                  activeCategory === c.slug && "bg-accent font-medium text-primary",
-                )}
-              >
-                <span>{c.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {c._count.products}
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div>
-        <h4 className="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-          Price
-        </h4>
-        <ul className="space-y-1">
-          {priceRanges.map((r) => {
-            const isActive = activeMin === r.min && activeMax === r.max;
+          {categories.map((c) => {
+            const isActive = activeCategory === c.slug;
             return (
-              <li key={r.label}>
+              <li key={c.slug}>
                 <Link
-                  href={buildHref({
-                    minPrice: r.min || undefined,
-                    maxPrice: r.max || undefined,
-                  })}
+                  href={buildHref({ category: c.slug })}
                   className={cn(
-                    "block rounded-md px-2 py-1.5 text-sm hover:bg-accent",
-                    isActive && "bg-accent font-medium text-primary",
+                    "flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent",
+                    isActive && "bg-primary/10 font-semibold text-primary",
                   )}
                 >
-                  {r.label}
+                  <span>{c.name}</span>
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 text-xs",
+                      isActive
+                        ? "bg-primary/15 text-primary"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {c._count.products}
+                  </span>
                 </Link>
               </li>
             );
           })}
         </ul>
+      </div>
+
+      <div>
+        <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Price
+        </h4>
+        <div className="grid grid-cols-2 gap-2">
+          {priceRanges.map((r) => {
+            const isActive = activeMin === r.min && activeMax === r.max;
+            return (
+              <Link
+                key={r.label}
+                href={buildHref({
+                  minPrice: r.min || undefined,
+                  maxPrice: r.max || undefined,
+                })}
+                className={cn(
+                  "rounded-xl border px-3 py-2 text-center text-xs font-medium transition-colors",
+                  isActive
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "hover:border-primary/40 hover:bg-accent",
+                )}
+              >
+                {r.label}
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

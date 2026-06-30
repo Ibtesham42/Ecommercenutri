@@ -24,9 +24,11 @@ export default async function AccountLayout({
       />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8">
         <h1 className="mb-6 text-2xl font-bold sm:text-3xl">My account</h1>
-        <div className="grid gap-8 md:grid-cols-[220px_1fr]">
+        <div className="grid gap-6 md:grid-cols-[240px_1fr] md:gap-8">
           <aside>
-            <AccountSidebar />
+            <div className="rounded-2xl border bg-card p-2 shadow-elev-1 md:sticky md:top-24">
+              <AccountSidebar />
+            </div>
           </aside>
           <div>{children}</div>
         </div>

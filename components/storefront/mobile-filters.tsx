@@ -28,12 +28,20 @@ export function MobileFilters({ categories }: { categories: CategoryOption[] }) 
           Filters
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-80 overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Filters</SheetTitle>
+      <SheetContent side="left" className="flex w-80 flex-col p-0">
+        <SheetHeader className="sr-only">
+          <SheetTitle>Filter products</SheetTitle>
         </SheetHeader>
-        <div className="px-4 pb-8" onClick={() => setOpen(false)}>
+        <div
+          className="flex-1 overflow-y-auto px-5 py-5"
+          onClick={() => setOpen(false)}
+        >
           <CatalogFilters categories={categories} />
+        </div>
+        <div className="border-t p-4">
+          <Button className="h-11 w-full" onClick={() => setOpen(false)}>
+            View results
+          </Button>
         </div>
       </SheetContent>
     </Sheet>

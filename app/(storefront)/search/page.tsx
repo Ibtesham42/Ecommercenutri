@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Sparkles, SearchX } from "lucide-react";
+import { Sparkles, SearchX, TrendingUp } from "lucide-react";
 import { aiProductSearch } from "@/lib/ai/search";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
 import { ProductGrid } from "@/components/storefront/product-card";
@@ -14,6 +14,16 @@ export const metadata: Metadata = buildMetadata({
   path: "/search",
   noindex: true,
 });
+
+const POPULAR = [
+  "Makhana",
+  "Flavoured makhana",
+  "Almonds",
+  "Protein",
+  "Seeds",
+  "Dry fruits",
+  "Healthy snacks",
+];
 
 export default async function SearchPage({
   searchParams,
@@ -34,15 +44,18 @@ export default async function SearchPage({
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-10">
       {term && <BehaviorTracker event={{ type: "SEARCH", query: term }} />}
-      <h1 className="mb-4 text-2xl font-bold">Search</h1>
+      <h1 className="mb-1 text-2xl font-bold sm:text-3xl">Search</h1>
+      <p className="mb-5 text-sm text-muted-foreground">
+        Find makhana, dry fruits, seeds, protein and more.
+      </p>
       <SearchBox autoFocus />
 
       <Link
         href={term ? `/assistant?q=${encodeURIComponent(term)}` : "/assistant"}
-        className="mt-3 inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+        className="mt-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
       >
         <Sparkles className="size-4" />
-        Chat with the AI nutrition assistant
+        Not sure? Ask the AI nutrition assistant
       </Link>
 
       <div className="mt-8">
@@ -70,9 +83,22 @@ export default async function SearchPage({
             />
           )
         ) : (
-          <p className="text-sm text-muted-foreground">
-            Start typing to search our catalog.
-          </p>
+          <div>
+            <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <TrendingUp className="size-3.5 text-primary" /> Popular searches
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {POPULAR.map((p) => (
+                <Link
+                  key={p}
+                  href={`/search?q=${encodeURIComponent(p)}`}
+                  className="rounded-full border bg-card px-4 py-2 text-sm font-medium shadow-elev-1 transition-colors hover:border-primary/40 hover:text-primary"
+                >
+                  {p}
+                </Link>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -18,6 +18,7 @@ import { Logo } from "@/components/storefront/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CartIcon } from "@/components/storefront/cart-icon";
 import { SearchBox } from "@/components/storefront/search-box";
+import { DeliverTo } from "@/components/storefront/deliver-to";
 import { NotificationBell, type BellNotification } from "@/components/account/notification-bell";
 
 export function SiteHeader({
@@ -53,21 +54,25 @@ export function SiteHeader({
     mobileHeight: logoHeightMobile,
     maxWidth: logoMaxWidth,
   };
+  // Icon/ghost buttons sitting on the deep-green chrome.
+  const onDeep =
+    "text-surface-deep-foreground hover:bg-white/10 hover:text-surface-deep-foreground focus-visible:ring-white/40";
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-3 px-4">
+    <header className="sticky top-0 z-50 w-full bg-surface-deep text-surface-deep-foreground shadow-elev-2">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-2 px-4 sm:gap-3">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className={cn("md:hidden", onDeep)}
               aria-label="Open menu"
             >
               <Menu className="size-5" />
             </Button>
           </SheetTrigger>
+          {/* The drawer keeps the light surface for legibility. */}
           <SheetContent side="left" className="w-72 p-0">
             <SheetHeader className="border-b p-4">
               <SheetTitle asChild>
@@ -93,9 +98,15 @@ export function SiteHeader({
           </SheetContent>
         </Sheet>
 
-        <Logo logoUrl={logoUrl} name={siteName} {...logoSize} />
+        <Logo
+          logoUrl={logoUrl}
+          name={siteName}
+          accentClassName="text-gold"
+          onDark
+          {...logoSize}
+        />
 
-        <nav className="ml-6 hidden items-center gap-1 md:flex">
+        <nav className="ml-5 hidden items-center gap-0.5 md:flex">
           {siteConfig.mainNav.map((item) => {
             const active = isActiveNav(item.href);
             return (
@@ -104,10 +115,10 @@ export function SiteHeader({
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-foreground",
+                  "rounded-full px-3 py-2 text-sm font-medium transition-colors",
                   active
-                    ? "bg-accent font-semibold text-foreground"
-                    : "text-muted-foreground",
+                    ? "bg-white/15 font-semibold text-surface-deep-foreground"
+                    : "text-surface-deep-foreground/75 hover:bg-white/10 hover:text-surface-deep-foreground",
                 )}
               >
                 {item.title}
@@ -121,6 +132,7 @@ export function SiteHeader({
         </div>
 
         <div className="ml-auto flex items-center gap-0.5">
+          <DeliverTo className="mr-1 hidden xl:flex" />
           {notifications && (
             <NotificationBell initialUnread={unreadCount} items={notifications} />
           )}
@@ -128,14 +140,20 @@ export function SiteHeader({
             asChild
             variant="ghost"
             size="icon"
-            className="hidden sm:inline-flex"
+            className={cn("hidden sm:inline-flex", onDeep)}
             aria-label="Wishlist"
           >
             <Link href="/account/wishlist">
               <Heart className="size-5" />
             </Link>
           </Button>
-          <Button asChild variant="ghost" size="icon" aria-label="Account">
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            className={onDeep}
+            aria-label="Account"
+          >
             <Link href="/account">
               <User className="size-5" />
             </Link>
@@ -144,22 +162,51 @@ export function SiteHeader({
             asChild
             variant="ghost"
             size="icon"
-            className="relative"
+            className={cn("relative", onDeep)}
             aria-label="Cart"
           >
             <Link href="/cart">
               <CartIcon />
             </Link>
           </Button>
-          <ThemeToggle />
+          <div className={onDeep + " rounded-md"}>
+            <ThemeToggle />
+          </div>
         </div>
       </div>
 
-      {/* Full-width search row below the header on mobile/tablet. Desktop (lg+)
-          uses the inline search bar inside the header row above. */}
-      <div className="border-t lg:hidden">
-        <div className="mx-auto w-full max-w-7xl px-4 py-2.5">
+      {/* Full-width search row + deliver-to on mobile/tablet. Desktop (lg+) uses
+          the inline search bar inside the header row above. */}
+      <div className="lg:hidden">
+        <div className="mx-auto w-full max-w-7xl space-y-2 px-4 pb-2.5">
           <SearchBox />
+          <DeliverTo />
+        </div>
+      </div>
+
+      {/* Department chips — quick catalog jumps. Mobile/tablet only (desktop has
+          the inline nav). Horizontal scroll-snap rail. */}
+      <div className="border-t border-white/10 lg:hidden">
+        <div className="scroll-rail mx-auto w-full max-w-7xl gap-2 px-4 py-2.5">
+          {siteConfig.mainNav
+            .filter((item) => item.href !== "/")
+            .map((item) => {
+              const active = isActiveNav(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                    active
+                      ? "border-gold/60 bg-gold/15 text-gold"
+                      : "border-white/15 bg-white/5 text-surface-deep-foreground/85 hover:bg-white/10",
+                  )}
+                >
+                  {item.title}
+                </Link>
+              );
+            })}
         </div>
       </div>
     </header>

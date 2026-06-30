@@ -7,6 +7,15 @@ import { Input } from "@/components/ui/input";
 import { cldUrl } from "@/lib/cld";
 import { cn } from "@/lib/utils";
 
+const POPULAR_SEARCHES = [
+  "Makhana",
+  "Flavoured makhana",
+  "Almonds",
+  "Protein",
+  "Seeds",
+  "Dry fruits",
+];
+
 type Suggestion = {
   id: string;
   name: string;
@@ -105,6 +114,7 @@ export function SearchBox({
   }
 
   const showDropdown = open && q.trim().length >= 2;
+  const showPopular = open && q.trim().length < 2;
 
   return (
     <div ref={rootRef} className="relative w-full">
@@ -139,11 +149,32 @@ export function SearchBox({
         )}
       </form>
 
+      {showPopular && (
+        <div className="absolute z-50 mt-2 w-full overflow-hidden rounded-2xl border bg-popover p-3 shadow-elev-3">
+          <p className="mb-2 flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <TrendingUp className="size-3.5 text-primary" /> Popular searches
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {POPULAR_SEARCHES.map((term) => (
+              <button
+                key={term}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => goSearch(term)}
+                className="rounded-full border bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                {term}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {showDropdown && (
         <div
           id="search-suggestions"
           role="listbox"
-          className="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border bg-popover shadow-elev-3"
+          className="absolute z-50 mt-2 w-full overflow-hidden rounded-2xl border bg-popover shadow-elev-3"
         >
           {items.length > 0 ? (
             <ul className="max-h-[70vh] overflow-y-auto py-1">

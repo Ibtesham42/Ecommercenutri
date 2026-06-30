@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { StarRating } from "@/components/storefront/star-rating";
 import { WishlistButton } from "@/components/storefront/wishlist-button";
 import { BlurImage } from "@/components/storefront/blur-image";
+import { QuickAddButton } from "@/components/storefront/quick-add-button";
+import { cn } from "@/lib/utils";
 import { formatPrice, discountPercent, effectivePrice } from "@/lib/format";
 import { minVariantPrice, type ProductCardData } from "@/lib/queries/products";
 
@@ -32,15 +34,15 @@ export function ProductCard({
   const lowStock = !outOfStock && totalStock <= 5;
 
   return (
-    <Card className="group hover-lift relative overflow-hidden p-0 shadow-elev-1 transition-colors hover:border-primary/40 hover:shadow-elev-2">
+    <Card className="group hover-lift relative flex h-full flex-col overflow-hidden rounded-2xl border-border/70 p-0 shadow-elev-1 transition-colors hover:border-primary/40 hover:shadow-elev-2">
       <div className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex flex-col items-start gap-1">
         {product.isBestSeller && (
-          <Badge className="border-transparent bg-gold text-gold-foreground shadow-sm hover:bg-gold">
-            ★ Best Seller
+          <Badge className="gap-1 border-transparent bg-surface-deep text-surface-deep-foreground shadow-sm hover:bg-surface-deep">
+            <span className="text-gold">★</span> Best Seller
           </Badge>
         )}
         {off ? (
-          <Badge className="border-transparent bg-primary text-primary-foreground shadow-sm hover:bg-primary">
+          <Badge className="border-transparent bg-gold text-gold-foreground shadow-sm hover:bg-gold">
             {off}% OFF
           </Badge>
         ) : null}
@@ -54,7 +56,7 @@ export function ProductCard({
         className="block focus-visible:outline-none"
         aria-label={product.name}
       >
-        <div className="relative aspect-square overflow-hidden bg-accent/30">
+        <div className="relative aspect-square overflow-hidden bg-muted">
           {image ? (
             <BlurImage
               src={image.url}
@@ -72,7 +74,7 @@ export function ProductCard({
         </div>
       </Link>
 
-      <CardContent className="space-y-1.5 p-4">
+      <div className="flex flex-1 flex-col gap-1.5 p-3.5 sm:p-4">
         <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           {product.category.name}
         </p>
@@ -84,7 +86,7 @@ export function ProductCard({
         {product.ratingCount > 0 && (
           <StarRating rating={product.ratingAvg} count={product.ratingCount} />
         )}
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 pt-1">
+        <div className="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-0.5 pt-1.5">
           <span className="text-base font-bold tracking-tight">
             {hasMultiple ? "From " : ""}
             {formatPrice(sale)}
@@ -105,7 +107,10 @@ export function ProductCard({
             Only {totalStock} left
           </p>
         )}
-      </CardContent>
+        <div className="pt-2">
+          <QuickAddButton product={product} />
+        </div>
+      </div>
     </Card>
   );
 }
@@ -113,12 +118,20 @@ export function ProductCard({
 export function ProductGrid({
   products,
   wishlistedIds,
+  className,
 }: {
   products: ProductCardData[];
   wishlistedIds?: Set<string>;
+  /** Override the responsive grid classes when a section needs a different density. */
+  className?: string;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    <div
+      className={cn(
+        "grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5",
+        className,
+      )}
+    >
       {products.map((p) => (
         <ProductCard
           key={p.id}
@@ -127,5 +140,41 @@ export function ProductGrid({
         />
       ))}
     </div>
+  );
+}
+
+/**
+ * Horizontal scroll-snap rail on mobile, responsive grid on tablet/desktop.
+ * Gives home sections a distinct, premium "carousel" feel vs. the catalog grid
+ * — purely presentational, reuses `ProductCard`.
+ */
+export function ProductRail({
+  products,
+  wishlistedIds,
+}: {
+  products: ProductCardData[];
+  wishlistedIds?: Set<string>;
+}) {
+  return (
+    <>
+      {/* Mobile: edge-to-edge horizontal rail */}
+      <div className="scroll-rail -mx-4 gap-3 px-4 pb-1 md:hidden">
+        {products.map((p) => (
+          <div key={p.id} className="w-[44vw] max-w-[210px] shrink-0">
+            <ProductCard product={p} wishlisted={wishlistedIds?.has(p.id)} />
+          </div>
+        ))}
+      </div>
+      {/* Tablet/desktop: grid */}
+      <div className="hidden gap-4 md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {products.map((p) => (
+          <ProductCard
+            key={p.id}
+            product={p}
+            wishlisted={wishlistedIds?.has(p.id)}
+          />
+        ))}
+      </div>
+    </>
   );
 }

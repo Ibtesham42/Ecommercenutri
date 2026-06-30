@@ -39,7 +39,7 @@ export default async function OrdersPage() {
         <Link
           key={order.id}
           href={`/account/orders/${order.orderNumber}`}
-          className="block rounded-xl border p-4 transition hover:border-foreground/20 hover:bg-accent/30"
+          className="hover-lift block rounded-2xl border bg-card p-4 shadow-elev-1 transition-colors hover:border-primary/30 hover:shadow-elev-2"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -55,6 +55,28 @@ export default async function OrdersPage() {
               </Badge>
               <span className="font-semibold">{formatPrice(order.total)}</span>
             </div>
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            {order.items.slice(0, 4).map((item) => (
+              <span
+                key={item.id}
+                className="relative size-12 shrink-0 overflow-hidden rounded-lg border bg-muted"
+              >
+                {item.image && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={item.image}
+                    alt={item.productName}
+                    className="size-full object-cover"
+                  />
+                )}
+              </span>
+            ))}
+            {order.items.length > 4 && (
+              <span className="text-xs font-medium text-muted-foreground">
+                +{order.items.length - 4} more
+              </span>
+            )}
           </div>
         </Link>
       ))}

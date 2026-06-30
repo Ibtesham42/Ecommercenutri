@@ -21,10 +21,10 @@ export function OrderSummaryCard({ order }: { order: OrderWithItems }) {
   const address = order.shippingAddress as unknown as ShippingAddress | null;
 
   return (
-    <div className="space-y-5 rounded-2xl border p-5">
+    <div className="space-y-5 rounded-2xl border bg-card p-5 shadow-elev-1">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="font-semibold">#{order.orderNumber}</p>
+          <p className="font-heading text-lg font-semibold">#{order.orderNumber}</p>
           <p className="text-xs text-muted-foreground">
             Placed {formatDate(order.createdAt)}
           </p>

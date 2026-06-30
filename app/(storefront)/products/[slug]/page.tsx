@@ -196,8 +196,8 @@ export default async function ProductPage({
       </div>
 
       {/* Details tabs */}
-      <div className="mt-12 grid gap-10 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <div className="mt-12 grid gap-6 lg:grid-cols-3 lg:gap-10">
+        <div className="rounded-2xl border bg-card p-5 shadow-elev-1 sm:p-6 lg:col-span-2">
           <Tabs defaultValue="description">
             <TabsList>
               <TabsTrigger value="description">Description</TabsTrigger>

@@ -23,7 +23,7 @@ export default async function ReturnsListPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Returns &amp; Refunds</h1>
+      <h1 className="font-heading text-xl font-semibold sm:text-2xl">Returns &amp; Refunds</h1>
 
       {returns.length === 0 ? (
         <EmptyState
@@ -38,7 +38,7 @@ export default async function ReturnsListPage() {
             <li key={r.id}>
               <Link
                 href={`/account/returns/${r.returnNumber}`}
-                className="block rounded-xl border p-4 transition hover:bg-accent/30"
+                className="block rounded-2xl border bg-card p-4 shadow-elev-1 transition-colors hover:border-primary/30 hover:shadow-elev-2"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">

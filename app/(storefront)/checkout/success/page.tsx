@@ -29,8 +29,10 @@ export default async function CheckoutSuccessPage({
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-12">
       <div className="text-center">
-        <CheckCircle2 className="mx-auto size-14 text-primary" />
-        <h1 className="mt-4 text-2xl font-bold sm:text-3xl">Thank you for your order!</h1>
+        <span className="mx-auto grid size-20 place-items-center rounded-full bg-primary/10 ring-8 ring-primary/5">
+          <CheckCircle2 className="size-12 text-primary" />
+        </span>
+        <h1 className="mt-5 text-2xl font-bold sm:text-3xl">Thank you for your order!</h1>
         <p className="mt-2 text-muted-foreground">
           Your order <span className="font-semibold text-foreground">#{order.orderNumber}</span>{" "}
           has been placed. A confirmation has been sent to your email.

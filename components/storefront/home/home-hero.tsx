@@ -23,12 +23,15 @@ export function HomeHero({ content }: { content: HeroContent }) {
       <div className="mx-auto grid w-full max-w-7xl items-center gap-10 px-4 py-16 md:grid-cols-2 md:py-24">
         <div className="space-y-6">
           {content.eyebrow && (
-            <Badge variant="secondary" className="gap-1.5 rounded-full px-3 py-1">
-              <Sparkles className="size-3.5" />
+            <Badge
+              variant="secondary"
+              className="gap-1.5 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-gold-foreground"
+            >
+              <Sparkles className="size-3.5 text-gold" />
               {content.eyebrow}
             </Badge>
           )}
-          <h1 className="text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+          <h1 className="font-heading text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
             {content.title}{" "}
             {content.highlight && (
               <span className={content.textColor ? undefined : "text-primary"}>{content.highlight}</span>
