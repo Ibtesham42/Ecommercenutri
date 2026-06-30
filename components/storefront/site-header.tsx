@@ -29,6 +29,7 @@ export function SiteHeader({
   logoMaxWidth,
   notifications,
   unreadCount = 0,
+  isLoggedIn = false,
 }: {
   logoUrl?: string | null;
   siteName?: string;
@@ -37,6 +38,7 @@ export function SiteHeader({
   logoMaxWidth?: number | null;
   notifications?: BellNotification[];
   unreadCount?: number;
+  isLoggedIn?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -131,7 +133,7 @@ export function SiteHeader({
           <SearchBox />
         </div>
 
-        <div className="ml-auto flex items-center gap-0.5">
+        <div className="ml-auto flex items-center gap-1 sm:gap-1.5">
           <DeliverTo className="mr-1 hidden xl:flex" />
           {notifications && (
             <NotificationBell initialUnread={unreadCount} items={notifications} />
@@ -140,36 +142,50 @@ export function SiteHeader({
             asChild
             variant="ghost"
             size="icon"
-            className={cn("hidden sm:inline-flex", onDeep)}
+            className={cn("hidden size-10 sm:inline-flex", onDeep)}
             aria-label="Wishlist"
           >
             <Link href="/account/wishlist">
               <Heart className="size-5" />
             </Link>
           </Button>
+          {isLoggedIn ? (
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className={cn("size-10", onDeep)}
+              aria-label="Account"
+            >
+              <Link href="/account">
+                <User className="size-5" />
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className={cn("h-10 gap-1.5 px-2.5 sm:px-3", onDeep)}
+            >
+              <Link href="/login">
+                <User className="size-5" />
+                <span className="text-sm font-medium">Login</span>
+              </Link>
+            </Button>
+          )}
           <Button
             asChild
             variant="ghost"
             size="icon"
-            className={onDeep}
-            aria-label="Account"
-          >
-            <Link href="/account">
-              <User className="size-5" />
-            </Link>
-          </Button>
-          <Button
-            asChild
-            variant="ghost"
-            size="icon"
-            className={cn("relative", onDeep)}
+            className={cn("relative size-10", onDeep)}
             aria-label="Cart"
           >
             <Link href="/cart">
               <CartIcon />
             </Link>
           </Button>
-          <div className={onDeep + " rounded-md"}>
+          <div className={cn("grid size-10 place-items-center rounded-md", onDeep)}>
             <ThemeToggle />
           </div>
         </div>

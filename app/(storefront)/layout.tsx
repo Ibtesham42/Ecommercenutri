@@ -62,6 +62,7 @@ export default async function StorefrontLayout({
         logoMaxWidth={settings.logoMaxWidth}
         notifications={notifications}
         unreadCount={unreadCount}
+        isLoggedIn={!!user}
       />
       {/* Bottom padding on mobile leaves room for the sticky bottom tab bar. */}
       <main className="flex-1 pb-20 md:pb-0">{children}</main>

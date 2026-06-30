@@ -32,7 +32,10 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur md:hidden"
+      // Solid (no backdrop-blur) so it never jitters/shifts during scroll on
+      // mobile; pinned to the visual-viewport bottom with safe-area padding so
+      // the bar's background fills the iPhone home-indicator gap (no white gap).
+      className="fixed inset-x-0 bottom-0 z-50 border-t bg-background shadow-[0_-2px_8px_rgba(20,40,26,0.06)] md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center px-2">
