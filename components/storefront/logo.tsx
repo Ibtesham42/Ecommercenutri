@@ -48,15 +48,9 @@ export function Logo({
       )}
     >
       {logoUrl ? (
-        <span
-          className={cn(
-            "inline-flex shrink-0 items-center justify-center",
-            // Adaptive contrast plate on dark chrome: a clean light card so any
-            // dark/colored/transparent logo reads crisply, with breathing room.
-            onDark &&
-              "rounded-xl bg-white p-1.5 shadow-sm ring-1 ring-black/5 sm:p-2",
-          )}
-        >
+        <span className="inline-flex shrink-0 items-center justify-center">
+          {/* Logo sits directly on the header/footer surface (no plate) so it
+              blends with the menu background instead of showing a white card. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={cldUrl(logoUrl, { h: Math.min(Math.max(h, mh) * 2, 256) })}
