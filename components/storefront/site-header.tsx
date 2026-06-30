@@ -105,6 +105,7 @@ export function SiteHeader({
           name={siteName}
           accentClassName="text-gold"
           onDark
+          className="min-w-0 shrink"
           {...logoSize}
         />
 
@@ -133,7 +134,7 @@ export function SiteHeader({
           <SearchBox />
         </div>
 
-        <div className="ml-auto flex items-center gap-1 sm:gap-1.5">
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
           <DeliverTo className="mr-1 hidden xl:flex" />
           {notifications && (
             <NotificationBell initialUnread={unreadCount} items={notifications} />

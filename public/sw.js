@@ -9,7 +9,7 @@
  *   must be allowed to redirect — caching/returning that redirect would blank
  *   the page. Only clean same-origin 200s are cached.
  */
-const VERSION = "nutriyet-v3";
+const VERSION = "nutriyet-v4";
 const OFFLINE_URL = "/offline";
 
 self.addEventListener("install", (event) => {

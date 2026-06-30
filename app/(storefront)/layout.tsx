@@ -64,8 +64,11 @@ export default async function StorefrontLayout({
         unreadCount={unreadCount}
         isLoggedIn={!!user}
       />
-      {/* Bottom padding on mobile leaves room for the sticky bottom tab bar. */}
-      <main className="flex-1 pb-20 md:pb-0">{children}</main>
+      {/* Bottom padding on mobile clears the fixed bottom tab bar (its 4rem
+          height + the iPhone safe-area inset). Removed on md+ (no bottom bar). */}
+      <main className="flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
+        {children}
+      </main>
       <SiteFooter />
       {/* WhatsApp floats on desktop only; mobile uses the bottom tab bar. */}
       <div className="hidden md:block">

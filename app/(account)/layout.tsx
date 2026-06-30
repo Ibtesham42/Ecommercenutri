@@ -23,15 +23,17 @@ export default async function AccountLayout({
         logoMaxWidth={settings.logoMaxWidth}
         isLoggedIn
       />
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8">
-        <h1 className="mb-6 text-2xl font-bold sm:text-3xl">My account</h1>
-        <div className="grid gap-6 md:grid-cols-[240px_1fr] md:gap-8">
-          <aside>
-            <div className="rounded-2xl border bg-card p-2 shadow-elev-1 md:sticky md:top-24">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:py-8">
+        <h1 className="mb-4 text-2xl font-bold sm:mb-6 sm:text-3xl">My account</h1>
+        <div className="grid gap-5 md:grid-cols-[240px_1fr] md:gap-8">
+          {/* Mobile: a clean full-bleed horizontal nav bar (native-app feel).
+              Desktop: a sticky card sidebar. */}
+          <aside className="-mx-4 md:mx-0">
+            <div className="border-y bg-card px-2 py-2 md:sticky md:top-24 md:rounded-2xl md:border md:shadow-elev-1">
               <AccountSidebar />
             </div>
           </aside>
-          <div>{children}</div>
+          <div className="min-w-0">{children}</div>
         </div>
       </main>
       <SiteFooter />
