@@ -78,6 +78,9 @@ export function BannerVideo({
     >
       <source src={cldVideo(src, { w: width, h: height, fmt: "webm" })} type="video/webm" />
       <source src={cldVideo(src, { w: width, h: height, fmt: "mp4" })} type="video/mp4" />
+      {/* Final fallback — the original uploaded file (covers pasted URLs and any
+          case where the transformed delivery isn't available). */}
+      <source src={src} />
     </video>
   );
 }

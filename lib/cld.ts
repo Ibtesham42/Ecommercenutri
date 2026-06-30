@@ -89,7 +89,9 @@ export function cldVideo(
   const t = [opts.fmt ? `f_${opts.fmt}` : "f_auto", "q_auto"];
   if (opts.w) t.push(`w_${opts.w}`);
   if (opts.h) t.push(`h_${opts.h}`);
-  if (opts.w || opts.h) t.push("c_fill", "g_auto");
+  // c_fill (centered) — no g_auto: video smart-gravity needs an add-on and can
+  // make the delivery URL fail, leaving the poster stuck. Center-crop is safe.
+  if (opts.w || opts.h) t.push("c_fill");
   const out = url.replace("/upload/", `/upload/${t.join(",")}/`);
   // Swap the file extension so the delivered URL matches the forced format.
   return opts.fmt ? out.replace(/\.(mp4|webm|mov|m4v)(\?|$)/i, `.${opts.fmt}$2`) : out;

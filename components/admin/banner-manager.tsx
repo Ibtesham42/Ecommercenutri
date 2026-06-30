@@ -363,6 +363,8 @@ export function BannerManager({
             <DialogTitle>{editing ? "Edit banner" : "New banner"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+            {/* Registered so the toggle's value is always submitted. */}
+            <input type="hidden" {...register("mediaType")} />
             <BannerPreview values={values} />
 
             {/* Media type: Image (default) or Video */}

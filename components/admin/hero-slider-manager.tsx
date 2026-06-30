@@ -412,6 +412,8 @@ export function HeroSliderManager({
             <DialogTitle>{editing ? "Edit slide" : "New slide"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+            {/* Registered so the toggle's value is always submitted. */}
+            <input type="hidden" {...register("mediaType")} />
             {/* Media type: Image (default) or Video */}
             <div>
               <Label className="mb-1.5 block">Media type</Label>
