@@ -32,19 +32,13 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="Primary"
-      // Solid (no backdrop-blur) so it never jitters/shifts during scroll on
-      // mobile; pinned to the visual-viewport bottom with safe-area padding so
-      // the bar's background fills the iPhone home-indicator gap (no white gap).
+      // Pinned to the bottom of the viewport. IMPORTANT: no `transform` here —
+      // on iOS Safari a transform (even translateZ(0)) on a position:fixed
+      // element makes it scroll with the page instead of staying pinned. Solid
+      // background (no backdrop-blur) avoids scroll repaint jitter; safe-area
+      // padding fills the iPhone home-indicator gap so there's no white gap.
       className="fixed inset-x-0 bottom-0 z-50 border-t bg-background shadow-[0_-2px_8px_rgba(20,40,26,0.06)] md:hidden"
-      // translateZ(0) promotes the bar to its own compositor layer so it never
-      // repaints/jitters during scroll (no ancestor has a transform, so this does
-      // not change its fixed-to-viewport positioning). Safe-area padding fills
-      // the iPhone home-indicator gap with the bar's own background.
-      style={{
-        paddingBottom: "env(safe-area-inset-bottom)",
-        transform: "translateZ(0)",
-        WebkitBackfaceVisibility: "hidden",
-      }}
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center px-2">
         <Tab href="/" label="Home" active={isActive("/", true)}>

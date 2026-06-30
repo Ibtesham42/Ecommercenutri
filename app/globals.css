@@ -148,13 +148,13 @@
   html {
     @apply font-sans;
     scroll-behavior: smooth;
-    /* Global guard against accidental horizontal scroll on mobile. `clip`
-       (not `hidden`) does NOT create a scroll container, so the sticky header
-       and any position:fixed elements keep working. */
-    overflow-x: clip;
   }
   body {
     @apply bg-background text-foreground;
+    /* Global guard against accidental horizontal scroll on mobile. Set on body
+       (not the html scroll-root) and using `clip` (not `hidden`) so the sticky
+       header and the fixed bottom nav stay anchored to the viewport. */
+    overflow-x: clip;
   }
   h1,
   h2,
