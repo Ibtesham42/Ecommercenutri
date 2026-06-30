@@ -12,7 +12,7 @@ export function CartCount() {
   if (count <= 0) return null;
 
   return (
-    <span className="absolute -right-0.5 -top-0.5 grid min-w-[18px] place-items-center rounded-full bg-primary px-1 text-[10px] font-bold leading-[18px] text-primary-foreground">
+    <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-gold px-1 text-[11px] font-bold leading-5 text-gold-foreground shadow-sm">
       {count > 99 ? "99+" : count}
     </span>
   );

@@ -30,7 +30,7 @@ export function CartIcon() {
   return (
     <>
       <span className={cn("inline-grid place-items-center", anim && "cart-bump")}>
-        <ShoppingCart className="size-5" />
+        <ShoppingCart className="size-[22px] sm:size-5" />
       </span>
       <CartCount />
     </>

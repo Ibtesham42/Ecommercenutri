@@ -68,10 +68,10 @@ export function SiteHeader({
             <Button
               variant="ghost"
               size="icon"
-              className={cn("md:hidden", onDeep)}
+              className={cn("size-11 md:hidden", onDeep)}
               aria-label="Open menu"
             >
-              <Menu className="size-5" />
+              <Menu className="size-[22px]" />
             </Button>
           </SheetTrigger>
           {/* The drawer keeps the light surface for legibility. */}
@@ -134,7 +134,7 @@ export function SiteHeader({
           <SearchBox />
         </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <DeliverTo className="mr-1 hidden xl:flex" />
           {notifications && (
             <NotificationBell initialUnread={unreadCount} items={notifications} />
@@ -143,11 +143,11 @@ export function SiteHeader({
             asChild
             variant="ghost"
             size="icon"
-            className={cn("hidden size-10 sm:inline-flex", onDeep)}
+            className={cn("hidden size-11 sm:inline-flex sm:size-10", onDeep)}
             aria-label="Wishlist"
           >
             <Link href="/account/wishlist">
-              <Heart className="size-5" />
+              <Heart className="size-[22px] sm:size-5" />
             </Link>
           </Button>
           {isLoggedIn ? (
@@ -155,11 +155,11 @@ export function SiteHeader({
               asChild
               variant="ghost"
               size="icon"
-              className={cn("size-10", onDeep)}
+              className={cn("size-11 sm:size-10", onDeep)}
               aria-label="Account"
             >
               <Link href="/account">
-                <User className="size-5" />
+                <User className="size-[22px] sm:size-5" />
               </Link>
             </Button>
           ) : (
@@ -167,11 +167,11 @@ export function SiteHeader({
               asChild
               variant="ghost"
               size="sm"
-              className={cn("h-10 gap-1.5 px-2.5 sm:px-3", onDeep)}
+              className={cn("h-11 gap-1.5 px-3 sm:h-10", onDeep)}
             >
               <Link href="/login">
-                <User className="size-5" />
-                <span className="text-sm font-medium">Login</span>
+                <User className="size-[18px]" />
+                <span className="text-sm font-semibold">Sign in</span>
               </Link>
             </Button>
           )}
@@ -179,14 +179,14 @@ export function SiteHeader({
             asChild
             variant="ghost"
             size="icon"
-            className={cn("relative size-10", onDeep)}
+            className={cn("relative size-11 sm:size-10", onDeep)}
             aria-label="Cart"
           >
             <Link href="/cart">
               <CartIcon />
             </Link>
           </Button>
-          <div className={cn("grid size-10 place-items-center rounded-md", onDeep)}>
+          <div className={cn("grid size-11 place-items-center rounded-md sm:size-10", onDeep)}>
             <ThemeToggle />
           </div>
         </div>

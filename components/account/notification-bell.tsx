@@ -42,10 +42,15 @@ export function NotificationBell({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
-          <Bell className="size-5" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative size-11 text-surface-deep-foreground hover:bg-white/10 hover:text-surface-deep-foreground focus-visible:ring-white/40 sm:size-10"
+          aria-label="Notifications"
+        >
+          <Bell className="size-[22px] sm:size-5" />
           {unread > 0 && (
-            <span className="absolute right-0.5 top-0.5 grid min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground">
+            <span className="absolute -right-0.5 -top-0.5 grid min-w-5 place-items-center rounded-full bg-gold px-1 text-[11px] font-bold leading-5 text-gold-foreground shadow-sm">
               {unread > 9 ? "9+" : unread}
             </span>
           )}
