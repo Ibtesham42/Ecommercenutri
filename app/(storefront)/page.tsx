@@ -94,6 +94,8 @@ export default async function HomePage() {
         <HeroSlider
           slides={heroSlides.map((s) => ({
             id: s.id,
+            mediaType: s.mediaType,
+            videoUrl: s.videoUrl,
             title: s.title,
             subtitle: s.subtitle,
             description: s.description,

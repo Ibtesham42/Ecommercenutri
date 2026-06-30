@@ -29,6 +29,8 @@ export default async function AdminHeroPage() {
 
   const rows: HeroSlideRow[] = slides.map((s) => ({
     id: s.id,
+    mediaType: s.mediaType,
+    videoUrl: s.videoUrl,
     title: s.title,
     subtitle: s.subtitle,
     description: s.description,

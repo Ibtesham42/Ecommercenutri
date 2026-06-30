@@ -13,6 +13,8 @@ import {
 
 const heroSlideSelect = {
   id: true,
+  mediaType: true,
+  videoUrl: true,
   title: true,
   subtitle: true,
   description: true,

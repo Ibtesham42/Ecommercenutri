@@ -53,6 +53,8 @@ export async function saveHeroSlide(input: unknown): Promise<AdminResult> {
   }
 
   const data = {
+    mediaType: d.mediaType,
+    videoUrl: d.mediaType === "VIDEO" ? d.videoUrl || null : null,
     title: d.title || null,
     subtitle: d.subtitle || null,
     description: d.description || null,

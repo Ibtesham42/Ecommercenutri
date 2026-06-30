@@ -17,12 +17,17 @@ export function BannerVideo({
   active = true,
   preload = "metadata",
   className,
+  width = 1600,
+  height = 600,
 }: {
   src: string;
   poster?: string | null;
   active?: boolean;
   preload?: "auto" | "metadata" | "none";
   className?: string;
+  /** Cloudinary delivery dimensions (cover-cropped). Hero uses a larger frame. */
+  width?: number;
+  height?: number;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [inView, setInView] = useState(false);
@@ -71,8 +76,8 @@ export function BannerVideo({
       tabIndex={-1}
       disableRemotePlayback
     >
-      <source src={cldVideo(src, { w: 1600, h: 600, fmt: "webm" })} type="video/webm" />
-      <source src={cldVideo(src, { w: 1600, h: 600, fmt: "mp4" })} type="video/mp4" />
+      <source src={cldVideo(src, { w: width, h: height, fmt: "webm" })} type="video/webm" />
+      <source src={cldVideo(src, { w: width, h: height, fmt: "mp4" })} type="video/mp4" />
     </video>
   );
 }

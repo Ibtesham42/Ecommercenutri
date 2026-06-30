@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { cldUrl } from "@/lib/cld";
 import { cn } from "@/lib/utils";
+import { BannerVideo } from "@/components/storefront/banner-video";
 
 export type HeroSlideView = {
   id: string;
@@ -18,9 +19,15 @@ export type HeroSlideView = {
   buttonColor: string | null;
   textAlign: string;
   href: string | null;
+  /** "IMAGE" (default) or "VIDEO". */
+  mediaType?: string | null;
+  videoUrl?: string | null;
 };
 
 const AUTOPLAY_MS = 6000;
+const VIDEO_MS = 15000;
+
+const isVideoSlide = (s: HeroSlideView) => s.mediaType === "VIDEO" && !!s.videoUrl;
 
 const alignMap: Record<string, string> = {
   left: "items-start text-left",
@@ -34,10 +41,32 @@ const alignMap: Record<string, string> = {
 export function HeroSlideContent({
   slide,
   preview,
+  active = true,
 }: {
   slide: HeroSlideView;
   preview?: "desktop" | "mobile";
+  /** Slider passes false for off-slides so their video pauses/resets. */
+  active?: boolean;
 }) {
+  // Video slide: the video is the full visual — no overlay/text (like banners).
+  if (isVideoSlide(slide)) {
+    const poster = slide.desktopImage
+      ? cldUrl(slide.desktopImage, { w: 1920, h: 1080, crop: "fill" })
+      : undefined;
+    return (
+      <div className="relative size-full overflow-hidden bg-black">
+        <BannerVideo
+          src={slide.videoUrl as string}
+          poster={poster}
+          active={preview ? true : active}
+          width={1920}
+          height={1080}
+          className="absolute inset-0 size-full object-cover"
+        />
+      </div>
+    );
+  }
+
   const align = alignMap[slide.textAlign] ?? alignMap.left;
   // Show the WHOLE uploaded image (c_fit, never cropped) + auto format/quality +
   // retina. A blurred copy fills the frame so any aspect ratio looks premium
@@ -130,16 +159,19 @@ export function HeroSlider({ slides }: { slides: HeroSlideView[] }) {
     [count],
   );
 
-  // Autoplay (respects reduced-motion + hover/tab-visibility pause).
+  // Autoplay (respects reduced-motion + hover/tab-visibility pause). Re-armed on
+  // each slide using its own duration: video slides hold ~15s, images ~6s.
   useEffect(() => {
     if (count <= 1 || paused) return;
     const reduce =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     if (reduce) return;
-    const t = setInterval(() => setIndex((i) => (i + 1) % count), AUTOPLAY_MS);
-    return () => clearInterval(t);
-  }, [count, paused]);
+    const current = slides[index];
+    const ms = current && isVideoSlide(current) ? VIDEO_MS : AUTOPLAY_MS;
+    const t = setTimeout(() => setIndex((i) => (i + 1) % count), ms);
+    return () => clearTimeout(t);
+  }, [count, paused, index, slides]);
 
   useEffect(() => {
     const onVis = () => setPaused(document.hidden);
@@ -176,7 +208,7 @@ export function HeroSlider({ slides }: { slides: HeroSlideView[] }) {
             aria-hidden={i !== index}
             className="relative h-full w-full shrink-0 basis-full"
           >
-            <HeroSlideContent slide={slide} />
+            <HeroSlideContent slide={slide} active={i === index} />
           </div>
         ))}
       </div>

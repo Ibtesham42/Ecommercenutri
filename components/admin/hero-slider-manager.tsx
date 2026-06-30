@@ -38,7 +38,7 @@ import {
   HeroSlideContent,
   type HeroSlideView,
 } from "@/components/storefront/hero-slider";
-import { cldUrl } from "@/lib/cld";
+import { cldUrl, cldVideoPoster, isVideoUrl } from "@/lib/cld";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import {
@@ -69,6 +69,8 @@ const BULK_VERB: Record<string, string> = { publish: "published", unpublish: "un
 
 export type HeroSlideRow = {
   id: string;
+  mediaType: string;
+  videoUrl: string | null;
   title: string | null;
   subtitle: string | null;
   description: string | null;
@@ -90,6 +92,8 @@ type Option = { id: string; name: string };
 
 type FormValues = {
   id?: string;
+  mediaType: "IMAGE" | "VIDEO";
+  videoUrl: string;
   title: string;
   subtitle: string;
   description: string;
@@ -112,6 +116,8 @@ const dateInput = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
 function toPreview(v: FormValues): HeroSlideView {
   return {
     id: "preview",
+    mediaType: v.mediaType,
+    videoUrl: v.videoUrl || null,
     title: v.title || null,
     subtitle: v.subtitle || null,
     description: v.description || null,
@@ -166,11 +172,14 @@ export function HeroSliderManager({
     });
   }
 
-  const { register, handleSubmit, control, reset, watch } = useForm<FormValues>();
+  const { register, handleSubmit, control, reset, watch, setValue } = useForm<FormValues>();
+  const isVideo = watch("mediaType") === "VIDEO";
 
   function openAdd() {
     setEditing(null);
     reset({
+      mediaType: "IMAGE",
+      videoUrl: "",
       title: "",
       subtitle: "",
       description: "",
@@ -193,6 +202,8 @@ export function HeroSliderManager({
     setEditing(s);
     reset({
       id: s.id,
+      mediaType: s.mediaType === "VIDEO" ? "VIDEO" : "IMAGE",
+      videoUrl: s.videoUrl ?? "",
       title: s.title ?? "",
       subtitle: s.subtitle ?? "",
       description: s.description ?? "",
@@ -216,6 +227,8 @@ export function HeroSliderManager({
     setSaving(true);
     const res = await saveHeroSlide({
       id: v.id,
+      mediaType: v.mediaType,
+      videoUrl: v.videoUrl || null,
       title: v.title || null,
       subtitle: v.subtitle || null,
       description: v.description || null,
@@ -319,10 +332,20 @@ export function HeroSliderManager({
               <div className="relative h-14 w-24 shrink-0 overflow-hidden rounded-lg bg-accent/30">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={cldUrl(s.desktopImage, { w: 240, h: 140, crop: "fill" })}
+                  src={cldUrl(
+                    s.mediaType === "VIDEO" && (!s.desktopImage || isVideoUrl(s.desktopImage))
+                      ? cldVideoPoster(s.videoUrl ?? s.desktopImage)
+                      : s.desktopImage,
+                    { w: 240, h: 140, crop: "fill" },
+                  )}
                   alt=""
                   className="size-full object-cover"
                 />
+                {s.mediaType === "VIDEO" && (
+                  <span className="absolute bottom-0.5 left-0.5 rounded bg-black/70 px-1 text-[9px] font-semibold uppercase text-white">
+                    Video
+                  </span>
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{s.title || "Untitled slide"}</p>
@@ -389,6 +412,59 @@ export function HeroSliderManager({
             <DialogTitle>{editing ? "Edit slide" : "New slide"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+            {/* Media type: Image (default) or Video */}
+            <div>
+              <Label className="mb-1.5 block">Media type</Label>
+              <div className="inline-flex rounded-lg border p-0.5">
+                {(["IMAGE", "VIDEO"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setValue("mediaType", m)}
+                    className={cn(
+                      "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+                      isVideo === (m === "VIDEO")
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {m === "IMAGE" ? "Image" : "Video"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {isVideo && (
+              <div className="space-y-1.5">
+                <Label>Slide video (MP4 / WebM / MOV · max 15s)</Label>
+                <Controller
+                  control={control}
+                  name="videoUrl"
+                  rules={{ required: true }}
+                  render={({ field }) => (
+                    <ImageUploadField
+                      value={field.value}
+                      cloudinaryReady={cloudinaryReady}
+                      folder="hero"
+                      accept="video/mp4,video/webm,video/quicktime"
+                      maxDurationSec={15}
+                      placeholder="https://… or upload a video"
+                      onChange={(url) => {
+                        field.onChange(url);
+                        setValue("desktopImage", url ? cldVideoPoster(url) : "");
+                      }}
+                    />
+                  )}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Autoplays muted &amp; loops, fills the slide. Title, text and button
+                  are hidden — the video is the full slide.
+                </p>
+              </div>
+            )}
+
+            {!isVideo && (
+              <>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="htitle">Title</Label>
@@ -483,6 +559,8 @@ export function HeroSliderManager({
                 <Input id="hcolor" type="text" placeholder="#16803c" {...register("buttonColor")} />
               </div>
             </div>
+              </>
+            )}
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">

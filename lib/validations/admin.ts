@@ -191,8 +191,14 @@ const optionalRelId = z
   .nullable()
   .optional();
 
-export const heroSlideSchema = z.object({
+export const heroSlideSchema = z
+  .object({
   id: z.string().optional(),
+  mediaType: z.enum(["IMAGE", "VIDEO"]).default("IMAGE"),
+  videoUrl: z
+    .union([z.string().url("Enter a valid video URL"), z.literal("")])
+    .nullable()
+    .optional(),
   title: z.string().max(120).nullable().optional(),
   subtitle: z.string().max(160).nullable().optional(),
   description: z.string().max(400).nullable().optional(),
@@ -218,7 +224,12 @@ export const heroSlideSchema = z.object({
   isActive: z.boolean().default(true),
   startsAt: z.coerce.date().nullable().optional(),
   expiresAt: z.coerce.date().nullable().optional(),
-});
+  })
+  .superRefine((d, ctx) => {
+    if (d.mediaType === "VIDEO" && !d.videoUrl) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["videoUrl"], message: "Add a video" });
+    }
+  });
 
 export type HeroSlideInput = z.infer<typeof heroSlideSchema>;
 
