@@ -25,8 +25,8 @@ export default async function ProfilePage() {
   if (!user) return null;
 
   return (
-    <div className="max-w-xl space-y-6">
-      <div className="rounded-2xl border bg-card p-5 shadow-elev-1">
+    <div className="max-w-xl space-y-5">
+      <div className="rounded-2xl border bg-card p-4 shadow-elev-1 sm:p-5">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">Email</p>
@@ -47,7 +47,7 @@ export default async function ProfilePage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border bg-card p-5 shadow-elev-1">
+      <div className="rounded-2xl border bg-card p-4 shadow-elev-1 sm:p-5">
         <h2 className="mb-4 font-heading text-lg font-semibold">Personal details</h2>
         <ProfileForm
           defaultName={user.name ?? ""}

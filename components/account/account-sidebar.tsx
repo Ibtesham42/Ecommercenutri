@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 const nav = [
   { href: "/account", label: "Profile", icon: User },
   { href: "/account/orders", label: "Orders", icon: Package },
-  { href: "/account/returns", label: "Returns & Refunds", icon: RotateCcw },
+  { href: "/account/returns", label: "Returns", icon: RotateCcw },
   { href: "/account/affiliate", label: "Affiliate", icon: Megaphone },
   { href: "/account/addresses", label: "Addresses", icon: MapPin },
   { href: "/account/wishlist", label: "Wishlist", icon: Heart },
