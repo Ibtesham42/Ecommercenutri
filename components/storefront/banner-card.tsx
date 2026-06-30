@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { cldUrl } from "@/lib/cld";
 import { cn } from "@/lib/utils";
+import { BannerVideo } from "@/components/storefront/banner-video";
 
 export type BannerCardData = {
   title?: string | null;
@@ -12,6 +13,9 @@ export type BannerCardData = {
   mobileImage?: string | null;
   desktopImageDark?: string | null;
   mobileImageDark?: string | null;
+  /** "IMAGE" (default) or "VIDEO". */
+  mediaType?: string | null;
+  videoUrl?: string | null;
 };
 
 const DIMS = {
@@ -81,6 +85,8 @@ function TextOverlay({ banner }: { banner: BannerCardData }) {
 // uploaded artwork + content read well on every device. `object-contain` shows
 // the whole image; the blurred backdrop fills any letterbox space.
 const imgClass = "relative z-[1] h-52 w-full object-contain sm:h-60 md:h-56 lg:h-72";
+// Video fills the frame (object-cover) — the video is the full visual.
+const videoClass = "relative z-[1] block h-52 w-full object-cover sm:h-60 md:h-56 lg:h-72";
 
 /**
  * Renders a promotional banner image with a text overlay. Shared by the
@@ -95,13 +101,49 @@ export function BannerCard({
   href,
   preview,
   bleed,
+  active = true,
+  videoPreload,
 }: {
   banner: BannerCardData;
   href?: string | null;
   preview?: { theme: "light" | "dark"; viewport: "desktop" | "mobile" };
   /** Full-bleed (edge-to-edge): drops rounded corners + card shadow. */
   bleed?: boolean;
+  /** Slider passes false for off-slides so their video pauses/resets. */
+  active?: boolean;
+  videoPreload?: "auto" | "metadata" | "none";
 }) {
+  const isVideo = banner.mediaType === "VIDEO" && !!banner.videoUrl;
+
+  // Video banners: the video IS the full visual — no text overlay, object-cover.
+  if (isVideo) {
+    const poster = banner.desktopImage
+      ? cldUrl(banner.desktopImage, { w: 1600, h: 600, crop: "fill" })
+      : undefined;
+    const videoInner = (
+      <div
+        className={cn(
+          "relative overflow-hidden bg-black",
+          bleed ? "" : "hover-lift rounded-2xl shadow-elev-1 group-hover:shadow-elev-2",
+        )}
+      >
+        <BannerVideo
+          src={banner.videoUrl as string}
+          poster={poster}
+          active={preview ? true : active}
+          preload={videoPreload}
+          className={videoClass}
+        />
+      </div>
+    );
+    if (!href) return videoInner;
+    return (
+      <Link href={href} className="group block">
+        {videoInner}
+      </Link>
+    );
+  }
+
   const v = resolveVariants(banner);
   const hasDark = Boolean(banner.desktopImageDark || banner.mobileImageDark);
 

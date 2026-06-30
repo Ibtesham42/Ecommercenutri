@@ -28,6 +28,8 @@ export default async function AdminBannersPage() {
 
   const rows: BannerRow[] = banners.map((b) => ({
     id: b.id,
+    mediaType: b.mediaType,
+    videoUrl: b.videoUrl,
     title: b.title,
     subtitle: b.subtitle,
     description: b.description,

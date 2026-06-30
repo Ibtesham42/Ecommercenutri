@@ -4,7 +4,8 @@ import { uploadImage, cloudinaryEnabled } from "@/lib/cloudinary";
 
 export const runtime = "nodejs";
 
-const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_VIDEO_BYTES = 20 * 1024 * 1024; // 20 MB (short banner clips)
 
 /** Keep folders to a safe, predictable set under the nutriyet namespace. */
 function safeFolder(folder?: string | null): string {
@@ -51,12 +52,16 @@ export async function POST(request: Request) {
   if (!file) {
     return NextResponse.json({ error: "No file received." }, { status: 400 });
   }
-  if (file.size > MAX_BYTES) {
-    return NextResponse.json({ error: "Image is too large (max 10 MB)." }, { status: 413 });
-  }
   // Allowlist image/video types only (defense-in-depth; admins upload media).
   if (!/^(image|video)\//.test(file.type)) {
     return NextResponse.json({ error: "Unsupported file type." }, { status: 415 });
+  }
+  const isVideo = file.type.startsWith("video/");
+  if (file.size > (isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)) {
+    return NextResponse.json(
+      { error: isVideo ? "Video is too large (max 20 MB)." : "Image is too large (max 10 MB)." },
+      { status: 413 },
+    );
   }
 
   try {

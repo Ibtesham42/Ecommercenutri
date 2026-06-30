@@ -4,6 +4,8 @@ import type { BannerPosition } from "@/lib/banners";
 
 const bannerSelect = {
   id: true,
+  mediaType: true,
+  videoUrl: true,
   title: true,
   subtitle: true,
   description: true,

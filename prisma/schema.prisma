@@ -653,6 +653,8 @@ model Banner {
   title            String?
   subtitle         String?
   description      String?
+  mediaType        String    @default("IMAGE") // "IMAGE" | "VIDEO"
+  videoUrl         String?
   desktopImage     String
   mobileImage      String?
   ctaText          String?

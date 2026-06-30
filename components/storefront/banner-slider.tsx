@@ -12,8 +12,17 @@ import { cn } from "@/lib/utils";
 
 export type SliderBanner = BannerCardData & { id: string; href: string | null };
 
-/** Renders multiple promotional banners as a swipeable, auto-advancing slider.
- *  Autoplay pauses on hover and is disabled under prefers-reduced-motion. */
+// Per-slide auto-advance duration. Images flip quickly; videos play longer so
+// the clip is the experience before sliding on.
+const IMAGE_MS = 5500;
+const VIDEO_MS = 15000;
+
+const isVideoBanner = (b: SliderBanner) => b.mediaType === "VIDEO" && !!b.videoUrl;
+
+/** Renders multiple promotional banners (images and/or videos) as a swipeable,
+ *  auto-advancing slider. Each slide holds for its own duration (≈15s for video,
+ *  ≈5.5s for images); the active video plays + loops while others stay paused and
+ *  reset. Autoplay pauses on hover and auto-advance is off under reduced-motion. */
 export function BannerSlider({ banners, bleed }: { banners: SliderBanner[]; bleed?: boolean }) {
   const [api, setApi] = useState<CarouselApi>();
   const [selected, setSelected] = useState(0);
@@ -30,12 +39,18 @@ export function BannerSlider({ banners, bleed }: { banners: SliderBanner[]; blee
     };
   }, [api]);
 
+  // Re-armed whenever the active slide changes (auto or manual), using that
+  // slide's own duration. Manual navigation therefore resets the timer cleanly.
   useEffect(() => {
     if (!api || paused) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const id = setInterval(() => api.scrollNext(), 5000);
-    return () => clearInterval(id);
-  }, [api, paused]);
+    const current = banners[selected];
+    const ms = current && isVideoBanner(current) ? VIDEO_MS : IMAGE_MS;
+    const id = setTimeout(() => api.scrollNext(), ms);
+    return () => clearTimeout(id);
+  }, [api, paused, selected, banners]);
+
+  const nextIndex = banners.length ? (selected + 1) % banners.length : 0;
 
   return (
     <Carousel
@@ -46,9 +61,15 @@ export function BannerSlider({ banners, bleed }: { banners: SliderBanner[]; blee
       onMouseLeave={() => setPaused(false)}
     >
       <CarouselContent className="ml-0">
-        {banners.map((b) => (
+        {banners.map((b, i) => (
           <CarouselItem key={b.id} className="pl-0">
-            <BannerCard banner={b} href={b.href} bleed={bleed} />
+            <BannerCard
+              banner={b}
+              href={b.href}
+              bleed={bleed}
+              active={i === selected}
+              videoPreload={i === selected ? "auto" : i === nextIndex ? "metadata" : "none"}
+            />
           </CarouselItem>
         ))}
       </CarouselContent>

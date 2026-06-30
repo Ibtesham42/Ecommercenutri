@@ -64,6 +64,24 @@ async function prepareBlob(file: File): Promise<{ blob: Blob; filename: string }
  * Image (or video) field that uploads to Cloudinary when configured and always
  * accepts a pasted URL as a fallback. Controlled via `value` / `onChange`.
  */
+/** Read a video file's duration (seconds) in the browser, best-effort. */
+function videoDuration(file: File): Promise<number> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      resolve(Number.isFinite(v.duration) ? v.duration : 0);
+    };
+    v.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(0);
+    };
+    v.src = url;
+  });
+}
+
 export function ImageUploadField({
   value,
   onChange,
@@ -71,6 +89,7 @@ export function ImageUploadField({
   folder,
   accept = "image/*",
   placeholder = "https://… or upload",
+  maxDurationSec,
 }: {
   value?: string;
   onChange: (url: string) => void;
@@ -78,15 +97,31 @@ export function ImageUploadField({
   folder?: string;
   accept?: string;
   placeholder?: string;
+  /** When set, reject video files longer than this (seconds) before upload. */
+  maxDurationSec?: number;
 }) {
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File) {
+    const isVideo = file.type.startsWith("video/");
     // Generous raw guard (large originals are downscaled before upload below).
-    if (file.size > 25 * 1024 * 1024) {
-      toast.error("That file is very large (max 25 MB). Try a smaller image.");
+    const maxMb = isVideo ? 20 : 25;
+    if (file.size > maxMb * 1024 * 1024) {
+      toast.error(
+        isVideo
+          ? "That video is too large (max 20 MB). Compress it, or paste a Cloudinary URL."
+          : "That file is very large (max 25 MB). Try a smaller image.",
+      );
       return;
+    }
+    // Enforce a maximum video duration when requested (banner videos = 15s).
+    if (isVideo && maxDurationSec) {
+      const dur = await videoDuration(file);
+      if (dur && dur > maxDurationSec + 0.5) {
+        toast.error(`Video is too long (${Math.round(dur)}s). Max is ${maxDurationSec}s — trim it and retry.`);
+        return;
+      }
     }
     setUploading(true);
     try {

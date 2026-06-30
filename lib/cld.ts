@@ -73,3 +73,37 @@ export function cldShowcaseImage(
 export function isVideoUrl(url: string): boolean {
   return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url);
 }
+
+/**
+ * Optimized Cloudinary VIDEO delivery — auto quality + (optional) cover-crop to
+ * the banner frame and a forced format. `fmt` lets us serve both a `webm` and an
+ * `mp4` <source> so every browser gets a playable, compressed file. No-op for
+ * non-Cloudinary URLs (returned unchanged so pasted links still work).
+ */
+export function cldVideo(
+  url: string | null | undefined,
+  opts: { w?: number; h?: number; fmt?: "webm" | "mp4" } = {},
+): string {
+  if (!url) return "";
+  if (!url.includes("res.cloudinary.com") || !url.includes("/upload/")) return url;
+  const t = [opts.fmt ? `f_${opts.fmt}` : "f_auto", "q_auto"];
+  if (opts.w) t.push(`w_${opts.w}`);
+  if (opts.h) t.push(`h_${opts.h}`);
+  if (opts.w || opts.h) t.push("c_fill", "g_auto");
+  const out = url.replace("/upload/", `/upload/${t.join(",")}/`);
+  // Swap the file extension so the delivered URL matches the forced format.
+  return opts.fmt ? out.replace(/\.(mp4|webm|mov|m4v)(\?|$)/i, `.${opts.fmt}$2`) : out;
+}
+
+/**
+ * Poster image (first frame) for a Cloudinary video URL — used as the banner's
+ * fallback image (list thumbnail, smooth load before the video plays). No-op for
+ * non-Cloudinary URLs.
+ */
+export function cldVideoPoster(url: string | null | undefined): string {
+  if (!url) return "";
+  if (!url.includes("res.cloudinary.com") || !url.includes("/upload/")) return url;
+  return url
+    .replace("/upload/", "/upload/so_0,f_jpg,q_auto/")
+    .replace(/\.(mp4|webm|mov|m4v)(\?|$)/i, ".jpg$2");
+}

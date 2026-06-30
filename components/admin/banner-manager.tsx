@@ -37,7 +37,7 @@ import { BulkBar, type BulkAction } from "@/components/admin/bulk/bulk-bar";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import { toastBulk } from "@/lib/admin/run-bulk";
 import { BANNER_POSITIONS, BANNER_POSITION_LABELS } from "@/lib/banners";
-import { cldUrl } from "@/lib/cld";
+import { cldUrl, cldVideoPoster, isVideoUrl } from "@/lib/cld";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import {
@@ -67,6 +67,8 @@ const BULK_VERB: Record<string, string> = { publish: "published", unpublish: "un
 
 export type BannerRow = {
   id: string;
+  mediaType: string;
+  videoUrl: string | null;
   title: string | null;
   subtitle: string | null;
   description: string | null;
@@ -89,6 +91,8 @@ type Option = { id: string; name: string };
 
 type FormValues = {
   id?: string;
+  mediaType: "IMAGE" | "VIDEO";
+  videoUrl: string;
   title: string;
   subtitle: string;
   description: string;
@@ -138,12 +142,15 @@ export function BannerManager({
     });
   }
 
-  const { register, handleSubmit, control, reset, watch } = useForm<FormValues>();
+  const { register, handleSubmit, control, reset, watch, setValue } = useForm<FormValues>();
   const values = watch();
+  const isVideo = values.mediaType === "VIDEO";
 
   function openAdd() {
     setEditing(null);
     reset({
+      mediaType: "IMAGE",
+      videoUrl: "",
       title: "",
       subtitle: "",
       description: "",
@@ -167,6 +174,8 @@ export function BannerManager({
     setEditing(b);
     reset({
       id: b.id,
+      mediaType: b.mediaType === "VIDEO" ? "VIDEO" : "IMAGE",
+      videoUrl: b.videoUrl ?? "",
       title: b.title ?? "",
       subtitle: b.subtitle ?? "",
       description: b.description ?? "",
@@ -191,6 +200,8 @@ export function BannerManager({
     setSaving(true);
     const res = await saveBanner({
       id: v.id,
+      mediaType: v.mediaType,
+      videoUrl: v.videoUrl || null,
       title: v.title || null,
       subtitle: v.subtitle || null,
       description: v.description || null,
@@ -271,10 +282,20 @@ export function BannerManager({
               <div className="relative h-14 w-24 shrink-0 overflow-hidden rounded-lg bg-accent/30">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={cldUrl(b.desktopImage, { w: 240, h: 140, crop: "fill" })}
+                  src={cldUrl(
+                    b.mediaType === "VIDEO" && (!b.desktopImage || isVideoUrl(b.desktopImage))
+                      ? cldVideoPoster(b.videoUrl ?? b.desktopImage)
+                      : b.desktopImage,
+                    { w: 240, h: 140, crop: "fill" },
+                  )}
                   alt=""
                   className="size-full object-cover"
                 />
+                {b.mediaType === "VIDEO" && (
+                  <span className="absolute bottom-0.5 left-0.5 rounded bg-black/70 px-1 text-[9px] font-semibold uppercase text-white">
+                    Video
+                  </span>
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{b.title || "Untitled banner"}</p>
@@ -344,6 +365,61 @@ export function BannerManager({
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
             <BannerPreview values={values} />
 
+            {/* Media type: Image (default) or Video */}
+            <div>
+              <Label className="mb-1.5 block">Media type</Label>
+              <div className="inline-flex rounded-lg border p-0.5">
+                {(["IMAGE", "VIDEO"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setValue("mediaType", m)}
+                    className={cn(
+                      "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+                      values.mediaType === m
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {m === "IMAGE" ? "Image" : "Video"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {isVideo && (
+              <div className="space-y-1.5">
+                <Label>Banner video (MP4 / WebM / MOV · max 15s)</Label>
+                <Controller
+                  control={control}
+                  name="videoUrl"
+                  rules={{ required: true }}
+                  render={({ field }) => (
+                    <ImageUploadField
+                      value={field.value}
+                      cloudinaryReady={cloudinaryReady}
+                      folder="banners"
+                      accept="video/mp4,video/webm,video/quicktime"
+                      maxDurationSec={15}
+                      placeholder="https://… or upload a video"
+                      onChange={(url) => {
+                        field.onChange(url);
+                        // Auto-derive a poster (Cloudinary first frame) used as the
+                        // fallback image + list thumbnail; harmless for pasted URLs.
+                        setValue("desktopImage", url ? cldVideoPoster(url) : "");
+                      }}
+                    />
+                  )}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Autoplays muted &amp; loops, fills the banner. Title, description and
+                  button are hidden — the video is the full banner.
+                </p>
+              </div>
+            )}
+
+            {!isVideo && (
+              <>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="btitle">Title</Label>
@@ -408,6 +484,8 @@ export function BannerManager({
                 </p>
               </div>
             </div>
+              </>
+            )}
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -499,7 +577,10 @@ function BannerPreview({ values }: { values: FormValues }) {
     mobileImage: values.mobileImage || null,
     desktopImageDark: values.desktopImageDark || null,
     mobileImageDark: values.mobileImageDark || null,
+    mediaType: values.mediaType,
+    videoUrl: values.videoUrl || null,
   };
+  const hasMedia = Boolean(banner.desktopImage || banner.videoUrl);
 
   return (
     <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
@@ -529,13 +610,13 @@ function BannerPreview({ values }: { values: FormValues }) {
           theme === "dark" ? "bg-neutral-900" : "bg-white",
         )}
       >
-        {banner.desktopImage ? (
+        {hasMedia ? (
           <div className={cn("w-full", viewport === "mobile" && "max-w-[360px]")}>
             <BannerCard banner={banner} preview={{ theme, viewport }} />
           </div>
         ) : (
           <div className="flex h-32 w-full items-center justify-center text-sm text-muted-foreground">
-            Add a desktop image to preview
+            {banner.mediaType === "VIDEO" ? "Add a video to preview" : "Add a desktop image to preview"}
           </div>
         )}
       </div>
