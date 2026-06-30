@@ -69,6 +69,20 @@ export function cldShowcaseImage(
   return url.replace("/upload/", `/upload/${t}/`);
 }
 
+/**
+ * Deliver an uploaded favicon as a Google-friendly icon: a real PNG (not f_auto,
+ * which can serve WebP/AVIF that Google's favicon crawler ignores), squared to a
+ * multiple-of-48 size (Google's requirement), padding rather than cropping so the
+ * whole mark is kept. No-op for non-Cloudinary URLs (returned unchanged).
+ */
+export function cldFavicon(url: string | null | undefined, size = 96): string {
+  if (!url) return "";
+  if (!url.includes("res.cloudinary.com") || !url.includes("/upload/")) return url;
+  return url
+    .replace("/upload/", `/upload/f_png,q_auto,w_${size},h_${size},c_pad,b_transparent/`)
+    .replace(/\.(svg|webp|avif|jpe?g|gif|tiff?)(\?|$)/i, ".png$2");
+}
+
 /** True for URLs we should treat as video in previews/viewers. */
 export function isVideoUrl(url: string): boolean {
   return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url);

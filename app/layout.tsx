@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { siteConfig } from "@/config/site";
 import { organizationSchema, websiteSchema, jsonLd } from "@/lib/seo";
 import { getStoreSettings } from "@/lib/queries/settings";
-import { cldUrl } from "@/lib/cld";
+import { cldFavicon } from "@/lib/cld";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@/components/analytics";
@@ -67,9 +67,17 @@ export async function generateMetadata(): Promise<Metadata> {
     // uploaded asset is delivered as a proper image, and the versioned URL
     // cache-busts the browser tab automatically. Supports .png/.ico/.svg.
     icons: {
-      icon: fav ? [{ url: cldUrl(fav, { w: 64, h: 64, crop: "fit" }) }] : [{ url: "/brand-icon", type: "image/png" }],
-      shortcut: [fav ? cldUrl(fav, { w: 64, h: 64, crop: "fit" }) : "/brand-icon"],
-      apple: fav ? [{ url: cldUrl(fav, { w: 180, h: 180, crop: "fit" }) }] : [{ url: "/brand-apple-icon" }],
+      // Google Search needs a square PNG favicon at a multiple of 48px, served
+      // as a real raster (not WebP/AVIF). `cldFavicon` forces PNG + square pad.
+      icon: fav
+        ? [
+            { url: cldFavicon(fav, 48), sizes: "48x48", type: "image/png" },
+            { url: cldFavicon(fav, 96), sizes: "96x96", type: "image/png" },
+            { url: cldFavicon(fav, 192), sizes: "192x192", type: "image/png" },
+          ]
+        : [{ url: "/brand-icon", type: "image/png" }],
+      shortcut: [fav ? cldFavicon(fav, 96) : "/brand-icon"],
+      apple: fav ? [{ url: cldFavicon(fav, 180) }] : [{ url: "/brand-apple-icon" }],
     },
     robots: { index: true, follow: true },
   };
