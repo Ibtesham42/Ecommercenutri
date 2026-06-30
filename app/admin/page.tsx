@@ -10,6 +10,7 @@ import {
   Clock,
   LayoutDashboard,
   Mail,
+  Briefcase,
 } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ import { getAdminUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { formatPrice, formatDate } from "@/lib/format";
 import { statusBadgeVariant, statusLabel } from "@/lib/order-status";
+import { getB2BStats } from "@/lib/queries/b2b";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = { title: "Admin Dashboard", robots: { index: false } };
@@ -68,6 +70,7 @@ export default async function AdminDashboardPage() {
   const newMessages = showCustomers
     ? await prisma.contactMessage.count({ where: { status: "NEW" } }).catch(() => 0)
     : 0;
+  const b2b = showCustomers ? await getB2BStats() : null;
 
   return (
     <div>
@@ -104,6 +107,37 @@ export default async function AdminDashboardPage() {
             </span>{" "}
             <span className="text-muted-foreground">from the contact form — review now.</span>
           </span>
+        </Link>
+      )}
+
+      {b2b && b2b.total > 0 && (
+        <Link
+          href="/admin/b2b"
+          className="mb-6 block rounded-xl border bg-background p-4 transition-colors hover:border-primary/40"
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
+                <Briefcase className="size-4" />
+              </span>
+              B2B Inquiries
+            </span>
+            <span className="text-xs text-muted-foreground">View all →</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            {[
+              { label: "Total", value: b2b.total },
+              { label: "New", value: b2b.new },
+              { label: "Contacted", value: b2b.contacted },
+              { label: "Converted", value: b2b.converted },
+              { label: "Conversion", value: `${b2b.conversionRate}%` },
+            ].map((m) => (
+              <div key={m.label} className="rounded-lg bg-muted/40 p-3">
+                <p className="text-xl font-bold tracking-tight">{m.value}</p>
+                <p className="text-xs text-muted-foreground">{m.label}</p>
+              </div>
+            ))}
+          </div>
         </Link>
       )}
 

@@ -36,6 +36,92 @@ function shell(opts: {
 </html>`;
 }
 
+function esc(s: string): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Confirmation sent to a business buyer after they submit a B2B inquiry. */
+export function b2bConfirmationEmail(name: string): Email {
+  return {
+    subject: "Thank You for Contacting Nutriyet Business",
+    html: shell({
+      heading: "Thank you for contacting Nutriyet Business",
+      intro:
+        `Hi ${esc(name)}, thank you for your interest in partnering with Nutriyet. ` +
+        "We have received your business inquiry successfully. Our dedicated B2B team will " +
+        "review your request and get back to you within <strong>24 hours</strong>. " +
+        "If your inquiry is urgent, you may also contact us using our business support " +
+        "details.<br><br>We look forward to working with you.<br><br>Warm regards,<br>" +
+        "Nutriyet Business Team",
+      ctaLabel: "Explore Nutriyet",
+      ctaUrl: `${siteConfig.url}/b2b`,
+      outro: "Our B2B team will be in touch within 24 hours.",
+    }),
+    text:
+      `Thank you for contacting Nutriyet Business.\n\nHi ${name}, we have received your ` +
+      "business inquiry successfully. Our dedicated B2B team will review your request and get " +
+      "back to you within 24 hours.\n\nWarm regards,\nNutriyet Business Team",
+  };
+}
+
+/** Internal alert emailed to the store inbox when a new B2B inquiry arrives. */
+export function b2bAdminAlertEmail(d: {
+  fullName: string;
+  companyName?: string | null;
+  businessType: string;
+  phone: string;
+  email: string;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  purpose: string;
+  message: string;
+}): Email {
+  const location = [d.city, d.state, d.country].filter(Boolean).join(", ") || "—";
+  const rows: [string, string][] = [
+    ["Name", d.fullName],
+    ["Company", d.companyName || "—"],
+    ["Business type", d.businessType],
+    ["Phone", d.phone],
+    ["Email", d.email],
+    ["Location", location],
+    ["Purpose", d.purpose],
+  ];
+  const table = rows
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:6px 12px;font-size:13px;color:#8a978f;width:130px">${k}</td>` +
+        `<td style="padding:6px 12px;font-size:13px;color:#1a2b22;font-weight:600">${esc(v)}</td></tr>`,
+    )
+    .join("");
+  return {
+    subject: `New B2B inquiry — ${d.purpose} (${d.businessType})`,
+    html: `<!doctype html><html><body style="margin:0;background:#f4f7f5;font-family:Arial,Helvetica,sans-serif;color:#1a2b22">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 0"><tr><td align="center">
+        <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e3ece6">
+          <tr><td style="background:#16803c;padding:20px 28px"><!--NUTRIYET_BRAND--></td></tr>
+          <tr><td style="padding:24px 28px">
+            <h1 style="margin:0 0 6px;font-size:18px;color:#13241c">New B2B business inquiry</h1>
+            <p style="margin:0 0 16px;font-size:13px;color:#48584f">A new wholesale/business inquiry was submitted.</p>
+            <table role="presentation" width="100%" style="border:1px solid #eef3f0;border-radius:10px;border-collapse:separate;overflow:hidden">${table}</table>
+            <p style="margin:16px 0 6px;font-size:13px;color:#8a978f">Message</p>
+            <p style="margin:0;font-size:13px;line-height:20px;color:#1a2b22;white-space:pre-wrap">${esc(d.message)}</p>
+            <p style="margin:18px 0 0;font-size:12px;color:#8a978f">Reply directly to this email to respond to ${esc(d.fullName)}.</p>
+          </td></tr>
+          <tr><td style="padding:16px 28px;border-top:1px solid #eef3f0;font-size:12px;color:#9aa79f">© ${new Date().getFullYear()} ${siteConfig.name}</td></tr>
+        </table>
+      </td></tr></table></body></html>`,
+    text:
+      `New B2B inquiry\n` +
+      rows.map(([k, v]) => `${k}: ${v}`).join("\n") +
+      `\n\nMessage:\n${d.message}`,
+  };
+}
+
 export function verificationEmail(url: string, name?: string | null): Email {
   return {
     subject: `Verify your email — ${siteConfig.name}`,
