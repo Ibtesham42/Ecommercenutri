@@ -27,9 +27,10 @@ export default async function AccountLayout({
         <h1 className="mb-4 text-2xl font-bold sm:mb-6 sm:text-3xl">My account</h1>
         <div className="grid gap-5 md:grid-cols-[240px_1fr] md:gap-8">
           {/* Mobile: a clean full-bleed horizontal nav bar (native-app feel).
-              Desktop: a sticky card sidebar. */}
-          <aside className="-mx-4 md:mx-0">
-            <div className="border-y bg-card px-2 py-2 md:sticky md:top-24 md:rounded-2xl md:border md:shadow-elev-1">
+              Desktop: a sticky card sidebar. `min-w-0` lets the horizontal nav
+              rail scroll internally instead of forcing the page wider. */}
+          <aside className="-mx-4 min-w-0 md:mx-0">
+            <div className="min-w-0 border-y bg-card px-2 py-2 md:sticky md:top-24 md:rounded-2xl md:border md:shadow-elev-1">
               <AccountSidebar />
             </div>
           </aside>
