@@ -130,7 +130,9 @@ export function SiteHeader({
           })}
         </nav>
 
-        <div className="mx-4 hidden flex-1 lg:block lg:max-w-sm xl:max-w-md">
+        {/* Grows to fill free space between the nav and the actions, capped so it
+            stays balanced; expands a touch further on focus for a premium feel. */}
+        <div className="mx-3 hidden min-w-0 flex-1 transition-[max-width] duration-300 ease-out lg:block lg:max-w-md lg:focus-within:max-w-lg xl:mx-5 xl:max-w-lg xl:focus-within:max-w-2xl">
           <SearchBox />
         </div>
 
