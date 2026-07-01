@@ -2,13 +2,14 @@ import type { Metadata, Viewport } from "next";
 import { Hanken_Grotesk, Geist_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
-import { siteConfig } from "@/config/site";
 import { organizationSchema, websiteSchema, jsonLd } from "@/lib/seo";
 import { getStoreSettings } from "@/lib/queries/settings";
+import { getSeoSettings } from "@/lib/seo-settings";
 import { cldFavicon } from "@/lib/cld";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@/components/analytics";
+import { SeoScripts, SeoNoscript } from "@/components/seo-scripts";
 import { Analytics as VercelAnalytics } from "@vercel/analytics/next";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 
@@ -28,39 +29,48 @@ const fontHeading = Fraunces({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  // SEO defaults are admin-editable (Appearance settings) with config fallback.
-  const store = await getStoreSettings();
-  const name = store.siteName;
-  const title = store.metaTitle || `${name} — ${store.tagline}`;
-  const description = store.metaDescription || siteConfig.description;
-  const ogImages = store.ogImage ? [{ url: store.ogImage }] : undefined;
+  // All SEO is admin-editable (SEO & Social Share Manager + Appearance) and
+  // resolved (with config fallback) by getSeoSettings(); favicon stays raw for
+  // the multi-size icon set.
+  const [store, seo] = await Promise.all([getStoreSettings(), getSeoSettings()]);
   const fav = store.favicon;
 
+  const verificationOther: Record<string, string> = {};
+  if (seo.bingVerification) verificationOther["msvalidate.01"] = seo.bingVerification;
+  if (seo.pinterestVerification) verificationOther["p:domain_verify"] = seo.pinterestVerification;
+
+  const other: Record<string, string> = {};
+  if (seo.facebookAppId) other["fb:app_id"] = seo.facebookAppId;
+
   return {
-    metadataBase: new URL(siteConfig.url),
+    metadataBase: new URL(seo.siteUrl),
     title: {
-      default: title,
-      template: `%s | ${name}`,
+      default: seo.title,
+      template: `%s | ${seo.siteName}`,
     },
-    description,
-    keywords: [...siteConfig.keywords],
-    applicationName: name,
-    authors: [{ name, url: siteConfig.url }],
-    creator: name,
+    description: seo.metaDescription,
+    keywords: seo.keywords,
+    applicationName: seo.siteName,
+    authors: [{ name: seo.author, url: seo.siteUrl }],
+    creator: seo.author,
+    publisher: seo.publisher,
+    category: seo.businessCategory,
+    alternates: { canonical: seo.siteUrl },
     openGraph: {
-      type: "website",
-      locale: "en_IN",
-      url: siteConfig.url,
-      title,
-      description,
-      siteName: name,
-      ...(ogImages ? { images: ogImages } : {}),
+      type: seo.ogType as "website",
+      locale: seo.locale,
+      url: seo.siteUrl,
+      title: seo.shareTitle,
+      description: seo.shareDescription,
+      siteName: seo.siteName,
+      images: [{ url: seo.shareImage }],
     },
     twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      ...(store.ogImage ? { images: [store.ogImage] } : {}),
+      card: seo.twitterCardType,
+      title: seo.shareTitle,
+      description: seo.shareDescription,
+      images: [seo.twitterImage],
+      ...(seo.twitterCreator ? { site: seo.twitterCreator, creator: seo.twitterCreator } : {}),
     },
     // Drive icons from the admin-uploaded favicon when set, else the generated
     // brand default. Favicons are normalized through Cloudinary (f_auto) so any
@@ -77,20 +87,35 @@ export async function generateMetadata(): Promise<Metadata> {
           ]
         : [{ url: "/brand-icon", type: "image/png" }],
       shortcut: [fav ? cldFavicon(fav, 96) : "/brand-icon"],
-      apple: fav ? [{ url: cldFavicon(fav, 180) }] : [{ url: "/brand-apple-icon" }],
+      apple: seo.appleTouchIcon
+        ? [{ url: seo.appleTouchIcon }]
+        : fav
+          ? [{ url: cldFavicon(fav, 180) }]
+          : [{ url: "/brand-apple-icon" }],
     },
-    robots: { index: true, follow: true },
+    verification: {
+      ...(seo.googleVerification ? { google: seo.googleVerification } : {}),
+      ...(seo.yandexVerification ? { yandex: seo.yandexVerification } : {}),
+      ...(Object.keys(verificationOther).length ? { other: verificationOther } : {}),
+    },
+    ...(Object.keys(other).length ? { other } : {}),
+    robots: seo.robotsIndex
+      ? { index: true, follow: true }
+      : { index: false, follow: false },
   };
 }
 
-export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f1a14" },
-  ],
-  width: "device-width",
-  initialScale: 1,
-};
+export async function generateViewport(): Promise<Viewport> {
+  const seo = await getSeoSettings();
+  return {
+    themeColor: [
+      { media: "(prefers-color-scheme: light)", color: seo.themeColor || "#ffffff" },
+      { media: "(prefers-color-scheme: dark)", color: "#0f1a14" },
+    ],
+    width: "device-width",
+    initialScale: 1,
+  };
+}
 
 export default function RootLayout({
   children,
@@ -115,6 +140,7 @@ export default function RootLayout({
           "min-h-dvh bg-background font-sans antialiased",
         )}
       >
+        <SeoNoscript />
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
@@ -126,6 +152,8 @@ export default function RootLayout({
         </ThemeProvider>
         {/* Project's pluggable (Plausible/Umami-style) analytics — env-gated. */}
         <Analytics />
+        {/* Admin-managed analytics (GA4 / GTM / Meta Pixel) — each self-gates. */}
+        <SeoScripts />
         {/* Vercel Web Analytics — production only; auto-tracks App Router page views. */}
         {process.env.NODE_ENV === "production" && <VercelAnalytics />}
         <ServiceWorkerRegister />

@@ -831,6 +831,28 @@ See `PROGRESS.md` for the live tracker (status, blockers, next task).
     `icons` come from `StoreSetting.favicon` via `cldFavicon` (32/180/192/512, brand-route
     fallback) — not hardcoded. So the tab, the classic path, apple-touch and the installed-app
     icon all track the admin favicon; `force-dynamic` means no build-time bake to go stale.
+- **SEO & Social Share Manager** (`/admin/seo`, `appearance` permission) — admin CMS for all
+  site-wide SEO/social metadata; **extends** the existing pipeline (doesn't replace it). Extended
+  config lives in a single additive **`StoreSetting.seo` JSON blob** (no per-field migrations);
+  core fields (siteName/metaTitle/metaDescription/ogImage/favicon/primary socials) stay in their
+  own columns and remain editable from Appearance too. **`lib/seo-settings.ts#getSeoSettings()`**
+  is the single resolver — folds columns + blob over `config/site.ts` defaults into a fully-resolved
+  `SeoSettings` used by both the root `generateMetadata`/`generateViewport` (title, description,
+  keywords, canonical, OG type/locale/image, Twitter card, `verification` google/bing/pinterest/
+  yandex, `fb:app_id`, theme color, robots index) **and** the admin live previews. Analytics
+  (GA4/GTM/Meta Pixel) inject via `components/seo-scripts.tsx` (`SeoScripts`/`SeoNoscript`, each
+  self-gates on its ID, additive to the env-gated Plausible `<Analytics/>`). Save
+  (`lib/actions/admin/seo.ts#updateSeoSettings`) writes columns + blob then `revalidatePath("/",
+  "layout")` so metadata refreshes **without a redeploy**. Flagship UI (`components/admin/seo-manager.tsx`
+  + `components/admin/seo/*`): tabbed editor (Global / Social / Search & Analytics / Links),
+  **live multi-platform preview** (Google Search + Discover, WhatsApp, Facebook, LinkedIn, X,
+  Telegram, Discord, Instagram DM, Gmail — `social-previews.tsx`), soft validation warnings,
+  unsaved-changes guard + save indicator, Reset-to-defaults, and a **URL Tester**
+  (`fetchUrlPreview` server action, SSRF-guarded to the site origin, scrapes a page's real
+  OG/Twitter/title tags). Validation schema: `lib/validations/seo.ts`; shared client-safe preview
+  types: `lib/seo-preview.ts`. **Backlog (Phase 2):** per-page / per-product / per-blog SEO
+  overrides (models + wiring), per-section share-image manager, schema on/off toggles, editable
+  robots.txt/sitemap body.
 - **OG image** is still generated at the edge via `next/og` `ImageResponse`
   (`app/opengraph-image.tsx`); `siteConfig.ogImage` points at `/opengraph-image`.
 - **`cldUrl`** supports `gravity` (`g_auto` smart focal point) and `dpr` (`dpr_auto`) on top of

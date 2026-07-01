@@ -886,6 +886,11 @@ model StoreSetting {
   affiliateDefaultCommissionValue Int            @default(10)
   affiliateEnabled                Boolean        @default(true)
   affiliateMinPayout              Int            @default(50000)
+  // Extended SEO / social-share / verification / analytics config, managed from
+  // the admin "SEO & Social Share Manager". A single JSON blob so new SEO fields
+  // never need a migration; core fields (siteName/metaTitle/ogImage/favicon/…)
+  // stay in their own columns. Merged over defaults by lib/seo-settings.ts.
+  seo                             Json?
 }
 
 model AISetting {

@@ -29,6 +29,7 @@ import {
   Send,
   Sparkles,
   LineChart,
+  Search,
   Settings,
   Menu,
 } from "lucide-react";
@@ -70,6 +71,7 @@ const nav: NavItem[] = [
   { href: "/admin/blog", label: "Blog", icon: Newspaper, permission: "appearance" },
   { href: "/admin/legal", label: "Legal Pages", icon: ScrollText, permission: "appearance" },
   { href: "/admin/appearance", label: "Appearance", icon: Palette, permission: "appearance" },
+  { href: "/admin/seo", label: "SEO & Social Share", icon: Search, permission: "appearance" },
   { href: "/admin/shipping", label: "Shipping", icon: Truck, permission: "appearance" },
   { href: "/admin/customers", label: "Customers", icon: Users, permission: "customers" },
   { href: "/admin/affiliates", label: "Affiliates", icon: Megaphone, permission: "affiliates" },
