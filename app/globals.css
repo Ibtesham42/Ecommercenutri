@@ -236,6 +236,16 @@
     box-shadow 0.25s ease;
 }
 
+/* Product-card lift — a touch stronger than .hover-lift, with its own border
+   transition so the elevation, lift and border tint animate together. The hover
+   translate itself is reduced-motion gated below. */
+.card-lift {
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s ease,
+    border-color 0.2s ease;
+}
+
 /* Hidden scrollbar helper (cross-browser). */
 .no-scrollbar {
   -ms-overflow-style: none;
@@ -296,6 +306,23 @@
   }
   .hover-lift:hover {
     transform: translateY(-3px);
+  }
+  .card-lift:hover {
+    transform: translateY(-5px);
+  }
+  /* Very subtle "breathing" for promotional badges (discount / Best Seller).
+     A tiny scale pulse — premium and calm, never distracting. */
+  @keyframes nutri-breathe {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.035);
+    }
+  }
+  .badge-breathe {
+    animation: nutri-breathe 3.2s ease-in-out infinite;
   }
   /* Scroll-reveal: hidden until `data-revealed` is set by the Reveal observer. */
   [data-reveal] {

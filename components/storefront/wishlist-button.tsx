@@ -19,6 +19,8 @@ export function WishlistButton({
   withLabel?: boolean;
 }) {
   const [active, setActive] = useState(Boolean(initial));
+  // Bumped each time we favorite, to re-trigger the pop animation (via `key`).
+  const [pop, setPop] = useState(0);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -32,6 +34,7 @@ export function WishlistButton({
         return;
       }
       setActive(res.wishlisted);
+      if (res.wishlisted) setPop((n) => n + 1);
       toast.success(res.wishlisted ? "Added to wishlist" : "Removed from wishlist");
     });
   }
@@ -52,9 +55,14 @@ export function WishlistButton({
       )}
     >
       <Heart
+        // `key` remounts the icon on each favorite so the pop keyframe replays.
+        key={pop}
         className={cn(
           "size-4 transition-all duration-200",
           active ? "scale-110 fill-rose-500 text-rose-500" : "hover:text-rose-500",
+          // `.animate-pop` lives inside the reduced-motion `no-preference` block,
+          // so it's already suppressed for users who prefer reduced motion.
+          pop > 0 && active && "animate-pop",
         )}
       />
       {withLabel && (active ? "Wishlisted" : "Wishlist")}

@@ -5,6 +5,7 @@ import { StarRating } from "@/components/storefront/star-rating";
 import { WishlistButton } from "@/components/storefront/wishlist-button";
 import { BlurImage } from "@/components/storefront/blur-image";
 import { QuickAddButton } from "@/components/storefront/quick-add-button";
+import { Reveal } from "@/components/storefront/reveal";
 import { cn } from "@/lib/utils";
 import { formatPrice, discountPercent, effectivePrice } from "@/lib/format";
 import { minVariantPrice, type ProductCardData } from "@/lib/queries/products";
@@ -34,15 +35,15 @@ export function ProductCard({
   const lowStock = !outOfStock && totalStock <= 5;
 
   return (
-    <Card className="group hover-lift relative flex h-full flex-col overflow-hidden rounded-2xl border-border/70 p-0 shadow-elev-1 transition-colors hover:border-primary/40 hover:shadow-elev-2">
+    <Card className="group card-lift relative flex h-full flex-col overflow-hidden rounded-2xl border-border/70 p-0 shadow-elev-1 hover:border-primary/40 hover:shadow-elev-2">
       <div className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex flex-col items-start gap-1">
         {product.isBestSeller && (
-          <Badge className="gap-1 border-transparent bg-surface-deep text-surface-deep-foreground shadow-sm hover:bg-surface-deep">
+          <Badge className="badge-breathe gap-1 border-transparent bg-surface-deep text-surface-deep-foreground shadow-sm hover:bg-surface-deep">
             <span className="text-gold">★</span> Best Seller
           </Badge>
         )}
         {off ? (
-          <Badge className="border-transparent bg-gold text-gold-foreground shadow-sm hover:bg-gold">
+          <Badge className="badge-breathe border-transparent bg-gold text-gold-foreground shadow-sm [animation-delay:1.6s] hover:bg-gold">
             {off}% OFF
           </Badge>
         ) : null}
@@ -63,7 +64,7 @@ export function ProductCard({
               alt={image.alt ?? product.name}
               fill
               sizes="(max-width: 768px) 50vw, 25vw"
-              className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.07]"
+              className="object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.04]"
             />
           ) : null}
           {outOfStock && (
@@ -132,12 +133,13 @@ export function ProductGrid({
         className,
       )}
     >
-      {products.map((p) => (
-        <ProductCard
-          key={p.id}
-          product={p}
-          wishlisted={wishlistedIds?.has(p.id)}
-        />
+      {products.map((p, i) => (
+        // Fade each card up as it scrolls into view (staggered per row for a
+        // premium cascade). Reveal is reduced-motion gated + passes RSC children
+        // straight through, so the server-rendered card is untouched.
+        <Reveal key={p.id} className="h-full" delay={(i % 5) * 40}>
+          <ProductCard product={p} wishlisted={wishlistedIds?.has(p.id)} />
+        </Reveal>
       ))}
     </div>
   );
