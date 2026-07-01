@@ -484,7 +484,10 @@ always pass. Everything degrades to nothing when `StoreSetting.affiliateEnabled 
   sends an in-app notification + email** (`payoutUpdateEmail`/`payoutEmail`). Payout history
   (number, status, method, reference, amount, date) shows on both the affiliate dashboard and admin.
 - **Admin** (`/admin/affiliates`, `lib/actions/admin/affiliates.ts`, `lib/queries/affiliate.ts`):
-  list/detail (approve/reject/suspend/reactivate, set per-affiliate commission), `commissions`
+  list/detail (approve/reject/suspend/reactivate, **delete** — `deleteAffiliate`, only for
+  inactive SUSPENDED/REJECTED/PENDING affiliates and blocked while a payout is in progress;
+  cascades clicks/commissions/payouts, SET NULLs referred orders, deletes-if-unused-else-
+  deactivates the coupon, leaves the User account intact — set per-affiliate commission), `commissions`
   (management + manual approve/cancel), `rules` (commission rules manager), `payouts`
   (approve/reject/mark-paid + run-maturation), `settings`, `marketing-kit`
   (`MarketingAsset` CRUD, upload via `/api/admin/affiliate-asset`), `analytics`, CSV `export`.

@@ -195,6 +195,64 @@ export async function reactivateAffiliate(input: unknown): Promise<AdminResult> 
   return { ok: true };
 }
 
+/**
+ * Permanently delete an affiliate and all of its affiliate data. Allowed only for
+ * inactive affiliates (SUSPENDED / REJECTED / PENDING) so an active partner with a
+ * live balance can't be wiped by accident — suspend first. Clicks, commissions and
+ * payouts cascade with the row; referred orders keep their `referralCode` snapshot
+ * and have `affiliateId` set to null by the DB. The dedicated coupon is deleted when
+ * unused, else deactivated (historical orders keep their coupon snapshot). The User
+ * account itself is NOT touched — only their affiliate participation is removed, so
+ * they can re-apply later.
+ */
+export async function deleteAffiliate(input: unknown): Promise<AdminResult> {
+  await requirePermission("affiliates");
+  const parsed = affiliateIdSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid request." };
+
+  const aff = await prisma.affiliate.findUnique({
+    where: { id: parsed.data.affiliateId },
+    select: { id: true, status: true, couponId: true, userId: true },
+  });
+  if (!aff) return { ok: false, error: "Affiliate not found." };
+  if (aff.status === "APPROVED") {
+    return { ok: false, error: "Suspend this affiliate before deleting it." };
+  }
+
+  // Don't destroy an in-progress payout (it would cascade away with the affiliate).
+  const openPayout = await prisma.payout.findFirst({
+    where: { affiliateId: aff.id, status: { in: ["REQUESTED", "APPROVED", "PROCESSING"] } },
+    select: { id: true },
+  });
+  if (openPayout) {
+    return { ok: false, error: "Resolve the in-progress payout before deleting this affiliate." };
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // Clicks, commissions and payouts cascade; orders keep their snapshot and are
+    // detached (affiliateId → null) by the DB's referential action.
+    await tx.affiliate.delete({ where: { id: aff.id } });
+    // The affiliate's coupon isn't cascaded (the FK lives on the affiliate row).
+    if (aff.couponId) {
+      const used = await tx.order.count({ where: { couponId: aff.couponId } });
+      if (used === 0) {
+        await tx.coupon.delete({ where: { id: aff.couponId } });
+      } else {
+        await tx.coupon.update({ where: { id: aff.couponId }, data: { isActive: false } });
+      }
+    }
+  });
+
+  await notifyAffiliate(
+    aff.userId,
+    "Affiliate account removed",
+    "Your affiliate account has been removed. You're welcome to re-apply anytime.",
+  );
+
+  revalidate(aff.id);
+  return { ok: true };
+}
+
 const AFFILIATE_BULK_ACTIONS = ["suspend", "reactivate"] as const;
 type AffiliateBulkAction = (typeof AFFILIATE_BULK_ACTIONS)[number];
 

@@ -23,6 +23,7 @@ import {
   suspendAffiliate,
   reactivateAffiliate,
   setAffiliateCommission,
+  deleteAffiliate,
 } from "@/lib/actions/admin/affiliates";
 import type { AdminResult } from "@/lib/actions/admin/types";
 
@@ -45,6 +46,7 @@ export function AffiliateDetailActions({
   const [rejectOpen, setRejectOpen] = useState(false);
   const [suspendOpen, setSuspendOpen] = useState(false);
   const [commOpen, setCommOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const [reason, setReason] = useState("");
   const [couponCode, setCouponCode] = useState("");
@@ -61,6 +63,21 @@ export function AffiliateDetailActions({
     if (res.ok) {
       toast.success(ok);
       onDone?.();
+      router.refresh();
+    } else {
+      toast.error(res.error);
+    }
+  }
+
+  // Delete removes the detail record, so route back to the list on success.
+  async function runDelete() {
+    setPending(true);
+    const res = await deleteAffiliate({ affiliateId });
+    setPending(false);
+    if (res.ok) {
+      toast.success("Affiliate deleted");
+      setDeleteOpen(false);
+      router.push("/admin/affiliates");
       router.refresh();
     } else {
       toast.error(res.error);
@@ -249,6 +266,37 @@ export function AffiliateDetailActions({
         <Button size="sm" disabled={pending} onClick={() => run(reactivateAffiliate({ affiliateId }), "Affiliate reactivated")}>
           Reactivate
         </Button>
+      )}
+
+      {(status === "SUSPENDED" || status === "REJECTED") && (
+        <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" variant="outline" className="text-destructive" disabled={pending}>
+              Delete
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete affiliate permanently?</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              This permanently removes this affiliate and all their affiliate data —
+              referral clicks, commissions and payout history. Referred orders are kept
+              (their referral snapshot stays) but detached from the affiliate. The
+              customer&apos;s account itself is not deleted — they can re-apply later.
+              This cannot be undone.
+            </p>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={pending}>
+                Cancel
+              </Button>
+              <Button variant="destructive" disabled={pending} onClick={runDelete} className="gap-2">
+                {pending && <Loader2 className="size-4 animate-spin" />}
+                Delete permanently
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
