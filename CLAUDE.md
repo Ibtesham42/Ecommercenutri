@@ -814,9 +814,20 @@ See `PROGRESS.md` for the live tracker (status, blockers, next task).
   (`app/favicon.ico`/`icon.tsx`/`apple-icon.tsx`) override `metadata.icons`, so an
   admin-uploaded favicon never showed. They were removed; the brand default is generated at
   `app/brand-icon/route.tsx` + `app/brand-apple-icon/route.tsx` (`next/og`), and root
-  `generateMetadata().icons` points at `StoreSetting.favicon` (normalized through `cldUrl`
-  f_auto so any asset is delivered as an image) or the brand routes. The versioned Cloudinary
-  URL cache-busts the tab automatically. Don't re-add `app/favicon.ico`/`app/icon.*`.
+  `generateMetadata().icons` points at `StoreSetting.favicon` (normalized through `cldFavicon`
+  → real square PNG at 48/96/192/180 for `icon`/`shortcut`/`apple`) or the brand routes. The
+  versioned Cloudinary URL cache-busts the tab automatically. Don't re-add
+  `app/favicon.ico`/`app/icon.*` (they'd override the admin favicon again).
+  - **Classic `/favicon.ico` path is served dynamically** (browsers, bookmarks and Google
+    Search fetch it directly, *independent* of the `<link rel="icon">` tags — without it the
+    path 404s and those contexts show a blank/stale icon). `next.config.ts` `rewrites()`
+    (`beforeFiles`) maps `/favicon.ico` → `app/api/favicon/route.ts`, which **proxies the bytes**
+    of `cldFavicon(favicon,48)` (fallback `/brand-icon`), `force-dynamic`. Serve via the
+    rewrite+route, **never** an `app/favicon.ico` file.
+  - **PWA/Android install icon**: `app/manifest.ts` is `async` + `force-dynamic` and its
+    `icons` come from `StoreSetting.favicon` via `cldFavicon` (32/180/192/512, brand-route
+    fallback) — not hardcoded. So the tab, the classic path, apple-touch and the installed-app
+    icon all track the admin favicon; `force-dynamic` means no build-time bake to go stale.
 - **OG image** is still generated at the edge via `next/og` `ImageResponse`
   (`app/opengraph-image.tsx`); `siteConfig.ogImage` points at `/opengraph-image`.
 - **`cldUrl`** supports `gravity` (`g_auto` smart focal point) and `dpr` (`dpr_auto`) on top of
