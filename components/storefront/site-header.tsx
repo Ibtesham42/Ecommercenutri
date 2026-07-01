@@ -68,7 +68,7 @@ export function SiteHeader({
             <Button
               variant="ghost"
               size="icon"
-              className={cn("size-11 md:hidden", onDeep)}
+              className={cn("size-11 lg:hidden", onDeep)}
               aria-label="Open menu"
             >
               <Menu className="size-[22px]" />
@@ -109,30 +109,10 @@ export function SiteHeader({
           {...logoSize}
         />
 
-        <nav className="ml-5 hidden items-center gap-0.5 md:flex">
-          {siteConfig.mainNav.map((item) => {
-            const active = isActiveNav(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "rounded-full px-3 py-2 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-white/15 font-semibold text-surface-deep-foreground"
-                    : "text-surface-deep-foreground/75 hover:bg-white/10 hover:text-surface-deep-foreground",
-                )}
-              >
-                {item.title}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Grows to fill free space between the nav and the actions, capped so it
-            stays balanced; expands a touch further on focus for a premium feel. */}
-        <div className="mx-3 hidden min-w-0 flex-1 transition-[max-width] duration-300 ease-out lg:block lg:max-w-md lg:focus-within:max-w-lg xl:mx-5 xl:max-w-lg xl:focus-within:max-w-2xl">
+        {/* Desktop (lg+) search lives in this primary row and gets a generous,
+            stable slot — the nav moved to its own row below, so there's no space
+            competition and the field can never collapse. */}
+        <div className="mx-4 hidden flex-1 lg:block lg:max-w-xl xl:max-w-2xl">
           <SearchBox />
         </div>
 
@@ -193,6 +173,31 @@ export function SiteHeader({
           </div>
         </div>
       </div>
+
+      {/* Row 2 — desktop nav bar (lg+). Search-forward primary row above keeps the
+          nav in its own slim row, Amazon/Flipkart-style. */}
+      <nav className="hidden border-t border-white/10 lg:block">
+        <div className="mx-auto flex h-11 w-full max-w-7xl items-center gap-0.5 px-4">
+          {siteConfig.mainNav.map((item) => {
+            const active = isActiveNav(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+                  active
+                    ? "bg-white/15 font-semibold text-surface-deep-foreground"
+                    : "text-surface-deep-foreground/75 hover:bg-white/10 hover:text-surface-deep-foreground",
+                )}
+              >
+                {item.title}
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
 
       {/* Full-width search row + deliver-to on mobile/tablet. Desktop (lg+) uses
           the inline search bar inside the header row above. */}
