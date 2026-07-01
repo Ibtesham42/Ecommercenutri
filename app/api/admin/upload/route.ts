@@ -1,20 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
-import { uploadImage, cloudinaryEnabled } from "@/lib/cloudinary";
+import { uploadImage, cloudinaryEnabled, safeFolder } from "@/lib/cloudinary";
 
 export const runtime = "nodejs";
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 const MAX_VIDEO_BYTES = 20 * 1024 * 1024; // 20 MB (short banner clips)
-
-/** Keep folders to a safe, predictable set under the nutriyet namespace. */
-function safeFolder(folder?: string | null): string {
-  const cleaned = (folder ?? "")
-    .toLowerCase()
-    .replace(/[^a-z0-9/_-]/g, "")
-    .replace(/^\/+|\/+$/g, "");
-  return cleaned ? `nutriyet/${cleaned}` : "nutriyet";
-}
 
 /**
  * Admin image upload via multipart FormData. Using a Route Handler (instead of a

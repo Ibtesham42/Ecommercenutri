@@ -31,6 +31,46 @@ export async function uploadImage(
   return result.secure_url;
 }
 
+/** Keep folders to a safe, predictable set under the nutriyet namespace. */
+export function safeFolder(folder?: string | null): string {
+  const cleaned = (folder ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9/_-]/g, "")
+    .replace(/^\/+|\/+$/g, "");
+  return cleaned ? `nutriyet/${cleaned}` : "nutriyet";
+}
+
+export type SignedUpload = {
+  cloudName: string;
+  apiKey: string;
+  timestamp: number;
+  signature: string;
+  folder: string;
+};
+
+/**
+ * Build a signed payload for a direct browser→Cloudinary upload. The file bytes
+ * go straight from the client to Cloudinary and never pass through our serverless
+ * function, so large media (hero/banner videos) isn't capped by Vercel's ~4.5 MB
+ * request-body limit or the function execution timeout. The signature covers only
+ * the folder + timestamp; the endpoint that calls this is admin-gated.
+ */
+export function signUpload(folder: string): SignedUpload | null {
+  if (!cloudinaryEnabled) return null;
+  const timestamp = Math.round(Date.now() / 1000);
+  const signature = cloudinary.utils.api_sign_request(
+    { folder, timestamp },
+    env.cloudinaryApiSecret,
+  );
+  return {
+    cloudName: env.cloudinaryCloudName,
+    apiKey: env.cloudinaryApiKey,
+    timestamp,
+    signature,
+    folder,
+  };
+}
+
 export async function deleteImage(publicId: string): Promise<void> {
   if (!cloudinaryEnabled) return;
   try {

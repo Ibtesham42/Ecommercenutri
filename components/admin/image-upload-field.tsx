@@ -61,6 +61,57 @@ async function prepareBlob(file: File): Promise<{ blob: Blob; filename: string }
 }
 
 /**
+ * Upload a blob DIRECTLY to Cloudinary from the browser. We first ask our
+ * admin-gated endpoint for a signature, then POST the file straight to
+ * Cloudinary's API. This bypasses the app's serverless function entirely, so
+ * large files (videos) aren't capped by Vercel's ~4.5 MB request-body limit or
+ * the function execution timeout. Returns the delivered secure URL.
+ */
+async function uploadToCloudinary(
+  blob: Blob,
+  filename: string,
+  folder?: string,
+): Promise<string> {
+  const sigRes = await fetch("/api/admin/upload-signature", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ folder }),
+  });
+  const sig = (await sigRes.json().catch(() => ({}))) as {
+    cloudName?: string;
+    apiKey?: string;
+    timestamp?: number;
+    signature?: string;
+    folder?: string;
+    error?: string;
+  };
+  if (!sigRes.ok || !sig.signature || !sig.cloudName) {
+    throw new Error(sig.error ?? "Could not start the upload.");
+  }
+
+  const form = new FormData();
+  form.append("file", blob, filename);
+  form.append("api_key", sig.apiKey ?? "");
+  form.append("timestamp", String(sig.timestamp));
+  form.append("signature", sig.signature);
+  if (sig.folder) form.append("folder", sig.folder);
+
+  // `auto` lets Cloudinary detect image vs video from the bytes.
+  const upRes = await fetch(
+    `https://api.cloudinary.com/v1_1/${sig.cloudName}/auto/upload`,
+    { method: "POST", body: form },
+  );
+  const up = (await upRes.json().catch(() => ({}))) as {
+    secure_url?: string;
+    error?: { message?: string };
+  };
+  if (!upRes.ok || !up.secure_url) {
+    throw new Error(up.error?.message ?? "Cloudinary upload failed.");
+  }
+  return up.secure_url;
+}
+
+/**
  * Image (or video) field that uploads to Cloudinary when configured and always
  * accepts a pasted URL as a fallback. Controlled via `value` / `onChange`.
  */
@@ -106,11 +157,13 @@ export function ImageUploadField({
   async function handleFile(file: File) {
     const isVideo = file.type.startsWith("video/");
     // Generous raw guard (large originals are downscaled before upload below).
-    const maxMb = isVideo ? 20 : 25;
+    // Videos upload directly to Cloudinary, so they aren't bound by the app's
+    // serverless request limit — allow up to Cloudinary's free-plan video cap.
+    const maxMb = isVideo ? 100 : 25;
     if (file.size > maxMb * 1024 * 1024) {
       toast.error(
         isVideo
-          ? "That video is too large (max 20 MB). Compress it, or paste a Cloudinary URL."
+          ? "That video is too large (max 100 MB). Compress it, or paste a Cloudinary URL."
           : "That file is very large (max 25 MB). Try a smaller image.",
       );
       return;
@@ -126,21 +179,12 @@ export function ImageUploadField({
     setUploading(true);
     try {
       const { blob, filename } = await prepareBlob(file);
-      const form = new FormData();
-      form.append("file", blob, filename);
-      if (folder) form.append("folder", folder);
-
-      const res = await fetch("/api/admin/upload", { method: "POST", body: form });
-      const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
-      if (res.ok && data.url) {
-        onChange(data.url);
-        toast.success("Uploaded");
-      } else {
-        toast.error(data.error ?? "Upload failed. Please try again.");
-      }
+      const url = await uploadToCloudinary(blob, filename, folder);
+      onChange(url);
+      toast.success("Uploaded");
     } catch (err) {
       console.error("[image-upload] failed:", err);
-      toast.error("Upload failed. Please try a different image.");
+      toast.error(err instanceof Error ? err.message : "Upload failed. Please try again.");
     } finally {
       setUploading(false);
     }

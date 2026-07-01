@@ -761,12 +761,20 @@ See `PROGRESS.md` for the live tracker (status, blockers, next task).
   delete only the variants/images the admin removed.
 - Admin actions enforce **slug/code uniqueness** and refuse to delete a category
   with products or a coupon already used by orders (the coupon is deactivated instead).
-- **Cloudinary uploads are signed + server-side** (`lib/actions/admin/upload.ts` →
-  `lib/cloudinary.ts#uploadImage`): the client sends a base64 data URI to a server
-  action; no unsigned preset needed. `ImageUploadField` shows a file picker when
-  configured and always accepts a pasted URL (keyless fallback). Optimize delivery
-  with `cldUrl()` from `lib/cld.ts` (no-op for non-Cloudinary URLs). Server-action
-  body limit is 12 MB (`next.config.ts`) to fit image data URIs.
+- **Cloudinary uploads are signed + go DIRECT from the browser** (`ImageUploadField`
+  → `POST /api/admin/upload-signature` → `https://api.cloudinary.com/v1_1/<cloud>/auto/upload`).
+  The admin-gated signature route (`lib/cloudinary.ts#signUpload`, signs folder +
+  timestamp only) returns a short-lived signature; the file bytes then upload straight
+  to Cloudinary and **never pass through the serverless function**. This is required
+  because Vercel caps a function's request body at ~4.5 MB — routing media (especially
+  hero/banner **videos**) through the app made every real video fail with "Upload
+  failed". Images are still downscaled client-side (`prepareBlob`) before the direct
+  upload; videos go untouched (client cap 100 MB = Cloudinary free-plan video limit).
+  `ImageUploadField` always accepts a pasted URL (keyless fallback). The older
+  server-buffered route (`app/api/admin/upload/route.ts#POST` → `uploadImage`, base64
+  data URI) still exists and is used only by `showcase-image-field.tsx` (small cutout
+  images). Optimize delivery with `cldUrl()`/`cldVideo()` from `lib/cld.ts` (no-op for
+  non-Cloudinary URLs).
 - **Stories viewer** (`components/storefront/stories-viewer.tsx`) is the storefront
   rail's click target; images auto-advance via rAF (5 s), videos via `ended`. Views
   are recorded best-effort (`lib/actions/stories.ts`). Story media can be any host,
