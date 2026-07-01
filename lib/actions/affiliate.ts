@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { ZodError } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { applyAffiliateSchema, payoutDetailsSchema } from "@/lib/validations/affiliate";
@@ -10,6 +11,38 @@ import { getAffiliateSettings } from "@/lib/queries/settings";
 import { formatPrice } from "@/lib/format";
 
 export type AffiliateActionResult = { ok: true } | { ok: false; error: string };
+
+// Friendly labels so a validation failure names the field instead of the
+// cryptic Zod default ("Invalid input" for a failed union / "Required").
+const FIELD_LABELS: Record<string, string> = {
+  role: "role",
+  displayName: "display name",
+  bio: "bio",
+  website: "website",
+  instagram: "Instagram handle",
+  youtube: "YouTube channel",
+  audienceSize: "audience size",
+  pitch: "pitch",
+  agree: "terms agreement",
+  payoutMethod: "payout method",
+  upiId: "UPI ID",
+  bankName: "bank name",
+  bankAccount: "bank account number",
+  bankIfsc: "IFSC code",
+  accountName: "account holder name",
+};
+
+/** Turn a ZodError into a real, human message (never a bare "Invalid input"). */
+function firstZodError(error: ZodError, fallback = "Please check your details and try again."): string {
+  const issue = error.issues[0];
+  if (!issue) return fallback;
+  const msg = issue.message?.trim() ?? "";
+  const generic = ["invalid input", "required", "invalid"].includes(msg.toLowerCase());
+  if (msg && !generic) return msg;
+  const key = typeof issue.path[0] === "string" ? issue.path[0] : "";
+  const label = FIELD_LABELS[key];
+  return label ? `Please enter a valid ${label}.` : fallback;
+}
 
 /** Apply (or re-apply after rejection) to the affiliate program. */
 export async function applyAffiliate(input: unknown): Promise<AffiliateActionResult> {
@@ -23,7 +56,7 @@ export async function applyAffiliate(input: unknown): Promise<AffiliateActionRes
 
   const parsed = applyAffiliateSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid application." };
+    return { ok: false, error: firstZodError(parsed.error) };
   }
   const d = parsed.data;
 
@@ -67,7 +100,7 @@ export async function updatePayoutDetails(input: unknown): Promise<AffiliateActi
 
   const parsed = payoutDetailsSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid details." };
+    return { ok: false, error: firstZodError(parsed.error) };
   }
   const d = parsed.data;
 

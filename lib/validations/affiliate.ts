@@ -27,13 +27,35 @@ export const MARKETING_ASSET_TYPES = [
 
 const optUrl = z.union([z.string().url(), z.literal("")]).optional().default("");
 
+/**
+ * Forgiving optional website field. People type "mysite.com" without a scheme,
+ * which a strict `z.string().url()` rejects — and a failed `z.union` surfaces
+ * Zod's cryptic "Invalid input". We normalize a bare domain to `https://…`
+ * first, allow blank, and give a real, human error message otherwise.
+ */
+const optWebsite = z
+  .preprocess(
+    (v) => {
+      if (typeof v !== "string") return v ?? "";
+      const t = v.trim();
+      if (!t) return "";
+      return /^https?:\/\//i.test(t) ? t : `https://${t}`;
+    },
+    z
+      .string()
+      .refine((v) => v === "" || /^https?:\/\/[^\s.]+\.[^\s]{2,}$/i.test(v), {
+        message: "Enter a valid website, e.g. yoursite.com",
+      }),
+  )
+  .default("");
+
 // --- Customer -----------------------------------------------------------------
 
 export const applyAffiliateSchema = z.object({
   role: z.enum(AFFILIATE_ROLES),
   displayName: z.string().min(2, "Add a display name").max(60),
   bio: z.string().max(500).optional().default(""),
-  website: optUrl,
+  website: optWebsite,
   instagram: z.string().max(120).optional().default(""),
   youtube: z.string().max(120).optional().default(""),
   audienceSize: z.coerce.number().int().min(0).max(1_000_000_000).optional(),
