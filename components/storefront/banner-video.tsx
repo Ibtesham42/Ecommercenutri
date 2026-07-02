@@ -47,6 +47,12 @@ export function BannerVideo({
     setHeight(pickVariantHeight());
   }, []);
 
+  const q = normalizeQuality(quality);
+  const mp4 = cldVideoVariant(src, { h: height, quality: q, fmt: "mp4" });
+
+  // Re-observe whenever the delivery URL changes: the adaptive rung swap
+  // remounts the <video> (key), and an observer bound to the detached element
+  // would report "not intersecting" forever — freezing playback on the poster.
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -56,7 +62,7 @@ export function BannerVideo({
     );
     io.observe(el);
     return () => io.disconnect();
-  }, []);
+  }, [mp4]);
 
   useEffect(() => {
     const v = ref.current;
@@ -75,10 +81,8 @@ export function BannerVideo({
         }
       }
     }
-  }, [active, inView]);
-
-  const q = normalizeQuality(quality);
-  const mp4 = cldVideoVariant(src, { h: height, quality: q, fmt: "mp4" });
+    // `mp4` re-runs this against the freshly-mounted element after a rung swap.
+  }, [active, inView, mp4]);
 
   return (
     <video
