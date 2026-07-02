@@ -4,7 +4,7 @@ import type { WhyChooseUsContent } from "@/lib/validations/admin";
 
 export function HomeWhyChooseUs({ content }: { content: WhyChooseUsContent }) {
   return (
-    <section className="mx-auto w-full max-w-7xl px-4 py-14">
+    <section className="mx-auto w-full max-w-7xl px-4 py-14 max-sm:py-9">
       <div className="mb-10 text-center">
         <h2 className="text-2xl font-bold sm:text-3xl">{content.title}</h2>
         {content.subtitle && (

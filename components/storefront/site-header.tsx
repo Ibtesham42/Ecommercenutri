@@ -62,7 +62,7 @@ export function SiteHeader({
     "text-surface-deep-foreground hover:bg-white/10 hover:text-surface-deep-foreground focus-visible:ring-white/40";
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-surface-deep text-surface-deep-foreground shadow-elev-2">
+    <header className="surface-rich sticky top-0 z-50 w-full text-surface-deep-foreground shadow-elev-2">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-2 px-4 sm:gap-3">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>

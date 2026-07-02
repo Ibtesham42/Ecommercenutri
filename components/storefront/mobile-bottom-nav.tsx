@@ -58,7 +58,7 @@ export function MobileBottomNav() {
             href="/assistant"
             aria-label="Ask Nutriyet AI"
             aria-current={isActive("/assistant") ? "page" : undefined}
-            className="-mt-7 grid size-14 place-items-center rounded-full border-4 border-background bg-surface-deep text-gold shadow-elev-2 transition-transform active:scale-95"
+            className="surface-rich -mt-7 grid size-14 place-items-center rounded-full border-4 border-background text-gold shadow-[0_6px_18px_-4px_oklch(0.27_0.034_158/0.45),0_2px_6px_oklch(0.72_0.13_85/0.2)] transition-transform active:scale-95"
           >
             <Sparkles className="size-6" />
           </Link>
@@ -98,11 +98,19 @@ function Tab({
       href={href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex flex-col items-center gap-1 py-1.5 text-[10.5px] font-medium transition-colors",
+        "flex flex-col items-center gap-0.5 py-1.5 text-[10.5px] font-medium transition-colors",
         active ? "text-primary" : "text-muted-foreground hover:text-foreground",
       )}
     >
-      {children}
+      {/* Soft pill behind the active icon — app-like state, no layout shift. */}
+      <span
+        className={cn(
+          "grid h-7 w-12 place-items-center rounded-full transition-colors duration-200",
+          active && "bg-primary/10",
+        )}
+      >
+        {children}
+      </span>
       <span className={cn(active && "font-semibold")}>{label}</span>
     </Link>
   );

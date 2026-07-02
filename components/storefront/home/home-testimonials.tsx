@@ -5,7 +5,7 @@ import type { TestimonialsContent } from "@/lib/validations/admin";
 export function HomeTestimonials({ content }: { content: TestimonialsContent }) {
   return (
     <section className="border-t bg-muted/30">
-      <div className="mx-auto w-full max-w-7xl px-4 py-14">
+      <div className="mx-auto w-full max-w-7xl px-4 py-14 max-sm:py-9">
         <div className="mb-10 text-center">
           <h2 className="text-2xl font-bold sm:text-3xl">{content.title}</h2>
           {content.subtitle && <p className="mt-2 text-muted-foreground">{content.subtitle}</p>}

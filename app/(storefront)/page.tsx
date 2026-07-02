@@ -115,7 +115,7 @@ export default async function HomePage() {
     hero: <HomeHero content={content.hero} />,
 
     categories: (
-      <section className="mx-auto w-full max-w-7xl px-4 py-14">
+      <section className="mx-auto w-full max-w-7xl px-4 py-14 max-sm:py-9">
         <SectionHeading
           title={content.categories.title}
           subtitle={content.categories.subtitle}
@@ -167,7 +167,7 @@ export default async function HomePage() {
     bestSellers:
       bestSellers.length > 0 ? (
         <section className="border-y bg-muted/30">
-          <div className="mx-auto w-full max-w-7xl px-4 py-14">
+          <div className="mx-auto w-full max-w-7xl px-4 py-14 max-sm:py-9">
             <SectionHeading
               title={content.bestSellers.title}
               subtitle={content.bestSellers.subtitle}
@@ -182,7 +182,7 @@ export default async function HomePage() {
       ) : null,
 
     recommended: user ? (
-      <section className="mx-auto w-full max-w-7xl px-4 py-14">
+      <section className="mx-auto w-full max-w-7xl px-4 py-14 max-sm:py-9">
         <RecommendedProducts
           title={content.recommended.title}
           subtitle={content.recommended.subtitle}
@@ -193,7 +193,7 @@ export default async function HomePage() {
 
     trending:
       trendingFresh.length > 0 ? (
-        <section className="mx-auto w-full max-w-7xl px-4 py-14">
+        <section className="mx-auto w-full max-w-7xl px-4 py-14 max-sm:py-9">
           <SectionHeading
             title={content.trending.title}
             subtitle={content.trending.subtitle}
@@ -209,7 +209,7 @@ export default async function HomePage() {
     combos:
       combos.length > 0 ? (
         <section className="border-y bg-muted/30">
-          <div className="mx-auto w-full max-w-7xl space-y-12 px-4 py-14">
+          <div className="mx-auto w-full max-w-7xl space-y-12 px-4 py-14 max-sm:space-y-9 max-sm:py-9">
             <SectionHeading
               title={content.combos.title}
               subtitle={content.combos.subtitle}
