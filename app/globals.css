@@ -304,7 +304,7 @@
   .animate-fade-up {
     animation: nutri-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
-  /* Full-screen overlay entrance (mobile search). */
+  /* Full-screen overlay entrance/exit (mobile search). */
   @keyframes nutri-overlay-in {
     from {
       opacity: 0;
@@ -317,6 +317,19 @@
   }
   .overlay-in {
     animation: nutri-overlay-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes nutri-overlay-out {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+  .overlay-out {
+    animation: nutri-overlay-out 0.17s ease-in both;
   }
   .hover-lift:hover {
     transform: translateY(-3px);
