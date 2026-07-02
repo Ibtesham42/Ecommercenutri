@@ -240,7 +240,7 @@ export function SeoManager({
               </Row>
               <Row>
                 <Field label="Open Graph type">
-                  <Select value={form.ogType} onChange={(v) => set("ogType", v)} options={["website", "article", "product", "profile"]} />
+                  <Select value={form.ogType} onChange={(v) => set("ogType", v)} options={["website", "article", "book", "profile"]} />
                 </Field>
                 <Field label="Twitter card type">
                   <Select value={form.twitterCardType} onChange={(v) => set("twitterCardType", v as SeoFormValues["twitterCardType"])} options={["summary_large_image", "summary"]} />

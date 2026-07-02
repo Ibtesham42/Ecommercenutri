@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/admin/page-header";
 import { guardSection } from "@/lib/admin-guard";
 import { prisma } from "@/lib/prisma";
-import { resolveSeo, type SeoBlob } from "@/lib/seo-settings";
+import { resolveSeo, sanitizeOgType, type SeoBlob } from "@/lib/seo-settings";
 import { isConfigured } from "@/lib/env";
 import { SeoManager } from "@/components/admin/seo-manager";
 import type { SeoFormValues } from "@/lib/validations/seo";
@@ -42,7 +42,7 @@ export default async function AdminSeoPage() {
     themeColor: s(blob.themeColor),
     appleTouchIcon: s(blob.appleTouchIcon),
     twitterImage: s(blob.twitterImage),
-    ogType: s(blob.ogType) || "website",
+    ogType: sanitizeOgType(s(blob.ogType)),
     twitterCardType: blob.twitterCardType === "summary" ? "summary" : "summary_large_image",
     shareTitle: s(blob.shareTitle),
     shareDescription: s(blob.shareDescription),

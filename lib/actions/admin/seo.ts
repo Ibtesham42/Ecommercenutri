@@ -5,7 +5,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { seoSettingsSchema } from "@/lib/validations/seo";
-import { getSeoSettings, type SeoBlob } from "@/lib/seo-settings";
+import { getSeoSettings, sanitizeOgType, type SeoBlob } from "@/lib/seo-settings";
 import { absolutize, hostOf, type PreviewData } from "@/lib/seo-preview";
 import type { AdminResult } from "@/lib/actions/admin/types";
 
@@ -50,7 +50,9 @@ export async function updateSeoSettings(input: unknown): Promise<AdminResult> {
     themeColor: d.themeColor,
     appleTouchIcon: d.appleTouchIcon,
     twitterImage: d.twitterImage,
-    ogType: d.ogType,
+    // Only Next-renderable OG types may be persisted ("product" etc. crash
+    // Next's metadata validation at render time).
+    ogType: sanitizeOgType(d.ogType),
     twitterCardType: d.twitterCardType,
     shareTitle: d.shareTitle,
     shareDescription: d.shareDescription,

@@ -118,6 +118,16 @@ export function toAbsolute(url: string, base: string): string {
   }
 }
 
+/**
+ * OG types Next.js's metadata API accepts. The OG protocol also defines
+ * "product" etc., but Next throws "Invalid OpenGraph type" for them at render
+ * time — so any stored value outside this set must degrade to "website".
+ */
+const NEXT_OG_TYPES = new Set(["website", "article", "book", "profile"]);
+export function sanitizeOgType(v: string): string {
+  return NEXT_OG_TYPES.has(v) ? v : "website";
+}
+
 function splitKeywords(v: string): string[] {
   return v
     .split(",")
@@ -197,7 +207,7 @@ export function resolveSeo(
     shareImage,
     favicon,
     appleTouchIcon,
-    ogType: s(blob.ogType) || "website",
+    ogType: sanitizeOgType(s(blob.ogType)),
     twitterCardType,
     shareTitle: s(blob.shareTitle) || title,
     shareDescription: s(blob.shareDescription) || metaDescription,
