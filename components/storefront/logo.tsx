@@ -25,9 +25,10 @@ export function Logo({
   maxWidth?: number | null;
   /** Accent color for the "yet" wordmark — override to `text-gold` on dark surfaces. */
   accentClassName?: string;
-  /** On dark chrome (deep-green header/footer) an uploaded logo gets a subtle
-   *  light chip so any colored/transparent logo stays legible and crisp. */
-  onDark?: boolean;
+  /** Dark-chrome styling for the default wordmark's leaf chip. `true` = always
+   *  on dark (footer); `"lg"` = dark only from lg up (the header is light cream
+   *  below lg and deep green above it). */
+  onDark?: boolean | "lg";
 }) {
   const h = height ?? 32;
   const mh = mobileHeight ?? h;
@@ -56,7 +57,9 @@ export function Logo({
             src={cldUrl(logoUrl, { h: Math.min(Math.max(h, mh) * 2, 256) })}
             alt={name}
             style={sizeVars}
-            className="h-[var(--logo-mh)] w-auto max-w-[var(--logo-mw)] object-contain md:h-[var(--logo-h)]"
+            // Dark theme only: a soft light halo keeps a dark-colored logo
+            // legible on dark chrome without adding a plate behind it.
+            className="h-[var(--logo-mh)] w-auto max-w-[var(--logo-mw)] object-contain md:h-[var(--logo-h)] dark:[filter:drop-shadow(0_0_8px_oklch(0.98_0.01_120/0.3))]"
           />
         </span>
       ) : (
@@ -64,7 +67,10 @@ export function Logo({
           <span
             className={cn(
               "grid size-8 place-items-center rounded-xl shadow-sm",
-              onDark ? "bg-white text-primary" : "bg-primary text-primary-foreground",
+              onDark === true && "bg-white text-primary",
+              onDark === "lg" &&
+                "bg-primary text-primary-foreground lg:bg-white lg:text-primary",
+              !onDark && "bg-primary text-primary-foreground",
             )}
           >
             <Leaf className="size-5" />

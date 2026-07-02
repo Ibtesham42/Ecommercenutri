@@ -41,7 +41,8 @@ export function MobileSearchTrigger() {
         onPointerDown={prewarm}
         aria-label="Open search"
         aria-haspopup="dialog"
-        className="relative flex h-12 w-full touch-manipulation items-center rounded-full border border-input bg-background pl-11 pr-11 text-left shadow-elev-1 transition-[box-shadow,border-color] hover:border-primary/40 hover:shadow-elev-2 motion-safe:active:scale-[0.99]"
+        // A white pill on the cream header chrome — integrated, not floating.
+        className="relative flex h-12 w-full touch-manipulation items-center rounded-full border border-border/70 bg-card pl-11 pr-11 text-left shadow-elev-1 transition-[box-shadow,border-color] hover:border-primary/40 hover:shadow-elev-2 motion-safe:active:scale-[0.99]"
       >
         <Search className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground" />
         <span className="truncate text-base text-muted-foreground/80">

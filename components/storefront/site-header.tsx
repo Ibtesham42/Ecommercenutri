@@ -57,12 +57,13 @@ export function SiteHeader({
     mobileHeight: logoHeightMobile,
     maxWidth: logoMaxWidth,
   };
-  // Icon/ghost buttons sitting on the deep-green chrome.
+  // Icon/ghost buttons on the header chrome: dark-on-cream below lg (light
+  // mobile header), light-on-deep-green from lg up (desktop chrome).
   const onDeep =
-    "text-surface-deep-foreground hover:bg-white/10 hover:text-surface-deep-foreground focus-visible:ring-white/40";
+    "text-foreground/80 hover:bg-accent hover:text-foreground lg:text-surface-deep-foreground lg:hover:bg-white/10 lg:hover:text-surface-deep-foreground lg:focus-visible:ring-white/40";
 
   return (
-    <header className="surface-rich sticky top-0 z-50 w-full text-surface-deep-foreground shadow-elev-2">
+    <header className="header-chrome sticky top-0 z-50 w-full shadow-elev-1 lg:shadow-elev-2">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-2 px-4 sm:gap-3">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
@@ -104,8 +105,8 @@ export function SiteHeader({
         <Logo
           logoUrl={logoUrl}
           name={siteName}
-          accentClassName="text-gold"
-          onDark
+          accentClassName="text-primary lg:text-gold"
+          onDark="lg"
           className="min-w-0 shrink"
           {...logoSize}
         />
@@ -211,8 +212,8 @@ export function SiteHeader({
       </div>
 
       {/* Department chips — quick catalog jumps. Mobile/tablet only (desktop has
-          the inline nav). Horizontal scroll-snap rail. */}
-      <div className="border-t border-white/10 lg:hidden">
+          the inline nav). Horizontal scroll-snap rail on the light chrome. */}
+      <div className="border-t border-border/60 lg:hidden">
         <div className="scroll-rail mx-auto w-full max-w-7xl gap-2 px-4 py-2.5">
           {siteConfig.mainNav
             .filter((item) => item.href !== "/")
@@ -225,8 +226,8 @@ export function SiteHeader({
                   className={cn(
                     "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
                     active
-                      ? "border-gold/60 bg-gold/15 text-gold"
-                      : "border-white/15 bg-white/5 text-surface-deep-foreground/85 hover:bg-white/10",
+                      ? "border-gold/60 bg-gold/15 text-gold-foreground"
+                      : "border-border bg-card text-foreground/75 shadow-sm hover:border-primary/30 hover:text-primary",
                   )}
                 >
                   {item.title}
