@@ -304,6 +304,20 @@
   .animate-fade-up {
     animation: nutri-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
+  /* Full-screen overlay entrance (mobile search). */
+  @keyframes nutri-overlay-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .overlay-in {
+    animation: nutri-overlay-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
   .hover-lift:hover {
     transform: translateY(-3px);
   }

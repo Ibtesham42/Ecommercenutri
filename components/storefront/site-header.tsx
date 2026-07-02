@@ -18,6 +18,7 @@ import { Logo } from "@/components/storefront/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CartIcon } from "@/components/storefront/cart-icon";
 import { SearchBox } from "@/components/storefront/search-box";
+import { MobileSearchTrigger } from "@/components/storefront/mobile-search-trigger";
 import { DeliverTo } from "@/components/storefront/deliver-to";
 import { NotificationBell, type BellNotification } from "@/components/account/notification-bell";
 
@@ -200,10 +201,11 @@ export function SiteHeader({
       </nav>
 
       {/* Full-width search row + deliver-to on mobile/tablet. Desktop (lg+) uses
-          the inline search bar inside the header row above. */}
+          the inline search bar inside the header row above. The mobile row is a
+          trigger that opens the full-screen SearchOverlay (app-style search). */}
       <div className="lg:hidden">
         <div className="mx-auto w-full max-w-7xl space-y-2 px-4 pb-2.5">
-          <SearchBox />
+          <MobileSearchTrigger />
           <DeliverTo />
         </div>
       </div>

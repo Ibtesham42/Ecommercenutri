@@ -23,6 +23,7 @@ model User {
   contactEmail  String?
   isActive      Boolean         @default(true)
   permissions   String[]        @default([])
+  recentSearches String[]       @default([]) // newest-first, capped at 8 (search overlay)
   aiChats       AIChat[]
   accounts      Account[]
   addresses     Address[]

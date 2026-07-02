@@ -159,22 +159,22 @@ export function ProductRail({
 }) {
   return (
     <>
-      {/* Mobile: edge-to-edge horizontal rail */}
+      {/* Mobile: edge-to-edge horizontal rail (staggered reveal like the grid) */}
       <div className="scroll-rail -mx-4 gap-3 px-4 pb-1 md:hidden">
-        {products.map((p) => (
+        {products.map((p, i) => (
           <div key={p.id} className="w-[44vw] max-w-[210px] shrink-0">
-            <ProductCard product={p} wishlisted={wishlistedIds?.has(p.id)} />
+            <Reveal className="h-full" delay={(i % 4) * 50}>
+              <ProductCard product={p} wishlisted={wishlistedIds?.has(p.id)} />
+            </Reveal>
           </div>
         ))}
       </div>
       {/* Tablet/desktop: grid */}
       <div className="hidden gap-4 md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {products.map((p) => (
-          <ProductCard
-            key={p.id}
-            product={p}
-            wishlisted={wishlistedIds?.has(p.id)}
-          />
+        {products.map((p, i) => (
+          <Reveal key={p.id} className="h-full" delay={(i % 5) * 40}>
+            <ProductCard product={p} wishlisted={wishlistedIds?.has(p.id)} />
+          </Reveal>
         ))}
       </div>
     </>

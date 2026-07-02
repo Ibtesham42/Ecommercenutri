@@ -1,5 +1,15 @@
 import { prisma } from "@/lib/prisma";
 
+/** Category name matches for search typeahead (search overlay + suggestions). */
+export async function searchCategories(q: string, limit = 3) {
+  return prisma.category.findMany({
+    where: { isActive: true, name: { contains: q, mode: "insensitive" } },
+    select: { name: true, slug: true },
+    orderBy: { sortOrder: "asc" },
+    take: limit,
+  });
+}
+
 export async function getCategories() {
   return prisma.category.findMany({
     where: { isActive: true },

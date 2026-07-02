@@ -2,19 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Loader2, TrendingUp } from "lucide-react";
+import { Search, Loader2, TrendingUp, Star } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cldUrl } from "@/lib/cld";
 import { cn } from "@/lib/utils";
-
-const POPULAR_SEARCHES = [
-  "Makhana",
-  "Flavoured makhana",
-  "Almonds",
-  "Protein",
-  "Seeds",
-  "Dry fruits",
-];
+import { POPULAR_SEARCHES } from "@/lib/search-defaults";
 
 type Suggestion = {
   id: string;
@@ -23,6 +15,8 @@ type Suggestion = {
   category: string;
   image: string | null;
   price: string;
+  rating?: number;
+  ratingCount?: number;
 };
 
 export function SearchBox({
@@ -201,7 +195,15 @@ export function SearchBox({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">{s.name}</span>
-                      <span className="block truncate text-xs text-muted-foreground">{s.category}</span>
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span className="truncate">{s.category}</span>
+                        {typeof s.rating === "number" && (s.ratingCount ?? 0) > 0 && (
+                          <span className="flex shrink-0 items-center gap-0.5">
+                            <Star className="size-3 fill-amber-400 text-amber-400" />
+                            {s.rating.toFixed(1)}
+                          </span>
+                        )}
+                      </span>
                     </span>
                     <span className="shrink-0 text-sm font-semibold">{s.price}</span>
                   </button>
