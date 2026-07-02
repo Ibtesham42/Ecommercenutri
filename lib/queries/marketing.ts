@@ -75,6 +75,37 @@ export async function getAutomationRules() {
   return prisma.automationRule.findMany({ orderBy: { createdAt: "desc" } });
 }
 
+/** Recent automation deliveries (the Automation History) with recipient details. */
+export async function getAutomationLogs(limit = 60) {
+  const logs = await prisma.automationLog.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: { rule: { select: { name: true, trigger: true } } },
+  });
+  const userIds = [...new Set(logs.map((l) => l.userId))];
+  const users = userIds.length
+    ? await prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, name: true, email: true },
+      })
+    : [];
+  const byId = new Map(users.map((u) => [u.id, u]));
+  return logs.map((l) => {
+    const u = byId.get(l.userId);
+    return {
+      id: l.id,
+      ruleName: l.rule.name,
+      trigger: l.rule.trigger,
+      recipientName: u?.name ?? null,
+      recipientEmail: u?.email ?? null,
+      status: l.status,
+      channels: l.channels,
+      error: l.error,
+      createdAt: l.createdAt.toISOString(),
+    };
+  });
+}
+
 export async function getTemplates() {
   await ensureBuiltInTemplates();
   return prisma.campaignTemplate.findMany({

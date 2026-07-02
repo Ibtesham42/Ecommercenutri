@@ -1235,15 +1235,27 @@ model AutomationRule {
 }
 
 model AutomationLog {
-  id        String         @id @default(cuid())
+  id        String              @id @default(cuid())
   ruleId    String
   userId    String
-  key       String // dedup key: userId (welcome/winback/cart) or orderId (post-purchase)
-  createdAt DateTime       @default(now())
-  rule      AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  key       String // dedup key: userId (welcome/winback/cart) or orderId (post-purchase); test:<userId>:<ts> for test sends
+  status    AutomationLogStatus @default(SENT)
+  channels  CampaignChannel[]   @default([]) // channels that actually delivered
+  error     String? // first failure/skip reason (human-readable)
+  detail    Json? // per-channel outcome list [{ channel, status, reason? }]
+  createdAt DateTime            @default(now())
+  rule      AutomationRule      @relation(fields: [ruleId], references: [id], onDelete: Cascade)
 
   @@unique([ruleId, key])
   @@index([ruleId])
+  @@index([createdAt])
+}
+
+enum AutomationLogStatus {
+  SENT // every attempted channel delivered
+  PARTIAL // some channels delivered
+  FAILED // no channel delivered
+  TEST // manual test send (excluded from dedup/stats)
 }
 
 model PushSubscription {

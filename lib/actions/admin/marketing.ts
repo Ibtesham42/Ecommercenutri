@@ -7,7 +7,12 @@ import { requirePermission } from "@/lib/auth";
 import { dispatchCampaign } from "@/lib/marketing/deliver";
 import { countAudience, type SegmentConfig } from "@/lib/marketing/audience";
 import { generateCampaignContent } from "@/lib/marketing/ai";
-import { runAutomations } from "@/lib/marketing/automation";
+import {
+  runAutomations,
+  testAutomationRule,
+  type AutomationRunReport,
+  type ChannelOutcome,
+} from "@/lib/marketing/automation";
 import {
   campaignSchema,
   segmentSchema,
@@ -305,10 +310,36 @@ export async function deleteAutomationRule(id: string): Promise<AdminResult> {
   return { ok: true };
 }
 
-/** Run all enabled automations now (manual trigger; cron does this on schedule). */
-export async function runAutomationsNow(): Promise<AdminResult<{ sent: number }>> {
+/** Run all enabled automations now (manual trigger; cron does this on schedule).
+ *  Returns the full per-rule report so the UI can show exactly what happened. */
+export async function runAutomationsNow(): Promise<AdminResult<AutomationRunReport>> {
   await requirePermission("marketing");
-  const sent = await runAutomations();
-  revalidatePath("/admin/marketing/automations");
-  return { ok: true, data: { sent } };
+  try {
+    const report = await runAutomations();
+    revalidatePath("/admin/marketing/automations");
+    return { ok: true, data: report };
+  } catch (err) {
+    console.error("[marketing] run-now failed:", err);
+    return { ok: false, error: err instanceof Error ? err.message : "Automation run failed." };
+  }
+}
+
+/** Send an automation's message to the signed-in admin as a real test delivery. */
+export async function sendAutomationTest(
+  ruleId: string,
+): Promise<AdminResult<{ outcomes: ChannelOutcome[] }>> {
+  const admin = await requirePermission("marketing");
+  try {
+    const res = await testAutomationRule(ruleId, {
+      id: admin.id,
+      email: admin.email,
+      name: admin.name,
+    });
+    if ("error" in res) return { ok: false, error: res.error };
+    revalidatePath("/admin/marketing/automations");
+    return { ok: true, data: res };
+  } catch (err) {
+    console.error("[marketing] automation test failed:", err);
+    return { ok: false, error: err instanceof Error ? err.message : "Test send failed." };
+  }
 }

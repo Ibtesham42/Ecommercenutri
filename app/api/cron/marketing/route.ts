@@ -19,11 +19,16 @@ async function handle(req: Request) {
     }
   }
   try {
-    const [processed, automated] = await Promise.all([
+    const [processed, automation] = await Promise.all([
       dispatchDueCampaigns(),
       runAutomations(),
     ]);
-    return NextResponse.json({ ok: true, processed, automated });
+    return NextResponse.json({
+      ok: true,
+      processed,
+      automated: automation.delivered,
+      automationRules: automation.rules,
+    });
   } catch (err) {
     console.error("[cron/marketing] failed:", err);
     return NextResponse.json({ ok: false, error: "Dispatch failed" }, { status: 500 });

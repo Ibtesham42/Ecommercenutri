@@ -1,11 +1,19 @@
 import "server-only";
-import type { AutomationRule } from "@prisma/client";
+import type { AutomationRule, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notify } from "@/lib/notifications";
 import { sendEmail } from "@/lib/email";
 import { marketingEmail } from "@/lib/emails";
-import { CHANNEL_LIVE } from "./channels";
+import { isConfigured } from "@/lib/env";
+import { CHANNEL_LABEL } from "./channels";
 import { sendPush, sendWhatsApp, sendSMS, type ChannelMessage } from "./providers";
+import type {
+  AutomationRunReport,
+  ChannelOutcome,
+  RuleRunReport,
+} from "./automation-types";
+
+export type { AutomationRunReport, ChannelOutcome, RuleRunReport };
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;
@@ -67,10 +75,58 @@ async function winbackCandidates(delayHours: number): Promise<Candidate[]> {
   return users.map((u) => toCandidate(u, u.id));
 }
 
-/** Carts sitting with items past the delay, with no order placed since. */
+/**
+ * Abandoned carts. The storefront cart is client-side (Zustand/localStorage), so
+ * the DB `Cart` table is empty in practice — the *real* signal is the `UserEvent`
+ * CART_ADD log recorded by the behavior tracker. A signed-in user qualifies when
+ * their **latest** cart-add is older than the delay (they went quiet) and they've
+ * placed no order since. The legacy DB-cart query is kept as a union so a future
+ * server-synced cart slots in unchanged.
+ */
 async function abandonedCartCandidates(delayHours: number): Promise<Candidate[]> {
-  const cutoff = new Date(Date.now() - delayHours * HOUR_MS);
-  const floor = new Date(Date.now() - delayHours * HOUR_MS - 30 * DAY_MS);
+  const now = Date.now();
+  const cutoff = new Date(now - delayHours * HOUR_MS);
+  const floor = new Date(now - delayHours * HOUR_MS - 30 * DAY_MS);
+  const byUser = new Map<string, Candidate>();
+
+  // Signal 1 — behavior events (the live source today). Latest CART_ADD per user.
+  const events = await prisma.userEvent.findMany({
+    where: { type: "CART_ADD", userId: { not: null }, createdAt: { gte: floor } },
+    select: { userId: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+    take: 5000,
+  });
+  const lastAdd = new Map<string, Date>();
+  for (const e of events) {
+    if (e.userId && !lastAdd.has(e.userId)) lastAdd.set(e.userId, e.createdAt); // desc → first is latest
+  }
+  const eventUserIds = [...lastAdd.entries()]
+    .filter(([, at]) => at <= cutoff)
+    .map(([userId]) => userId);
+
+  if (eventUserIds.length > 0) {
+    const users = await prisma.user.findMany({
+      where: { id: { in: eventUserIds }, role: "USER", isActive: true },
+      select: USER_SELECT,
+    });
+    // One query for all orders since the window floor, compared per-user in JS.
+    const orders = await prisma.order.findMany({
+      where: { userId: { in: users.map((u) => u.id) }, createdAt: { gte: floor } },
+      select: { userId: true, createdAt: true },
+    });
+    const lastOrder = new Map<string, Date>();
+    for (const o of orders) {
+      const prev = lastOrder.get(o.userId);
+      if (!prev || o.createdAt > prev) lastOrder.set(o.userId, o.createdAt);
+    }
+    for (const u of users) {
+      const addedAt = lastAdd.get(u.id);
+      const orderedAt = lastOrder.get(u.id);
+      if (addedAt && (!orderedAt || orderedAt < addedAt)) byUser.set(u.id, toCandidate(u, u.id));
+    }
+  }
+
+  // Signal 2 — server-synced DB carts (future-proof; empty today).
   const carts = await prisma.cart.findMany({
     where: {
       updatedAt: { lte: cutoff, gte: floor },
@@ -91,13 +147,13 @@ async function abandonedCartCandidates(delayHours: number): Promise<Candidate[]>
     },
     take: 2000,
   });
-  const out: Candidate[] = [];
   for (const c of carts) {
+    if (byUser.has(c.userId)) continue;
     const ordered = await prisma.order.count({
       where: { userId: c.userId, createdAt: { gte: c.updatedAt } },
     });
     if (ordered === 0) {
-      out.push({
+      byUser.set(c.userId, {
         userId: c.userId,
         email: c.user.email,
         name: c.user.name,
@@ -106,7 +162,8 @@ async function abandonedCartCandidates(delayHours: number): Promise<Candidate[]>
       });
     }
   }
-  return out;
+
+  return [...byUser.values()];
 }
 
 /** Orders delivered at least `delayHours` ago — keyed per order (not per user). */
@@ -158,7 +215,28 @@ async function candidatesFor(rule: AutomationRule): Promise<Candidate[]> {
   }
 }
 
-async function deliver(rule: AutomationRule, c: Candidate): Promise<void> {
+/** Human explanation for a rule that found zero eligible recipients. */
+function emptyReason(rule: AutomationRule): string {
+  switch (rule.trigger) {
+    case "WELCOME":
+      return "No accounts created in the eligibility window (delay to delay+14 days ago).";
+    case "ABANDONED_CART":
+      return "No signed-in customer has cart activity older than the delay without a later order.";
+    case "WINBACK":
+      return "No past customer has been inactive longer than the delay.";
+    case "POST_PURCHASE":
+      return "No order was delivered in the eligibility window (delay to delay+30 days ago).";
+    default:
+      return "No eligible recipients.";
+  }
+}
+
+/**
+ * Deliver a rule's message to one recipient across its channels, returning the
+ * truthful per-channel outcome. Unconfigured providers and the keyless email stub
+ * are reported as SKIPPED/STUBBED — never as a successful delivery.
+ */
+async function deliver(rule: AutomationRule, c: Candidate): Promise<ChannelOutcome[]> {
   const msg: ChannelMessage = {
     title: rule.title,
     body: rule.body,
@@ -166,69 +244,256 @@ async function deliver(rule: AutomationRule, c: Candidate): Promise<void> {
     ctaText: rule.ctaText,
     ctaUrl: rule.ctaUrl,
   };
-  const has = (ch: (typeof rule.channels)[number]) => rule.channels.includes(ch) && CHANNEL_LIVE[ch];
+  const outcomes: ChannelOutcome[] = [];
 
-  if (has("IN_APP")) {
-    await notify(c.userId, { type: "GENERAL", title: rule.title, body: rule.body, link: rule.ctaUrl ?? null });
-  }
-  if (has("EMAIL") && c.email) {
-    try {
-      await sendEmail({ to: c.email, ...marketingEmail({ ...msg, name: c.name }) });
-    } catch (e) {
-      console.error("[marketing] automation email failed:", e);
+  for (const channel of rule.channels) {
+    switch (channel) {
+      case "IN_APP": {
+        const ok = await notify(c.userId, {
+          type: "GENERAL",
+          title: rule.title,
+          body: rule.body,
+          link: rule.ctaUrl ?? null,
+        });
+        outcomes.push(
+          ok
+            ? { channel, status: "SENT" }
+            : { channel, status: "FAILED", reason: "Could not create the in-app notification." },
+        );
+        break;
+      }
+      case "EMAIL": {
+        if (!c.email) {
+          outcomes.push({ channel, status: "SKIPPED", reason: "Recipient has no email address." });
+          break;
+        }
+        try {
+          const res = await sendEmail({ to: c.email, ...marketingEmail({ ...msg, name: c.name }) });
+          outcomes.push(
+            res.stubbed
+              ? {
+                  channel,
+                  status: "STUBBED",
+                  reason: "No email provider configured (SMTP/Resend) — logged to the server console only.",
+                }
+              : { channel, status: "SENT" },
+          );
+        } catch (e) {
+          console.error("[marketing] automation email failed:", e);
+          outcomes.push({
+            channel,
+            status: "FAILED",
+            reason: e instanceof Error ? e.message : "Email send failed.",
+          });
+        }
+        break;
+      }
+      case "PUSH": {
+        if (!isConfigured.webPush()) {
+          outcomes.push({ channel, status: "SKIPPED", reason: "Web Push is not configured (VAPID keys missing)." });
+          break;
+        }
+        const ok = await sendPush(c, msg);
+        outcomes.push(
+          ok
+            ? { channel, status: "SENT" }
+            : { channel, status: "SKIPPED", reason: "Recipient has no active push subscription." },
+        );
+        break;
+      }
+      case "WHATSAPP": {
+        if (!isConfigured.whatsapp()) {
+          outcomes.push({ channel, status: "SKIPPED", reason: "WhatsApp is not configured (Meta Cloud API keys missing)." });
+          break;
+        }
+        if (!c.phone) {
+          outcomes.push({ channel, status: "SKIPPED", reason: "Recipient has no phone number." });
+          break;
+        }
+        const ok = await sendWhatsApp(c, msg);
+        outcomes.push(
+          ok ? { channel, status: "SENT" } : { channel, status: "FAILED", reason: "WhatsApp send failed (see server logs)." },
+        );
+        break;
+      }
+      case "SMS": {
+        if (!isConfigured.sms()) {
+          outcomes.push({ channel, status: "SKIPPED", reason: "SMS is not configured (Twilio keys missing)." });
+          break;
+        }
+        if (!c.phone) {
+          outcomes.push({ channel, status: "SKIPPED", reason: "Recipient has no phone number." });
+          break;
+        }
+        const ok = await sendSMS(c, msg);
+        outcomes.push(
+          ok ? { channel, status: "SENT" } : { channel, status: "FAILED", reason: "SMS send failed (see server logs)." },
+        );
+        break;
+      }
     }
   }
-  if (has("PUSH")) await sendPush(c, msg);
-  if (has("WHATSAPP")) await sendWhatsApp(c, msg);
-  if (has("SMS")) await sendSMS(c, msg);
+
+  return outcomes;
+}
+
+function logStatus(outcomes: ChannelOutcome[]): "SENT" | "PARTIAL" | "FAILED" {
+  const sent = outcomes.filter((o) => o.status === "SENT").length;
+  if (sent === outcomes.length && sent > 0) return "SENT";
+  if (sent > 0) return "PARTIAL";
+  return "FAILED";
+}
+
+function firstProblem(outcomes: ChannelOutcome[]): string | null {
+  const bad = outcomes.find((o) => o.status !== "SENT");
+  return bad ? `${CHANNEL_LABEL[bad.channel]}: ${bad.reason ?? bad.status}` : null;
+}
+
+/** Collect rule-level warnings from a set of recipient outcomes (deduped). */
+function collectNotes(all: ChannelOutcome[][], notes: Set<string>) {
+  for (const outcomes of all) {
+    for (const o of outcomes) {
+      if (o.status === "STUBBED" || (o.status === "SKIPPED" && o.reason?.includes("not configured"))) {
+        notes.add(`${CHANNEL_LABEL[o.channel]}: ${o.reason}`);
+      }
+    }
+  }
 }
 
 /**
  * Evaluate every enabled automation rule and deliver to newly-eligible recipients.
  * Dedup is enforced by `AutomationLog` (`@@unique([ruleId, key])`), so each user
- * (or order, for post-purchase) receives a rule at most once. Called by the cron
- * dispatch route alongside scheduled campaigns. Returns total messages delivered.
+ * (or order, for post-purchase) receives a rule at most once. Every recipient's
+ * per-channel outcome is persisted on their log row (the Automation History), and
+ * the returned report explains each rule's result — including why nothing was sent.
+ * Called by the cron dispatch route and the admin "Run now" action.
  */
-export async function runAutomations(): Promise<number> {
+export async function runAutomations(): Promise<AutomationRunReport> {
   const rules = await prisma.automationRule.findMany({ where: { enabled: true } });
-  let total = 0;
+  const report: AutomationRunReport = { delivered: 0, rules: [] };
 
   for (const rule of rules) {
+    const r: RuleRunReport = {
+      ruleId: rule.id,
+      name: rule.name,
+      trigger: rule.trigger,
+      candidates: 0,
+      alreadySent: 0,
+      attempted: 0,
+      sent: 0,
+      failed: 0,
+      notes: [],
+    };
+    report.rules.push(r);
+
     try {
       const candidates = await candidatesFor(rule);
-      if (candidates.length === 0) continue;
+      r.candidates = candidates.length;
+      if (candidates.length === 0) {
+        r.notes.push(emptyReason(rule));
+        await prisma.automationRule.update({ where: { id: rule.id }, data: { lastRunAt: new Date() } });
+        continue;
+      }
 
       const already = await prisma.automationLog.findMany({
         where: { ruleId: rule.id, key: { in: candidates.map((c) => c.key) } },
         select: { key: true },
       });
       const sentKeys = new Set(already.map((a) => a.key));
+      r.alreadySent = sentKeys.size;
       const fresh = candidates.filter((c) => !sentKeys.has(c.key)).slice(0, PER_RUN_CAP);
-      if (fresh.length === 0) continue;
+      if (fresh.length === 0) {
+        r.notes.push("Every eligible recipient was already messaged on a previous run (each gets a rule once).");
+        await prisma.automationRule.update({ where: { id: rule.id }, data: { lastRunAt: new Date() } });
+        continue;
+      }
 
-      let delivered = 0;
+      const notes = new Set<string>();
+      const allOutcomes: ChannelOutcome[][] = [];
       for (const c of fresh) {
+        let logId: string;
         try {
           // Reserve the dedup row first; a unique clash means another run took it.
-          await prisma.automationLog.create({ data: { ruleId: rule.id, userId: c.userId, key: c.key } });
+          const log = await prisma.automationLog.create({
+            data: { ruleId: rule.id, userId: c.userId, key: c.key, status: "FAILED" },
+          });
+          logId = log.id;
         } catch {
           continue;
         }
-        await deliver(rule, c);
-        delivered++;
+        r.attempted++;
+        const outcomes = await deliver(rule, c);
+        allOutcomes.push(outcomes);
+        const status = logStatus(outcomes);
+        if (status === "FAILED") r.failed++;
+        else r.sent++;
+        await prisma.automationLog
+          .update({
+            where: { id: logId },
+            data: {
+              status,
+              channels: outcomes.filter((o) => o.status === "SENT").map((o) => o.channel),
+              error: firstProblem(outcomes),
+              detail: outcomes as unknown as Prisma.InputJsonValue,
+            },
+          })
+          .catch((e) => console.error("[marketing] automation log update failed:", e));
       }
+      collectNotes(allOutcomes, notes);
+      r.notes.push(...notes);
 
-      if (delivered > 0) {
-        await prisma.automationRule.update({
-          where: { id: rule.id },
-          data: { sentCount: { increment: delivered }, lastRunAt: new Date() },
-        });
-      }
-      total += delivered;
+      await prisma.automationRule.update({
+        where: { id: rule.id },
+        data: { sentCount: { increment: r.sent }, lastRunAt: new Date() },
+      });
+      report.delivered += r.sent;
     } catch (err) {
       console.error("[marketing] automation rule failed:", rule.id, err);
+      r.error = err instanceof Error ? err.message : "Rule evaluation failed.";
     }
   }
 
-  return total;
+  return report;
+}
+
+/**
+ * Send a rule's message to one specific user (the admin pressing "Test") exactly
+ * as a real trigger would, without consuming the recipient's dedup slot. Logged
+ * in the Automation History with status TEST.
+ */
+export async function testAutomationRule(
+  ruleId: string,
+  user: { id: string; email: string | null; name: string | null },
+): Promise<{ outcomes: ChannelOutcome[] } | { error: string }> {
+  const rule = await prisma.automationRule.findUnique({ where: { id: ruleId } });
+  if (!rule) return { error: "Automation not found." };
+
+  const address = await prisma.address.findFirst({
+    where: { userId: user.id },
+    orderBy: { updatedAt: "desc" },
+    select: { phone: true },
+  });
+  const candidate: Candidate = {
+    userId: user.id,
+    email: user.email,
+    name: user.name,
+    phone: address?.phone ?? null,
+    key: `test:${user.id}:${Date.now()}`,
+  };
+
+  const outcomes = await deliver(rule, candidate);
+  await prisma.automationLog
+    .create({
+      data: {
+        ruleId: rule.id,
+        userId: user.id,
+        key: candidate.key,
+        status: "TEST",
+        channels: outcomes.filter((o) => o.status === "SENT").map((o) => o.channel),
+        error: firstProblem(outcomes),
+        detail: outcomes as unknown as Prisma.InputJsonValue,
+      },
+    })
+    .catch((e) => console.error("[marketing] automation test log failed:", e));
+  return { outcomes };
 }

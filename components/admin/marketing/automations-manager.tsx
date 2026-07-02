@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Trash2, Loader2, Zap, Sparkles, Play } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Zap, Sparkles, Play, AlertTriangle, FlaskConical, History } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import {
   toggleAutomationRule,
   deleteAutomationRule,
   runAutomationsNow,
+  sendAutomationTest,
   generateContent,
 } from "@/lib/actions/admin/marketing";
 import {
@@ -27,8 +28,9 @@ import {
   AUTOMATION_TRIGGER_LABEL,
   AUTOMATION_TRIGGER_DESCRIPTION,
 } from "@/lib/marketing/channels";
+import type { AutomationLogRow, AutomationRunReport, ChannelOutcome } from "@/lib/marketing/automation-types";
 import { formatDateTime } from "@/lib/format";
-import type { AutomationTrigger, CampaignChannel } from "@prisma/client";
+import type { AutomationLogStatus, AutomationTrigger, CampaignChannel } from "@prisma/client";
 
 type CouponOption = { id: string; code: string };
 
@@ -55,13 +57,40 @@ function delayLabel(hours: number) {
   return `${hours} hour${hours === 1 ? "" : "s"}`;
 }
 
+const LOG_STATUS_LABEL: Record<AutomationLogStatus, string> = {
+  SENT: "Sent",
+  PARTIAL: "Partial",
+  FAILED: "Failed",
+  TEST: "Test",
+};
+
+const LOG_STATUS_VARIANT: Record<AutomationLogStatus, "default" | "secondary" | "destructive" | "outline"> = {
+  SENT: "default",
+  PARTIAL: "secondary",
+  FAILED: "destructive",
+  TEST: "outline",
+};
+
+/** One-line human summary of a test send's per-channel outcomes. */
+function outcomeSummary(outcomes: ChannelOutcome[]): { sent: string[]; problems: string[] } {
+  const sent = outcomes.filter((o) => o.status === "SENT").map((o) => CHANNEL_LABEL[o.channel]);
+  const problems = outcomes
+    .filter((o) => o.status !== "SENT")
+    .map((o) => `${CHANNEL_LABEL[o.channel]}: ${o.reason ?? o.status.toLowerCase()}`);
+  return { sent, problems };
+}
+
 export function AutomationsManager({
   rules,
   coupons,
+  history,
+  channelConfig,
   cloudinaryReady,
 }: {
   rules: AutomationRow[];
   coupons: CouponOption[];
+  history: AutomationLogRow[];
+  channelConfig: Record<CampaignChannel, boolean>;
   cloudinaryReady: boolean;
 }) {
   const router = useRouter();
@@ -69,6 +98,8 @@ export function AutomationsManager({
   const [editing, setEditing] = useState<AutomationRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
+  const [testing, setTesting] = useState<string | null>(null);
+  const [report, setReport] = useState<AutomationRunReport | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
 
@@ -221,10 +252,32 @@ export function AutomationsManager({
     setRunning(true);
     runAutomationsNow().then((res) => {
       setRunning(false);
-      if (res.ok) {
-        toast.success(`Sent ${res.data?.sent ?? 0} message(s)`);
+      if (res.ok && res.data) {
+        setReport(res.data);
         router.refresh();
-      } else toast.error(res.error);
+      } else if (!res.ok) toast.error(res.error);
+    });
+  }
+
+  function onTest(r: AutomationRow) {
+    setTesting(r.id);
+    sendAutomationTest(r.id).then((res) => {
+      setTesting(null);
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      const { sent, problems } = outcomeSummary(res.data?.outcomes ?? []);
+      if (sent.length > 0) {
+        toast.success(`Test sent to you via ${sent.join(", ")}`, {
+          description: problems.length ? problems.join(" · ") : undefined,
+        });
+      } else {
+        toast.error("Test delivered on no channel", {
+          description: problems.join(" · ") || "No channel could deliver.",
+        });
+      }
+      router.refresh();
     });
   }
 
@@ -265,6 +318,16 @@ export function AutomationsManager({
                   {AUTOMATION_TRIGGER_LABEL[r.trigger]} · after {delayLabel(r.delayHours)} ·{" "}
                   {r.channels.map((c) => CHANNEL_LABEL[c]).join(", ")}
                 </p>
+                {r.channels.some((c) => !channelConfig[c]) && (
+                  <p className="mt-0.5 flex items-center gap-1 text-xs text-amber-600">
+                    <AlertTriangle className="size-3" />
+                    {r.channels
+                      .filter((c) => !channelConfig[c])
+                      .map((c) => CHANNEL_LABEL[c])
+                      .join(", ")}{" "}
+                    not configured — those channels are skipped.
+                  </p>
+                )}
               </div>
               <div className="text-right text-xs text-muted-foreground">
                 <p className="font-semibold text-foreground">{r.sentCount} sent</p>
@@ -272,6 +335,16 @@ export function AutomationsManager({
               </div>
               <Badge variant={r.enabled ? "default" : "secondary"}>{r.enabled ? "Active" : "Paused"}</Badge>
               <div className="flex gap-1">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  disabled={testing === r.id}
+                  onClick={() => onTest(r)}
+                  aria-label="Send a test to me"
+                  title="Send a test to me"
+                >
+                  {testing === r.id ? <Loader2 className="size-4 animate-spin" /> : <FlaskConical className="size-4" />}
+                </Button>
                 <Button size="icon" variant="ghost" onClick={() => openEdit(r)} aria-label="Edit">
                   <Pencil className="size-4" />
                 </Button>
@@ -289,6 +362,100 @@ export function AutomationsManager({
           ))}
         </ul>
       )}
+
+      {/* Automation History — every delivery/attempt with its outcome. */}
+      <div className="mt-8">
+        <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
+          <History className="size-4 text-muted-foreground" /> Automation history
+        </h3>
+        {history.length === 0 ? (
+          <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+            No automation deliveries yet. When a rule sends (or fails to send), every recipient shows
+            up here with the channel-by-channel result.
+          </p>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50 text-left text-xs text-muted-foreground">
+                  <th className="px-3 py-2 font-medium">Time</th>
+                  <th className="px-3 py-2 font-medium">Automation</th>
+                  <th className="px-3 py-2 font-medium">Recipient</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-3 py-2 font-medium">Delivered via</th>
+                  <th className="px-3 py-2 font-medium">Issue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((l) => (
+                  <tr key={l.id} className="border-b last:border-0">
+                    <td className="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">
+                      {formatDateTime(l.createdAt)}
+                    </td>
+                    <td className="px-3 py-2">
+                      <p className="font-medium">{l.ruleName}</p>
+                      <p className="text-xs text-muted-foreground">{AUTOMATION_TRIGGER_LABEL[l.trigger]}</p>
+                    </td>
+                    <td className="px-3 py-2">
+                      <p>{l.recipientName ?? "—"}</p>
+                      {l.recipientEmail && (
+                        <p className="text-xs text-muted-foreground">{l.recipientEmail}</p>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      <Badge variant={LOG_STATUS_VARIANT[l.status]}>{LOG_STATUS_LABEL[l.status]}</Badge>
+                    </td>
+                    <td className="px-3 py-2 text-xs">
+                      {l.channels.length > 0 ? l.channels.map((c) => CHANNEL_LABEL[c]).join(", ") : "—"}
+                    </td>
+                    <td className="max-w-[280px] px-3 py-2 text-xs text-muted-foreground">
+                      {l.error ?? "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Run-now result — the exact per-rule outcome, never a silent count. */}
+      <Dialog open={report !== null} onOpenChange={(o) => !o && setReport(null)}>
+        <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Run result — {report?.delivered ?? 0} message{(report?.delivered ?? 0) === 1 ? "" : "s"} delivered
+            </DialogTitle>
+          </DialogHeader>
+          {report && report.rules.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No enabled automations. Activate a rule (toggle) and run again.
+            </p>
+          )}
+          <div className="space-y-3">
+            {report?.rules.map((r) => (
+              <div key={r.ruleId} className="rounded-xl border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-medium">{r.name}</p>
+                  <Badge variant={r.sent > 0 ? "default" : r.error || r.failed > 0 ? "destructive" : "secondary"}>
+                    {r.error ? "Error" : `${r.sent} sent`}
+                  </Badge>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {AUTOMATION_TRIGGER_LABEL[r.trigger]} · {r.candidates} eligible · {r.alreadySent} already
+                  messaged · {r.attempted} attempted{r.failed > 0 ? ` · ${r.failed} failed` : ""}
+                </p>
+                {r.error && <p className="mt-1.5 text-xs text-destructive">{r.error}</p>}
+                {r.notes.map((n) => (
+                  <p key={n} className="mt-1.5 flex items-start gap-1 text-xs text-amber-600">
+                    <AlertTriangle className="mt-0.5 size-3 shrink-0" /> {n}
+                  </p>
+                ))}
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto">
@@ -348,10 +515,20 @@ export function AutomationsManager({
                     } ${!CHANNEL_LIVE[ch] ? "cursor-not-allowed opacity-50" : ""}`}
                   >
                     {CHANNEL_LABEL[ch]}
-                    {!CHANNEL_LIVE[ch] && " (soon)"}
+                    {!channelConfig[ch] && " ⚠"}
                   </button>
                 ))}
               </div>
+              {[...channels].some((ch) => !channelConfig[ch]) && (
+                <p className="flex items-center gap-1 text-xs text-amber-600">
+                  <AlertTriangle className="size-3" />
+                  {[...channels]
+                    .filter((ch) => !channelConfig[ch])
+                    .map((ch) => CHANNEL_LABEL[ch])
+                    .join(", ")}{" "}
+                  needs provider setup — recipients on that channel are skipped until it&apos;s configured.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2 rounded-xl border bg-primary/5 p-3">

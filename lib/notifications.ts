@@ -3,12 +3,14 @@ import type { NotificationType } from "@prisma/client";
 
 /**
  * Create an in-app notification (the account bell). Best-effort: never throws, so
- * it can't break the action that triggered it (email is sent separately).
+ * it can't break the action that triggered it (email is sent separately). Returns
+ * whether the row was actually created so callers that report delivery (e.g. the
+ * marketing automations) can tell success from a swallowed failure.
  */
 export async function notify(
   userId: string,
   data: { type?: NotificationType; title: string; body?: string | null; link?: string | null },
-): Promise<void> {
+): Promise<boolean> {
   try {
     await prisma.notification.create({
       data: {
@@ -19,8 +21,10 @@ export async function notify(
         link: data.link ?? null,
       },
     });
+    return true;
   } catch (err) {
     console.error("[notifications] create failed:", err);
+    return false;
   }
 }
 
