@@ -56,13 +56,19 @@ export default async function AssistantPage({
     (productId ? settings.productAssistantEnabled : settings.assistantEnabled);
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8">
-      <div className="mb-6 text-center">
-        <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary">
-          <Sparkles className="size-7" />
+    // Mobile (`max-sm:`) becomes a full-height chat app: compact header, chat
+    // card sized to the viewport minus the site header (4rem), the bottom tab
+    // bar (4.5rem + safe area) and the page chrome — so the input is always on
+    // screen and only the messages scroll. Desktop (sm+) is unchanged.
+    <div className="mx-auto w-full max-w-3xl px-4 py-8 max-sm:px-3 max-sm:py-3">
+      <div className="mb-6 text-center max-sm:mb-3">
+        <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary max-sm:size-10 max-sm:rounded-xl">
+          <Sparkles className="size-7 max-sm:size-5" />
         </span>
-        <h1 className="mt-4 text-2xl font-bold sm:text-3xl">AI Nutrition Assistant</h1>
-        <p className="mx-auto mt-2 max-w-xl text-muted-foreground">
+        <h1 className="mt-4 text-2xl font-bold max-sm:mt-2 max-sm:font-heading max-sm:text-xl max-sm:tracking-tight sm:text-3xl">
+          AI Nutrition Assistant
+        </h1>
+        <p className="mx-auto mt-2 max-w-xl text-muted-foreground max-sm:mt-0.5 max-sm:text-[13px]">
           {productName
             ? `Ask anything about ${productName}.`
             : "Your personal nutrition expert, grounded in the Nutriyet catalog."}
@@ -70,7 +76,7 @@ export default async function AssistantPage({
       </div>
 
       {!ready && (
-        <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800 max-sm:mb-3 max-sm:rounded-2xl max-sm:p-3 dark:bg-amber-950/30 dark:text-amber-200">
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
           <p>
             The live AI assistant isn&apos;t active right now. You can still send a
@@ -83,13 +89,15 @@ export default async function AssistantPage({
       <AiChat
         productId={productId}
         initialQuestion={q}
+        variant="page"
         greeting={
           productName
             ? `Hi! Ask me anything about ${productName} — benefits, nutrition, how to use it and more.`
             : "Hi! I'm Nutri. Ask me about nutrition or which products suit your goals."
         }
         suggestions={productId ? PRODUCT_SUGGESTIONS : GENERAL_SUGGESTIONS}
-        heightClass="h-[55vh]"
+        className="max-sm:h-[calc(100dvh-16rem-env(safe-area-inset-bottom))] max-sm:min-h-[20rem] max-sm:rounded-3xl max-sm:shadow-elev-2"
+        heightClass="h-[55vh] max-sm:h-auto max-sm:min-h-0 max-sm:flex-1"
       />
     </div>
   );
