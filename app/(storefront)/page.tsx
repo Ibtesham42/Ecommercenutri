@@ -96,6 +96,8 @@ export default async function HomePage() {
             id: s.id,
             mediaType: s.mediaType,
             videoUrl: s.videoUrl,
+            videoPoster: s.videoPoster,
+            videoQuality: s.videoQuality,
             title: s.title,
             subtitle: s.subtitle,
             description: s.description,

@@ -606,6 +606,9 @@ model HeroSlide {
   description  String?
   mediaType    String    @default("IMAGE") // "IMAGE" | "VIDEO"
   videoUrl     String?
+  videoPoster  String? // admin-chosen poster (thumbnail pick or custom upload); null = auto first frame
+  videoQuality String    @default("balanced") // delivery profile: "max" | "balanced" | "eco"
+  videoMeta    Json? // upload metadata: width/height/duration/bytes/format/codec/fps/bitrate
   desktopImage String
   mobileImage  String?
   ctaText      String?

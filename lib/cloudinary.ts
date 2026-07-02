@@ -79,3 +79,53 @@ export async function deleteImage(publicId: string): Promise<void> {
     /* ignore */
   }
 }
+
+/**
+ * Extract the public_id from any of OUR Cloudinary delivery URLs (raw upload
+ * URLs and transformed ones like `/upload/so_0,f_jpg/v123/nutriyet/hero/x.jpg`).
+ * Returns null for non-Cloudinary URLs, other clouds, or anything outside the
+ * `nutriyet/` namespace — so callers can never destroy an asset we don't own.
+ */
+export function publicIdFromUrl(url: string | null | undefined): string | null {
+  if (!url || !cloudinaryEnabled) return null;
+  if (!url.includes(`res.cloudinary.com/${env.cloudinaryCloudName}/`)) return null;
+  const m = url.match(/\/upload\/(.+)$/);
+  if (!m) return null;
+  const segments = m[1].split("/");
+  // Drop transformation segments (contain "_" params separated by commas, e.g.
+  // "so_0,f_jpg,q_auto") and the version segment ("v1234567890").
+  while (segments.length > 1 && (/^v\d+$/.test(segments[0]) || /(^|,)[a-z]{1,4}_[^/]*$/.test(segments[0]))) {
+    segments.shift();
+  }
+  const publicId = segments.join("/").replace(/\.[a-z0-9]+(\?.*)?$/i, "");
+  return publicId.startsWith("nutriyet/") ? publicId : null;
+}
+
+/**
+ * Completely remove an uploaded asset by its delivery URL: the original file,
+ * every derived/transformed version, and (via `invalidate`) the CDN-cached
+ * copies. Tries the matching resource type first, then the other, so a video
+ * poster URL (image transform of a video public_id) still resolves. Best-effort:
+ * never throws (the DB record is the source of truth; an orphan is logged).
+ * Returns true when Cloudinary confirmed the deletion.
+ */
+export async function destroyAssetByUrl(url: string | null | undefined): Promise<boolean> {
+  const publicId = publicIdFromUrl(url);
+  if (!publicId) return false;
+  const looksVideo = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url!);
+  const order: ("video" | "image")[] = looksVideo ? ["video", "image"] : ["image", "video"];
+  for (const resourceType of order) {
+    try {
+      const res = (await cloudinary.uploader.destroy(publicId, {
+        resource_type: resourceType,
+        invalidate: true,
+      })) as { result?: string };
+      if (res?.result === "ok") return true;
+      // "not found" → try the other resource type.
+    } catch (err) {
+      console.error(`[cloudinary] destroy ${resourceType}/${publicId} failed:`, err);
+    }
+  }
+  console.warn(`[cloudinary] asset not removed (may be orphaned): ${publicId}`);
+  return false;
+}

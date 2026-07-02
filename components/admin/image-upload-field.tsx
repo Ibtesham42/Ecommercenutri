@@ -6,6 +6,11 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { isVideoUrl } from "@/lib/cld";
+import type { CloudinaryUploadInfo } from "@/lib/video";
+
+/** Video containers accepted across the admin (validated beyond the file picker). */
+const VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
+const VIDEO_EXT = /\.(mp4|webm|mov)$/i;
 
 // Raster types the browser can downscale/recompress before upload. Others
 // (svg, gif, video) are sent untouched so they're preserved.
@@ -63,15 +68,20 @@ async function prepareBlob(file: File): Promise<{ blob: Blob; filename: string }
 /**
  * Upload a blob DIRECTLY to Cloudinary from the browser. We first ask our
  * admin-gated endpoint for a signature, then POST the file straight to
- * Cloudinary's API. This bypasses the app's serverless function entirely, so
- * large files (videos) aren't capped by Vercel's ~4.5 MB request-body limit or
- * the function execution timeout. Returns the delivered secure URL.
+ * Cloudinary's API (XMLHttpRequest so real upload progress is reported). This
+ * bypasses the app's serverless function entirely, so large files (videos)
+ * aren't capped by Vercel's ~4.5 MB request-body limit or the function
+ * execution timeout. Resolves with Cloudinary's full response (URL + metadata:
+ * dimensions, duration, bytes, format, codec, fps, bitrate).
  */
+export type UploadInfo = CloudinaryUploadInfo & { secure_url: string };
+
 async function uploadToCloudinary(
   blob: Blob,
   filename: string,
   folder?: string,
-): Promise<string> {
+  onProgress?: (pct: number) => void,
+): Promise<UploadInfo> {
   const sigRes = await fetch("/api/admin/upload-signature", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -97,18 +107,26 @@ async function uploadToCloudinary(
   if (sig.folder) form.append("folder", sig.folder);
 
   // `auto` lets Cloudinary detect image vs video from the bytes.
-  const upRes = await fetch(
-    `https://api.cloudinary.com/v1_1/${sig.cloudName}/auto/upload`,
-    { method: "POST", body: form },
-  );
-  const up = (await upRes.json().catch(() => ({}))) as {
-    secure_url?: string;
-    error?: { message?: string };
-  };
-  if (!upRes.ok || !up.secure_url) {
-    throw new Error(up.error?.message ?? "Cloudinary upload failed.");
-  }
-  return up.secure_url;
+  return new Promise<UploadInfo>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `https://api.cloudinary.com/v1_1/${sig.cloudName}/auto/upload`);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      let up: UploadInfo & { error?: { message?: string } };
+      try {
+        up = JSON.parse(xhr.responseText);
+      } catch {
+        reject(new Error("Cloudinary upload failed."));
+        return;
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && up.secure_url) resolve(up);
+      else reject(new Error(up.error?.message ?? "Cloudinary upload failed."));
+    };
+    xhr.onerror = () => reject(new Error("Network error during upload."));
+    xhr.send(form);
+  });
 }
 
 /**
@@ -141,6 +159,7 @@ export function ImageUploadField({
   accept = "image/*",
   placeholder = "https://… or upload",
   maxDurationSec,
+  onUploadInfo,
 }: {
   value?: string;
   onChange: (url: string) => void;
@@ -150,12 +169,20 @@ export function ImageUploadField({
   placeholder?: string;
   /** When set, reject video files longer than this (seconds) before upload. */
   maxDurationSec?: number;
+  /** Called with Cloudinary's full response (dimensions, duration, codec, …). */
+  onUploadInfo?: (info: CloudinaryUploadInfo) => void;
 }) {
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File) {
-    const isVideo = file.type.startsWith("video/");
+    const isVideo = file.type.startsWith("video/") || VIDEO_EXT.test(file.name);
+    // Only web-safe video containers (the file picker filter can be bypassed).
+    if (isVideo && !(VIDEO_TYPES.has(file.type) || VIDEO_EXT.test(file.name))) {
+      toast.error("Unsupported video format. Use MP4, WebM or MOV.");
+      return;
+    }
     // Generous raw guard (large originals are downscaled before upload below).
     // Videos upload directly to Cloudinary, so they aren't bound by the app's
     // serverless request limit — allow up to Cloudinary's free-plan video cap.
@@ -177,16 +204,19 @@ export function ImageUploadField({
       }
     }
     setUploading(true);
+    setProgress(0);
     try {
       const { blob, filename } = await prepareBlob(file);
-      const url = await uploadToCloudinary(blob, filename, folder);
-      onChange(url);
+      const info = await uploadToCloudinary(blob, filename, folder, setProgress);
+      onChange(info.secure_url);
+      onUploadInfo?.(info);
       toast.success("Uploaded");
     } catch (err) {
       console.error("[image-upload] failed:", err);
       toast.error(err instanceof Error ? err.message : "Upload failed. Please try again.");
     } finally {
       setUploading(false);
+      setProgress(0);
     }
   }
 
@@ -231,6 +261,20 @@ export function ImageUploadField({
           </>
         )}
       </div>
+
+      {uploading && (
+        <div className="space-y-1">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-accent">
+            <div
+              className="h-full rounded-full bg-primary transition-[width] duration-200"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {progress < 100 ? `Uploading… ${progress}%` : "Processing…"}
+          </p>
+        </div>
+      )}
 
       {value && (
         <div className="relative size-20 overflow-hidden rounded-lg border bg-accent/30">

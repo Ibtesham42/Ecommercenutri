@@ -1,15 +1,26 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { cldVideo } from "@/lib/cld";
+import {
+  cldVideoVariant,
+  pickVariantHeight,
+  normalizeQuality,
+  type VariantHeight,
+} from "@/lib/video";
 
 /**
- * Autoplaying, muted, looping banner video — no controls, fills the frame
- * (object-cover). It only plays while it's the active slide AND on-screen, and
- * resets to the first frame when it stops, so memory/CPU stay low and the next
- * banner always starts clean. Two Cloudinary sources (webm + mp4) give every
- * browser a compressed, playable file; the poster shows instantly for a smooth
- * load. `preload` is "auto" for the active slide, lighter otherwise.
+ * Autoplaying, muted, looping banner/hero video — no controls, fills the frame
+ * (CSS object-cover: no stretching, no bars; the source is delivered at its own
+ * aspect ratio and never upscaled or server-cropped).
+ *
+ * Adaptive delivery: on mount we pick a 1080/720/480 rung from the viewport +
+ * network (Save-Data / 2g / 3g step down), so every visitor gets the best
+ * quality their screen can show without wasted bytes. H.264 MP4 is served
+ * (predictable quality everywhere); the original upload is the fallback source.
+ *
+ * Performance: plays only while it's the active slide AND on-screen
+ * (IntersectionObserver), resets when deactivated so re-entry starts clean,
+ * and preloads fully only when active — inactive slides fetch metadata only.
  */
 export function BannerVideo({
   src,
@@ -17,20 +28,24 @@ export function BannerVideo({
   active = true,
   preload = "metadata",
   className,
-  width = 1600,
-  height = 600,
+  quality,
 }: {
   src: string;
   poster?: string | null;
   active?: boolean;
   preload?: "auto" | "metadata" | "none";
   className?: string;
-  /** Cloudinary delivery dimensions (cover-cropped). Hero uses a larger frame. */
-  width?: number;
-  height?: number;
+  /** Admin-selected delivery profile ("max" | "balanced" | "eco"). */
+  quality?: string | null;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [inView, setInView] = useState(false);
+  // SSR renders the middle rung; the client corrects it before/at first play.
+  const [height, setHeight] = useState<VariantHeight>(720);
+
+  useEffect(() => {
+    setHeight(pickVariantHeight());
+  }, []);
 
   useEffect(() => {
     const el = ref.current;
@@ -62,8 +77,13 @@ export function BannerVideo({
     }
   }, [active, inView]);
 
+  const q = normalizeQuality(quality);
+  const mp4 = cldVideoVariant(src, { h: height, quality: q, fmt: "mp4" });
+
   return (
     <video
+      // Remount when the delivery URL changes (React can't swap <source> live).
+      key={mp4}
       ref={ref}
       className={className}
       poster={poster || undefined}
@@ -76,10 +96,9 @@ export function BannerVideo({
       tabIndex={-1}
       disableRemotePlayback
     >
-      <source src={cldVideo(src, { w: width, h: height, fmt: "webm" })} type="video/webm" />
-      <source src={cldVideo(src, { w: width, h: height, fmt: "mp4" })} type="video/mp4" />
-      {/* Final fallback — the original uploaded file (covers pasted URLs and any
-          case where the transformed delivery isn't available). */}
+      <source src={mp4} type="video/mp4" />
+      {/* Fallback — the original uploaded file (covers pasted URLs and any case
+          where the transformed delivery isn't available). */}
       <source src={src} />
     </video>
   );

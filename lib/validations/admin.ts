@@ -199,6 +199,25 @@ export const heroSlideSchema = z
     .union([z.string().url("Enter a valid video URL"), z.literal("")])
     .nullable()
     .optional(),
+  videoPoster: z
+    .union([z.string().url("Enter a valid poster URL"), z.literal("")])
+    .nullable()
+    .optional(),
+  videoQuality: z.enum(["max", "balanced", "eco"]).default("balanced"),
+  videoMeta: z
+    .object({
+      width: z.number().optional(),
+      height: z.number().optional(),
+      duration: z.number().optional(),
+      bytes: z.number().optional(),
+      format: z.string().max(20).optional(),
+      codec: z.string().max(20).optional(),
+      fps: z.number().optional(),
+      bitrate: z.number().optional(),
+      uploadedAt: z.string().max(40).optional(),
+    })
+    .nullable()
+    .optional(),
   title: z.string().max(120).nullable().optional(),
   subtitle: z.string().max(160).nullable().optional(),
   description: z.string().max(400).nullable().optional(),

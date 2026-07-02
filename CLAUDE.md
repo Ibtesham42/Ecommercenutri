@@ -352,6 +352,18 @@ all gated by the **`appearance`** permission (super admins always pass).
   (`components/admin/hero-slider-manager.tsx`, `lib/actions/admin/hero.ts`,
   `lib/queries/home.ts`). Storefront `components/storefront/hero-slider.tsx` renders right
   after Stories **only when active slides exist** (degrades to the current homepage).
+  - **Hero video pipeline** — all video delivery goes through **`lib/video.ts`** (client-safe;
+    HLS/DASH/watermark seams documented there). `cldVideoVariant` = H.264 MP4, `c_limit`
+    (**never upscales/server-crops** — CSS `object-cover` frames it; the old `w_1920,c_fill`
+    upscale was the "blurry hero video" bug), adaptive 1080/720/480 rung picked client-side
+    from viewport + network (Save-Data/2g/3g step down) in `banner-video.tsx`. Per-slide
+    **quality profile** (`HeroSlide.videoQuality`: max/balanced/eco → `q_auto:best/good/eco`),
+    **poster** (`videoPoster`: auto first frame, picked thumbnail frame, or custom upload) and
+    **`videoMeta`** (Json: resolution/duration/size/codec/fps/bitrate captured from the direct
+    Cloudinary upload response via `ImageUploadField`'s `onUploadInfo` + XHR progress %).
+    **Deleting/replacing slide media destroys the Cloudinary assets** (original + derived +
+    CDN-invalidated) via `lib/cloudinary.ts#destroyAssetByUrl` — guarded so an asset shared by
+    a duplicated slide is kept, and scoped to the `nutriyet/` namespace only.
 - **Banner Manager (done)** — `Banner` model + named-placement registry (`lib/banners.ts`:
   `homeTop`/`productsTop`/`categoryTop`); admin `/admin/banners` (create/edit, desktop+mobile
   images via `ImageUploadField`, link to product/category/URL, priority, schedule, publish

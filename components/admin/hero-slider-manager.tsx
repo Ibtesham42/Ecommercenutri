@@ -15,6 +15,7 @@ import {
   ImageOff,
   Monitor,
   Smartphone,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,17 @@ import {
   type HeroSlideView,
 } from "@/components/storefront/hero-slider";
 import { cldUrl, cldVideoPoster, isVideoUrl } from "@/lib/cld";
+import {
+  VIDEO_QUALITY_PROFILES,
+  videoThumbCandidates,
+  cldVideoVariant,
+  cldVideoFrame,
+  parseVideoMeta,
+  formatVideoMeta,
+  normalizeQuality,
+  type VideoMeta,
+  type VideoQualityProfile,
+} from "@/lib/video";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
 import {
@@ -71,6 +83,10 @@ export type HeroSlideRow = {
   id: string;
   mediaType: string;
   videoUrl: string | null;
+  videoPoster: string | null;
+  videoQuality: string;
+  videoMeta: VideoMeta | null;
+  createdAt: string;
   title: string | null;
   subtitle: string | null;
   description: string | null;
@@ -94,6 +110,9 @@ type FormValues = {
   id?: string;
   mediaType: "IMAGE" | "VIDEO";
   videoUrl: string;
+  videoPoster: string;
+  videoQuality: VideoQualityProfile;
+  videoMeta: VideoMeta | null;
   title: string;
   subtitle: string;
   description: string;
@@ -118,6 +137,8 @@ function toPreview(v: FormValues): HeroSlideView {
     id: "preview",
     mediaType: v.mediaType,
     videoUrl: v.videoUrl || null,
+    videoPoster: v.videoPoster || null,
+    videoQuality: v.videoQuality,
     title: v.title || null,
     subtitle: v.subtitle || null,
     description: v.description || null,
@@ -174,12 +195,54 @@ export function HeroSliderManager({
 
   const { register, handleSubmit, control, reset, watch, setValue } = useForm<FormValues>();
   const isVideo = watch("mediaType") === "VIDEO";
+  const videoUrl = watch("videoUrl");
+  const videoPoster = watch("videoPoster");
+  const videoQuality = watch("videoQuality") ?? "balanced";
+  const videoMeta = watch("videoMeta");
+
+  // Video processing pipeline stages (post-upload). "Optimizing" and the two
+  // "Generating" steps genuinely warm Cloudinary's on-the-fly derivations
+  // (adaptive variant, poster frame, thumbnail candidates) so the first
+  // storefront visitor gets a CDN hit instead of a cold transform.
+  type Stage = "idle" | "uploading" | "optimizing" | "poster" | "thumbs" | "ready";
+  const [stage, setStage] = useState<Stage>("idle");
+
+  async function warmDerived(url: string) {
+    const warmImage = (src: string) =>
+      new Promise<void>((resolve) => {
+        const img = new Image();
+        img.onload = img.onerror = () => resolve();
+        img.src = src;
+      });
+    setStage("optimizing");
+    // Kick the middle delivery rung (a tiny ranged request triggers the transcode).
+    await fetch(cldVideoVariant(url, { h: 720, quality: videoQuality, fmt: "mp4" }), {
+      headers: { Range: "bytes=0-1" },
+    }).catch(() => {});
+    setStage("poster");
+    await warmImage(cldVideoFrame(url, { h: 1080, quality: "max" }));
+    setStage("thumbs");
+    await Promise.all(videoThumbCandidates(url).map((t) => warmImage(t.url)));
+    setStage("ready");
+  }
+
+  const STAGE_STEPS: { key: Stage; label: string }[] = [
+    { key: "uploading", label: "Uploading" },
+    { key: "optimizing", label: "Optimizing" },
+    { key: "poster", label: "Generating poster" },
+    { key: "thumbs", label: "Generating thumbnails" },
+    { key: "ready", label: "Ready" },
+  ];
 
   function openAdd() {
     setEditing(null);
+    setStage("idle");
     reset({
       mediaType: "IMAGE",
       videoUrl: "",
+      videoPoster: "",
+      videoQuality: "balanced",
+      videoMeta: null,
       title: "",
       subtitle: "",
       description: "",
@@ -200,10 +263,14 @@ export function HeroSliderManager({
   }
   function openEdit(s: HeroSlideRow) {
     setEditing(s);
+    setStage(s.mediaType === "VIDEO" && s.videoUrl ? "ready" : "idle");
     reset({
       id: s.id,
       mediaType: s.mediaType === "VIDEO" ? "VIDEO" : "IMAGE",
       videoUrl: s.videoUrl ?? "",
+      videoPoster: s.videoPoster ?? "",
+      videoQuality: normalizeQuality(s.videoQuality),
+      videoMeta: s.videoMeta,
       title: s.title ?? "",
       subtitle: s.subtitle ?? "",
       description: s.description ?? "",
@@ -229,6 +296,9 @@ export function HeroSliderManager({
       id: v.id,
       mediaType: v.mediaType,
       videoUrl: v.videoUrl || null,
+      videoPoster: v.videoPoster || null,
+      videoQuality: v.videoQuality || "balanced",
+      videoMeta: v.videoMeta || null,
       title: v.title || null,
       subtitle: v.subtitle || null,
       description: v.description || null,
@@ -348,7 +418,9 @@ export function HeroSliderManager({
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{s.title || "Untitled slide"}</p>
+                <p className="truncate font-medium">
+                  {s.title || (s.mediaType === "VIDEO" ? "Video slide" : "Untitled slide")}
+                </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {s.subtitle || s.ctaText || "—"}
                   {s.startsAt || s.expiresAt ? (
@@ -359,6 +431,22 @@ export function HeroSliderManager({
                     </span>
                   ) : null}
                 </p>
+                {s.mediaType === "VIDEO" && (() => {
+                  const m = formatVideoMeta(s.videoMeta);
+                  return (
+                    <p className="truncate text-xs text-muted-foreground">
+                      {m
+                        ? [m.resolution, m.duration, m.size, m.codec, m.fps, m.bitrate]
+                            .filter(Boolean)
+                            .join(" · ")
+                        : "No video details (re-upload to capture them)"}
+                      {" · "}
+                      <span className="text-primary">Ready</span>
+                      {" · added "}
+                      {formatDate(s.createdAt)}
+                    </p>
+                  );
+                })()}
               </div>
               <Badge variant={s.isActive ? "default" : "secondary"}>
                 {s.isActive ? "Live" : "Draft"}
@@ -437,31 +525,182 @@ export function HeroSliderManager({
             </div>
 
             {isVideo && (
-              <div className="space-y-1.5">
-                <Label>Slide video (MP4 / WebM / MOV · max 15s)</Label>
-                <Controller
-                  control={control}
-                  name="videoUrl"
-                  rules={{ required: true }}
-                  render={({ field }) => (
-                    <ImageUploadField
-                      value={field.value}
-                      cloudinaryReady={cloudinaryReady}
-                      folder="hero"
-                      accept="video/mp4,video/webm,video/quicktime"
-                      maxDurationSec={15}
-                      placeholder="https://… or upload a video"
-                      onChange={(url) => {
-                        field.onChange(url);
-                        setValue("desktopImage", url ? cldVideoPoster(url) : "");
-                      }}
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label>Slide video (MP4 / WebM / MOV · max 15s)</Label>
+                  <Controller
+                    control={control}
+                    name="videoUrl"
+                    rules={{ required: true }}
+                    render={({ field }) => (
+                      <ImageUploadField
+                        value={field.value}
+                        cloudinaryReady={cloudinaryReady}
+                        folder="hero"
+                        accept="video/mp4,video/webm,video/quicktime"
+                        maxDurationSec={15}
+                        placeholder="https://… or upload a video"
+                        onChange={(url) => {
+                          field.onChange(url);
+                          setValue("desktopImage", url ? cldVideoPoster(url) : "");
+                          setValue("videoPoster", "");
+                          if (!url) {
+                            setValue("videoMeta", null);
+                            setStage("idle");
+                          }
+                        }}
+                        onUploadInfo={(info) => {
+                          setValue("videoMeta", parseVideoMeta(info));
+                          if (info.secure_url) warmDerived(info.secure_url);
+                        }}
+                      />
+                    )}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Autoplays muted &amp; loops, fills the slide edge-to-edge (no bars, no
+                    stretching — it&apos;s cover-cropped to the frame). Title, text and button
+                    are hidden — the video is the full slide.
+                  </p>
+                </div>
+
+                {/* Processing pipeline (post-upload). */}
+                {stage !== "idle" && stage !== "uploading" && (
+                  <ol className="flex flex-wrap items-center gap-1.5 text-xs">
+                    {STAGE_STEPS.slice(1).map((s, i, arr) => {
+                      const activeIdx = arr.findIndex((x) => x.key === stage);
+                      const done = i < activeIdx || stage === "ready";
+                      const current = s.key === stage && stage !== "ready";
+                      return (
+                        <li key={s.key} className="flex items-center gap-1.5">
+                          <span
+                            className={cn(
+                              "flex items-center gap-1 rounded-full border px-2 py-0.5",
+                              done && "border-primary/40 bg-primary/10 text-primary",
+                              current && "border-primary text-primary",
+                              !done && !current && "text-muted-foreground",
+                            )}
+                          >
+                            {current && <Loader2 className="size-3 animate-spin" />}
+                            {done && s.key !== "ready" && <Check className="size-3" />}
+                            {s.key === "ready" && stage === "ready" && <Check className="size-3" />}
+                            {s.label}
+                          </span>
+                          {i < arr.length - 1 && <span className="text-muted-foreground/50">→</span>}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
+
+                {/* Video details — everything Cloudinary told us about the upload. */}
+                {videoMeta && (() => {
+                  const m = formatVideoMeta(videoMeta);
+                  if (!m) return null;
+                  const items: [string, string | null][] = [
+                    ["Resolution", m.resolution],
+                    ["Aspect", m.aspect],
+                    ["Duration", m.duration],
+                    ["Size", m.size],
+                    ["Codec", m.codec],
+                    ["FPS", m.fps],
+                    ["Bitrate", m.bitrate],
+                    ["Uploaded", m.uploaded ? formatDate(m.uploaded) : null],
+                  ];
+                  return (
+                    <dl className="grid grid-cols-2 gap-x-4 gap-y-1 rounded-xl border bg-accent/20 p-3 text-xs sm:grid-cols-4">
+                      {items
+                        .filter(([, v]) => v)
+                        .map(([k, v]) => (
+                          <div key={k}>
+                            <dt className="text-muted-foreground">{k}</dt>
+                            <dd className="font-medium">{v}</dd>
+                          </div>
+                        ))}
+                    </dl>
+                  );
+                })()}
+
+                {/* Delivery quality profile. */}
+                <div className="space-y-1.5">
+                  <Label>Delivery quality</Label>
+                  <div className="grid gap-1.5 sm:grid-cols-3">
+                    {VIDEO_QUALITY_PROFILES.map((p) => (
+                      <button
+                        key={p.value}
+                        type="button"
+                        onClick={() => setValue("videoQuality", p.value)}
+                        className={cn(
+                          "rounded-lg border p-2 text-left text-xs transition",
+                          videoQuality === p.value
+                            ? "border-primary bg-primary/5 ring-1 ring-primary"
+                            : "hover:bg-accent",
+                        )}
+                      >
+                        <span className="block font-medium">{p.label}</span>
+                        <span className="mt-0.5 block text-muted-foreground">{p.hint}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Poster: auto frame, a picked thumbnail, or a custom upload. */}
+                {videoUrl && videoUrl.includes("res.cloudinary.com") && (
+                  <div className="space-y-1.5">
+                    <Label>Poster (shown before the video plays)</Label>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setValue("videoPoster", "")}
+                        className={cn(
+                          "relative h-16 w-28 overflow-hidden rounded-lg border transition",
+                          !videoPoster ? "ring-2 ring-primary" : "hover:opacity-80",
+                        )}
+                        title="Automatic (first frame)"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={cldVideoFrame(videoUrl, { at: 0, h: 360, quality: "balanced" })}
+                          alt="Auto poster"
+                          className="size-full object-cover"
+                        />
+                        <span className="absolute bottom-0.5 left-0.5 rounded bg-black/70 px-1 text-[9px] font-semibold text-white">
+                          Auto
+                        </span>
+                      </button>
+                      {videoThumbCandidates(videoUrl).slice(1).map((t) => {
+                        const full = cldVideoFrame(videoUrl, { at: t.at, h: 1080, quality: "max" });
+                        return (
+                          <button
+                            key={t.at}
+                            type="button"
+                            onClick={() => setValue("videoPoster", full)}
+                            className={cn(
+                              "h-16 w-28 overflow-hidden rounded-lg border transition",
+                              videoPoster === full ? "ring-2 ring-primary" : "hover:opacity-80",
+                            )}
+                            title={`Frame at ${t.at.replace("p", "%")}`}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={t.url} alt={`Frame ${t.at}`} className="size-full object-cover" />
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <Controller
+                      control={control}
+                      name="videoPoster"
+                      render={({ field }) => (
+                        <ImageUploadField
+                          value={field.value && !field.value.includes("/upload/so_") ? field.value : ""}
+                          onChange={field.onChange}
+                          cloudinaryReady={cloudinaryReady}
+                          folder="hero"
+                          placeholder="…or upload / paste a custom poster image"
+                        />
+                      )}
                     />
-                  )}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Autoplays muted &amp; loops, fills the slide. Title, text and button
-                  are hidden — the video is the full slide.
-                </p>
+                  </div>
+                )}
               </div>
             )}
 

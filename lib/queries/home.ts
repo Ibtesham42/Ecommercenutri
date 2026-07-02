@@ -15,6 +15,8 @@ const heroSlideSelect = {
   id: true,
   mediaType: true,
   videoUrl: true,
+  videoPoster: true,
+  videoQuality: true,
   title: true,
   subtitle: true,
   description: true,

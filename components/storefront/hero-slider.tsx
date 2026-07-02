@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { cldUrl } from "@/lib/cld";
+import { resolvePoster, normalizeQuality } from "@/lib/video";
 import { cn } from "@/lib/utils";
 import { BannerVideo } from "@/components/storefront/banner-video";
 
@@ -22,6 +23,10 @@ export type HeroSlideView = {
   /** "IMAGE" (default) or "VIDEO". */
   mediaType?: string | null;
   videoUrl?: string | null;
+  /** Admin-chosen poster (thumbnail pick / custom upload); null = auto frame. */
+  videoPoster?: string | null;
+  /** Delivery profile: "max" | "balanced" | "eco". */
+  videoQuality?: string | null;
 };
 
 const AUTOPLAY_MS = 6000;
@@ -50,17 +55,16 @@ export function HeroSlideContent({
 }) {
   // Video slide: the video is the full visual — no overlay/text (like banners).
   if (isVideoSlide(slide)) {
-    const poster = slide.desktopImage
-      ? cldUrl(slide.desktopImage, { w: 1920, h: 1080, crop: "fill" })
-      : undefined;
+    const quality = normalizeQuality(slide.videoQuality);
+    // Poster priority: admin-chosen frame/custom image → sharp auto first frame.
+    const poster = resolvePoster(slide.videoUrl, slide.videoPoster, quality);
     return (
       <div className="relative size-full overflow-hidden bg-black">
         <BannerVideo
           src={slide.videoUrl as string}
-          poster={poster}
+          poster={poster || undefined}
           active={preview ? true : active}
-          width={1920}
-          height={1080}
+          quality={quality}
           className="absolute inset-0 size-full object-cover"
         />
       </div>
