@@ -4,7 +4,10 @@ import { AnnouncementBar } from "@/components/storefront/announcement-bar";
 import { WhatsAppButton } from "@/components/storefront/whatsapp-button";
 import { MobileBottomNav } from "@/components/storefront/mobile-bottom-nav";
 import { AffiliateTracker } from "@/components/storefront/affiliate-tracker";
+import { PwaInstallPrompt } from "@/components/storefront/pwa-install-prompt";
 import { getStoreSettings } from "@/lib/queries/settings";
+import { getPwaSettings } from "@/lib/pwa-settings";
+import { env, isConfigured } from "@/lib/env";
 import { getCurrentUser } from "@/lib/auth";
 import { getNotifications, getUnreadCount } from "@/lib/queries/notifications";
 import type { BellNotification } from "@/components/account/notification-bell";
@@ -15,6 +18,7 @@ export default async function StorefrontLayout({
   children: React.ReactNode;
 }) {
   const settings = await getStoreSettings();
+  const pwa = await getPwaSettings();
 
   // Notification bell (signed-in users). Best-effort — never blocks the layout.
   const user = await getCurrentUser();
@@ -76,6 +80,12 @@ export default async function StorefrontLayout({
       </div>
       <MobileBottomNav />
       <AffiliateTracker />
+      <PwaInstallPrompt
+        settings={pwa}
+        vapidPublicKey={isConfigured.webPush() ? env.vapidPublicKey : ""}
+        signedIn={!!user}
+        logoUrl={settings.logo}
+      />
     </div>
   );
 }

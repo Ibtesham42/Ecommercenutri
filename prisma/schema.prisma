@@ -895,6 +895,9 @@ model StoreSetting {
   // never need a migration; core fields (siteName/metaTitle/ogImage/favicon/…)
   // stay in their own columns. Merged over defaults by lib/seo-settings.ts.
   seo                             Json?
+  // PWA install-prompt config (enabled/title/description/buttons/remindDays).
+  // Merged over defaults by lib/pwa-settings.ts.
+  pwa                             Json?
 }
 
 model AISetting {

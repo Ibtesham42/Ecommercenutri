@@ -4,17 +4,9 @@ import { useEffect, useState } from "react";
 import { Bell, BellOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { isPushSupported, subscribeToPush } from "@/lib/push-client";
 
 type State = "loading" | "unsupported" | "denied" | "subscribed" | "unsubscribed";
-
-function urlB64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
-  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
-  const b64 = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = atob(b64);
-  const out = new Uint8Array(new ArrayBuffer(raw.length));
-  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
-  return out;
-}
 
 /** Web Push opt-in. Renders nothing unless VAPID is configured and the browser
  *  supports push. Subscribes the current user so marketing/automation campaigns can
@@ -24,13 +16,7 @@ export function PushOptIn({ vapidPublicKey }: { vapidPublicKey: string }) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (
-      !vapidPublicKey ||
-      typeof window === "undefined" ||
-      !("serviceWorker" in navigator) ||
-      !("PushManager" in window) ||
-      !("Notification" in window)
-    ) {
+    if (!vapidPublicKey || !isPushSupported()) {
       setState("unsupported");
       return;
     }
@@ -50,37 +36,21 @@ export function PushOptIn({ vapidPublicKey }: { vapidPublicKey: string }) {
 
   async function enable() {
     setBusy(true);
-    try {
-      const perm = await Notification.requestPermission();
-      if (perm !== "granted") {
-        setState(perm === "denied" ? "denied" : "unsubscribed");
-        if (perm === "denied") toast.error("Notifications are blocked in your browser settings.");
-        return;
-      }
-      let reg = await navigator.serviceWorker.getRegistration();
-      if (!reg) reg = await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlB64ToUint8Array(vapidPublicKey),
-      });
-      const res = await fetch("/api/push/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sub),
-      });
-      if (res.ok) {
-        setState("subscribed");
-        toast.success("Push notifications enabled 🔔");
-      } else {
-        toast.error("Couldn't enable push notifications.");
-      }
-    } catch (err) {
-      console.error("[push] enable failed:", err);
+    // Shared pipeline (lib/push-client); this component keeps its exact
+    // previous states + toast copy.
+    const result = await subscribeToPush(vapidPublicKey);
+    if (result === "subscribed") {
+      setState("subscribed");
+      toast.success("Push notifications enabled 🔔");
+    } else if (result === "denied") {
+      setState("denied");
+      toast.error("Notifications are blocked in your browser settings.");
+    } else if (result === "dismissed") {
+      setState("unsubscribed");
+    } else {
       toast.error("Couldn't enable push notifications.");
-    } finally {
-      setBusy(false);
     }
+    setBusy(false);
   }
 
   async function disable() {

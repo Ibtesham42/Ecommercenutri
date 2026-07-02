@@ -252,6 +252,22 @@ export const heroSlideSchema = z
 
 export type HeroSlideInput = z.infer<typeof heroSlideSchema>;
 
+// PWA install prompt ----------------------------------------------------------
+
+export const pwaSettingsSchema = z.object({
+  enabled: z.boolean(),
+  title: z.string().trim().min(1, "Add a title").max(60),
+  description: z.string().trim().min(1, "Add a description").max(160),
+  installText: z.string().trim().min(1, "Add install button text").max(30),
+  laterText: z.string().trim().min(1, "Add later button text").max(30),
+  remindDays: z.coerce
+    .number()
+    .int()
+    .refine((v) => [1, 3, 7, 14, 30].includes(v), "Pick a valid reminder interval"),
+});
+
+export type PwaSettingsInput = z.infer<typeof pwaSettingsSchema>;
+
 // 3D hero showcase -----------------------------------------------------------
 
 export const showcaseItemSchema = z.object({

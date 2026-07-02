@@ -5,7 +5,9 @@ import {
   AppearanceForm,
   type AppearanceValues,
 } from "@/components/admin/appearance-form";
+import { PwaPromptSettings } from "@/components/admin/pwa-prompt-settings";
 import { getStoreSettings } from "@/lib/queries/settings";
+import { resolvePwa } from "@/lib/pwa-settings";
 import { isConfigured } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
 
@@ -61,6 +63,7 @@ export default async function AdminAppearancePage() {
         description={`Branding, colors, announcement bar, contact and SEO for ${store.siteName}. Blank fields fall back to defaults.`}
       />
       <AppearanceForm initial={initial} cloudinaryReady={isConfigured.cloudinary()} />
+      <PwaPromptSettings initial={resolvePwa(raw?.pwa)} logoUrl={raw?.logo ?? null} />
     </div>
   );
 }
