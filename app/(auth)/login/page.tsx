@@ -28,10 +28,16 @@ export default async function LoginPage({
   if (user) redirect(callbackUrl);
 
   return (
-    <Card>
+    <Card className="max-sm:animate-fade-up max-sm:rounded-3xl max-sm:shadow-elev-2 max-sm:ring-foreground/5 max-sm:[--card-spacing:--spacing(6)]">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Welcome back</CardTitle>
-        <CardDescription>Sign in to your Nutriyet account</CardDescription>
+        <CardTitle className="text-2xl max-sm:font-heading max-sm:text-3xl max-sm:tracking-tight">
+          Welcome back
+        </CardTitle>
+        {/* Desktop copy unchanged; mobile gets the warmer brand greeting. */}
+        <CardDescription className="max-sm:hidden">Sign in to your Nutriyet account</CardDescription>
+        <CardDescription className="sm:hidden">
+          Sign in to continue your healthy journey 🌿
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {isConfigured.google() && (

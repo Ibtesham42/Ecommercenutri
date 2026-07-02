@@ -21,10 +21,16 @@ export default async function RegisterPage() {
   if (user) redirect("/account");
 
   return (
-    <Card>
+    <Card className="max-sm:animate-fade-up max-sm:rounded-3xl max-sm:shadow-elev-2 max-sm:ring-foreground/5 max-sm:[--card-spacing:--spacing(6)]">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Create your account</CardTitle>
-        <CardDescription>Join Nutriyet and eat clean, live strong</CardDescription>
+        <CardTitle className="text-2xl max-sm:font-heading max-sm:text-3xl max-sm:tracking-tight">
+          Create your account
+        </CardTitle>
+        {/* Desktop copy unchanged; mobile gets the warmer brand greeting. */}
+        <CardDescription className="max-sm:hidden">
+          Join Nutriyet and eat clean, live strong
+        </CardDescription>
+        <CardDescription className="sm:hidden">Healthy snacking starts here 🌿</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {isConfigured.google() && (

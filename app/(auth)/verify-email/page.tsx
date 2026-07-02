@@ -22,14 +22,14 @@ export default async function VerifyEmailPage({
     : { ok: false, message: "Missing verification token." };
 
   return (
-    <Card>
+    <Card className="max-sm:animate-fade-up max-sm:rounded-3xl max-sm:shadow-elev-2 max-sm:ring-foreground/5 max-sm:[--card-spacing:--spacing(6)]">
       <CardHeader className="items-center text-center">
         {result.ok ? (
           <CheckCircle2 className="size-12 text-primary" />
         ) : (
           <XCircle className="size-12 text-destructive" />
         )}
-        <CardTitle className="text-2xl">
+        <CardTitle className="text-2xl max-sm:font-heading max-sm:text-3xl max-sm:tracking-tight">
           {result.ok ? "Email verified" : "Verification failed"}
         </CardTitle>
       </CardHeader>
@@ -37,7 +37,7 @@ export default async function VerifyEmailPage({
         <p className="text-sm text-muted-foreground">{result.message}</p>
         <Link
           href={result.ok ? "/login" : "/register"}
-          className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 max-sm:h-12 max-sm:rounded-xl max-sm:text-base max-sm:font-semibold max-sm:shadow-elev-1 max-sm:transition-transform max-sm:active:scale-[0.98]"
         >
           {result.ok ? "Continue to sign in" : "Back to sign up"}
         </Link>

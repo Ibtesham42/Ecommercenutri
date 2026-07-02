@@ -1,12 +1,13 @@
 "use client";
 
 import { useActionState } from "react";
+import { Mail } from "lucide-react";
 import {
   requestPasswordResetAction,
   type AuthActionState,
 } from "@/lib/actions/auth";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AuthInput, AuthAlert } from "@/components/auth/auth-input";
 import { SubmitButton } from "@/components/auth/submit-button";
 
 export function ForgotPasswordForm() {
@@ -16,24 +17,17 @@ export function ForgotPasswordForm() {
   );
 
   return (
-    <form action={action} className="space-y-4">
-      {state?.error && (
-        <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {state.error}
-        </p>
-      )}
-      {state?.success && (
-        <p className="rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
-          {state.success}
-        </p>
-      )}
+    <form action={action} className="space-y-4 max-sm:space-y-5">
+      {state?.error && <AuthAlert kind="error">{state.error}</AuthAlert>}
+      {state?.success && <AuthAlert kind="success">{state.success}</AuthAlert>}
 
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
-        <Input
+        <AuthInput
           id="email"
           name="email"
           type="email"
+          icon={Mail}
           autoComplete="email"
           placeholder="you@example.com"
           required

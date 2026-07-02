@@ -26,10 +26,19 @@ function GoogleIcon() {
   );
 }
 
+/**
+ * Social sign-in. Future providers (Apple Sign In, passkeys/WebAuthn, Face ID /
+ * fingerprint via passkeys) slot in as sibling buttons in the same form area —
+ * keep each provider its own component like this one.
+ */
 export function GoogleButton({ callbackUrl }: { callbackUrl?: string }) {
   return (
     <form action={googleSignInAction.bind(null, callbackUrl)}>
-      <Button type="submit" variant="outline" className="w-full gap-2">
+      <Button
+        type="submit"
+        variant="outline"
+        className="w-full gap-2 max-sm:h-12 max-sm:gap-2.5 max-sm:rounded-xl max-sm:bg-background max-sm:text-[15px] max-sm:font-medium max-sm:shadow-elev-1 max-sm:transition-transform max-sm:active:scale-[0.98] max-sm:[&_svg]:size-5"
+      >
         <GoogleIcon />
         Continue with Google
       </Button>

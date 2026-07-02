@@ -19,9 +19,11 @@ export default async function ResetPasswordPage({
   const { token } = await searchParams;
 
   return (
-    <Card>
+    <Card className="max-sm:animate-fade-up max-sm:rounded-3xl max-sm:shadow-elev-2 max-sm:ring-foreground/5 max-sm:[--card-spacing:--spacing(6)]">
       <CardHeader className="text-center">
-        <CardTitle className="text-2xl">Set a new password</CardTitle>
+        <CardTitle className="text-2xl max-sm:font-heading max-sm:text-3xl max-sm:tracking-tight">
+          Set a new password
+        </CardTitle>
         <CardDescription>Choose a strong password for your account</CardDescription>
       </CardHeader>
       <CardContent>
