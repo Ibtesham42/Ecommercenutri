@@ -80,16 +80,16 @@ export function DeliverTo({ className }: { className?: string }) {
         type="button"
         onClick={openDialog}
         className={cn(
-          // Light mobile header (<lg) vs deep-green desktop chrome (lg+).
-          "flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground lg:text-surface-deep-foreground/80 lg:hover:bg-white/10 lg:hover:text-surface-deep-foreground",
+          // Sits on the light cream header chrome (all breakpoints).
+          "flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
           className,
         )}
         aria-label="Set delivery location"
       >
-        <MapPin className="size-4 shrink-0 text-primary lg:text-gold" />
+        <MapPin className="size-4 shrink-0 text-primary" />
         <span className="truncate">
           Deliver to{" "}
-          <span className="font-semibold text-foreground lg:text-surface-deep-foreground">{label}</span>
+          <span className="font-semibold text-foreground">{label}</span>
         </span>
         <ChevronDown className="size-3.5 shrink-0 opacity-70" />
       </button>

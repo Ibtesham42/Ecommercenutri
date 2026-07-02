@@ -242,13 +242,12 @@
     linear-gradient(168deg, oklch(0.32 0.045 158) 0%, var(--surface-deep) 55%);
 }
 
-/* Header chrome — breakpoint-aware brand surface.
-   MOBILE/TABLET (<lg): warm cream with a soft white top sheen and a whisper of
-   gold, so the (dark green) Nutriyet logo carries maximum contrast and the
-   header reads premium-wellness instead of a heavy dark slab.
-   DESKTOP (lg+): the signature rich deep-green chrome (same layers as
-   .surface-rich) — the desktop identity is unchanged. Token-driven, so both
-   themes stay correct; the admin --primary override never touches it. */
+/* Header chrome — light premium brand surface at EVERY breakpoint: warm cream
+   with a soft white top sheen and a whisper of gold, so the (dark green)
+   Nutriyet logo carries maximum contrast and the header reads premium-wellness
+   instead of a heavy dark slab. Token-driven, so both themes stay correct; the
+   admin --primary override never touches it. (The footer keeps the deep-green
+   .surface-rich chrome — the light header + deep footer frame the page.) */
 .header-chrome {
   color: var(--foreground);
   border-bottom: 1px solid var(--border);
@@ -261,18 +260,6 @@
   background-image:
     radial-gradient(120% 100% at 100% 0%, oklch(0.72 0.13 85 / 0.05), transparent 55%),
     linear-gradient(to bottom, oklch(0.3 0.03 155 / 0.5), transparent 75%);
-}
-@media (min-width: 1024px) {
-  .header-chrome,
-  .dark .header-chrome {
-    color: var(--surface-deep-foreground);
-    border-bottom: 0;
-    background-color: var(--surface-deep);
-    background-image:
-      radial-gradient(120% 90% at 85% -20%, oklch(0.42 0.07 155 / 0.55), transparent 55%),
-      radial-gradient(90% 70% at -10% 115%, oklch(0.72 0.13 85 / 0.1), transparent 60%),
-      linear-gradient(168deg, oklch(0.32 0.045 158) 0%, var(--surface-deep) 55%);
-  }
 }
 
 /* Hover lift — pairs with an elevation utility on the element. */

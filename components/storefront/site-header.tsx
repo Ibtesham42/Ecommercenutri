@@ -57,13 +57,11 @@ export function SiteHeader({
     mobileHeight: logoHeightMobile,
     maxWidth: logoMaxWidth,
   };
-  // Icon/ghost buttons on the header chrome: dark-on-cream below lg (light
-  // mobile header), light-on-deep-green from lg up (desktop chrome).
-  const onDeep =
-    "text-foreground/80 hover:bg-accent hover:text-foreground lg:text-surface-deep-foreground lg:hover:bg-white/10 lg:hover:text-surface-deep-foreground lg:focus-visible:ring-white/40";
+  // Icon/ghost buttons on the light cream header chrome (all breakpoints).
+  const onDeep = "text-foreground/80 hover:bg-accent hover:text-foreground";
 
   return (
-    <header className="header-chrome sticky top-0 z-50 w-full shadow-elev-1 lg:shadow-elev-2">
+    <header className="header-chrome sticky top-0 z-50 w-full shadow-elev-1">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-2 px-4 sm:gap-3">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
@@ -105,8 +103,6 @@ export function SiteHeader({
         <Logo
           logoUrl={logoUrl}
           name={siteName}
-          accentClassName="text-primary lg:text-gold"
-          onDark="lg"
           className="min-w-0 shrink"
           {...logoSize}
         />
@@ -178,7 +174,7 @@ export function SiteHeader({
 
       {/* Row 2 — desktop nav bar (lg+). Search-forward primary row above keeps the
           nav in its own slim row, Amazon/Flipkart-style. */}
-      <nav className="hidden border-t border-white/10 lg:block">
+      <nav className="hidden border-t border-border/60 lg:block">
         <div className="mx-auto flex h-11 w-full max-w-7xl items-center gap-0.5 px-4">
           {siteConfig.mainNav.map((item) => {
             const active = isActiveNav(item.href);
@@ -190,8 +186,8 @@ export function SiteHeader({
                 className={cn(
                   "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
                   active
-                    ? "bg-white/15 font-semibold text-surface-deep-foreground"
-                    : "text-surface-deep-foreground/75 hover:bg-white/10 hover:text-surface-deep-foreground",
+                    ? "bg-primary/10 font-semibold text-primary"
+                    : "text-foreground/70 hover:bg-accent hover:text-foreground",
                 )}
               >
                 {item.title}

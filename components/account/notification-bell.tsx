@@ -45,7 +45,7 @@ export function NotificationBell({
         <Button
           variant="ghost"
           size="icon"
-          className="relative size-11 text-foreground/80 hover:bg-accent hover:text-foreground sm:size-10 lg:text-surface-deep-foreground lg:hover:bg-white/10 lg:hover:text-surface-deep-foreground lg:focus-visible:ring-white/40"
+          className="relative size-11 text-foreground/80 hover:bg-accent hover:text-foreground sm:size-10"
           aria-label="Notifications"
         >
           <Bell className="size-[22px] sm:size-5" />
