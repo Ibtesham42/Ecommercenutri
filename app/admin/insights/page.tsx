@@ -14,16 +14,44 @@ import {
   CalendarClock,
   Boxes,
 } from "lucide-react";
+import { MapPin, Smartphone, Globe, Eye, RotateCcw } from "lucide-react";
 import { PageHeader } from "@/components/admin/page-header";
 import { guardSection } from "@/lib/admin-guard";
 import { Badge } from "@/components/ui/badge";
-import { Sparkline, MiniBars } from "@/components/admin/insights/charts";
+import { Sparkline, MiniBars, FunnelChart, BreakdownBars } from "@/components/admin/insights/charts";
 import { AskBox } from "@/components/admin/insights/ask-box";
+import { KpiCard } from "@/components/admin/insights/kpi-card";
+import { RangeFilter } from "@/components/admin/insights/range-filter";
+import { LiveStrip } from "@/components/admin/insights/live-strip";
+import { ActionPlanCard } from "@/components/admin/insights/action-plan";
 import { getBusinessIntelligence, type RankRow, type Alert } from "@/lib/queries/bi";
-import { generateBusinessSummary } from "@/lib/ai/insights";
+import { getRangeAnalytics, type RangeInput, type Kpi } from "@/lib/queries/analytics";
+import { getMarketingOverview } from "@/lib/queries/marketing";
+import { generateBusinessSummary, generateActionPlan } from "@/lib/ai/insights";
 import { formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = { title: "AI Insights", robots: { index: false } };
+
+const nf = new Intl.NumberFormat("en-IN");
+
+function kpiValue(k: Kpi): string {
+  if (k.kind === "money") return formatPrice(k.value);
+  if (k.kind === "pct") return `${k.value.toFixed(1)}%`;
+  return nf.format(k.value);
+}
+
+/** Metrics where a falling number is good news (flips the delta chip color). */
+const DOWN_IS_GOOD = new Set(["abandonment", "bounce"]);
+
+/** Share-of-total bars for devices/sources/geo breakdowns. */
+function breakdownItems(rows: RankRow[], money = false) {
+  const total = rows.reduce((n, r) => n + r.value, 0) || 1;
+  return rows.map((r) => ({
+    label: r.name,
+    pct: (r.value / total) * 100,
+    valueLabel: `${money ? formatPrice(r.value) : nf.format(r.value)} · ${((r.value / total) * 100).toFixed(0)}%${r.sub ? ` · ${r.sub}` : ""}`,
+  }));
+}
 
 function Growth({ pct }: { pct: number }) {
   const up = pct >= 0;
@@ -79,11 +107,47 @@ const ALERT_STYLE: Record<Alert["level"], { icon: React.ComponentType<{ classNam
   info: { icon: Info, cls: "border-primary/30 bg-primary/5 text-primary" },
 };
 
-export default async function AdminInsightsPage() {
+export default async function AdminInsightsPage({
+  searchParams,
+}: {
+  searchParams: Promise<RangeInput>;
+}) {
   await guardSection("ai");
-  const bi = await getBusinessIntelligence();
-  const summary = await generateBusinessSummary(bi);
+  const sp = await searchParams;
+  const [bi, ra, marketing] = await Promise.all([
+    getBusinessIntelligence(),
+    getRangeAnalytics(sp),
+    getMarketingOverview().catch(() => null),
+  ]);
+  const [summary, plan] = await Promise.all([
+    generateBusinessSummary(bi),
+    generateActionPlan(bi, ra),
+  ]);
   const s = bi.summary;
+
+  const maxStage = Math.max(1, ra.funnel[0]?.count ?? 1);
+  const funnelStages = ra.funnel.map((st) => ({
+    label: st.label,
+    countLabel: nf.format(st.count),
+    widthPct: (st.count / maxStage) * 100,
+    convLabel: st.convPct !== null ? `${st.convPct.toFixed(0)}% of previous` : undefined,
+    dropLabel: st.dropPct !== null && st.dropPct > 0 ? `${st.dropPct.toFixed(0)}% drop` : undefined,
+    deltaLabel: st.deltaPct !== null ? `${Math.abs(st.deltaPct).toFixed(0)}% vs prev` : undefined,
+    deltaUp: st.deltaPct !== null ? st.deltaPct >= 0 : undefined,
+    sub: st.sub,
+    pending: st.pending,
+  }));
+
+  const bestCampaigns = (marketing?.recent ?? [])
+    .filter((c) => c.status === "SENT")
+    .sort((a, b) => b.clickCount - a.clickCount)
+    .slice(0, 5)
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      value: c.clickCount,
+      sub: `${c.sentCount} sent · ${c.openCount} opens`,
+    }));
 
   const periodCards: { label: string; period: { revenue: number; orders: number }; growth?: number }[] = [
     { label: "Today", period: s.today },
@@ -96,6 +160,9 @@ export default async function AdminInsightsPage() {
     <div className="space-y-6">
       <PageHeader title="AI Business Intelligence" description="Live insights, forecasts and recommendations from your store data" />
 
+      {/* Range filter + report downloads (scopes the new analytics sections) */}
+      <RangeFilter range={ra.range} />
+
       {/* AI summary */}
       <div className="rounded-2xl border bg-gradient-to-br from-primary/10 to-transparent p-5">
         <div className="mb-2 flex items-center gap-2">
@@ -107,6 +174,9 @@ export default async function AdminInsightsPage() {
         </div>
         <p className="text-sm leading-relaxed">{summary.text}</p>
       </div>
+
+      {/* AI action plan (range-aware) */}
+      <ActionPlanCard plan={plan} />
 
       {/* Smart alerts */}
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -123,6 +193,43 @@ export default async function AdminInsightsPage() {
           );
         })}
       </div>
+
+      {/* Real-time strip */}
+      <LiveStrip />
+
+      {/* KPI grid (selected range) */}
+      <section>
+        <h2 className="mb-3 flex items-center gap-2 font-semibold">
+          Key metrics <span className="text-xs font-normal text-muted-foreground">· {ra.range.label}</span>
+        </h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+          {ra.kpis.map((k) => (
+            <KpiCard
+              key={k.key}
+              label={k.label}
+              value={kpiValue(k)}
+              deltaPct={k.deltaPct}
+              invertDelta={DOWN_IS_GOOD.has(k.key)}
+              series={k.series}
+              note={k.note}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Conversion funnel (selected range) */}
+      <section className="rounded-2xl border bg-background p-5">
+        <h2 className="mb-4 flex items-center gap-2 font-semibold">
+          Conversion funnel <span className="text-xs font-normal text-muted-foreground">· {ra.range.label}</span>
+        </h2>
+        {funnelStages.length === 0 || (ra.funnel[0]?.count ?? 0) === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            No shopper activity in this period yet — the funnel fills in as visitors browse, add to cart and order.
+          </p>
+        ) : (
+          <FunnelChart stages={funnelStages} />
+        )}
+      </section>
 
       {/* Sales summary */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -233,6 +340,96 @@ export default async function AdminInsightsPage() {
         <RankCard title="Best by category" icon={Package} rows={bi.products.bestByCategory} empty="No sales yet." />
         <RankCard title="Worth promoting" icon={Megaphone} rows={bi.products.promote} empty="Nothing flagged." />
       </div>
+
+      {/* Top products (selected range) */}
+      <section>
+        <h2 className="mb-3 flex items-center gap-2 font-semibold">
+          Top products <span className="text-xs font-normal text-muted-foreground">· {ra.range.label}</span>
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <RankCard title="Most viewed" icon={Eye} rows={ra.topProducts.mostViewed} empty="No product views in this period." />
+          <RankCard title="Most added to cart" icon={ShoppingCart} rows={ra.topProducts.mostCartAdded} empty="No cart adds in this period." />
+          <RankCard title="Most purchased" icon={Package} rows={ra.topProducts.mostPurchased} empty="No sales in this period." />
+          <RankCard title="Highest revenue" icon={IndianRupee} rows={ra.topProducts.highestRevenue} money empty="No sales in this period." />
+          <RankCard title="Lowest conversion" icon={TrendingDown} rows={ra.topProducts.lowestConversion} empty="No product with 10+ views converting poorly." />
+        </div>
+      </section>
+
+      {/* Customer insights (selected range) */}
+      <section>
+        <h2 className="mb-3 flex items-center gap-2 font-semibold">
+          Customer insights <span className="text-xs font-normal text-muted-foreground">· {ra.range.label}</span>
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="rounded-2xl border bg-background p-5">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <MapPin className="size-4 text-primary" /> Top cities
+            </h3>
+            {ra.geo.cities.length === 0 ? (
+              <p className="py-4 text-center text-xs text-muted-foreground">No orders in this period yet.</p>
+            ) : (
+              <BreakdownBars items={breakdownItems(ra.geo.cities, true)} />
+            )}
+          </div>
+          <div className="rounded-2xl border bg-background p-5">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <MapPin className="size-4 text-primary" /> Top states
+            </h3>
+            {ra.geo.states.length === 0 ? (
+              <p className="py-4 text-center text-xs text-muted-foreground">No orders in this period yet.</p>
+            ) : (
+              <BreakdownBars items={breakdownItems(ra.geo.states, true)} />
+            )}
+          </div>
+          <div className="rounded-2xl border bg-background p-5">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <Smartphone className="size-4 text-primary" /> Devices
+            </h3>
+            {ra.devices.length === 0 ? (
+              <p className="py-4 text-center text-xs text-muted-foreground">
+                Data appears here as new visits are tracked.
+              </p>
+            ) : (
+              <BreakdownBars items={breakdownItems(ra.devices)} />
+            )}
+          </div>
+          <div className="rounded-2xl border bg-background p-5">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
+              <Globe className="size-4 text-primary" /> Traffic sources
+            </h3>
+            {ra.sources.length === 0 ? (
+              <p className="py-4 text-center text-xs text-muted-foreground">
+                Data appears here as new visits are tracked.
+              </p>
+            ) : (
+              <BreakdownBars items={breakdownItems(ra.sources)} />
+            )}
+          </div>
+          <RankCard title="Best campaigns (clicks)" icon={Megaphone} rows={bestCampaigns} empty="No sent campaigns yet." />
+          <div className="rounded-2xl border bg-background p-5">
+            <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+              <RotateCcw className="size-4 text-primary" /> Cart recovery
+            </h3>
+            {ra.recovery.logs === 0 ? (
+              <p className="py-4 text-center text-xs text-muted-foreground">
+                No abandoned-cart automation activity in this period. Enable it under Marketing → Automations.
+              </p>
+            ) : (
+              <>
+                <p className="text-2xl font-bold tabular-nums">{ra.recovery.recoveredCarts}</p>
+                <p className="text-xs text-muted-foreground">
+                  carts recovered from {ra.recovery.logs} reminder{ra.recovery.logs === 1 ? "" : "s"} ·{" "}
+                  {((ra.recovery.recoveredCarts / ra.recovery.logs) * 100).toFixed(0)}% recovery rate
+                </p>
+                <p className="mt-2 text-sm">
+                  <span className="text-muted-foreground">Recovered revenue: </span>
+                  <span className="font-semibold">{formatPrice(ra.recovery.recoveredRevenue)}</span>
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
 
       {/* Cart + affiliates + campaigns */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

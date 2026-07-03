@@ -1,10 +1,99 @@
 "use server";
 
+import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
-import { getBusinessIntelligence } from "@/lib/queries/bi";
+import { getBusinessIntelligence, NOT_CANCELLED } from "@/lib/queries/bi";
 import { answerBusinessQuestion } from "@/lib/ai/insights";
+import { formatPrice } from "@/lib/format";
 
 export type AskResult = { ok: true; text: string; ai: boolean } | { ok: false; error: string };
+
+export type LiveSnapshot =
+  | {
+      ok: true;
+      liveVisitors: number;
+      ordersToday: number;
+      revenueTodayLabel: string;
+      latestCartAdds: { name: string; agoLabel: string }[];
+      latestOrders: { label: string; agoLabel: string }[];
+      at: string;
+    }
+  | { ok: false; error: string };
+
+function agoLabel(d: Date): string {
+  const mins = Math.max(0, Math.round((Date.now() - d.getTime()) / 60_000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  return hrs < 24 ? `${hrs}h ago` : `${Math.round(hrs / 24)}d ago`;
+}
+
+/** Real-time strip data for /admin/insights — polled by the client, never cached. */
+export async function getLiveSnapshot(): Promise<LiveSnapshot> {
+  try {
+    await requirePermission("ai");
+    const now = new Date();
+    const fiveMinAgo = new Date(now.getTime() - 5 * 60_000);
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [recentEvents, cartEvents, orders, todayAgg] = await Promise.all([
+      prisma.userEvent.findMany({
+        where: { createdAt: { gte: fiveMinAgo } },
+        select: { userId: true, anonId: true },
+        take: 2_000,
+      }),
+      prisma.userEvent.findMany({
+        where: { type: "CART_ADD", createdAt: { gte: todayStart }, productId: { not: null } },
+        orderBy: { createdAt: "desc" },
+        select: { productId: true, createdAt: true },
+        take: 5,
+      }),
+      prisma.order.findMany({
+        where: { status: NOT_CANCELLED, createdAt: { gte: todayStart } },
+        orderBy: { createdAt: "desc" },
+        select: { orderNumber: true, total: true, createdAt: true },
+        take: 5,
+      }),
+      prisma.order.aggregate({
+        where: { status: NOT_CANCELLED, createdAt: { gte: todayStart } },
+        _sum: { total: true },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const live = new Set<string>();
+    for (const e of recentEvents) {
+      const id = e.userId ?? e.anonId;
+      if (id) live.add(id);
+    }
+
+    const productIds = [...new Set(cartEvents.map((e) => e.productId).filter((x): x is string => !!x))];
+    const products = productIds.length
+      ? await prisma.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true } })
+      : [];
+    const nameById = new Map(products.map((p) => [p.id, p.name]));
+
+    return {
+      ok: true,
+      liveVisitors: live.size,
+      ordersToday: todayAgg._count._all,
+      revenueTodayLabel: formatPrice(todayAgg._sum.total ?? 0),
+      latestCartAdds: cartEvents.map((e) => ({
+        name: nameById.get(e.productId!) ?? "Product",
+        agoLabel: agoLabel(e.createdAt),
+      })),
+      latestOrders: orders.map((o) => ({
+        label: `${o.orderNumber} · ${formatPrice(o.total)}`,
+        agoLabel: agoLabel(o.createdAt),
+      })),
+      at: now.toISOString(),
+    };
+  } catch (err) {
+    console.error("[admin/insights] live snapshot failed:", err);
+    return { ok: false, error: "Live data unavailable." };
+  }
+}
 
 /** Answer an admin business question, grounded in the current BI snapshot. */
 export async function askBusinessQuestion(question: unknown): Promise<AskResult> {

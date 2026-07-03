@@ -797,6 +797,8 @@ model StoryView {
   @@index([storyId])
 }
 
+// Grows unbounded (no pruning yet) — a retention/rollup job (e.g. delete > 180d)
+// is a future follow-up once analytics volume warrants it.
 model UserEvent {
   id         String        @id @default(cuid())
   type       UserEventType
@@ -806,12 +808,15 @@ model UserEvent {
   categoryId String?
   query      String?
   source     String?
+  device     String? // "mobile" | "tablet" | "desktop" — derived server-side from the UA header
+  referrer   String? // external referrer hostname only (PAGE_VIEW), lowercase, no PII
   createdAt  DateTime      @default(now())
 
   @@index([type, createdAt])
   @@index([productId, type])
   @@index([userId, createdAt])
   @@index([categoryId, createdAt])
+  @@index([createdAt])
 }
 
 model AIChat {
@@ -978,6 +983,8 @@ enum UserEventType {
   PURCHASE
   RECO_CLICK
   CLICK
+  PAGE_VIEW
+  CHECKOUT_START
 }
 
 enum ReturnStatus {

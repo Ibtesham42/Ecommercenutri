@@ -11,6 +11,8 @@ export type TrackInput = {
   categoryId?: string | null;
   query?: string | null;
   source?: string | null;
+  device?: string | null; // mobile/tablet/desktop, derived server-side from the UA header
+  referrer?: string | null; // external referrer hostname (PAGE_VIEW only)
 };
 
 /** Record a behavioral event. Best-effort — never throws to the caller. */
@@ -25,6 +27,8 @@ export async function trackEvent(input: TrackInput): Promise<void> {
         categoryId: input.categoryId ?? null,
         query: input.query?.slice(0, 200) ?? null,
         source: input.source?.slice(0, 60) ?? null,
+        device: input.device ?? null,
+        referrer: input.referrer?.slice(0, 200) ?? null,
       },
     });
   } catch (err) {

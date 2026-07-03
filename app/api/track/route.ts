@@ -4,6 +4,8 @@ import type { UserEventType } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { trackEvent } from "@/lib/recommendations/events";
 import { checkRateLimit, limiters } from "@/lib/rate-limit";
+import { parseUA } from "@/lib/ua";
+import { env } from "@/lib/env";
 
 export const runtime = "nodejs";
 
@@ -18,6 +20,8 @@ const CLIENT_EVENTS = [
   "CART_ADD",
   "RECO_CLICK",
   "CLICK",
+  "PAGE_VIEW",
+  "CHECKOUT_START",
 ] as const satisfies readonly UserEventType[];
 
 const bodySchema = z.object({
@@ -26,7 +30,26 @@ const bodySchema = z.object({
   categoryId: z.string().max(40).optional(),
   query: z.string().max(200).optional(),
   source: z.string().max(60).optional(),
+  referrer: z.string().max(200).optional(),
 });
+
+/**
+ * External referrer hostname only (lowercase, no www., no path/query — no PII).
+ * The client already sends only cross-origin referrers; re-check here so a
+ * crafted request can't pollute traffic sources with our own host.
+ */
+function externalReferrerHost(referrer: string | undefined): string | null {
+  if (!referrer) return null;
+  try {
+    const host = new URL(referrer).hostname.toLowerCase().replace(/^www\./, "");
+    const own = new URL(env.appUrl).hostname.toLowerCase().replace(/^www\./, "");
+    return host && host !== own ? host : null;
+  } catch {
+    // Bare hostnames (no scheme) are fine too.
+    const host = referrer.toLowerCase().replace(/^www\./, "").split("/")[0];
+    return /^[a-z0-9.-]+\.[a-z]{2,}$/.test(host) ? host : null;
+  }
+}
 
 export async function POST(req: Request) {
   let body: unknown;
@@ -54,6 +77,8 @@ export async function POST(req: Request) {
   const rl = await checkRateLimit(limiters.api, `track:${id}`);
   if (!rl.success) return NextResponse.json({ ok: false }, { status: 429 });
 
+  const { device } = parseUA(req.headers.get("user-agent") ?? "");
+
   await trackEvent({
     type: parsed.data.type,
     userId: user?.id ?? null,
@@ -62,6 +87,11 @@ export async function POST(req: Request) {
     categoryId: parsed.data.categoryId ?? null,
     query: parsed.data.query ?? null,
     source: parsed.data.source ?? null,
+    device,
+    referrer:
+      parsed.data.type === "PAGE_VIEW"
+        ? externalReferrerHost(parsed.data.referrer)
+        : null,
   });
 
   const res = NextResponse.json({ ok: true });

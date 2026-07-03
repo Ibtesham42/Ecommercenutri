@@ -3,11 +3,20 @@
 import { useEffect } from "react";
 
 export type TrackPayload = {
-  type: "PRODUCT_VIEW" | "CATEGORY_VIEW" | "SEARCH" | "CART_ADD" | "RECO_CLICK" | "CLICK";
+  type:
+    | "PRODUCT_VIEW"
+    | "CATEGORY_VIEW"
+    | "SEARCH"
+    | "CART_ADD"
+    | "RECO_CLICK"
+    | "CLICK"
+    | "PAGE_VIEW"
+    | "CHECKOUT_START";
   productId?: string;
   categoryId?: string;
   query?: string;
   source?: string;
+  referrer?: string;
 };
 
 /** Fire-and-forget client tracking — safe to call from anywhere. Uses keepalive

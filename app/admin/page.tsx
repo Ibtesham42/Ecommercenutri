@@ -16,10 +16,12 @@ import { PageHeader } from "@/components/admin/page-header";
 import { Badge } from "@/components/ui/badge";
 import {
   getDashboardStats,
+  getDashboardTrends,
   getRecentOrders,
   getLowStockVariants,
   getTopProducts,
 } from "@/lib/queries/admin";
+import { Sparkline } from "@/components/admin/insights/charts";
 import { getAdminUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { formatPrice, formatDate } from "@/lib/format";
@@ -34,11 +36,13 @@ function StatCard({
   value,
   icon: Icon,
   hint,
+  series,
 }: {
   label: string;
   value: string;
   icon: React.ComponentType<{ className?: string }>;
   hint?: string;
+  series?: number[];
 }) {
   return (
     <div className="rounded-xl border bg-background p-4">
@@ -47,6 +51,7 @@ function StatCard({
         <Icon className="size-4 text-muted-foreground" />
       </div>
       <p className="mt-2 text-2xl font-bold tracking-tight">{value}</p>
+      {series && series.length > 1 && <Sparkline data={series} height={26} className="mt-2" />}
       {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
@@ -64,6 +69,7 @@ export default async function AdminDashboardPage() {
   const showAnything = showOrders || showCustomers || showProducts;
 
   const stats = showAnything ? await getDashboardStats() : null;
+  const trends = showOrders ? await getDashboardTrends() : null;
   const recentOrders = showOrders ? await getRecentOrders() : [];
   const lowStock = showProducts ? await getLowStockVariants() : [];
   const topProducts = showProducts ? await getTopProducts() : [];
@@ -150,12 +156,14 @@ export default async function AdminDashboardPage() {
                 value={formatPrice(stats.revenue)}
                 icon={IndianRupee}
                 hint={`${stats.paidOrderCount} paid orders`}
+                series={trends?.revenue14d}
               />
               <StatCard
                 label="Orders"
                 value={String(stats.orderCount)}
                 icon={ShoppingBag}
                 hint={`${stats.pendingOrderCount} pending`}
+                series={trends?.orders14d}
               />
             </>
           )}

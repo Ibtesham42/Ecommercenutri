@@ -6,6 +6,7 @@ import { buildMetadata } from "@/lib/seo";
 import { razorpayEnabled } from "@/lib/razorpay";
 import { getPricingSettings } from "@/lib/queries/settings";
 import { CheckoutClient } from "@/components/storefront/checkout-client";
+import { BehaviorTracker } from "@/components/storefront/behavior-tracker";
 import type { AddressData } from "@/components/account/address-form";
 
 export const metadata: Metadata = buildMetadata({
@@ -41,6 +42,8 @@ export default async function CheckoutPage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8">
+      {/* Funnel signal; remounts may re-fire — analytics counts distinct shoppers. */}
+      <BehaviorTracker event={{ type: "CHECKOUT_START" }} />
       <h1 className="mb-6 text-2xl font-bold sm:text-3xl">Checkout</h1>
       <CheckoutClient
         addresses={data}

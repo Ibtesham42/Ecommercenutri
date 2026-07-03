@@ -4,6 +4,7 @@ import { AnnouncementBar } from "@/components/storefront/announcement-bar";
 import { WhatsAppButton } from "@/components/storefront/whatsapp-button";
 import { MobileBottomNav } from "@/components/storefront/mobile-bottom-nav";
 import { AffiliateTracker } from "@/components/storefront/affiliate-tracker";
+import { VisitTracker } from "@/components/storefront/visit-tracker";
 import { PwaInstallPrompt } from "@/components/storefront/pwa-install-prompt";
 import { getStoreSettings } from "@/lib/queries/settings";
 import { getPwaSettings } from "@/lib/pwa-settings";
@@ -80,6 +81,7 @@ export default async function StorefrontLayout({
       </div>
       <MobileBottomNav />
       <AffiliateTracker />
+      <VisitTracker />
       <PwaInstallPrompt
         settings={pwa}
         vapidPublicKey={isConfigured.webPush() ? env.vapidPublicKey : ""}

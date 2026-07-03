@@ -1,6 +1,7 @@
 import "server-only";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { cached } from "@/lib/redis";
 
 /**
  * Business-intelligence aggregation layer. Lightweight + deterministic — every
@@ -13,7 +14,8 @@ import { prisma } from "@/lib/prisma";
  */
 
 const DAY = 86_400_000;
-const NOT_CANCELLED: Prisma.EnumOrderStatusFilter = { notIn: ["CANCELLED", "RETURNED"] };
+/** Revenue-relevant order filter, shared with lib/queries/analytics.ts. */
+export const NOT_CANCELLED: Prisma.EnumOrderStatusFilter = { notIn: ["CANCELLED", "RETURNED"] };
 
 export type Period = { revenue: number; orders: number };
 export type GrowthPeriod = Period & { prevRevenue: number; prevOrders: number; revenueGrowth: number; orderGrowth: number };
@@ -116,7 +118,8 @@ function emptyBI(): BusinessIntelligence {
 export async function getBusinessIntelligence(): Promise<BusinessIntelligence> {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      return await computeBI();
+      // Read-through cache (no-op without Redis). BI is plain JSON (no Dates).
+      return await cached("bi:v1", 180, computeBI);
     } catch (err) {
       console.error(`[bi] computeBI failed (attempt ${attempt + 1}/2):`, err);
       if (attempt === 0) await new Promise((r) => setTimeout(r, 400));
