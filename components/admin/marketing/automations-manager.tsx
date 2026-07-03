@@ -28,7 +28,7 @@ import {
   AUTOMATION_TRIGGER_LABEL,
   AUTOMATION_TRIGGER_DESCRIPTION,
 } from "@/lib/marketing/channels";
-import type { AutomationLogRow, AutomationRunReport, ChannelOutcome } from "@/lib/marketing/automation-types";
+import { outcomeSummary, type AutomationLogRow, type AutomationRunReport } from "@/lib/marketing/automation-types";
 import { formatDateTime } from "@/lib/format";
 import type { AutomationLogStatus, AutomationTrigger, CampaignChannel } from "@prisma/client";
 
@@ -70,15 +70,6 @@ const LOG_STATUS_VARIANT: Record<AutomationLogStatus, "default" | "secondary" | 
   FAILED: "destructive",
   TEST: "outline",
 };
-
-/** One-line human summary of a test send's per-channel outcomes. */
-function outcomeSummary(outcomes: ChannelOutcome[]): { sent: string[]; problems: string[] } {
-  const sent = outcomes.filter((o) => o.status === "SENT").map((o) => CHANNEL_LABEL[o.channel]);
-  const problems = outcomes
-    .filter((o) => o.status !== "SENT")
-    .map((o) => `${CHANNEL_LABEL[o.channel]}: ${o.reason ?? o.status.toLowerCase()}`);
-  return { sent, problems };
-}
 
 export function AutomationsManager({
   rules,

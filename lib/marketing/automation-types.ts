@@ -1,4 +1,5 @@
 import type { AutomationLogStatus, AutomationTrigger, CampaignChannel } from "@prisma/client";
+import { CHANNEL_LABEL } from "./channels";
 
 /**
  * Client-safe automation result types (type-only Prisma imports — same pattern as
@@ -12,6 +13,15 @@ export type ChannelOutcome = {
   status: "SENT" | "FAILED" | "SKIPPED" | "STUBBED";
   reason?: string;
 };
+
+/** One-line human summary of a test send's per-channel outcomes. */
+export function outcomeSummary(outcomes: ChannelOutcome[]): { sent: string[]; problems: string[] } {
+  const sent = outcomes.filter((o) => o.status === "SENT").map((o) => CHANNEL_LABEL[o.channel]);
+  const problems = outcomes
+    .filter((o) => o.status !== "SENT")
+    .map((o) => `${CHANNEL_LABEL[o.channel]}: ${o.reason ?? o.status.toLowerCase()}`);
+  return { sent, problems };
+}
 
 /** Per-rule result of a run — everything the admin needs to see why. */
 export type RuleRunReport = {

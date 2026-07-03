@@ -23,6 +23,9 @@ const integrations = (): { name: string; ready: boolean; note: string }[] => [
   { name: "Cloudinary", ready: isConfigured.cloudinary(), note: "Media uploads" },
   { name: "Groq AI", ready: isConfigured.groq(), note: "AI features" },
   { name: "Upstash Redis", ready: isConfigured.redis(), note: "Cache + rate limit" },
+  { name: "Web Push (VAPID)", ready: isConfigured.webPush(), note: "Marketing push notifications" },
+  { name: "WhatsApp (Meta Cloud API)", ready: isConfigured.whatsapp(), note: "Marketing channel" },
+  { name: "SMS (Twilio)", ready: isConfigured.sms(), note: "Marketing channel" },
 ];
 
 export default async function AdminSettingsPage() {

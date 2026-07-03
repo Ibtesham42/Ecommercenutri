@@ -1,5 +1,5 @@
 import "server-only";
-import type { AutomationRule, Prisma } from "@prisma/client";
+import type { AutomationRule, CampaignChannel, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { notify } from "@/lib/notifications";
 import { sendEmail } from "@/lib/email";
@@ -45,6 +45,16 @@ type UserPick = {
 
 function toCandidate(u: UserPick, key: string): Candidate {
   return { userId: u.id, email: u.email, name: u.name, phone: u.phone ?? u.addresses[0]?.phone ?? null, key };
+}
+
+/** Latest address phone for a user — test sends target the admin, who has no Recipient row. */
+export async function latestPhone(userId: string): Promise<string | null> {
+  const address = await prisma.address.findFirst({
+    where: { userId },
+    orderBy: { updatedAt: "desc" },
+    select: { phone: true },
+  });
+  return address?.phone ?? null;
 }
 
 /** New accounts older than the delay (bounded so enabling doesn't blast old users). */
@@ -231,29 +241,48 @@ function emptyReason(rule: AutomationRule): string {
   }
 }
 
+/** The content + channels a one-recipient delivery needs. `AutomationRule` and the
+ *  campaign test-send payload both satisfy it structurally. */
+export type MessageSpec = {
+  channels: CampaignChannel[];
+  title: string;
+  body: string;
+  imageUrl: string | null;
+  ctaText: string | null;
+  ctaUrl: string | null;
+};
+
+export type OneRecipient = {
+  userId: string;
+  email: string | null;
+  name: string | null;
+  phone: string | null;
+};
+
 /**
- * Deliver a rule's message to one recipient across its channels, returning the
+ * Deliver a message to one recipient across its channels, returning the
  * truthful per-channel outcome. Unconfigured providers and the keyless email stub
- * are reported as SKIPPED/STUBBED — never as a successful delivery.
+ * are reported as SKIPPED/STUBBED — never as a successful delivery. Used by
+ * automations (rules satisfy `MessageSpec`) and the admin campaign test-send.
  */
-async function deliver(rule: AutomationRule, c: Candidate): Promise<ChannelOutcome[]> {
+export async function deliverToOne(spec: MessageSpec, c: OneRecipient): Promise<ChannelOutcome[]> {
   const msg: ChannelMessage = {
-    title: rule.title,
-    body: rule.body,
-    imageUrl: rule.imageUrl,
-    ctaText: rule.ctaText,
-    ctaUrl: rule.ctaUrl,
+    title: spec.title,
+    body: spec.body,
+    imageUrl: spec.imageUrl,
+    ctaText: spec.ctaText,
+    ctaUrl: spec.ctaUrl,
   };
   const outcomes: ChannelOutcome[] = [];
 
-  for (const channel of rule.channels) {
+  for (const channel of spec.channels) {
     switch (channel) {
       case "IN_APP": {
         const ok = await notify(c.userId, {
           type: "GENERAL",
-          title: rule.title,
-          body: rule.body,
-          link: rule.ctaUrl ?? null,
+          title: spec.title,
+          body: spec.body,
+          link: spec.ctaUrl ?? null,
         });
         outcomes.push(
           ok
@@ -422,7 +451,7 @@ export async function runAutomations(): Promise<AutomationRunReport> {
           continue;
         }
         r.attempted++;
-        const outcomes = await deliver(rule, c);
+        const outcomes = await deliverToOne(rule, c);
         allOutcomes.push(outcomes);
         const status = logStatus(outcomes);
         if (status === "FAILED") r.failed++;
@@ -468,20 +497,15 @@ export async function testAutomationRule(
   const rule = await prisma.automationRule.findUnique({ where: { id: ruleId } });
   if (!rule) return { error: "Automation not found." };
 
-  const address = await prisma.address.findFirst({
-    where: { userId: user.id },
-    orderBy: { updatedAt: "desc" },
-    select: { phone: true },
-  });
   const candidate: Candidate = {
     userId: user.id,
     email: user.email,
     name: user.name,
-    phone: address?.phone ?? null,
+    phone: await latestPhone(user.id),
     key: `test:${user.id}:${Date.now()}`,
   };
 
-  const outcomes = await deliver(rule, candidate);
+  const outcomes = await deliverToOne(rule, candidate);
   await prisma.automationLog
     .create({
       data: {

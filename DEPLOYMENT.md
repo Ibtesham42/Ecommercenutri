@@ -38,6 +38,11 @@ you go to switch each feature from fallback to live.
 - **Groq**: set `GROQ_API_KEY` (and optionally `GROQ_MODEL`) to enable live AI.
 - **Upstash Redis**: set `UPSTASH_REDIS_REST_URL/TOKEN` to enable caching and
   rate limiting (e.g. the AI chat limiter). Without it, limiting is a safe no-op.
+- **Web Push (free, no vendor)**: generate a VAPID keypair with
+  `npx web-push generate-vapid-keys`, set `NEXT_PUBLIC_VAPID_PUBLIC_KEY`,
+  `VAPID_PRIVATE_KEY` (and optionally `VAPID_SUBJECT`), then **redeploy** — the
+  public key is inlined into the client bundle at build time. Full guide:
+  `PUSH_NOTIFICATIONS.md`.
 - **Analytics** (optional): set `NEXT_PUBLIC_ANALYTICS_SRC` + `_DOMAIN`.
 
 ## 5. Verify production

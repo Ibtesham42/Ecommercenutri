@@ -41,6 +41,16 @@ export const campaignSchema = z.object({
   scheduledFor: z.string().optional().nullable(),
 });
 
+/** "Send test to me" — the compose content + channels, nothing persisted. */
+export const campaignTestSchema = campaignSchema.pick({
+  channels: true,
+  title: true,
+  body: true,
+  imageUrl: true,
+  ctaText: true,
+  ctaUrl: true,
+});
+
 export const segmentSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "Name the segment").max(120),

@@ -81,10 +81,25 @@ function providerAdapter(
   };
 }
 
+/** Push adapter: like `providerAdapter(sendPush)`, but routes the CTA through the
+ *  click-tracking redirect (same as email) so push clicks accrue to clickCount.
+ *  The SW opens the URL with `client.navigate`/`openWindow`, which follow the
+ *  same-origin 302 to the real destination. */
+const pushAdapter: Adapter = async (c, recipients) => {
+  let delivered = 0;
+  const msg = campaignMessage(c);
+  for (const r of recipients) {
+    const { click } = trackingUrls(c.id, r.userId, c.ctaUrl);
+    if (await sendPush(r, { ...msg, ctaUrl: click ?? msg.ctaUrl })) delivered++;
+  }
+  return delivered;
+};
+
 const ADAPTERS: Record<CampaignChannel, Adapter> = {
   IN_APP: inAppAdapter,
   EMAIL: emailAdapter,
-  PUSH: providerAdapter(sendPush),
+  PUSH: pushAdapter,
+  // WhatsApp/SMS keep the raw CTA — long tracking URLs are hostile in message text.
   WHATSAPP: providerAdapter(sendWhatsApp),
   SMS: providerAdapter(sendSMS),
 };

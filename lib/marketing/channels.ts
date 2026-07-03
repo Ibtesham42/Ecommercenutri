@@ -8,9 +8,9 @@ import type {
 
 /**
  * Client-safe marketing metadata (type-only Prisma imports). Channel/segment/status
- * labels + which channels are live today. Push/WhatsApp/SMS are registered but not
- * yet wired — the dispatch adapter registry (`lib/marketing/deliver.ts`) no-ops them,
- * so the UI can offer them as "coming soon" without breaking sends.
+ * labels + which channels are live. All five channels are wired to delivery adapters
+ * (`lib/marketing/deliver.ts`); the provider-backed ones (Push/WhatsApp/SMS) are
+ * env-gated in `lib/marketing/providers.ts` and skip recipients until their keys are set.
  */
 
 export const CHANNELS: CampaignChannel[] = ["IN_APP", "EMAIL", "PUSH", "WHATSAPP", "SMS"];

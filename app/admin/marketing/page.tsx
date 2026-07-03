@@ -6,7 +6,9 @@ import { guardSection } from "@/lib/admin-guard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MarketingTabs } from "@/components/admin/marketing/marketing-tabs";
+import { PushSetupCard } from "@/components/admin/marketing/push-setup-card";
 import { getMarketingOverview } from "@/lib/queries/marketing";
+import { isConfigured } from "@/lib/env";
 import { formatPrice, formatDate } from "@/lib/format";
 import { STATUS_LABEL, STATUS_VARIANT } from "@/lib/marketing/channels";
 import type { CampaignStatus } from "@prisma/client";
@@ -51,6 +53,8 @@ export default async function MarketingOverviewPage() {
           </div>
         ))}
       </div>
+
+      {!isConfigured.webPush() && <PushSetupCard />}
 
       <div className="mt-6 rounded-2xl border">
         <div className="flex items-center justify-between border-b p-4">

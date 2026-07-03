@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Sparkles, Send, CalendarClock, Save, Users, Repeat } from "lucide-react";
+import { Loader2, Sparkles, Send, CalendarClock, Save, Users, Repeat, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,10 +12,12 @@ import { ImageUploadField } from "@/components/admin/image-upload-field";
 import {
   saveCampaign,
   sendCampaign,
+  sendCampaignTest,
   scheduleCampaign,
   generateContent,
   previewAudience,
 } from "@/lib/actions/admin/marketing";
+import { outcomeSummary } from "@/lib/marketing/automation-types";
 import {
   CHANNELS,
   CHANNEL_LABEL,
@@ -108,6 +110,7 @@ export function CampaignEditor({
     (campaign?.recurrence as Recurrence) ?? "NONE",
   );
   const [busy, setBusy] = useState(false);
+  const [testing, setTesting] = useState(false);
   const recurring = recurrence !== "NONE";
 
   const segmentConfig = () => ({
@@ -220,6 +223,35 @@ export function CampaignEditor({
     if (id) {
       toast.success("Draft saved");
       router.push("/admin/marketing/campaigns");
+    }
+  }
+
+  /** Deliver the current (unsaved) compose state to the signed-in admin only. */
+  async function onTestSend() {
+    if (!title.trim() || !body.trim()) {
+      toast.error("Add a title and message.");
+      return;
+    }
+    if (channels.size === 0) {
+      toast.error("Pick at least one channel.");
+      return;
+    }
+    setTesting(true);
+    const res = await sendCampaignTest({ channels: [...channels], title, body, imageUrl, ctaText, ctaUrl });
+    setTesting(false);
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+    const { sent, problems } = outcomeSummary(res.data?.outcomes ?? []);
+    if (sent.length > 0) {
+      toast.success(`Test sent to you via ${sent.join(", ")}`, {
+        description: problems.length > 0 ? problems.join(" · ") : undefined,
+      });
+    } else {
+      toast.error("Test delivered on no channel", {
+        description: problems.join(" · ") || "No channel could deliver.",
+      });
     }
   }
 
@@ -483,6 +515,10 @@ export function CampaignEditor({
             </select>
           </div>
 
+          <Button type="button" variant="outline" className="w-full gap-1.5" disabled={busy || testing} onClick={onTestSend}>
+            {testing ? <Loader2 className="size-4 animate-spin" /> : <FlaskConical className="size-4" />}
+            Send test to me
+          </Button>
           {!recurring && (
             <Button type="button" className="w-full gap-1.5" disabled={busy} onClick={onSendNow}>
               {busy ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}

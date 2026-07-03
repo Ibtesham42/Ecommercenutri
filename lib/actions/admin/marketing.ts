@@ -10,11 +10,14 @@ import { generateCampaignContent } from "@/lib/marketing/ai";
 import {
   runAutomations,
   testAutomationRule,
+  deliverToOne,
+  latestPhone,
   type AutomationRunReport,
   type ChannelOutcome,
 } from "@/lib/marketing/automation";
 import {
   campaignSchema,
+  campaignTestSchema,
   segmentSchema,
   templateSchema,
   aiGenerateSchema,
@@ -325,6 +328,39 @@ export async function runAutomationsNow(): Promise<AdminResult<AutomationRunRepo
 }
 
 /** Send an automation's message to the signed-in admin as a real test delivery. */
+/**
+ * Send the current compose content to the signed-in admin as a real test delivery —
+ * no campaign row, no counters (mirrors sendAutomationTest). The test push carries
+ * the raw ctaUrl (no campaign id → no click tracking), unlike real campaign pushes.
+ */
+export async function sendCampaignTest(
+  input: unknown,
+): Promise<AdminResult<{ outcomes: ChannelOutcome[] }>> {
+  const admin = await requirePermission("marketing");
+  const parsed = campaignTestSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid content." };
+  }
+  const d = parsed.data;
+  try {
+    const outcomes = await deliverToOne(
+      {
+        channels: d.channels,
+        title: d.title,
+        body: d.body,
+        imageUrl: d.imageUrl || null,
+        ctaText: d.ctaText || null,
+        ctaUrl: d.ctaUrl || null,
+      },
+      { userId: admin.id, email: admin.email, name: admin.name, phone: await latestPhone(admin.id) },
+    );
+    return { ok: true, data: { outcomes } };
+  } catch (err) {
+    console.error("[marketing] campaign test failed:", err);
+    return { ok: false, error: err instanceof Error ? err.message : "Test send failed." };
+  }
+}
+
 export async function sendAutomationTest(
   ruleId: string,
 ): Promise<AdminResult<{ outcomes: ChannelOutcome[] }>> {
