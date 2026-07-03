@@ -90,9 +90,16 @@ audience targeting). There are two opt-in surfaces:
 
 1. **Account page** (`/account`) — a "Push notifications" card with an Enable
    button (`components/account/push-optin.tsx`).
-2. **PWA install prompt** (`components/storefront/pwa-install-prompt.tsx`) — after
-   the user installs the app (or when already installed), a one-time friendly
-   "enable notifications?" card appears before any browser prompt.
+2. **Storefront prompt** (`components/storefront/pwa-install-prompt.tsx`) — a
+   one-time friendly "Enable notifications?" card (shown before any browser
+   permission prompt). It appears:
+   - right after the user installs the PWA,
+   - a few seconds after opening the installed app, or
+   - in a **regular browser tab** after the signed-in visitor has been on the
+     site ~45 seconds (so casual first-time visitors aren't nagged).
+   It shows at most once ever per browser (a local flag remembers the answer),
+   never interrupts the install card, and is skipped entirely when the user is
+   signed out, the browser lacks support, or permission was already granted/denied.
 
 Flow: user clicks Enable → browser permission prompt (`default` → `granted` /
 `denied`) → the service worker subscribes with the public key → the subscription
@@ -150,6 +157,7 @@ Admin → **Marketing Hub** (needs the `marketing` permission):
 | Symptom | Cause / fix |
 | --- | --- |
 | No "Enable" card on the account page | VAPID keys missing (card renders only when configured), or the browser doesn't support push. |
+| The storefront "Enable notifications?" card never appears | It requires **all** of: signed-in user, VAPID configured, browser support, permission still undecided, and it hasn't been shown before on this browser (clear the `nutriyet-push-asked` localStorage key to re-test). In a plain tab it also waits ~45 s. |
 | Permission prompt never shows | Permission was previously **denied** — the site cannot re-ask. Reset it in the browser's site settings (padlock icon → Notifications → Allow), then retry. |
 | Test says "Web Push is not configured (VAPID keys missing)" | Env vars not set **in the running process** — restart/redeploy after setting them. |
 | Test says "Recipient has no active push subscription" | Your admin account hasn't enabled push on this device — do §6 step 2 first. |

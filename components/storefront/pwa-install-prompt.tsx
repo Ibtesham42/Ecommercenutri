@@ -23,12 +23,17 @@ import type { PwaSettings } from "@/lib/pwa-settings";
  * PWA install experience:
  *  - Chrome/Edge (Android + desktop): native `beforeinstallprompt` flow.
  *  - iPhone/iPad Safari: Share → "Add to Home Screen" guide.
- *  - Post-install: celebration toast, then a strictly-gated ask to enable
- *    notifications via the existing Web Push stack (signed-in + VAPID +
- *    supported + permission undecided + never asked before).
+ *  - Notifications ask (strictly gated: signed-in + VAPID + supported +
+ *    permission undecided + never asked before): offered right after a PWA
+ *    install, on load when already installed, and — for regular browser tabs —
+ *    after the visitor has settled in for a while (BROWSER_ASK_DELAY_MS).
+ *    It never replaces a card that's already showing.
  * Display logic never annoys: once per session, reminder interval between
  * shows, permanently silent once installed / running standalone.
  */
+
+/** Dwell time before politely offering notifications in a plain browser tab. */
+const BROWSER_ASK_DELAY_MS = 45_000;
 
 // --- storage (typeof-window guarded, quota-safe) -------------------------------
 
@@ -244,11 +249,16 @@ export function PwaInstallPrompt({
     );
   }, [vapidPublicKey, signedIn]);
 
+  const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const askPushSoon = useCallback(
     (delayMs: number) => {
       if (!canAskPush()) return;
-      setTimeout(() => {
-        if (canAskPush()) setVisible("push");
+      if (pushTimer.current) clearTimeout(pushTimer.current);
+      pushTimer.current = setTimeout(() => {
+        // Re-check at fire time, and never replace a card that's already open
+        // (if the install card is up, we simply don't ask this visit — the
+        // one-time flag is only set when the user actually sees and closes it).
+        if (canAskPush()) setVisible((v) => v ?? "push");
       }, delayMs);
     },
     [canAskPush],
@@ -287,6 +297,7 @@ export function PwaInstallPrompt({
       return () => {
         window.removeEventListener("appinstalled", onInstalled);
         window.removeEventListener("storage", onStorage);
+        if (pushTimer.current) clearTimeout(pushTimer.current);
       };
     }
 
@@ -316,11 +327,18 @@ export function PwaInstallPrompt({
 
     if (eligible && isIosSafari()) show("ios");
 
+    // Regular browser tab (not installed): politely offer notifications once
+    // the visitor has settled in. Same strict gates — signed-in, supported,
+    // permission undecided, never asked before — and it yields to any install
+    // card already on screen.
+    askPushSoon(BROWSER_ASK_DELAY_MS);
+
     return () => {
       window.removeEventListener("appinstalled", onInstalled);
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("beforeinstallprompt", onBip);
       if (showTimer.current) clearTimeout(showTimer.current);
+      if (pushTimer.current) clearTimeout(pushTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
