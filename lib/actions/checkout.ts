@@ -8,7 +8,12 @@ import { env } from "@/lib/env";
 import { validateCoupon } from "@/lib/coupons";
 import { resolveAttribution } from "@/lib/affiliate/attribution";
 import { recordCampaignConversion } from "@/lib/marketing/conversion";
-import { computeBreakdown, isCodAvailable, type PriceBreakdown } from "@/lib/pricing";
+import {
+  computeBreakdown,
+  computeShipping,
+  isCodAvailable,
+  type PriceBreakdown,
+} from "@/lib/pricing";
 import {
   getPricingSettings,
   getCodSettings,
@@ -57,11 +62,16 @@ export async function applyCoupon(input: unknown): Promise<CouponPreview> {
   const priced = await priceCart(parsed.data.items);
   if (!priced.ok) return { ok: false, error: priced.error };
 
+  // Delivery fee counts toward the coupon's min-order (same rule as createOrder).
+  const settings = await getPricingSettings();
+  const shippingFee = computeShipping(priced.lines, priced.subtotal, settings).charge;
+
   const result = await validateCoupon(
     parsed.data.code,
     priced.subtotal,
     user.id,
     await cartContext(priced.lines),
+    { shippingFee },
   );
   if (!result.ok) return { ok: false, error: result.error };
 
@@ -94,6 +104,7 @@ export async function previewOrderPricing(input: unknown): Promise<PricingPrevie
   if (!priced.ok) return { ok: false, error: priced.error };
 
   const [settings, cod] = await Promise.all([getPricingSettings(), getCodSettings()]);
+  const shippingFee = computeShipping(priced.lines, priced.subtotal, settings).charge;
 
   // Optional coupon (only for signed-in users; the cart page has none).
   let discount = 0;
@@ -105,6 +116,7 @@ export async function previewOrderPricing(input: unknown): Promise<PricingPrevie
         priced.subtotal,
         user.id,
         await cartContext(priced.lines),
+        { shippingFee },
       );
       if (res.ok) discount = res.discount;
     }
@@ -178,12 +190,22 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
   // Cart product/category context (for coupon restrictions).
   const cart = await cartContext(priced.lines);
 
+  // Store pricing + COD settings (also needed before the coupon: min-order
+  // eligibility counts the delivery fee).
+  const [pricingSettings, cod] = await Promise.all([
+    getPricingSettings(),
+    getCodSettings(),
+  ]);
+  const shippingFee = computeShipping(priced.lines, priced.subtotal, pricingSettings).charge;
+
   // Optional coupon.
   let discount = 0;
   let couponId: string | null = null;
   let resolvedCouponCode: string | null = null;
   if (couponCode) {
-    const result = await validateCoupon(couponCode, priced.subtotal, user.id, cart);
+    const result = await validateCoupon(couponCode, priced.subtotal, user.id, cart, {
+      shippingFee,
+    });
     if (!result.ok) return { ok: false, error: result.error };
     discount = result.discount;
     couponId = result.coupon.id;
@@ -197,11 +219,6 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
 
   // Compute shipping + (inclusive) GST + any COD fee authoritatively from the
   // re-priced lines and the store's settings — never trust client-sent totals.
-  const [pricingSettings, cod] = await Promise.all([
-    getPricingSettings(),
-    getCodSettings(),
-  ]);
-
   const isCod = paymentMethod === "COD";
   if (isCod && !isCodAvailable(priced.subtotal, cod)) {
     return { ok: false, error: "Cash on Delivery isn't available for this order." };

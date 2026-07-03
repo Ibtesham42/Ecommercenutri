@@ -25,12 +25,15 @@ export function computeDiscount(coupon: Coupon, subtotal: number): number {
 /**
  * Validate a coupon for a given subtotal + user and return the discount.
  * Enforces active window, minimum order, total usage limit and per-user limit.
+ * Min-order eligibility counts the delivery fee (`opts.shippingFee`) the customer
+ * will pay; the discount itself is still computed on the goods subtotal only.
  */
 export async function validateCoupon(
   rawCode: string,
   subtotal: number,
   userId: string,
   cart?: { productIds: string[]; categoryIds: string[] },
+  opts?: { shippingFee?: number },
 ): Promise<CouponResult> {
   const code = rawCode.trim().toUpperCase();
   if (!code) return { ok: false, error: "Enter a coupon code." };
@@ -61,7 +64,10 @@ export async function validateCoupon(
   if (coupon.expiresAt && coupon.expiresAt < now) {
     return { ok: false, error: "This coupon has expired." };
   }
-  if (coupon.minOrder && subtotal < coupon.minOrder) {
+  // Min-order counts the delivery fee the customer actually pays (pre-discount
+  // shipping; COD fee excluded — it's chosen after coupon entry).
+  const orderValue = subtotal + (opts?.shippingFee ?? 0);
+  if (coupon.minOrder && orderValue < coupon.minOrder) {
     return {
       ok: false,
       error: `Add more to your cart to use this coupon (min ₹${Math.ceil(

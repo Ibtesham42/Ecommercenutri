@@ -18,8 +18,9 @@ import { CartCount } from "@/components/storefront/cart-count";
 export function MobileBottomNav() {
   const pathname = usePathname();
 
-  // Hidden on pages that render their own sticky bottom action bar (they would
-  // otherwise overlap): product detail (/products/<slug>), cart and checkout.
+  // Hidden on pages where it would get in the way: product detail (/products/<slug>)
+  // and cart render their own sticky bottom action bar at the same screen edge;
+  // checkout is kept distraction-free (its place-order CTA lives in the summary card).
   const onProductDetail =
     pathname.startsWith("/products/") && pathname !== "/products";
   const onOwnBottomBar =

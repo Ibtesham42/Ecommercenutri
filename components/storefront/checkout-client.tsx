@@ -258,12 +258,6 @@ export function CheckoutClient({
     checkout.open();
   }
 
-  const placeLabel = placing
-    ? "Processing…"
-    : paymentMethod === "COD" || !razorpayEnabled
-      ? `Place order · ${formatPrice(total)}`
-      : `Pay ${formatPrice(total)}`;
-
   return (
     <div className="space-y-6">
       {razorpayEnabled && (
@@ -449,17 +443,17 @@ export function CheckoutClient({
         </div>
 
         {/* Payment method */}
-        <div className="space-y-2 border-t pt-3">
+        <div className="space-y-2.5 border-t pt-4">
           <p className="text-sm font-semibold">Payment method</p>
           <label
-            className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm transition ${
+            className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 text-sm transition ${
               paymentMethod === "RAZORPAY" ? "border-primary ring-1 ring-primary" : "hover:border-foreground/20"
             }`}
           >
             <input
               type="radio"
               name="payment"
-              className="mt-0.5 size-4 accent-primary"
+              className="mt-1 size-4 accent-primary"
               checked={paymentMethod === "RAZORPAY"}
               onChange={() => setPaymentMethod("RAZORPAY")}
             />
@@ -475,14 +469,14 @@ export function CheckoutClient({
           </label>
           {codAvailable && (
             <label
-              className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm transition ${
+              className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 text-sm transition ${
                 paymentMethod === "COD" ? "border-primary ring-1 ring-primary" : "hover:border-foreground/20"
               }`}
             >
               <input
                 type="radio"
                 name="payment"
-                className="mt-0.5 size-4 accent-primary"
+                className="mt-1 size-4 accent-primary"
                 checked={paymentMethod === "COD"}
                 onChange={() => setPaymentMethod("COD")}
               />
@@ -501,7 +495,7 @@ export function CheckoutClient({
 
         <Button
           size="lg"
-          className="w-full"
+          className="h-12 w-full gap-2 text-base"
           onClick={onPlaceOrder}
           disabled={placing || addresses.length === 0}
         >
@@ -526,22 +520,6 @@ export function CheckoutClient({
           </p>
         )}
       </aside>
-      </div>
-
-      {/* Sticky mobile place-order bar (bottom nav hidden on /checkout). */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-4 py-3 backdrop-blur md:hidden"
-        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
-      >
-        <Button
-          size="lg"
-          className="h-12 w-full gap-2 text-base"
-          onClick={onPlaceOrder}
-          disabled={placing || addresses.length === 0}
-        >
-          {placing && <Loader2 className="size-4 animate-spin" />}
-          {placeLabel}
-        </Button>
       </div>
 
       <Dialog open={addressOpen} onOpenChange={setAddressOpen}>
