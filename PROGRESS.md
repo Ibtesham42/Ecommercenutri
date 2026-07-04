@@ -1,6 +1,6 @@
 # Nutriyet — Progress Tracker
 
-_Last updated: 2026-06-29 · Auto-maintained. Update at the end of every milestone._
+_Last updated: 2026-07-04 · Auto-maintained. Update at the end of every milestone._
 
 ## Snapshot
 
@@ -10,8 +10,29 @@ _Last updated: 2026-06-29 · Auto-maintained. Update at the end of every milesto
 | TypeScript          | ✅ `tsc --noEmit` clean                                         |
 | ESLint              | ✅ clean                                                        |
 | Runtime smoke       | ✅ Premium UI verified; **Marketing Hub verified end-to-end** (2026-06-29 — cron dispatch, recurring re-arm + child, automation dedup, open/click tracking, env-gated channel no-op; see Marketing Hub section) |
-| Database (Neon)     | ✅ live, migrated (…`affiliate_program`, `marketing_hub`, `marketing_automation`, `push_subscriptions`), seeded |
-| Current milestone   | **M0–M6 + RBAC + CMS + Affiliate Program + Admin bulk actions + Marketing Hub — production-ready** |
+| Database (Neon)     | ✅ live, migrated (…`affiliate_program`, `marketing_hub`, `marketing_automation`, `push_subscriptions`, `analytics_tracking`), seeded |
+| Current milestone   | **M0–M6 + RBAC + CMS + Affiliate Program + Admin bulk actions + Marketing Hub + Advanced analytics — production-ready** |
+
+## Latest: Advanced analytics (range-scoped) + exports (2026-07-04)
+The BI dashboard's promised follow-up wave. New **`lib/queries/analytics.ts#getRangeAnalytics`** —
+admin-chosen range (today / yesterday / 7d / 30d / custom ≤ 366d) always compared against the
+same-length previous window: **conversion funnel** (visitors → product views → cart adds →
+checkout starts → purchases, with per-stage % and "tracking new" pending flags), **KPI cards with
+deltas**, **geo** (top cities by revenue), **device + traffic-source breakdowns**, weakest-converting
+products and **cart-recovery** stats. Outputs are plain JSON (Redis read-through cache safe) and
+degrade to zeros/placeholders on fresh tracking. **Tracking additions** (migration on `UserEvent`):
+new event types `PAGE_VIEW` + `CHECKOUT_START`; new `device` (UA-derived server-side, `lib/ua.ts`)
+and `referrer` (external hostname only, no PII) columns + `createdAt` index. `VisitTracker`
+(storefront layout) logs one PAGE_VIEW per browser session with the external referrer;
+CHECKOUT_START fires from the checkout page; `/api/track` stays rate-limited. `UserEvent` grows
+unbounded — a retention/rollup job is a noted future follow-up. **Insights page**: `RangeFilter`
+(presets + custom dates via searchParams), KPI cards, dependency-free SVG charts, **`LiveStrip`**
+(live visitors + today's orders/revenue + latest activity; polls a guarded server action every 45s,
+pauses on hidden tab), rule-based `ActionPlan`. **Exports**: CSV at `/admin/insights/export`
+(`?section=` narrows; opens in Excel) and a branded **PDF report** at `/admin/insights/report`
+(`lib/pdf/analytics-pdf.tsx`, @react-pdf, ASCII `Rs.`), both `ai`-permission-guarded. The AI
+summary/Q&A (`lib/ai/insights.ts`) is now grounded in the selected range's facts too. Typecheck/
+lint/build green.
 
 ## Latest: Affiliate / Influencer Program (done)
 Full referral-marketing program layered additively on orders, gated by a new `affiliates`

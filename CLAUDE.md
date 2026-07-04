@@ -817,6 +817,20 @@ See `PROGRESS.md` for the live tracker (status, blockers, next task).
   AI Insights** (`/admin/insights`, `ai` permission, `lib/queries/insights.ts`) reports most
   viewed/purchased/cart-added, top searches, FBT pairs, reco click-rate and repeat-purchase rate
   from real `UserEvent` + order data. Sections render nothing when empty (cold-start safe).
+- **Advanced analytics** (`lib/queries/analytics.ts#getRangeAnalytics`, additive companion to the
+  fixed-window BI in `lib/queries/bi.ts`): admin-chosen range (today/yesterday/7d/30d/custom ≤366d)
+  vs the same-length previous window — conversion **funnel** (visitors→product views→cart adds→
+  checkout starts→purchases, "tracking new" pending flags), KPI cards with deltas, geo (cities by
+  revenue), device/traffic-source breakdowns, weak converters, cart recovery. Outputs are plain
+  JSON (Redis-cache safe) and degrade to zeros on fresh tracking. Tracking: `UserEvent` gained
+  `PAGE_VIEW`/`CHECKOUT_START` types + `device` (server-derived from UA via `lib/ua.ts`) and
+  `referrer` (external hostname only, no PII) — fed by `VisitTracker` (one PAGE_VIEW per browser
+  session, storefront layout) and the checkout page through the rate-limited `/api/track`.
+  `UserEvent` has **no pruning yet**; add a retention/rollup job when volume warrants. Insights
+  page adds `RangeFilter` (searchParams), `LiveStrip` (45s-poll of a guarded server action, pauses
+  when tab hidden), CSV export (`/admin/insights/export`, `?section=`) and a branded PDF report
+  (`/admin/insights/report`, `lib/pdf/analytics-pdf.tsx`); AI summary/Q&A is grounded in the
+  selected range's facts.
 - **Groq `llama-3.3-70b-versatile` does NOT support the `json_schema` response
   format**, so AI SDK `generateObject` fails on it. We use `generateText` + a
   defensive JSON parse for structured search instead — also keeps us model/provider
