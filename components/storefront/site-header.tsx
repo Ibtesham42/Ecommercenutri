@@ -21,6 +21,7 @@ import { SearchBox } from "@/components/storefront/search-box";
 import { MobileSearchTrigger } from "@/components/storefront/mobile-search-trigger";
 import { DeliverTo } from "@/components/storefront/deliver-to";
 import { NotificationBell, type BellNotification } from "@/components/account/notification-bell";
+import { SigninSpotlight } from "@/components/storefront/onboarding/signin-spotlight";
 
 export function SiteHeader({
   logoUrl,
@@ -143,17 +144,19 @@ export function SiteHeader({
               </Link>
             </Button>
           ) : (
-            <Button
-              asChild
-              variant="ghost"
-              size="sm"
-              className={cn("h-11 gap-1.5 px-3 sm:h-10", onDeep)}
-            >
-              <Link href="/login">
-                <User className="size-[18px]" />
-                <span className="text-sm font-semibold">Sign in</span>
-              </Link>
-            </Button>
+            <SigninSpotlight>
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className={cn("h-11 gap-1.5 px-3 sm:h-10", onDeep)}
+              >
+                <Link href="/login">
+                  <User className="size-[18px]" />
+                  <span className="text-sm font-semibold">Sign in</span>
+                </Link>
+              </Button>
+            </SigninSpotlight>
           )}
           <Button
             asChild

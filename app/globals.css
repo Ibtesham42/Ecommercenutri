@@ -472,6 +472,25 @@
     pointer-events: none;
     animation: nutri-ripple 0.6s ease-out forwards;
   }
+
+  /* First-visit sign-in spotlight: a soft green→gold breathing ring around the
+     header's Sign in button. Brand tokens (theme-aware) via color-mix. */
+  @keyframes nutri-onboard-glow {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 1px color-mix(in oklab, var(--primary) 28%, transparent),
+        0 0 0 0 color-mix(in oklab, var(--primary) 0%, transparent);
+    }
+    50% {
+      box-shadow:
+        0 0 0 3px color-mix(in oklab, var(--primary) 14%, transparent),
+        0 0 16px 2px color-mix(in oklab, var(--gold) 45%, transparent);
+    }
+  }
+  .onboard-glow {
+    animation: nutri-onboard-glow 2.4s ease-in-out infinite;
+  }
 }
 
 /* Image blur-up reveal: starts blurred/transparent, clears when loaded. */
@@ -495,6 +514,12 @@
     filter: blur(0);
     transform: none;
   }
+}
+
+/* Static fallback so the sign-in spotlight is still discoverable without motion
+   (the animated ring above layers on only when motion is allowed). */
+.onboard-glow {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 35%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
