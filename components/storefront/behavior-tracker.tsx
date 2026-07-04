@@ -15,7 +15,11 @@ export type TrackPayload = {
     | "CHECKOUT_START"
     | "HOME_VIEW"
     | "PAYMENT_START"
-    | "RAGE_CLICK";
+    | "RAGE_CLICK"
+    | "QUIZ_START"
+    | "POPUP_VIEW"
+    | "POPUP_CONVERT"
+    | "STICKY_CLICK";
   productId?: string;
   categoryId?: string;
   query?: string;

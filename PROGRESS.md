@@ -13,7 +13,26 @@ _Last updated: 2026-07-04 · Auto-maintained. Update at the end of every milesto
 | Database (Neon)     | ✅ live, migrated (…`affiliate_program`, `marketing_hub`, `marketing_automation`, `push_subscriptions`, `analytics_tracking`), seeded |
 | Current milestone   | **M0–M6 + RBAC + CMS + Affiliate Program + Admin bulk actions + Marketing Hub + Advanced analytics — production-ready** |
 
-## Latest: Analytics accuracy fixes (2026-07-04)
+## Latest: Conversion Optimization — Phase 1 (2026-07-05)
+Additive signup-conversion features, all admin-toggleable via the new `StoreSetting.growth` JSON blob
+(migration `growth_conversion`; also new `HealthQuizResult` model + `QUIZ_*`/`POPUP_*`/`COUPON_CLAIM`/
+`STICKY_CLICK` event types). Existing analytics/checkout/admin/AI untouched.
+- **AI Health Score Quiz** (`/quiz`): 6 questions → deterministic 0–100 score + band + rule-based recs
+  (optional Groq summary) → **quiz-first, signup-to-unlock** (`quizSignup` creates user + claims the
+  anon result + grants the shared welcome coupon + signs in; `claimQuizForCurrentUser` on `/account`
+  covers Google/normal-register). Premium animated stepper + SVG score gauge (no new deps). Dashboard
+  "My Health Score" card. `lib/quiz/*`, `lib/actions/quiz.ts`, `lib/queries/quiz.ts`.
+- **Smart Welcome Popup**: first-time + logged-out only, not on checkout, once/24h, after 10s or 40%
+  scroll. **Sticky Offer Bar**: dismissible 24h, Get Coupon + Take Assessment. **Trust Section**
+  below the hero: static badges + REAL DB stats above a threshold (never fabricated).
+- **Welcome coupon**: shared public `WELCOME20` (PERCENT 20, one-use), synced on admin save.
+- **Analytics**: quiz/popup/sticky funnel events → new **Conversion & growth** section on
+  `/admin/insights` (`lib/queries/conversion.ts`).
+- **Admin control** `/admin/growth` (`appearance` perm): feature toggles + coupon + copy.
+- Verified (18/18 data-path + logic checks). Typecheck/lint/build green; shared First Load JS still
+  103 kB (`/quiz` route 9 kB, lazy).
+
+## Analytics accuracy fixes (2026-07-04)
 Audited the new journey/heatmap tracking against live data (read-only DB audit script) and fixed
 three real bugs that made metrics unrealistic:
 - **Identity fragmentation** (broke the funnel — Landing showed ~4%): concurrent first-load beacons

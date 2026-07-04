@@ -36,6 +36,7 @@ model User {
   reviews       Review[]
   sessions      Session[]
   wishlist      WishlistItem[]
+  healthQuizzes HealthQuizResult[]
 }
 
 model Account {
@@ -950,6 +951,31 @@ model StoreSetting {
   // PWA install-prompt config (enabled/title/description/buttons/remindDays).
   // Merged over defaults by lib/pwa-settings.ts.
   pwa                             Json?
+  // Conversion-optimization config (Health Score quiz, welcome popup, sticky
+  // offer bar, trust section, welcome coupon). Additive JSON blob — merged over
+  // defaults by lib/growth-settings.ts. Managed from the admin "Growth" page.
+  growth                          Json?
+}
+
+// Result of the "Discover Your Nutriyet Health Score" quiz. Taken anonymously
+// (keyed by anonId), then claimed to a user account on signup (userId set,
+// claimedAt stamped) to unlock the full report + welcome coupon.
+model HealthQuizResult {
+  id              String    @id @default(cuid())
+  userId          String?
+  anonId          String? // nut_anon cookie id, for pre-signup ownership + claim
+  score           Int // 0-100
+  band            String // e.g. "Thriving" | "Balanced" | "Getting Started"
+  answers         Json // { goal, age, exercise, snack, spice, water }
+  recommendations Json // { summary, tips[], focus[] } — AI or rule-based
+  couponCode      String?
+  claimedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  user            User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([anonId])
+  @@index([createdAt])
 }
 
 model AISetting {
@@ -1035,6 +1061,13 @@ enum UserEventType {
   HOME_VIEW
   PAYMENT_START
   RAGE_CLICK
+  QUIZ_START
+  QUIZ_COMPLETE
+  QUIZ_SIGNUP
+  COUPON_CLAIM
+  POPUP_VIEW
+  POPUP_CONVERT
+  STICKY_CLICK
 }
 
 enum ReturnStatus {

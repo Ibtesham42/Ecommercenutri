@@ -15,6 +15,8 @@ import { HomeHero } from "@/components/storefront/home/home-hero";
 import { HomeAiBanner } from "@/components/storefront/home/home-ai-banner";
 import { HomeWhyChooseUs } from "@/components/storefront/home/home-why-choose-us";
 import { HomeTestimonials } from "@/components/storefront/home/home-testimonials";
+import { TrustSection } from "@/components/storefront/growth/trust-section";
+import { getGrowthSettings } from "@/lib/growth-settings";
 import {
   getFeaturedProducts,
   getBestSellers,
@@ -52,6 +54,7 @@ export default async function HomePage() {
     trendingProducts,
     combos,
     showcase,
+    growth,
   ] = await Promise.all([
     getFeaturedProducts(content.featured.limit ?? 8),
     getBestSellers(content.bestSellers.limit ?? 8),
@@ -64,6 +67,7 @@ export default async function HomePage() {
     trending({ windowDays: 7, limit: content.trending.limit ?? 8 }),
     productCombos(content.combos.limit ?? 4),
     getActiveShowcase(),
+    getGrowthSettings(),
   ]);
 
   // Trending excludes what's already shown in featured/best-sellers above.
@@ -243,6 +247,14 @@ export default async function HomePage() {
   const visible = sectionOrder.filter((s) => s.enabled && sections[s.key] != null);
   const hasStories = visible.some((s) => s.key === "stories");
 
+  // Trust section renders right below the hero banner (or the hero slider if the
+  // banner is hidden, else the first section). Admin-toggleable; always additive.
+  const trustAfterKey = growth.trustEnabled
+    ? visible.find((s) => s.key === "hero")?.key ??
+      visible.find((s) => s.key === "heroSlider")?.key ??
+      visible[0]?.key
+    : null;
+
   const showcaseNode = showcase.enabled ? (
     <Showcase3D items={showcase.items} />
   ) : null;
@@ -262,6 +274,7 @@ export default async function HomePage() {
           {/* Stories stay on top; the 3D showcase sits right below them. */}
           {s.key === "stories" && showcaseNode}
           {s.key === "stories" && <BannerStrip position="homeTop" fullBleed className="py-6" />}
+          {s.key === trustAfterKey && <TrustSection />}
         </Fragment>
       ))}
     </>

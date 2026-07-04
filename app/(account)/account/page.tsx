@@ -4,6 +4,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ProfileForm } from "@/components/account/profile-form";
 import { PushOptIn } from "@/components/account/push-optin";
+import { MyHealthScoreCard } from "@/components/account/my-health-score";
+import { claimQuizForCurrentUser } from "@/lib/actions/quiz";
+import { getMyHealthScore } from "@/lib/queries/quiz";
 import { env } from "@/lib/env";
 import { formatDate } from "@/lib/format";
 
@@ -24,8 +27,14 @@ export default async function ProfilePage() {
 
   if (!user) return null;
 
+  // Attach any pending anonymous quiz result (taken before signup) + grant the
+  // welcome coupon; idempotent. Then load the report for the dashboard card.
+  await claimQuizForCurrentUser();
+  const healthScore = await getMyHealthScore(sessionUser!.id);
+
   return (
     <div className="max-w-xl space-y-5">
+      {healthScore && <MyHealthScoreCard data={healthScore} />}
       <div className="rounded-2xl border bg-card p-4 shadow-elev-1 sm:p-5">
         <div className="flex items-center justify-between">
           <div>

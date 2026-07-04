@@ -30,6 +30,7 @@ import {
   Sparkles,
   LineChart,
   Search,
+  Rocket,
   Settings,
   Menu,
 } from "lucide-react";
@@ -76,6 +77,7 @@ const nav: NavItem[] = [
   { href: "/admin/customers", label: "Customers", icon: Users, permission: "customers" },
   { href: "/admin/affiliates", label: "Affiliates", icon: Megaphone, permission: "affiliates" },
   { href: "/admin/marketing", label: "Marketing Hub", icon: Send, permission: "marketing" },
+  { href: "/admin/growth", label: "Growth", icon: Rocket, permission: "appearance" },
   { href: "/admin/messages", label: "Messages", icon: Mail, permission: "customers" },
   { href: "/admin/b2b", label: "B2B Inquiries", icon: Briefcase, permission: "customers" },
   { href: "/admin/notifications", label: "Notifications", icon: Bell, permission: "customers" },

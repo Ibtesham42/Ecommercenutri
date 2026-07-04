@@ -8,8 +8,11 @@ import { VisitTracker } from "@/components/storefront/visit-tracker";
 import { JourneyTracker } from "@/components/storefront/journey-tracker";
 import { EngagementTracker } from "@/components/storefront/engagement-tracker";
 import { PwaInstallPrompt } from "@/components/storefront/pwa-install-prompt";
+import { OfferBar } from "@/components/storefront/growth/offer-bar";
+import { WelcomePopup } from "@/components/storefront/growth/welcome-popup";
 import { getStoreSettings } from "@/lib/queries/settings";
 import { getPwaSettings } from "@/lib/pwa-settings";
+import { getGrowthSettings } from "@/lib/growth-settings";
 import { env, isConfigured } from "@/lib/env";
 import { getCurrentUser } from "@/lib/auth";
 import { getNotifications, getUnreadCount } from "@/lib/queries/notifications";
@@ -22,6 +25,7 @@ export default async function StorefrontLayout({
 }) {
   const settings = await getStoreSettings();
   const pwa = await getPwaSettings();
+  const growth = await getGrowthSettings();
 
   // Notification bell (signed-in users). Best-effort — never blocks the layout.
   const user = await getCurrentUser();
@@ -56,6 +60,7 @@ export default async function StorefrontLayout({
       {themeVars && (
         <style dangerouslySetInnerHTML={{ __html: `:root,.dark{${themeVars}}` }} />
       )}
+      {growth.stickyBarEnabled && <OfferBar text={growth.stickyText} />}
       <AnnouncementBar
         active={settings.announcementActive}
         message={settings.announcement}
@@ -92,6 +97,14 @@ export default async function StorefrontLayout({
         signedIn={!!user}
         logoUrl={settings.logo}
       />
+      {growth.welcomePopupEnabled && (
+        <WelcomePopup
+          isLoggedIn={!!user}
+          title={growth.popupTitle}
+          subtitle={growth.popupSubtitle}
+          couponPercent={growth.couponPercent}
+        />
+      )}
     </div>
   );
 }

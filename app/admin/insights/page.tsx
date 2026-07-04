@@ -28,6 +28,7 @@ import { getBusinessIntelligence, type RankRow, type Alert } from "@/lib/queries
 import { getRangeAnalytics, type Kpi } from "@/lib/queries/analytics";
 import { getJourneyAnalytics, type JourneyInput } from "@/lib/queries/journey";
 import { getHeatmapAnalytics, getRageClicks, getSessionReplays } from "@/lib/queries/engagement";
+import { getConversionAnalytics } from "@/lib/queries/conversion";
 import { getMarketingOverview } from "@/lib/queries/marketing";
 import {
   generateBusinessSummary,
@@ -39,6 +40,7 @@ import { JourneySection } from "@/components/admin/insights/journey-section";
 import { HeatmapSection } from "@/components/admin/insights/heatmap-section";
 import { RageSection } from "@/components/admin/insights/rage-section";
 import { ReplaySection } from "@/components/admin/insights/replay-section";
+import { ConversionSection } from "@/components/admin/insights/conversion-section";
 import { formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = { title: "AI Insights", robots: { index: false } };
@@ -125,7 +127,7 @@ export default async function AdminInsightsPage({
 }) {
   await guardSection("ai");
   const sp = await searchParams;
-  const [bi, ra, marketing, journey, heat, rage, replays] = await Promise.all([
+  const [bi, ra, marketing, journey, heat, rage, replays, conversion] = await Promise.all([
     getBusinessIntelligence(),
     getRangeAnalytics(sp),
     getMarketingOverview().catch(() => null),
@@ -133,6 +135,7 @@ export default async function AdminInsightsPage({
     getHeatmapAnalytics(sp),
     getRageClicks(sp),
     getSessionReplays().catch(() => []),
+    getConversionAnalytics(sp),
   ]);
   const [summary, plan, journeyDiagnosis, heatInsights] = await Promise.all([
     generateBusinessSummary(bi),
@@ -478,6 +481,9 @@ export default async function AdminInsightsPage({
           )}
         </div>
       </div>
+
+      {/* Conversion / growth funnel (Phase 1 signup drivers) */}
+      <ConversionSection data={conversion} />
 
       {/* Customer journey analytics (selected range + filters) */}
       <JourneySection journey={journey} diagnosis={journeyDiagnosis} />

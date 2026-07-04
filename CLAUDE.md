@@ -571,6 +571,42 @@ permission. Built modular so Push/WhatsApp/SMS and recurring/automation slot in 
   `requirePermission("marketing")`, `notify`/`sendEmail`, the Groq provider seam, `ImageUploadField`.
   Degrades gracefully — Email no-ops to console without Resend, AI falls back to a heuristic without Groq.
 
+## 8e. Conversion Optimization (Growth — Phase 1)
+
+Signup-conversion features layered additively on the storefront, all admin-toggleable and gated so
+the site is unchanged when off. Config lives in the additive **`StoreSetting.growth` JSON blob**
+(`lib/growth-settings.ts#resolveGrowth`/`getGrowthSettings`, same zero-migration pattern as
+`pwa`/`seo`): `quizEnabled`, `welcomePopupEnabled`, `stickyBarEnabled`, `trustEnabled`,
+`couponCode` (default `WELCOME20`), `couponPercent` (default 20), + popup/sticky copy. Migration
+`growth_conversion`.
+
+- **AI Health Score Quiz** (`/quiz`, `components/storefront/quiz/*`): 6-question assessment
+  (`lib/quiz/questions.ts` — single source of truth, client-safe) → `scoreQuiz` (`lib/quiz/score.ts`,
+  pure/deterministic 0–100 + band + rule-based recommendations; **not** medical) → result screen
+  (dependency-free SVG `ScoreGauge`, premium animated stepper, reduced-motion gated). Flow is
+  **quiz-first, signup-to-unlock** (highest converting): `completeQuiz` (server action) scores +
+  persists a `HealthQuizResult` keyed by the `nut_anon` cookie (set in-action if absent) + optional
+  Groq summary enhancement (rule-based fallback), returns a teaser; the full report + coupon unlock
+  after `quizSignup` (additive action — creates user + claims the result by id/anon + grants the
+  coupon + `signIn`, leaving the existing register flow untouched). `claimQuizForCurrentUser` runs on
+  `/account` load to claim pending anon results for the Google/normal-register paths (idempotent).
+  Dashboard **"My Health Score"** card (`components/account/my-health-score.tsx`).
+- **Smart Welcome Popup** (`components/storefront/growth/welcome-popup.tsx`): first-time + logged-out
+  only, never on checkout/quiz/auth, once per 24h (localStorage), triggers after 10s OR 40% scroll.
+- **Sticky Offer Bar** (`offer-bar.tsx`): dismissible (24h), Get Coupon + Take Assessment. Renders in
+  normal flow at the very top (NOT fixed — never fights the sticky header).
+- **Trust Section** (`trust-section.tsx` + `lib/queries/trust.ts`): static product-promise badges +
+  **real** DB stats (orders delivered / verified reviews + avg rating / returning customers) shown
+  ONLY above a credibility threshold — **never fabricated**. Injected below the hero on the homepage.
+- **Welcome coupon** is a shared public `Coupon` (PERCENT, perUserLimit 1) kept in sync on admin save
+  + `ensureWelcomeCoupon`; `revealWelcomeCoupon` surfaces + copies it and records the claim.
+- **Analytics**: new `UserEventType` values `QUIZ_START`/`QUIZ_COMPLETE`/`QUIZ_SIGNUP`/`COUPON_CLAIM`/
+  `POPUP_VIEW`/`POPUP_CONVERT`/`STICKY_CLICK` (client-fired ones added to the `/api/track` allowlist;
+  quiz-complete/signup/coupon fire server-side). Surfaced in a **Conversion & growth** section on
+  `/admin/insights` (`lib/queries/conversion.ts`, additive — existing analytics untouched).
+- **Admin control** (`/admin/growth`, `appearance` permission): toggles + coupon code/percent + copy
+  (`components/admin/growth-manager.tsx`, `lib/actions/admin/growth.ts`, revalidates layout+home).
+
 ## 9. Security Rules
 
 - **All secrets in env vars** (`.env`, gitignored). Never print, log, or commit

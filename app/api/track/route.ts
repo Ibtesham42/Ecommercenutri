@@ -26,6 +26,10 @@ const CLIENT_EVENTS = [
   "HOME_VIEW",
   "PAYMENT_START",
   "RAGE_CLICK",
+  "QUIZ_START",
+  "POPUP_VIEW",
+  "POPUP_CONVERT",
+  "STICKY_CLICK",
 ] as const satisfies readonly UserEventType[];
 
 const bodySchema = z.object({
