@@ -474,22 +474,25 @@
   }
 
   /* First-visit sign-in spotlight: a soft green→gold breathing ring around the
-     header's Sign in button. Brand tokens (theme-aware) via color-mix. */
+     header's Sign in button — noticeable but calm. Brand tokens (theme-aware)
+     via color-mix; a gentle scale gives the "breathing" pulse. */
   @keyframes nutri-onboard-glow {
     0%,
     100% {
       box-shadow:
-        0 0 0 1px color-mix(in oklab, var(--primary) 28%, transparent),
-        0 0 0 0 color-mix(in oklab, var(--primary) 0%, transparent);
+        0 0 0 2px color-mix(in oklab, var(--primary) 45%, transparent),
+        0 0 10px 1px color-mix(in oklab, var(--gold) 30%, transparent);
+      transform: scale(1);
     }
     50% {
       box-shadow:
-        0 0 0 3px color-mix(in oklab, var(--primary) 14%, transparent),
-        0 0 16px 2px color-mix(in oklab, var(--gold) 45%, transparent);
+        0 0 0 4px color-mix(in oklab, var(--primary) 26%, transparent),
+        0 0 22px 5px color-mix(in oklab, var(--gold) 60%, transparent);
+      transform: scale(1.06);
     }
   }
   .onboard-glow {
-    animation: nutri-onboard-glow 2.4s ease-in-out infinite;
+    animation: nutri-onboard-glow 2s ease-in-out infinite;
   }
 }
 
@@ -516,10 +519,12 @@
   }
 }
 
-/* Static fallback so the sign-in spotlight is still discoverable without motion
-   (the animated ring above layers on only when motion is allowed). */
+/* Static fallback so the sign-in spotlight is still clearly discoverable without
+   motion (the animated ring above layers on only when motion is allowed). */
 .onboard-glow {
-  box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary) 35%, transparent);
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--primary) 50%, transparent),
+    0 0 12px 2px color-mix(in oklab, var(--gold) 38%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
