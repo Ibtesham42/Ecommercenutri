@@ -13,6 +13,7 @@
  */
 
 import { trackClient } from "@/components/storefront/behavior-tracker";
+import { getClientId } from "@/lib/client-id";
 
 type SectionAgg = { c: number; h: number; t: number; v: number };
 type ReplayEv = [number, number, number, number?];
@@ -114,6 +115,7 @@ function flushPage(): void {
   if (recording && (replayEv.length > 2 || dur > 3000)) {
     beacon("/api/replay", {
       id: recordingId,
+      cid: getClientId() || undefined,
       path,
       w: Math.min(5000, Math.max(200, window.innerWidth)),
       h: Math.min(5000, Math.max(200, window.innerHeight)),
@@ -298,7 +300,12 @@ export function start(initialPath: string): void {
   started = true;
   initReplaySampling();
 
-  io = new IntersectionObserver(onIntersect, { threshold: 0.4 });
+  // Count an impression as soon as ANY part of a section enters the viewport —
+  // large / below-the-fold sections (footer, hero) rarely hit a high ratio, so
+  // a 0.4 threshold starved them of impressions and made their click-rate
+  // wildly unstable. The [0, 0.5] thresholds still let us prefer the more-
+  // visible state for time-in-view accounting.
+  io = new IntersectionObserver(onIntersect, { threshold: [0, 0.5] });
 
   document.addEventListener("click", onClick, { capture: true, passive: true });
   window.addEventListener("scroll", onScroll, { passive: true });

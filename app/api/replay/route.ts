@@ -29,6 +29,7 @@ const evSchema = z.tuple([
 
 const bodySchema = z.object({
   id: z.string().regex(/^[a-f0-9][a-f0-9-]{15,39}$/i),
+  cid: z.string().regex(/^[a-f0-9-]{16,64}$/i).optional(),
   path: z.string().max(200),
   w: z.number().min(200).max(5000),
   h: z.number().min(200).max(5000),
@@ -58,7 +59,9 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ ok: false }, { status: 400 });
 
   const anonId =
-    req.headers.get("cookie")?.match(/(?:^|;\s*)nut_anon=([^;]+)/)?.[1] ?? null;
+    parsed.data.cid ??
+    req.headers.get("cookie")?.match(/(?:^|;\s*)nut_anon=([^;]+)/)?.[1] ??
+    null;
   const rl = await checkRateLimit(limiters.api, `replay:${anonId ?? "anon"}`);
   if (!rl.success) return NextResponse.json({ ok: false }, { status: 429 });
 

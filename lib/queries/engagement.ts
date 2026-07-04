@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { cached } from "@/lib/redis";
 import { resolveRange, type RangeInput } from "@/lib/queries/analytics";
 import { HEAT_SECTIONS, PAGE_SECTION, PAGE_GROUP_LABELS, heatSectionLabel } from "@/lib/heat-sections";
+import { CONFIDENCE } from "@/lib/analytics-confidence";
 
 /**
  * Website Heatmap + Rage-click + Session-replay reads for /admin/insights.
@@ -22,7 +23,8 @@ export type HeatSection = {
   hovers: number; // desktop hover-dwells
   taps: number; // mobile/tablet clicks
   avgTimeMs: number; // avg visible time per impression
-  score: number; // engagement score 0-100
+  score: number | null; // engagement score 0-100, or null when sample too small
+  lowSample: boolean; // views below the per-section significance floor
 };
 
 export type HeatPage = {
@@ -38,9 +40,11 @@ export type HeatPage = {
 
 export type HeatmapAnalytics = {
   rangeLabel: string;
-  sections: HeatSection[]; // sorted by score desc
+  sections: HeatSection[]; // confident sections (by score desc) then low-sample
   pages: HeatPage[]; // sorted by visits desc
   hasData: boolean;
+  totalImpressions: number;
+  confidence: { ok: boolean; impressions: number; min: number };
 };
 
 export async function getHeatmapAnalytics(input: RangeInput): Promise<HeatmapAnalytics> {
@@ -86,60 +90,70 @@ export async function getHeatmapAnalytics(input: RangeInput): Promise<HeatmapAna
         }
       }
 
-      // Raw per-section signals → 0-100 engagement score. Each component is
-      // normalized against the best section in the period, so the score is
-      // relative ("how does this section compare to your best-performing one").
+      // Raw per-section signals. A section is only SCORED and RANKED once it
+      // clears the per-section impression floor — otherwise a section with a
+      // handful of views (e.g. the footer, seen once and clicked once = "100%
+      // CTR") would be crowned the best performer. Below-floor sections are
+      // kept, flagged low-sample, and shown as "collecting data".
+      const FLOOR = CONFIDENCE.minSectionImpressions;
       const pre = [...bySection.entries()].map(([k, a]) => ({
         key: k,
         ...a,
         clickRate: a.views > 0 ? (a.clicks / a.views) * 100 : 0,
-        avgTimeMs: a.views > 0 ? a.timeMs / a.views : 0,
+        avgTime: a.views > 0 ? a.timeMs / a.views : 0,
         interactRate: a.views > 0 ? ((a.clicks + a.hovers) / a.views) * 100 : 0,
+        confident: a.views >= FLOOR,
       }));
-      const maxClickRate = Math.max(1e-6, ...pre.map((s) => s.clickRate));
-      const maxTime = Math.max(1e-6, ...pre.map((s) => s.avgTimeMs));
-      const maxInteract = Math.max(1e-6, ...pre.map((s) => s.interactRate));
 
-      const sections: HeatSection[] = pre
-        .map((s) => ({
-          key: s.key,
-          label: heatSectionLabel(s.key),
-          views: s.views,
-          clicks: s.clicks,
-          clickRate: s.clickRate,
-          hovers: s.hovers,
-          taps: s.taps,
-          avgTimeMs: Math.round(s.avgTimeMs),
-          score:
-            s.views === 0
-              ? 0
-              : Math.round(
-                  100 *
-                    (0.45 * (s.clickRate / maxClickRate) +
-                      0.3 * (s.avgTimeMs / maxTime) +
-                      0.25 * (s.interactRate / maxInteract)),
-                ),
-        }))
-        .sort((a, b) => b.score - a.score);
+      // Normalize each score component ONLY against confident sections, so noise
+      // from tiny samples can't set the scale.
+      const confident = pre.filter((s) => s.confident);
+      const maxClickRate = Math.max(1e-6, ...confident.map((s) => s.clickRate));
+      const maxTime = Math.max(1e-6, ...confident.map((s) => s.avgTime));
+      const maxInteract = Math.max(1e-6, ...confident.map((s) => s.interactRate));
 
-      // Sections that exist in the registry but saw no data yet still show
-      // (score 0) so the admin sees full coverage.
-      const seen = new Set(sections.map((s) => s.key));
-      for (const k of Object.keys(HEAT_SECTIONS)) {
-        if (!seen.has(k)) {
-          sections.push({
-            key: k,
-            label: heatSectionLabel(k),
-            views: 0,
-            clicks: 0,
-            clickRate: 0,
-            hovers: 0,
-            taps: 0,
-            avgTimeMs: 0,
-            score: 0,
-          });
-        }
-      }
+      const toSection = (s: (typeof pre)[number]): HeatSection => ({
+        key: s.key,
+        label: heatSectionLabel(s.key),
+        views: s.views,
+        clicks: s.clicks,
+        clickRate: s.clickRate,
+        hovers: s.hovers,
+        taps: s.taps,
+        avgTimeMs: Math.round(s.avgTime),
+        lowSample: !s.confident,
+        score: s.confident
+          ? Math.round(
+              100 *
+                (0.45 * (s.clickRate / maxClickRate) +
+                  0.3 * (s.avgTime / maxTime) +
+                  0.25 * (s.interactRate / maxInteract)),
+            )
+          : null,
+      });
+
+      const scored = pre.filter((s) => s.confident).map(toSection).sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+      const lowSample = pre.filter((s) => !s.confident).map(toSection).sort((a, b) => b.views - a.views);
+
+      // Registry sections with no data yet round out the coverage list.
+      const seen = new Set(pre.map((s) => s.key));
+      const untracked: HeatSection[] = Object.keys(HEAT_SECTIONS)
+        .filter((k) => !seen.has(k))
+        .map((k) => ({
+          key: k,
+          label: heatSectionLabel(k),
+          views: 0,
+          clicks: 0,
+          clickRate: 0,
+          hovers: 0,
+          taps: 0,
+          avgTimeMs: 0,
+          score: null,
+          lowSample: true,
+        }));
+
+      const sections: HeatSection[] = [...scored, ...lowSample, ...untracked];
+      const totalImpressions = pre.reduce((n, s) => n + s.views, 0);
 
       const pages: HeatPage[] = [...byPage.entries()]
         .map(([page, p]) => ({
@@ -159,11 +173,24 @@ export async function getHeatmapAnalytics(input: RangeInput): Promise<HeatmapAna
         sections,
         pages,
         hasData: rows.length > 0,
+        totalImpressions,
+        confidence: {
+          ok: totalImpressions >= CONFIDENCE.minHeatmapImpressions,
+          impressions: totalImpressions,
+          min: CONFIDENCE.minHeatmapImpressions,
+        },
       };
     });
   } catch (err) {
     console.error("[heatmap] query failed:", err);
-    return { rangeLabel: r.label, sections: [], pages: [], hasData: false };
+    return {
+      rangeLabel: r.label,
+      sections: [],
+      pages: [],
+      hasData: false,
+      totalImpressions: 0,
+      confidence: { ok: false, impressions: 0, min: CONFIDENCE.minHeatmapImpressions },
+    };
   }
 }
 

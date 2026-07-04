@@ -1,4 +1,4 @@
-import { Flame, Sparkles, MousePointerClick } from "lucide-react";
+import { Flame, Sparkles, MousePointerClick, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { HeatmapAnalytics } from "@/lib/queries/engagement";
 import type { AiText } from "@/lib/ai/insights";
@@ -31,17 +31,33 @@ export function HeatmapSection({
   insights: AiText;
 }) {
   const withData = heat.sections.filter((s) => s.views > 0);
+  const lowConfidence = !heat.confidence.ok;
 
   return (
     <section className="rounded-2xl border bg-background p-5" id="heatmap">
       <h2 className="mb-1 flex items-center gap-2 font-semibold">
         <Flame className="size-4 text-primary" /> Website heatmap analytics
         <span className="text-xs font-normal text-muted-foreground">· {heat.rangeLabel}</span>
+        {lowConfidence && heat.hasData && (
+          <Badge variant="secondary" className="text-[10px]">Low confidence</Badge>
+        )}
       </h2>
       <p className="mb-4 text-xs text-muted-foreground">
         Engagement score (0–100) per tracked section — clicks, hovers, taps and time in view,
-        relative to your best section. Color intensity = engagement.
+        relative to your best section. Color intensity = engagement. Sections are scored only after
+        they gather enough views to be reliable.
       </p>
+
+      {lowConfidence && heat.hasData && (
+        <div className="mb-4 flex items-start gap-2 rounded-xl border border-amber-300/50 bg-amber-50 p-3 text-sm text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+          <Info className="mt-0.5 size-4 shrink-0" />
+          <p>
+            Only {heat.totalImpressions} section view{heat.totalImpressions === 1 ? "" : "s"} collected
+            so far ({heat.confidence.min}+ needed) — treat rankings below as early signal, not
+            conclusions.
+          </p>
+        </div>
+      )}
 
       {/* AI read */}
       <div className="mb-5 rounded-xl border bg-gradient-to-br from-primary/10 to-transparent p-4">
@@ -60,26 +76,43 @@ export function HeatmapSection({
         </p>
       ) : (
         <>
-          {/* Engagement tiles (color = score) */}
+          {/* Engagement tiles (color = score; low-sample sections stay neutral
+              and read "Collecting data" rather than showing a noisy score). */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {heat.sections.map((s) => {
-              const tier = scoreTier(s.score);
+              const score = s.score;
+              const tier = score !== null ? scoreTier(score) : null;
               return (
                 <div
                   key={s.key}
                   className="rounded-xl border p-3"
-                  style={{
-                    backgroundColor: `color-mix(in oklab, var(--primary) ${Math.round(
-                      6 + (s.score / 100) * 38,
-                    )}%, transparent)`,
-                  }}
+                  style={
+                    score !== null
+                      ? {
+                          backgroundColor: `color-mix(in oklab, var(--primary) ${Math.round(
+                            6 + (score / 100) * 38,
+                          )}%, transparent)`,
+                        }
+                      : undefined
+                  }
                 >
                   <p className="truncate text-xs font-medium">{s.label}</p>
-                  <p className="mt-1 text-xl font-bold tabular-nums">{s.score}</p>
-                  <p className={`text-[10px] font-semibold ${tier.cls}`}>{tier.label} engagement</p>
-                  <p className="mt-0.5 text-[10px] tabular-nums text-muted-foreground">
-                    {nf.format(s.clicks)} clicks · {s.clickRate.toFixed(1)}% CTR
-                  </p>
+                  {score !== null && tier ? (
+                    <>
+                      <p className="mt-1 text-xl font-bold tabular-nums">{score}</p>
+                      <p className={`text-[10px] font-semibold ${tier.cls}`}>{tier.label} engagement</p>
+                      <p className="mt-0.5 text-[10px] tabular-nums text-muted-foreground">
+                        {nf.format(s.clicks)} clicks · {s.clickRate.toFixed(1)}% CTR
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="mt-1 text-sm font-semibold text-muted-foreground">Collecting data</p>
+                      <p className="mt-0.5 text-[10px] tabular-nums text-muted-foreground">
+                        {nf.format(s.views)} view{s.views === 1 ? "" : "s"} so far
+                      </p>
+                    </>
+                  )}
                 </div>
               );
             })}
@@ -111,7 +144,9 @@ export function HeatmapSection({
                       <td className="py-2 pr-3 text-right tabular-nums">{nf.format(s.hovers)}</td>
                       <td className="py-2 pr-3 text-right tabular-nums">{nf.format(s.taps)}</td>
                       <td className="py-2 pr-3 text-right tabular-nums">{fmtDur(s.avgTimeMs)}</td>
-                      <td className="py-2 text-right font-semibold tabular-nums">{s.score}</td>
+                      <td className="py-2 text-right font-semibold tabular-nums">
+                        {s.score !== null ? s.score : <span className="font-normal text-muted-foreground">—</span>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

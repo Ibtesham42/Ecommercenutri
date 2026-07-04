@@ -79,10 +79,16 @@ export function JourneySection({
       <h2 className="mb-1 flex items-center gap-2 font-semibold">
         <Route className="size-4 text-primary" /> Customer journey analytics
         <span className="text-xs font-normal text-muted-foreground">· {j.range.label}</span>
+        {!j.confidence.ok && j.totalSessions > 0 && (
+          <Badge variant="secondary" className="text-[10px]">Low confidence</Badge>
+        )}
       </h2>
       <p className="mb-4 text-xs text-muted-foreground">
         {nf.format(j.totalSessions)} shopper session{j.totalSessions === 1 ? "" : "s"}
         {j.filtered ? " (filtered)" : ""} — each stage counts unique shoppers reaching it.
+        {!j.confidence.ok && j.totalSessions > 0
+          ? ` Need ${j.confidence.min}+ for reliable conversion rates.`
+          : ""}
       </p>
 
       {/* Filters — plain GET form, same URL-driven pattern as the range filter. */}

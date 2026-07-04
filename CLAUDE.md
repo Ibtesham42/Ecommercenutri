@@ -867,6 +867,22 @@ See `PROGRESS.md` for the live tracker (status, blockers, next task).
     beacon routes are Zod-validated, rate-limited (`limiters.api`) and fail-open. Migration
     `analytics_tracking` (event cols) + `journey_heatmap_replay` (`HeatStat`, `SessionRecording`,
     enum values).
+  - **Accuracy invariants (do not regress):** (1) **One shopper = one id.** A durable client id
+    (`lib/client-id.ts`, localStorage `nut_cid`) is minted synchronously and sent as `cid` on every
+    `/api/track` + `/api/replay` beacon; the server prefers it over the cookie. This exists because
+    concurrent first-load beacons used to each mint a different anon id before the httpOnly cookie
+    landed, fragmenting one shopper into many "sessions" and collapsing the funnel (Landing showed
+    ~4%). Never revert to cookie-only identity. (2) **The engagement engine must start promptly** —
+    `engagement-tracker.tsx` loads it right after first paint AND on first interaction (pointerdown/
+    keydown/scroll/touch). The earlier requestIdleCallback/2.5s delay meant the click listener
+    attached seconds late, so early clicks were lost while impressions kept accruing (add-to-cart:
+    "31 views / 0 clicks" despite 114 CART_ADDs). (3) **Impressions use IO threshold `[0, 0.5]`** so
+    large/below-fold sections (footer, hero) get counted fairly. (4) **Confidence gating**
+    (`lib/analytics-confidence.ts`): heatmap sections are scored/ranked only above
+    `minSectionImpressions` (25) — below that `score` is `null` and they render "Collecting data",
+    never crowned #1; AI journey/heatmap builders return **"Not enough data yet"** below
+    `minJourneySessions` (30) / `minHeatmapImpressions` (150), and `heatFacts` never sends an
+    unscored (null) section to the model. UI shows a "Low confidence" badge + shortfall note.
 - **Groq `llama-3.3-70b-versatile` does NOT support the `json_schema` response
   format**, so AI SDK `generateObject` fails on it. We use `generateText` + a
   defensive JSON parse for structured search instead — also keeps us model/provider

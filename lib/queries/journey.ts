@@ -7,6 +7,7 @@ import {
   type RangeInput,
   type ResolvedRange,
 } from "@/lib/queries/analytics";
+import { CONFIDENCE } from "@/lib/analytics-confidence";
 
 /**
  * Customer Journey Analytics — the full shopper funnel from first visit to
@@ -60,6 +61,7 @@ export type JourneyAnalytics = {
   applied: JourneyFilters;
   filtered: boolean;
   totalSessions: number;
+  confidence: { ok: boolean; sessions: number; min: number };
   options: {
     sources: string[];
     states: string[];
@@ -174,6 +176,7 @@ function emptyJourney(r: ResolvedRange, applied: JourneyFilters): JourneyAnalyti
     applied,
     filtered: Object.values(applied).some(Boolean),
     totalSessions: 0,
+    confidence: { ok: false, sessions: 0, min: CONFIDENCE.minJourneySessions },
     options: { sources: [], states: [], cities: [], products: [] },
   };
 }
@@ -351,6 +354,11 @@ async function computeJourney(r: ResolvedRange, applied: JourneyFilters): Promis
     applied,
     filtered: Object.values(applied).some(Boolean),
     totalSessions: cur.length,
+    confidence: {
+      ok: cur.length >= CONFIDENCE.minJourneySessions,
+      sessions: cur.length,
+      min: CONFIDENCE.minJourneySessions,
+    },
     options: {
       sources: [...sources].sort(),
       states: topN(states, 25),

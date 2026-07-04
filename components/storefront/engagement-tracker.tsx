@@ -7,9 +7,13 @@ type Engine = typeof import("@/components/storefront/engagement-engine");
 
 /**
  * Thin shell for the engagement engine (heatmap + rage clicks + sampled
- * session replay). The engine is dynamic-imported after the browser goes idle
- * so it adds nothing to the critical path; this shell only relays route
- * changes. Renders nothing.
+ * session replay). The engine is dynamic-imported (a separate chunk, so it
+ * stays out of the shared First-Load JS) but started PROMPTLY — right after
+ * first paint and on the first interaction, whichever comes first. The old
+ * requestIdleCallback/2.5s delay meant the click listener attached seconds
+ * late, so early clicks (the bulk of them on a fast/low-traffic store) were
+ * never recorded while impressions kept accruing — hence "views but 0 clicks".
+ * This shell only loads the engine and relays route changes. Renders nothing.
  */
 export function EngagementTracker(): null {
   const pathname = usePathname();
@@ -19,7 +23,12 @@ export function EngagementTracker(): null {
 
   useEffect(() => {
     let cancelled = false;
-    const load = () => {
+    let started = false;
+
+    const start = () => {
+      if (started || cancelled) return;
+      started = true;
+      cleanupTriggers();
       import("@/components/storefront/engagement-engine")
         .then((m) => {
           if (cancelled) return;
@@ -28,16 +37,28 @@ export function EngagementTracker(): null {
         })
         .catch(() => {});
     };
-    const w = window as Window & {
-      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-      cancelIdleCallback?: (id: number) => void;
-    };
-    const idleId = w.requestIdleCallback?.(load, { timeout: 4000 });
-    const timerId = idleId === undefined ? window.setTimeout(load, 2500) : undefined;
+
+    // Start on the first real interaction so even the earliest clicks/scrolls
+    // are captured; these listeners are capture-phase + passive and remove
+    // themselves once the engine takes over.
+    const onFirst = () => start();
+    const triggers = ["pointerdown", "keydown", "scroll", "touchstart"] as const;
+    const addTriggers = () =>
+      triggers.forEach((t) => window.addEventListener(t, onFirst, { capture: true, passive: true, once: true }));
+    const cleanupTriggers = () =>
+      triggers.forEach((t) => window.removeEventListener(t, onFirst, { capture: true }));
+    addTriggers();
+
+    // ...and promptly after first paint even without interaction (idle browse).
+    const raf = requestAnimationFrame(() => {
+      // Two frames out keeps it off the critical paint path but still ~30ms in.
+      requestAnimationFrame(start);
+    });
+
     return () => {
       cancelled = true;
-      if (idleId !== undefined) w.cancelIdleCallback?.(idleId);
-      if (timerId !== undefined) clearTimeout(timerId);
+      cancelAnimationFrame(raf);
+      cleanupTriggers();
     };
   }, []);
 

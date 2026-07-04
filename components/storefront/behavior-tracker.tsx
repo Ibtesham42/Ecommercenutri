@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { getClientId } from "@/lib/client-id";
 
 export type TrackPayload = {
   type:
@@ -24,13 +25,16 @@ export type TrackPayload = {
 };
 
 /** Fire-and-forget client tracking — safe to call from anywhere. Uses keepalive
- *  so it survives navigation; failures are swallowed (tracking never blocks UX). */
+ *  so it survives navigation; failures are swallowed (tracking never blocks UX).
+ *  A durable client id is attached so all of a shopper's events share one
+ *  identity even before the server's anon cookie is set (see lib/client-id). */
 export function trackClient(payload: TrackPayload): void {
   try {
+    const cid = getClientId();
     void fetch("/api/track", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(cid ? { ...payload, cid } : payload),
       keepalive: true,
     }).catch(() => {});
   } catch {

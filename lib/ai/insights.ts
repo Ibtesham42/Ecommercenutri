@@ -6,7 +6,8 @@ import { formatPrice } from "@/lib/format";
 import type { BusinessIntelligence } from "@/lib/queries/bi";
 import type { RangeAnalytics } from "@/lib/queries/analytics";
 import type { JourneyAnalytics, JourneyStage } from "@/lib/queries/journey";
-import type { HeatmapAnalytics, RageIssue } from "@/lib/queries/engagement";
+import type { HeatmapAnalytics, HeatSection, RageIssue } from "@/lib/queries/engagement";
+import { notEnoughDataMessage } from "@/lib/analytics-confidence";
 
 export type AiText = { text: string; ai: boolean };
 
@@ -371,6 +372,10 @@ function templateJourneyDiagnosis(j: JourneyAnalytics): string {
 
 /** AI (or rule-based) diagnosis of where the journey leaks and what to do. */
 export async function generateJourneyDiagnosis(j: JourneyAnalytics): Promise<AiText> {
+  // Withhold recommendations until the sample is statistically meaningful.
+  if (!j.confidence.ok) {
+    return { text: notEnoughDataMessage("journey", j.confidence.sessions, j.confidence.min), ai: false };
+  }
   const fallback = () => ({ text: templateJourneyDiagnosis(j), ai: false });
   if (j.totalSessions === 0 || !aiAvailable()) return fallback();
   const settings = await getAISettings();
@@ -397,7 +402,10 @@ export async function generateJourneyDiagnosis(j: JourneyAnalytics): Promise<AiT
 function heatFacts(h: HeatmapAnalytics, rage: RageIssue[]): string {
   const lines = [`Section engagement (${h.rangeLabel}); score is 0-100 relative to the best section:`];
   for (const s of h.sections) {
-    if (s.views === 0) continue;
+    // Only feed the model sections with a real (confident) score — low-sample
+    // sections have a null score and would otherwise leak "score null" into the
+    // prompt (and the model would repeat it).
+    if (s.score === null) continue;
     lines.push(
       `${s.label}: score ${s.score}, ${s.views} impressions, ${s.clicks} clicks (${s.clickRate.toFixed(1)}% click rate), ${s.hovers} hovers, ${s.taps} mobile taps, avg ${fmtDur(s.avgTimeMs)} in view.`,
     );
@@ -419,12 +427,13 @@ function heatFacts(h: HeatmapAnalytics, rage: RageIssue[]): string {
 }
 
 function templateHeatmapInsights(h: HeatmapAnalytics, rage: RageIssue[]): string {
-  const withData = h.sections.filter((s) => s.views > 0);
-  if (withData.length === 0) {
-    return "Engagement tracking just went live — section scores appear here as shoppers browse. Check back after some traffic.";
+  // Only sections that cleared the significance floor carry a score.
+  const scored = h.sections.filter((s): s is HeatSection & { score: number } => s.score !== null);
+  if (scored.length === 0) {
+    return "Engagement tracking just went live — section scores appear here once sections gather enough views to be reliable. Check back after some traffic.";
   }
-  const best = withData[0];
-  const worst = [...withData].reverse().find((s) => s.key !== best.key);
+  const best = scored[0];
+  const worst = [...scored].reverse().find((s) => s.key !== best.key);
   const parts = [
     `${best.label} is your most engaging section (score ${best.score}, ${best.clickRate.toFixed(1)}% click rate) — keep your strongest offers there.`,
   ];
@@ -452,6 +461,10 @@ export async function generateHeatmapInsights(
   h: HeatmapAnalytics,
   rage: RageIssue[],
 ): Promise<AiText> {
+  // Withhold recommendations until enough section impressions are collected.
+  if (!h.confidence.ok) {
+    return { text: notEnoughDataMessage("heatmap", h.confidence.impressions, h.confidence.min), ai: false };
+  }
   const fallback = () => ({ text: templateHeatmapInsights(h, rage), ai: false });
   if (!h.hasData || !aiAvailable()) return fallback();
   const settings = await getAISettings();

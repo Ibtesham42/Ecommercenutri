@@ -36,6 +36,7 @@ const bodySchema = z.object({
   source: z.string().max(60).optional(),
   referrer: z.string().max(200).optional(),
   path: z.string().max(200).optional(),
+  cid: z.string().regex(/^[a-f0-9-]{16,64}$/i).optional(),
 });
 
 /**
@@ -68,13 +69,19 @@ export async function POST(req: Request) {
 
   const user = await getCurrentUser();
 
-  // Anonymous, privacy-preserving id for signed-out shoppers (no PII).
-  let anonId = req.headers
-    .get("cookie")
-    ?.match(/(?:^|;\s*)nut_anon=([^;]+)/)?.[1];
+  // Anonymous, privacy-preserving id for signed-out shoppers (no PII). Prefer
+  // the durable client id (stable across concurrent first-load beacons); fall
+  // back to the cookie, then mint one. Using the client id as the cookie value
+  // too keeps the identity consistent for requests that omit the body id.
+  const cookieAnon = req.headers.get("cookie")?.match(/(?:^|;\s*)nut_anon=([^;]+)/)?.[1];
+  let anonId = parsed.data.cid ?? cookieAnon;
   let setCookie = false;
   if (!user && !anonId) {
     anonId = crypto.randomUUID();
+  }
+  // Persist the resolved anon id when it isn't already the cookie value, so
+  // no-JS / cookie-only requests share the same identity.
+  if (!user && anonId && anonId !== cookieAnon) {
     setCookie = true;
   }
 

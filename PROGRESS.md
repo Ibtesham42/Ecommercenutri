@@ -13,7 +13,27 @@ _Last updated: 2026-07-04 · Auto-maintained. Update at the end of every milesto
 | Database (Neon)     | ✅ live, migrated (…`affiliate_program`, `marketing_hub`, `marketing_automation`, `push_subscriptions`, `analytics_tracking`), seeded |
 | Current milestone   | **M0–M6 + RBAC + CMS + Affiliate Program + Admin bulk actions + Marketing Hub + Advanced analytics — production-ready** |
 
-## Latest: Journey + Heatmap + Rage + Session Replay analytics (2026-07-04)
+## Latest: Analytics accuracy fixes (2026-07-04)
+Audited the new journey/heatmap tracking against live data (read-only DB audit script) and fixed
+three real bugs that made metrics unrealistic:
+- **Identity fragmentation** (broke the funnel — Landing showed ~4%): concurrent first-load beacons
+  each minted a fresh anon id before the httpOnly cookie landed, splitting one shopper into many
+  sessions (71 product-viewers had no page-view; only 7 had both). Fix: durable client id
+  (`lib/client-id.ts`, localStorage `nut_cid`) sent as `cid` on every `/api/track` + `/api/replay`
+  beacon; server prefers it over the cookie.
+- **Clicks lost to late engine start** (heatmap — add-to-cart showed 31 views / 0 clicks despite 114
+  CART_ADDs): the engine waited for requestIdleCallback/2.5s, attaching its click listener after the
+  clicks happened. Fix: `engagement-tracker.tsx` starts the engine right after first paint + on first
+  interaction. Also IO threshold `0.4 → [0, 0.5]` so footer/hero get fair impressions.
+- **No confidence gating** (footer with 1 view/1 click read as "100%, top section"): added
+  `lib/analytics-confidence.ts` floors — heatmap sections scored/ranked only above 25 impressions
+  (else `score=null` → "Collecting data", never crowned); AI journey/heatmap builders return "Not
+  enough data yet" below 30 sessions / 150 impressions; `heatFacts` no longer leaks null-score
+  sections to the model; UI shows "Low confidence" badges + shortfall notes.
+Verified end-to-end (12/12 checks: attribution, gating both directions, ranking floor, real AI
+output). Typecheck/lint/build green; First Load JS still 103 kB.
+
+## Journey + Heatmap + Rage + Session Replay analytics (2026-07-04)
 Four **additive** sections appended to `/admin/insights` (`ai` permission) — existing charts/KPIs/
 AI untouched; everything degrades to empty states and works keyless. Migration
 `journey_heatmap_replay` (`HeatStat`, `SessionRecording`, `UserEvent.path/city/region`,
