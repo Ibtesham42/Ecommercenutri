@@ -35,7 +35,10 @@ export function ProductCard({
   const lowStock = !outOfStock && totalStock <= 5;
 
   return (
-    <Card className="group card-lift relative flex h-full flex-col overflow-hidden rounded-2xl border-border/70 p-0 shadow-elev-1 hover:border-primary/40 hover:shadow-elev-2">
+    <Card
+      className="group card-lift relative flex h-full flex-col overflow-hidden rounded-2xl border-border/70 p-0 shadow-elev-1 hover:border-primary/40 hover:shadow-elev-2"
+      data-heat="product-card"
+    >
       <div className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex flex-col items-start gap-1">
         {product.isBestSeller && (
           <Badge className="badge-breathe gap-1 border-transparent bg-surface-deep text-surface-deep-foreground shadow-sm hover:bg-surface-deep">

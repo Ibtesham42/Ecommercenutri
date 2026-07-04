@@ -95,6 +95,26 @@ export async function getLiveSnapshot(): Promise<LiveSnapshot> {
   }
 }
 
+export type ReplayDetailResult =
+  | { ok: true; replay: import("@/lib/queries/engagement").ReplayDetail }
+  | { ok: false; error: string };
+
+/** Full recording (pages + samples) for the session-replay player dialog. */
+export async function getReplayDetail(id: unknown): Promise<ReplayDetailResult> {
+  try {
+    await requirePermission("ai");
+    if (typeof id !== "string" || !/^[a-f0-9-]{16,40}$/i.test(id)) {
+      return { ok: false, error: "Invalid recording." };
+    }
+    const { getSessionReplay } = await import("@/lib/queries/engagement");
+    const replay = await getSessionReplay(id);
+    return replay ? { ok: true, replay } : { ok: false, error: "Recording not found (it may have expired)." };
+  } catch (err) {
+    console.error("[admin/insights] replay detail failed:", err);
+    return { ok: false, error: "Couldn't load the recording." };
+  }
+}
+
 /** Answer an admin business question, grounded in the current BI snapshot. */
 export async function askBusinessQuestion(question: unknown): Promise<AskResult> {
   await requirePermission("ai");

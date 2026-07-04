@@ -27,7 +27,7 @@ export function VisitTracker(): null {
     } catch {
       /* unparsable referrer — send nothing */
     }
-    trackClient({ type: "PAGE_VIEW", referrer });
+    trackClient({ type: "PAGE_VIEW", referrer, path: location.pathname });
   }, []);
   return null;
 }

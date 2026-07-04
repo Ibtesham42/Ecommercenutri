@@ -13,7 +13,7 @@ export function HomeAiBanner({ content }: { content: AiBannerContent }) {
   const styled = Boolean(content.bgColor || content.textColor);
 
   return (
-    <section className="mx-auto w-full max-w-7xl px-4 py-16 max-sm:py-10">
+    <section className="mx-auto w-full max-w-7xl px-4 py-16 max-sm:py-10" data-heat="ai-assistant">
       <div
         className={cn(
           "relative overflow-hidden rounded-3xl px-6 py-12 shadow-elev-2 sm:px-12",

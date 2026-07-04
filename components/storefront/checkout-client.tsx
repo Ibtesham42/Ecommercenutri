@@ -21,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { trackClient } from "@/components/storefront/behavior-tracker";
 import {
   Dialog,
   DialogContent,
@@ -194,6 +195,8 @@ export function CheckoutClient({
       return;
     }
     setPlacing(true);
+    // Journey-funnel "Payment" stage — the shopper committed to paying.
+    trackClient({ type: "PAYMENT_START", path: "/checkout" });
     const res = await createOrder({
       items: payload,
       addressId: selectedId,

@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { trackEvent } from "@/lib/recommendations/events";
 import { checkRateLimit, limiters } from "@/lib/rate-limit";
 import { parseUA } from "@/lib/ua";
+import { requestGeo } from "@/lib/geo";
 import { env } from "@/lib/env";
 
 export const runtime = "nodejs";
@@ -22,6 +23,9 @@ const CLIENT_EVENTS = [
   "CLICK",
   "PAGE_VIEW",
   "CHECKOUT_START",
+  "HOME_VIEW",
+  "PAYMENT_START",
+  "RAGE_CLICK",
 ] as const satisfies readonly UserEventType[];
 
 const bodySchema = z.object({
@@ -31,6 +35,7 @@ const bodySchema = z.object({
   query: z.string().max(200).optional(),
   source: z.string().max(60).optional(),
   referrer: z.string().max(200).optional(),
+  path: z.string().max(200).optional(),
 });
 
 /**
@@ -78,6 +83,10 @@ export async function POST(req: Request) {
   if (!rl.success) return NextResponse.json({ ok: false }, { status: 429 });
 
   const { device } = parseUA(req.headers.get("user-agent") ?? "");
+  const geo = requestGeo(req.headers);
+
+  // Pathname only — strip any query/hash a crafted client might send.
+  const path = parsed.data.path?.split(/[?#]/)[0] || null;
 
   await trackEvent({
     type: parsed.data.type,
@@ -92,6 +101,9 @@ export async function POST(req: Request) {
       parsed.data.type === "PAGE_VIEW"
         ? externalReferrerHost(parsed.data.referrer)
         : null,
+    path,
+    city: geo.city,
+    region: geo.region,
   });
 
   const res = NextResponse.json({ ok: true });

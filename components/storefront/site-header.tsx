@@ -110,7 +110,7 @@ export function SiteHeader({
         {/* Desktop (lg+) search lives in this primary row and gets a generous,
             stable slot — the nav moved to its own row below, so there's no space
             competition and the field can never collapse. */}
-        <div className="mx-4 hidden flex-1 lg:block lg:max-w-xl xl:max-w-2xl">
+        <div className="mx-4 hidden flex-1 lg:block lg:max-w-xl xl:max-w-2xl" data-heat="search-bar">
           <SearchBox />
         </div>
 
@@ -174,7 +174,7 @@ export function SiteHeader({
 
       {/* Row 2 — desktop nav bar (lg+). Search-forward primary row above keeps the
           nav in its own slim row, Amazon/Flipkart-style. */}
-      <nav className="hidden border-t border-border/60 lg:block">
+      <nav className="hidden border-t border-border/60 lg:block" data-heat="header-nav">
         <div className="mx-auto flex h-11 w-full max-w-7xl items-center gap-0.5 px-4">
           {siteConfig.mainNav.map((item) => {
             const active = isActiveNav(item.href);
@@ -202,14 +202,16 @@ export function SiteHeader({
           trigger that opens the full-screen SearchOverlay (app-style search). */}
       <div className="lg:hidden">
         <div className="mx-auto w-full max-w-7xl space-y-2 px-4 pb-2.5">
-          <MobileSearchTrigger />
+          <div data-heat="search-bar">
+            <MobileSearchTrigger />
+          </div>
           <DeliverTo />
         </div>
       </div>
 
       {/* Department chips — quick catalog jumps. Mobile/tablet only (desktop has
           the inline nav). Horizontal scroll-snap rail on the light chrome. */}
-      <div className="border-t border-border/60 lg:hidden">
+      <div className="border-t border-border/60 lg:hidden" data-heat="header-nav">
         <div className="scroll-rail mx-auto w-full max-w-7xl gap-2 px-4 py-2.5">
           {siteConfig.mainNav
             .filter((item) => item.href !== "/")

@@ -115,7 +115,7 @@ export default async function HomePage() {
     hero: <HomeHero content={content.hero} />,
 
     categories: (
-      <section className="mx-auto w-full max-w-7xl px-4 py-14 max-sm:py-9">
+      <section className="mx-auto w-full max-w-7xl px-4 py-14 max-sm:py-9" data-heat="categories">
         <SectionHeading
           title={content.categories.title}
           subtitle={content.categories.subtitle}
@@ -271,7 +271,7 @@ export default async function HomePage() {
 /** Presentational promo tiles (free shipping + AI expert) — reference-style. */
 function PromoStrip() {
   return (
-    <div className="mt-8 grid gap-3 sm:grid-cols-2">
+    <div className="mt-8 grid gap-3 sm:grid-cols-2" data-heat="cta">
       <div className="flex items-center gap-3 rounded-2xl border bg-accent/40 p-4">
         <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
           <Truck className="size-5" />

@@ -21,7 +21,7 @@ export async function BannerStrip({
   if (banners.length === 0) return null;
 
   return (
-    <div className={cn(fullBleed ? "w-full" : "mx-auto w-full max-w-7xl px-4", className)}>
+    <div className={cn(fullBleed ? "w-full" : "mx-auto w-full max-w-7xl px-4", className)} data-heat="banners">
       {banners.length === 1 ? (
         <BannerCard banner={banners[0]} href={bannerHref(banners[0])} bleed={fullBleed} />
       ) : (

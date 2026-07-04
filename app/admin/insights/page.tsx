@@ -25,9 +25,20 @@ import { RangeFilter } from "@/components/admin/insights/range-filter";
 import { LiveStrip } from "@/components/admin/insights/live-strip";
 import { ActionPlanCard } from "@/components/admin/insights/action-plan";
 import { getBusinessIntelligence, type RankRow, type Alert } from "@/lib/queries/bi";
-import { getRangeAnalytics, type RangeInput, type Kpi } from "@/lib/queries/analytics";
+import { getRangeAnalytics, type Kpi } from "@/lib/queries/analytics";
+import { getJourneyAnalytics, type JourneyInput } from "@/lib/queries/journey";
+import { getHeatmapAnalytics, getRageClicks, getSessionReplays } from "@/lib/queries/engagement";
 import { getMarketingOverview } from "@/lib/queries/marketing";
-import { generateBusinessSummary, generateActionPlan } from "@/lib/ai/insights";
+import {
+  generateBusinessSummary,
+  generateActionPlan,
+  generateJourneyDiagnosis,
+  generateHeatmapInsights,
+} from "@/lib/ai/insights";
+import { JourneySection } from "@/components/admin/insights/journey-section";
+import { HeatmapSection } from "@/components/admin/insights/heatmap-section";
+import { RageSection } from "@/components/admin/insights/rage-section";
+import { ReplaySection } from "@/components/admin/insights/replay-section";
 import { formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = { title: "AI Insights", robots: { index: false } };
@@ -110,18 +121,24 @@ const ALERT_STYLE: Record<Alert["level"], { icon: React.ComponentType<{ classNam
 export default async function AdminInsightsPage({
   searchParams,
 }: {
-  searchParams: Promise<RangeInput>;
+  searchParams: Promise<JourneyInput>;
 }) {
   await guardSection("ai");
   const sp = await searchParams;
-  const [bi, ra, marketing] = await Promise.all([
+  const [bi, ra, marketing, journey, heat, rage, replays] = await Promise.all([
     getBusinessIntelligence(),
     getRangeAnalytics(sp),
     getMarketingOverview().catch(() => null),
+    getJourneyAnalytics(sp),
+    getHeatmapAnalytics(sp),
+    getRageClicks(sp),
+    getSessionReplays().catch(() => []),
   ]);
-  const [summary, plan] = await Promise.all([
+  const [summary, plan, journeyDiagnosis, heatInsights] = await Promise.all([
     generateBusinessSummary(bi),
     generateActionPlan(bi, ra),
+    generateJourneyDiagnosis(journey),
+    generateHeatmapInsights(heat, rage.issues),
   ]);
   const s = bi.summary;
 
@@ -461,6 +478,18 @@ export default async function AdminInsightsPage({
           )}
         </div>
       </div>
+
+      {/* Customer journey analytics (selected range + filters) */}
+      <JourneySection journey={journey} diagnosis={journeyDiagnosis} />
+
+      {/* Website heatmap analytics */}
+      <HeatmapSection heat={heat} insights={heatInsights} />
+
+      {/* Rage-click detection */}
+      <RageSection issues={rage.issues} total={rage.total} />
+
+      {/* Session replay */}
+      <ReplaySection replays={replays} />
 
       {/* Q&A */}
       <AskBox />

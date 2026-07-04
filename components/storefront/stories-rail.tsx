@@ -11,7 +11,7 @@ export function StoriesRail({ stories }: { stories: StoryItem[] }) {
 
   return (
     <>
-      <div className="border-b bg-background/60">
+      <div className="border-b bg-background/60" data-heat="stories">
         <div className="mx-auto flex w-full max-w-7xl snap-x gap-5 overflow-x-auto px-4 py-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {stories.map((s, i) => (
             <button

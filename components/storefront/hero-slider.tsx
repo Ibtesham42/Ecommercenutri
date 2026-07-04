@@ -189,6 +189,7 @@ export function HeroSlider({ slides }: { slides: HeroSlideView[] }) {
     <section
       aria-roledescription="carousel"
       aria-label="Featured highlights"
+      data-heat="hero-slider"
       className="relative h-[440px] w-full overflow-hidden bg-muted sm:h-[520px] lg:h-[600px]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}

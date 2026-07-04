@@ -810,6 +810,9 @@ model UserEvent {
   source     String?
   device     String? // "mobile" | "tablet" | "desktop" — derived server-side from the UA header
   referrer   String? // external referrer hostname only (PAGE_VIEW), lowercase, no PII
+  path       String? // pathname only (no query string) — journey stages + rage-click location
+  city       String? // coarse request geo from the platform header (title-cased; no IP stored)
+  region     String? // state/region, same source as city
   createdAt  DateTime      @default(now())
 
   @@index([type, createdAt])
@@ -817,6 +820,50 @@ model UserEvent {
   @@index([userId, createdAt])
   @@index([categoryId, createdAt])
   @@index([createdAt])
+}
+
+// Pre-aggregated engagement counters (website heatmap): one row per
+// day × page group × section × device, written by /api/heat as increment
+// upserts — storage stays tiny no matter the traffic (no per-interaction rows).
+model HeatStat {
+  id        String   @id @default(cuid())
+  day       DateTime @db.Date
+  page      String // page group: home | product | category | search | cart | checkout | other
+  section   String // data-heat key, or "__page" for page-level scroll/time rollups
+  device    String // mobile | tablet | desktop
+  views     Int      @default(0) // section-visible impressions
+  clicks    Int      @default(0)
+  hovers    Int      @default(0) // desktop hover-dwells (≥600ms)
+  timeMs    Int      @default(0) // accumulated visible time (capped per beacon)
+  scroll25  Int      @default(0) // page-level scroll-depth milestones ("__page" rows)
+  scroll50  Int      @default(0)
+  scroll75  Int      @default(0)
+  scroll100 Int      @default(0)
+
+  @@unique([day, page, section, device])
+  @@index([day])
+}
+
+// Anonymized session replay: normalized pointer/scroll/nav samples ONLY — no
+// DOM capture, no text, no keystrokes, so passwords/payment/PII can never be
+// recorded. Client-sampled; pruned by retention on admin reads.
+model SessionRecording {
+  id              String   @id // client-generated token (validated shape), unguessable
+  userId          String?
+  anonId          String?
+  device          String?
+  startedAt       DateTime @default(now())
+  endedAt         DateTime @default(now())
+  duration        Int      @default(0) // ms across recorded pages
+  pages           Json // [{ path, t, w, h, ev: [[dt,kind,x,y|depth], ...] }]
+  pageCount       Int      @default(0)
+  clickCount      Int      @default(0)
+  rageCount       Int      @default(0)
+  reachedCheckout Boolean  @default(false)
+  purchased       Boolean  @default(false) // saw /checkout/success during the session
+  sizeBytes       Int      @default(0)
+
+  @@index([startedAt])
 }
 
 model AIChat {
@@ -985,6 +1032,9 @@ enum UserEventType {
   CLICK
   PAGE_VIEW
   CHECKOUT_START
+  HOME_VIEW
+  PAYMENT_START
+  RAGE_CLICK
 }
 
 enum ReturnStatus {

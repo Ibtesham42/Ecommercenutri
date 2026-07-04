@@ -73,6 +73,7 @@ export function AddToCartButton({
       onClick={handleClick}
       disabled={disabled}
       aria-live="polite"
+      data-heat="add-to-cart"
       className={cn(
         "relative overflow-hidden",
         added && "border-primary text-primary",

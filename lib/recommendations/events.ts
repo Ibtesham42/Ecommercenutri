@@ -13,6 +13,9 @@ export type TrackInput = {
   source?: string | null;
   device?: string | null; // mobile/tablet/desktop, derived server-side from the UA header
   referrer?: string | null; // external referrer hostname (PAGE_VIEW only)
+  path?: string | null; // pathname only (journey stages + rage-click location)
+  city?: string | null; // coarse request geo (platform header) — no IP stored
+  region?: string | null;
 };
 
 /** Record a behavioral event. Best-effort — never throws to the caller. */
@@ -29,6 +32,9 @@ export async function trackEvent(input: TrackInput): Promise<void> {
         source: input.source?.slice(0, 60) ?? null,
         device: input.device ?? null,
         referrer: input.referrer?.slice(0, 200) ?? null,
+        path: input.path?.slice(0, 200) ?? null,
+        city: input.city ?? null,
+        region: input.region ?? null,
       },
     });
   } catch (err) {

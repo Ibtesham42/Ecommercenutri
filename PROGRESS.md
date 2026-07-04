@@ -13,7 +13,31 @@ _Last updated: 2026-07-04 · Auto-maintained. Update at the end of every milesto
 | Database (Neon)     | ✅ live, migrated (…`affiliate_program`, `marketing_hub`, `marketing_automation`, `push_subscriptions`, `analytics_tracking`), seeded |
 | Current milestone   | **M0–M6 + RBAC + CMS + Affiliate Program + Admin bulk actions + Marketing Hub + Advanced analytics — production-ready** |
 
-## Latest: Advanced analytics (range-scoped) + exports (2026-07-04)
+## Latest: Journey + Heatmap + Rage + Session Replay analytics (2026-07-04)
+Four **additive** sections appended to `/admin/insights` (`ai` permission) — existing charts/KPIs/
+AI untouched; everything degrades to empty states and works keyless. Migration
+`journey_heatmap_replay` (`HeatStat`, `SessionRecording`, `UserEvent.path/city/region`,
+`HOME_VIEW`/`PAYMENT_START`/`RAGE_CLICK` enum values).
+- **Customer Journey Analytics** — 11-stage funnel (Visitor→Landing→Homepage→Category→Product→
+  Search→Add-to-cart→Checkout→Payment→Order success→Returning customer); per stage: users,
+  conversion%, drop-off%, exit-rate, avg time-to-next, prev-period delta. Filters: device / source /
+  product / state / city (URL-driven). AI drop-off diagnosis. `lib/queries/journey.ts`.
+- **Website Heatmap Analytics** — engagement score 0-100 per `data-heat` section (clicks/click-rate/
+  hovers/taps/time-in-view) + per-page scroll depth. Pre-aggregated daily `HeatStat` counters via
+  `/api/heat` beacon (no per-interaction rows). AI best/worst + UI/CTA tips. `lib/heat-sections.ts`,
+  `lib/queries/engagement.ts`.
+- **Rage-click detection** — 3+ rapid same-spot clicks → `RAGE_CLICK`; grouped by element+path with
+  delta; AI explains the top issue.
+- **Session Replay** — anonymized, 25%-sampled recordings (cursor/scroll/click coords + paths only,
+  never DOM/text/PII); `SessionRecording` (JSON chunks, size/page caps, 30-day retention);
+  dependency-free rAF player (scrub + speed). `/api/replay` beacon.
+- **Tracking**: lazy client engine (`engagement-tracker.tsx` → `engagement-engine.ts` after idle;
+  one batched heat + replay beacon per page; passive listeners) — shared First-Load JS stays 103 kB.
+  `JourneyTracker` (HOME_VIEW), checkout (PAYMENT_START), coarse geo via `lib/geo.ts` (no IP stored).
+- Verified end-to-end (20/20 synthetic-pipeline checks incl. real Groq AI output; self-cleaning
+  script). Typecheck/lint/build green.
+
+## Advanced analytics (range-scoped) + exports (2026-07-04)
 The BI dashboard's promised follow-up wave. New **`lib/queries/analytics.ts#getRangeAnalytics`** —
 admin-chosen range (today / yesterday / 7d / 30d / custom ≤ 366d) always compared against the
 same-length previous window: **conversion funnel** (visitors → product views → cart adds →

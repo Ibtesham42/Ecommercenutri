@@ -5,6 +5,8 @@ import { getAISettings } from "@/lib/ai/settings";
 import { formatPrice } from "@/lib/format";
 import type { BusinessIntelligence } from "@/lib/queries/bi";
 import type { RangeAnalytics } from "@/lib/queries/analytics";
+import type { JourneyAnalytics, JourneyStage } from "@/lib/queries/journey";
+import type { HeatmapAnalytics, RageIssue } from "@/lib/queries/engagement";
 
 export type AiText = { text: string; ai: boolean };
 
@@ -309,6 +311,164 @@ export async function generateActionPlan(
     return items ? { items, ai: true } : fallback();
   } catch (e) {
     console.error("[ai/insights] action plan failed:", e);
+    return fallback();
+  }
+}
+
+// ---------- Customer Journey diagnosis ----------
+
+const fmtDur = (ms: number) =>
+  ms >= 60_000 ? `${Math.round(ms / 60_000)}m` : `${Math.max(1, Math.round(ms / 1000))}s`;
+
+function journeyFacts(j: JourneyAnalytics): string {
+  const lines = [
+    `Customer journey (${j.range.label}${j.filtered ? ", filtered" : ""}; ${j.totalSessions} sessions):`,
+  ];
+  for (const s of j.stages) {
+    if (s.pending) continue;
+    lines.push(
+      `${s.label}: ${s.users} users` +
+        (s.convPct !== null ? `, ${s.convPct.toFixed(0)}% conversion (${s.dropPct!.toFixed(0)}% drop-off)` : "") +
+        (s.exitPct !== null ? `, ${s.exitPct.toFixed(0)}% exit here` : "") +
+        (s.avgTimeMs !== null ? `, avg ${fmtDur(s.avgTimeMs)} to next step` : "") +
+        (s.deltaPct !== null ? `, ${s.deltaPct >= 0 ? "+" : ""}${s.deltaPct.toFixed(0)}% vs previous period` : ""),
+    );
+  }
+  return lines.join("\n");
+}
+
+/** Stage-specific fix suggestions for the deterministic fallback. */
+const STAGE_ADVICE: Partial<Record<JourneyStage["key"], string>> = {
+  home: "Feature best sellers, categories and the free-delivery threshold above the fold so visitors move into the catalog faster.",
+  category: "Tighten category pages: clear filters, in-stock first, and strong product imagery.",
+  product: "Strengthen product pages — sharper photos, benefits up top, reviews near the price, and a visible delivery estimate.",
+  search: "Check the top searches report for queries returning weak results and add synonyms or products.",
+  cartAdd: "Make Add to Cart more prominent and show savings + the free-shipping progress right in the card/page.",
+  checkoutStart: "Reduce cart friction: sticky checkout CTA, trust badges, and the free-delivery nudge in the cart summary.",
+  payment: "Keep checkout to one screen and offer COD where eligible; surface delivery time before payment.",
+  orderSuccess: "Investigate payment failures — offer COD/UPI alternatives and make errors recoverable.",
+  returning: "Run win-back and post-purchase automations (Marketing → Automations) and a loyalty coupon to bring buyers back.",
+};
+
+function templateJourneyDiagnosis(j: JourneyAnalytics): string {
+  const real = j.stages.filter((s) => !s.pending && s.convPct !== null && !s.optional);
+  const meaningful = real.filter((s) => s.dropPct !== null && s.dropPct >= 40 && s.users + 1 >= 1);
+  const bases = new Map(j.stages.map((s, i) => [s.key, i > 0 ? j.stages[i - 1] : null]));
+  const worst = [...meaningful].sort((a, b) => (b.dropPct ?? 0) - (a.dropPct ?? 0)).slice(0, 2);
+  if (j.totalSessions === 0) {
+    return "No shopper sessions in this period yet — the journey fills in as visitors browse. Data for the new stages (homepage, payment) starts collecting from this release onward.";
+  }
+  if (worst.length === 0) {
+    return `Healthy funnel this period: no stage is losing more than 40% of shoppers. ${j.totalSessions} sessions tracked — keep feeding the top of the funnel.`;
+  }
+  const parts = worst.map((s) => {
+    const prev = bases.get(s.key);
+    const from = prev ? prev.label.toLowerCase() : "the previous step";
+    return `Biggest leak: only ${s.convPct!.toFixed(0)}% of shoppers get from ${from} to ${s.label.toLowerCase()} (${s.dropPct!.toFixed(0)}% drop${s.exitPct !== null ? `, ${s.exitPct.toFixed(0)}% leave the site there` : ""}). ${STAGE_ADVICE[s.key] ?? "Review this step for friction."}`;
+  });
+  return parts.join(" ");
+}
+
+/** AI (or rule-based) diagnosis of where the journey leaks and what to do. */
+export async function generateJourneyDiagnosis(j: JourneyAnalytics): Promise<AiText> {
+  const fallback = () => ({ text: templateJourneyDiagnosis(j), ai: false });
+  if (j.totalSessions === 0 || !aiAvailable()) return fallback();
+  const settings = await getAISettings();
+  const model = getModel(settings.model);
+  if (!model) return fallback();
+  try {
+    const { text } = await generateText({
+      model,
+      temperature: 0.4,
+      system:
+        "You are a conversion-rate expert for Nutriyet, an Indian nutrition e-commerce store. Using ONLY the funnel facts provided, identify the 1-2 stages where shoppers drop off the most and give ONE concrete, store-level fix per stage (imagery, copy, coupons, free-shipping nudges, checkout friction, automations). 2-4 sentences total, cite the real numbers, no markdown.",
+      prompt: journeyFacts(j),
+    });
+    const clean = text.trim();
+    return clean ? { text: clean, ai: true } : fallback();
+  } catch (e) {
+    console.error("[ai/insights] journey diagnosis failed:", e);
+    return fallback();
+  }
+}
+
+// ---------- Heatmap + rage-click insights ----------
+
+function heatFacts(h: HeatmapAnalytics, rage: RageIssue[]): string {
+  const lines = [`Section engagement (${h.rangeLabel}); score is 0-100 relative to the best section:`];
+  for (const s of h.sections) {
+    if (s.views === 0) continue;
+    lines.push(
+      `${s.label}: score ${s.score}, ${s.views} impressions, ${s.clicks} clicks (${s.clickRate.toFixed(1)}% click rate), ${s.hovers} hovers, ${s.taps} mobile taps, avg ${fmtDur(s.avgTimeMs)} in view.`,
+    );
+  }
+  for (const p of h.pages.slice(0, 5)) {
+    lines.push(
+      `${p.label}: ${p.visits} visits, avg ${fmtDur(p.avgTimeMs)} on page, scroll reach 50%: ${p.scroll50.toFixed(0)}% of visits, full scroll: ${p.scroll100.toFixed(0)}%.`,
+    );
+  }
+  if (rage.length) {
+    lines.push(
+      `Rage clicks (frustrated repeated clicking): ${rage
+        .slice(0, 5)
+        .map((i) => `${i.label} on ${i.path} (${i.count}x by ${i.sessions} shoppers)`)
+        .join("; ")}.`,
+    );
+  }
+  return lines.join("\n");
+}
+
+function templateHeatmapInsights(h: HeatmapAnalytics, rage: RageIssue[]): string {
+  const withData = h.sections.filter((s) => s.views > 0);
+  if (withData.length === 0) {
+    return "Engagement tracking just went live — section scores appear here as shoppers browse. Check back after some traffic.";
+  }
+  const best = withData[0];
+  const worst = [...withData].reverse().find((s) => s.key !== best.key);
+  const parts = [
+    `${best.label} is your most engaging section (score ${best.score}, ${best.clickRate.toFixed(1)}% click rate) — keep your strongest offers there.`,
+  ];
+  if (worst && worst.score <= 40) {
+    parts.push(
+      `${worst.label} underperforms (score ${worst.score} from ${worst.views} impressions) — try stronger visuals, tighter copy or moving it higher on the page.`,
+    );
+  }
+  const lowScroll = h.pages.find((p) => p.visits >= 10 && p.scroll50 < 40);
+  if (lowScroll) {
+    parts.push(
+      `On ${lowScroll.label.toLowerCase()}, only ${lowScroll.scroll50.toFixed(0)}% of visitors scroll past halfway — put key content and CTAs above the fold.`,
+    );
+  }
+  if (rage[0]) {
+    parts.push(
+      `Shoppers rage-clicked "${rage[0].label}" on ${rage[0].path} ${rage[0].count} times — it likely looks clickable but responds slowly or not at all; check its disabled/loading states.`,
+    );
+  }
+  return parts.join(" ");
+}
+
+/** AI (or rule-based) read of the heatmap: best/worst sections + UI/CTA fixes. */
+export async function generateHeatmapInsights(
+  h: HeatmapAnalytics,
+  rage: RageIssue[],
+): Promise<AiText> {
+  const fallback = () => ({ text: templateHeatmapInsights(h, rage), ai: false });
+  if (!h.hasData || !aiAvailable()) return fallback();
+  const settings = await getAISettings();
+  const model = getModel(settings.model);
+  if (!model) return fallback();
+  try {
+    const { text } = await generateText({
+      model,
+      temperature: 0.4,
+      system:
+        "You are a UX analyst for Nutriyet, an Indian nutrition e-commerce store. Using ONLY the engagement facts provided, name the best-performing section, the weakest section, and give 2 specific UI/CTA improvements (placement, copy, size, contrast, loading states). If rage clicks are listed, explain the likely UX issue behind the top one. 3-5 sentences, cite real numbers, no markdown.",
+      prompt: heatFacts(h, rage),
+    });
+    const clean = text.trim();
+    return clean ? { text: clean, ai: true } : fallback();
+  } catch (e) {
+    console.error("[ai/insights] heatmap insights failed:", e);
     return fallback();
   }
 }

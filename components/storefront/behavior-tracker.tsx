@@ -11,12 +11,16 @@ export type TrackPayload = {
     | "RECO_CLICK"
     | "CLICK"
     | "PAGE_VIEW"
-    | "CHECKOUT_START";
+    | "CHECKOUT_START"
+    | "HOME_VIEW"
+    | "PAYMENT_START"
+    | "RAGE_CLICK";
   productId?: string;
   categoryId?: string;
   query?: string;
   source?: string;
   referrer?: string;
+  path?: string;
 };
 
 /** Fire-and-forget client tracking — safe to call from anywhere. Uses keepalive

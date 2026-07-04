@@ -831,6 +831,42 @@ See `PROGRESS.md` for the live tracker (status, blockers, next task).
   when tab hidden), CSV export (`/admin/insights/export`, `?section=`) and a branded PDF report
   (`/admin/insights/report`, `lib/pdf/analytics-pdf.tsx`); AI summary/Q&A is grounded in the
   selected range's facts.
+- **Advanced engagement analytics** (4 additive `/admin/insights` sections; all keyless, degrade
+  to empty states, and never touch the existing charts/KPIs):
+  - **Customer Journey Analytics** (`lib/queries/journey.ts#getJourneyAnalytics`,
+    `components/admin/insights/journey-section.tsx`): 11-stage funnel (Visitor→Landing→Homepage→
+    Category→Product→Search→Add-to-cart→Checkout→Payment→Order success→Returning customer) with
+    per-stage users / conversion% / drop-off% / exit-rate / avg-time-to-next and previous-period
+    delta. Computed per unique-shopper "session" from one bounded `UserEvent` fetch; browse stages
+    (category/search) are marked optional so they don't distort the main-path conversion base.
+    URL-driven filters (device / traffic source / product / state / city). AI drop-off diagnosis via
+    `generateJourneyDiagnosis` (Groq seam + rule-based fallback). Needs new event types (below).
+  - **Website Heatmap Analytics** (`lib/queries/engagement.ts#getHeatmapAnalytics`,
+    `heatmap-section.tsx`): engagement score 0-100 per `data-heat` section (registry in
+    `lib/heat-sections.ts`), with clicks / click-rate / hovers(desktop) / taps(mobile) / avg
+    time-in-view, plus per-page scroll-depth (25/50/75/100%) and time-on-page. Data is
+    **pre-aggregated** into daily `HeatStat` counters (one row per day×page×section×device) by the
+    `/api/heat` beacon — no per-interaction rows, tiny at any traffic. AI best/worst + UI/CTA
+    suggestions via `generateHeatmapInsights`. Add tracking to a new area = drop `data-heat="<key>"`
+    on it + add the key to `HEAT_SECTIONS`.
+  - **Rage-click detection** (`getRageClicks`, `rage-section.tsx`): 3+ rapid clicks in one spot →
+    a `RAGE_CLICK` event (element label = nearest `data-heat` key or control descriptor); grouped by
+    element+path with previous-period delta. AI explains the top issue inside the heatmap card.
+  - **Session Replay** (`getSessionReplays`/`getSessionReplay`, `replay-section.tsx` +
+    `replay-panel.tsx`): **anonymized, sampled** (25%) recordings — normalized cursor/scroll/click
+    coordinates + page paths ONLY (never DOM content, text or keystrokes, so passwords/payment/PII
+    can't be captured by construction). Stored in `SessionRecording` (JSON page chunks, appended per
+    page via `/api/replay`, size/page caps, 30-day retention pruned lazily on admin read). The player
+    is **dependency-free** (schematic viewport + rAF cursor/click/scroll timeline, scrub + speed).
+  - **Tracking**: `UserEventType` gains `HOME_VIEW` / `PAYMENT_START` / `RAGE_CLICK`; `UserEvent`
+    gains `path` / `city` / `region` (coarse platform geo via `lib/geo.ts` — Vercel IP-city/region
+    headers, no IP stored). Client engine is **lazy** (`components/storefront/engagement-tracker.tsx`
+    dynamic-imports `engagement-engine.ts` after idle → shared First-Load JS stays ~103 kB); it
+    batches ONE `/api/heat` + one `/api/replay` beacon per page (sendBeacon on leave), all listeners
+    passive, fail-silent. `JourneyTracker` logs `HOME_VIEW`; checkout logs `PAYMENT_START`. Both new
+    beacon routes are Zod-validated, rate-limited (`limiters.api`) and fail-open. Migration
+    `analytics_tracking` (event cols) + `journey_heatmap_replay` (`HeatStat`, `SessionRecording`,
+    enum values).
 - **Groq `llama-3.3-70b-versatile` does NOT support the `json_schema` response
   format**, so AI SDK `generateObject` fails on it. We use `generateText` + a
   defensive JSON parse for structured search instead — also keeps us model/provider

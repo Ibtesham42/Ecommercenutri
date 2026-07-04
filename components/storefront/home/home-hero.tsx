@@ -14,6 +14,7 @@ export function HomeHero({ content }: { content: HeroContent }) {
 
   return (
     <section
+      data-heat="hero"
       className={cn(
         "relative overflow-hidden border-b",
         !content.bgColor && "bg-gradient-to-b from-accent/40 via-background to-background",

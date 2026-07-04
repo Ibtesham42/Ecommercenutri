@@ -40,6 +40,7 @@ export function MobileBottomNav() {
       // padding fills the iPhone home-indicator gap so there's no white gap.
       className="fixed inset-x-0 bottom-0 z-50 border-t bg-background shadow-[0_-2px_8px_rgba(20,40,26,0.06)] md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      data-heat="bottom-nav"
     >
       <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center px-2">
         <Tab href="/" label="Home" active={isActive("/", true)}>
