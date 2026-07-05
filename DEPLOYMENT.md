@@ -42,7 +42,7 @@ you go to switch each feature from fallback to live.
   `npx web-push generate-vapid-keys`, set `NEXT_PUBLIC_VAPID_PUBLIC_KEY`,
   `VAPID_PRIVATE_KEY` (and optionally `VAPID_SUBJECT`), then **redeploy** — the
   public key is inlined into the client bundle at build time. Full guide:
-  `PUSH_NOTIFICATIONS.md`.
+  `docs/guides/push-notifications.md`.
 - **Analytics** (optional): set `NEXT_PUBLIC_ANALYTICS_SRC` + `_DOMAIN`.
 
 ## 5. Verify production

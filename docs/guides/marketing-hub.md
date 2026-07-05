@@ -76,7 +76,7 @@ channel that can reach them:
   on the Resend free tier.
 - **Push** — a real phone/desktop notification, even when the site is closed. Only
   reaches customers who clicked "Enable notifications" (Account page or the app
-  install prompt). Completely free (VAPID). See `PUSH_NOTIFICATIONS.md`.
+  install prompt). Completely free (VAPID). See `push-notifications.md`.
 - **WhatsApp** — needs Meta WhatsApp Cloud API setup (§8). Recipients need a phone
   number on their profile/address.
 - **SMS** — needs Twilio setup (§8), paid per message. Also needs a phone number.
@@ -112,7 +112,7 @@ Good default: **In-App + Email**, add **Push** now that it's live.
 | --- | --- | --- |
 | **In-App** | ✅ Working | None — built in. |
 | **Email** | ✅ Working | Already configured (Resend + `EMAIL_FROM`). Free tier: 100 emails/day, 3,000/month. |
-| **Push** | ✅ Working | VAPID keys configured (free forever). Customers must enable notifications once; see `PUSH_NOTIFICATIONS.md`. |
+| **Push** | ✅ Working | VAPID keys configured (free forever). Customers must enable notifications once; see `push-notifications.md`. |
 | **WhatsApp** | ⛔ Not configured | Needs a **Meta WhatsApp Cloud API** app (developers.facebook.com): set `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_ID` in Vercel env and redeploy. Note: Meta charges per marketing conversation in India — not free at scale. |
 | **SMS** | ⛔ Not configured | Needs a **Twilio** account: set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` in Vercel env and redeploy. Paid per SMS. |
 
@@ -218,7 +218,7 @@ Work down this list:
 6. **A channel is skipped.** The history/test toast gives the reason: channel
    not configured (§8), recipient has no phone / no push subscription, etc.
 7. **Email went to spam.** Verify your sending domain in Resend.
-8. **Push not arriving.** See the troubleshooting table in `PUSH_NOTIFICATIONS.md`
+8. **Push not arriving.** See the troubleshooting table in `push-notifications.md`
    (most common: the device never enabled notifications, or permission denied).
 
 ## 15. Recipes (real examples)
@@ -263,5 +263,5 @@ cross-sell), not order status.
 
 ---
 
-*Related docs: `PUSH_NOTIFICATIONS.md` (push setup & troubleshooting),
+*Related docs: `push-notifications.md` (push setup & troubleshooting),
 `DEPLOYMENT.md` (environment variables).*

@@ -21,7 +21,7 @@ export function PushSetupCard() {
             Set <code>NEXT_PUBLIC_VAPID_PUBLIC_KEY</code>, <code>VAPID_PRIVATE_KEY</code> and
             optionally <code>VAPID_SUBJECT</code> in <code>.env</code> (local) and the Vercel
             environment variables (then redeploy — the public key is baked in at build time).
-            Full guide: <code>PUSH_NOTIFICATIONS.md</code> in the repo root.
+            Full guide: <code>docs/guides/push-notifications.md</code> in the repo.
           </p>
         </div>
       </div>
