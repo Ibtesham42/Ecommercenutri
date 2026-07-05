@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { PageHeader } from "@/components/admin/page-header";
 import { guardSection } from "@/lib/admin-guard";
 import { SurveyDashboard } from "@/components/admin/survey-dashboard";
@@ -11,6 +12,13 @@ export default async function AdminSurveyPage() {
   await guardSection("customers");
 
   const [stats, responses] = await Promise.all([getSurveyStats(), getSurveyResponses(200)]);
+
+  // Build the share link from the live request host (works on any domain —
+  // nutriyet.in in production, localhost in dev); env.appUrl is the fallback.
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? (host?.startsWith("localhost") ? "http" : "https");
+  const base = host ? `${proto}://${host}` : env.appUrl.replace(/\/$/, "");
 
   return (
     <div>
@@ -48,7 +56,7 @@ export default async function AdminSurveyPage() {
           contactMobile: r.contactMobile,
           contactEmail: r.contactEmail,
         }))}
-        surveyUrl={`${env.appUrl.replace(/\/$/, "")}/survey`}
+        surveyUrl={`${base}/survey`}
       />
     </div>
   );
