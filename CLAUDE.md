@@ -447,6 +447,23 @@ all gated by the **`appearance`** permission (super admins always pass).
   - `/track` — public guest order tracking: `trackOrder(orderNumber, email)` matches the
     checkout email and returns a trimmed DTO + status timeline (no auth).
   - `/support` — help hub linking the above. Footer "Track Order" now points at `/track`.
+- **Consumer Survey (done)** — bilingual (EN+HI) "Consumer Awareness & Healthy Snacking
+  Survey" at **`/survey`**: a **link-only** public page (own branded layout with the store
+  logo, OUTSIDE the storefront route group — no header/nav/footer, `robots noindex`, never
+  linked from the user-facing site or sitemap). Question/section/option catalog lives in
+  **`lib/survey.ts`** (client-safe single source of truth; option KEYS are stored, labels
+  render) — the form (`components/survey/survey-form.tsx`), Zod schema
+  (`lib/validations/survey.ts`, enums derived from the catalog) and admin analytics all read
+  it. Submissions via `lib/actions/survey.ts#submitSurveyResponse` (anonymous, IP
+  rate-limited; contact name/mobile/email kept only when Q17 opt-in = yes) into the
+  `SurveyResponse` model (typed columns + String[] for multi-selects, migration `survey`);
+  a localStorage flag soft-guards duplicates (with "Fill again"). Admin at **`/admin/survey`**
+  (`customers` permission, nav "Survey"): copy/open **share link** card (the only place the
+  URL surfaces), KPIs (total / last-7d / opt-ins% / cities), responses-over-time bars,
+  per-question option breakdowns with counts+percentages (multi-select % base = respondents),
+  top-cities chips, expandable raw-response list and **CSV export**
+  (`/admin/survey/export`, English labels). Stats aggregate in JS over one bounded fetch
+  (`lib/queries/survey.ts`) — fine at survey scale, keys stay in lockstep with the catalog.
 - **Content admin editors (done)** — all gated by `appearance`:
   - **Blog** (`/admin/blog`, `components/admin/blog-manager.tsx`, `lib/actions/admin/blog.ts`):
     `BlogPost` CRUD (title/auto-slug, excerpt, HTML content, cover via `ImageUploadField`, author,

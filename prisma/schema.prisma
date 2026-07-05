@@ -1370,3 +1370,39 @@ model PushSubscription {
 
   @@index([userId])
 }
+
+// One "Consumer Awareness & Healthy Snacking Survey" submission from the public
+// /survey page (link-only, bilingual). Answers are stored as typed columns
+// (option KEYS from lib/survey.ts, not display labels) so the admin dashboard
+// can aggregate counts/percentages cheaply. Contact fields are optional and
+// collected only when the respondent opts into updates (Q17).
+model SurveyResponse {
+  id                  String   @id @default(cuid())
+  ageGroup            String
+  gender              String
+  occupation          String
+  occupationOther     String?
+  city                String?
+  snackFrequency      String
+  snacks              String[] @default([])
+  snacksOther         String?
+  snackPriority       String
+  makhanaEaten        String
+  makhanaAware        String
+  makhanaForms        String[] @default([])
+  makhanaBarriers     String[] @default([])
+  makhanaBarrierOther String?
+  buyPlaces           String[] @default([])
+  packSize            String
+  flavours            String[] @default([])
+  flavourOther        String?
+  learnInterest       String
+  topics              String[] @default([])
+  wantsUpdates        String
+  contactName         String?
+  contactMobile       String?
+  contactEmail        String?
+  createdAt           DateTime @default(now())
+
+  @@index([createdAt])
+}
