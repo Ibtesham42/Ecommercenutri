@@ -55,11 +55,11 @@ export default async function LoginPage({
         )}
         <LoginForm callbackUrl={callbackUrl || "/account"} />
       </CardContent>
-      <CardFooter className="justify-center gap-1.5 text-sm text-muted-foreground">
+      <CardFooter className="flex-col gap-2.5 text-sm text-muted-foreground">
         <span>Don&apos;t have an account?</span>
         <Link
           href="/register"
-          className="rounded-md px-1.5 py-0.5 text-base font-semibold text-gold underline-offset-4 transition hover:bg-gold/10 hover:underline focus-visible:bg-gold/10 active:scale-[0.97]"
+          className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-gold/40 bg-gold/10 text-base font-semibold text-gold-foreground shadow-elev-1 transition hover:bg-gold/20 hover:shadow-elev-2 focus-visible:bg-gold/20 active:scale-[0.98] dark:text-gold"
         >
           Sign Up
         </Link>
