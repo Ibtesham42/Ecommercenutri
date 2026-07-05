@@ -165,7 +165,7 @@ export function RegisterForm() {
       )}
 
       <SubmitButton className="h-12 text-base font-semibold shadow-elev-1">
-        Create account
+        Sign Up
       </SubmitButton>
     </form>
   );

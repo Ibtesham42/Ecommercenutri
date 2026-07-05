@@ -14,7 +14,7 @@ import { GoogleButton } from "@/components/auth/google-button";
 import { getCurrentUser } from "@/lib/auth";
 import { isConfigured } from "@/lib/env";
 
-export const metadata: Metadata = { title: "Create account" };
+export const metadata: Metadata = { title: "Sign Up" };
 
 export default async function RegisterPage() {
   const user = await getCurrentUser();
