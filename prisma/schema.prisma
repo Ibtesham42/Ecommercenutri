@@ -955,6 +955,10 @@ model StoreSetting {
   // offer bar, trust section, welcome coupon). Additive JSON blob — merged over
   // defaults by lib/growth-settings.ts. Managed from the admin "Growth" page.
   growth                          Json?
+  // Hero "Product Reveal" animation config (enabled/packetImage/pieceImage/
+  // speed/delaySec/pieceCount). Merged over defaults by lib/hero-reveal.ts.
+  // Managed from Admin → Hero Slider → Product Reveal Animation.
+  heroReveal                      Json?
 }
 
 // Result of the "Discover Your Nutriyet Health Score" quiz. Taken anonymously

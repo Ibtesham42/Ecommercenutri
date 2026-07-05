@@ -7,6 +7,7 @@ import { BlurImage } from "@/components/storefront/blur-image";
 import { Reveal } from "@/components/storefront/reveal";
 import { StoriesRail } from "@/components/storefront/stories-rail";
 import { HeroSlider } from "@/components/storefront/hero-slider";
+import { HeroRevealOverlay } from "@/components/storefront/hero-reveal/hero-reveal-overlay";
 import { Showcase3D } from "@/components/storefront/showcase-3d";
 import { BannerStrip } from "@/components/storefront/banner-strip";
 import { RecommendedProducts } from "@/components/storefront/recommended-products";
@@ -17,6 +18,7 @@ import { HomeWhyChooseUs } from "@/components/storefront/home/home-why-choose-us
 import { HomeTestimonials } from "@/components/storefront/home/home-testimonials";
 import { TrustSection } from "@/components/storefront/growth/trust-section";
 import { getGrowthSettings } from "@/lib/growth-settings";
+import { heroRevealLive } from "@/lib/hero-reveal";
 import {
   getFeaturedProducts,
   getBestSellers,
@@ -29,6 +31,7 @@ import {
   getHomeSectionOrder,
   getHomeSectionsContent,
   getActiveShowcase,
+  getHeroRevealSettings,
 } from "@/lib/queries/home";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
 import { getCurrentUser } from "@/lib/auth";
@@ -55,6 +58,7 @@ export default async function HomePage() {
     combos,
     showcase,
     growth,
+    heroReveal,
   ] = await Promise.all([
     getFeaturedProducts(content.featured.limit ?? 8),
     getBestSellers(content.bestSellers.limit ?? 8),
@@ -68,11 +72,19 @@ export default async function HomePage() {
     productCombos(content.combos.limit ?? 4),
     getActiveShowcase(),
     getGrowthSettings(),
+    getHeroRevealSettings(),
   ]);
 
   // Trending excludes what's already shown in featured/best-sellers above.
   const shownIds = new Set([...featured, ...bestSellers].map((p) => p.id));
   const trendingFresh = trendingProducts.filter((p) => !shownIds.has(p.id));
+
+  // Optional "Product Reveal" packet animation overlaid on the hero slider.
+  // Fully additive: when disabled (or with no packet image / no slides), the
+  // slider renders bare — no wrapper, no overlay, markup identical to before.
+  const revealLive = heroSlides.length > 0 && heroRevealLive(heroReveal);
+  // Keep the overlay off the side the slide copy is aligned to.
+  const revealSide = heroSlides.some((s) => s.textAlign === "right") ? "left" : "right";
 
   // Each homepage section keyed for the admin Section Builder. Content comes from
   // the editable defaults (lib/home-content.ts) merged with admin edits, so the
@@ -93,8 +105,9 @@ export default async function HomePage() {
       />
     ),
 
-    heroSlider:
-      heroSlides.length > 0 ? (
+    heroSlider: (() => {
+      if (heroSlides.length === 0) return null;
+      const slider = (
         <HeroSlider
           slides={heroSlides.map((s) => ({
             id: s.id,
@@ -114,7 +127,16 @@ export default async function HomePage() {
             href: heroSlideHref(s),
           }))}
         />
-      ) : null,
+      );
+      return revealLive ? (
+        <div className="relative">
+          {slider}
+          <HeroRevealOverlay settings={heroReveal} side={revealSide} />
+        </div>
+      ) : (
+        slider
+      );
+    })(),
 
     hero: <HomeHero content={content.hero} />,
 

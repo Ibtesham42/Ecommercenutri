@@ -252,6 +252,29 @@ export const heroSlideSchema = z
 
 export type HeroSlideInput = z.infer<typeof heroSlideSchema>;
 
+// Hero "Product Reveal" animation (packet-pour overlay) ------------------------
+
+export const heroRevealSchema = z
+  .object({
+    enabled: z.boolean(),
+    packetImage: z.union([z.string().url("Enter a valid image URL"), z.literal("")]),
+    pieceImage: z.union([z.string().url("Enter a valid image URL"), z.literal("")]),
+    speed: z.coerce.number().int().min(0).max(100),
+    delaySec: z.coerce.number().min(0).max(15),
+    pieceCount: z.coerce.number().int().min(4).max(16),
+  })
+  .superRefine((d, ctx) => {
+    if (d.enabled && !d.packetImage) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["packetImage"],
+        message: "Upload a packet image before enabling the animation.",
+      });
+    }
+  });
+
+export type HeroRevealInput = z.infer<typeof heroRevealSchema>;
+
 // PWA install prompt ----------------------------------------------------------
 
 export const pwaSettingsSchema = z.object({

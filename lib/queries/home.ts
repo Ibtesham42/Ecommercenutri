@@ -10,6 +10,11 @@ import {
   resolveSectionContent,
   type HomeContentMap,
 } from "@/lib/home-content";
+import {
+  HERO_REVEAL_DEFAULTS,
+  resolveHeroReveal,
+  type HeroRevealSettings,
+} from "@/lib/hero-reveal";
 
 const heroSlideSelect = {
   id: true,
@@ -202,5 +207,22 @@ export async function getActiveShowcase(): Promise<{
     return { enabled: (setting?.showcase3dEnabled ?? false) && items.length > 0, items };
   } catch {
     return { enabled: false, items: [] };
+  }
+}
+
+/**
+ * Hero "Product Reveal" animation config (packet-pour overlay on the hero
+ * slider). Defaults are `enabled: false`, so a DB error degrades to "off" and
+ * the homepage never breaks.
+ */
+export async function getHeroRevealSettings(): Promise<HeroRevealSettings> {
+  try {
+    const row = await prisma.storeSetting.findUnique({
+      where: { id: "singleton" },
+      select: { heroReveal: true },
+    });
+    return resolveHeroReveal(row?.heroReveal);
+  } catch {
+    return HERO_REVEAL_DEFAULTS;
   }
 }

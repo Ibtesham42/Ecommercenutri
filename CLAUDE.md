@@ -364,6 +364,29 @@ all gated by the **`appearance`** permission (super admins always pass).
     **Deleting/replacing slide media destroys the Cloudinary assets** (original + derived +
     CDN-invalidated) via `lib/cloudinary.ts#destroyAssetByUrl` — guarded so an asset shared by
     a duplicated slide is kept, and scoped to the `nutriyet/` namespace only.
+  - **Product Reveal Animation (done)** — optional premium packet-pour animation overlaid on
+    the hero slider (packet fades in → jagged rip-strip tears off → packet tilts → makhana
+    pieces fall/bounce/roll to rest via a tiny semi-implicit Euler integrator → hold → fade →
+    loop). Config in the additive **`StoreSetting.heroReveal` JSON blob** (migration
+    `hero_reveal`; `lib/hero-reveal.ts` resolver — client-safe, `heroRevealLive` = enabled +
+    packet image set) with every timeline/physics constant in `lib/hero-reveal-config.ts` (one
+    tunable sheet: TIMELINE, PHYSICS, clip-path tear geometry, built-in SVG makhana sprite,
+    responsive STAGE presets). Storefront `components/storefront/hero-reveal/*`: the shell
+    (`hero-reveal-overlay.tsx`, statically imported by the homepage) is `aria-hidden` +
+    `pointer-events-none` + `contain:strict` so it never shifts layout or blocks slider
+    swipe/arrows/CTAs; the rAF engine (`reveal-engine.tsx` + `physics.ts`) is a **lazy chunk**
+    (`next/dynamic ssr:false`, armed on first in-view via the shared showcase `useInView`,
+    paused off-screen/tab-hidden, per-frame writes to refs only — no React state per frame).
+    Reduced-motion users get a static opened packet (engine chunk never loads); an
+    ErrorBoundary→null keeps the hero from ever blanking. Homepage (`page.tsx`) wraps the
+    slider in a `relative` div ONLY when live — disabled = markup byte-identical, and the
+    overlay auto-picks the side away from right-aligned slide copy (small top-corner stage on
+    mobile, bottom corner md+). Admin card on `/admin/hero`
+    (`components/admin/hero-reveal-card.tsx`, `updateHeroReveal` in `lib/actions/admin/hero.ts`,
+    `appearance` permission): enable toggle (Zod blocks enabling without a packet image),
+    packet/piece `ImageUploadField`s (folder `hero-reveal`; replaced images are destroyed on
+    Cloudinary), speed/delay/piece-count ranges, and a live preview Dialog rendering the real
+    storefront overlay with the `preview` prop (forces armed/active, bypassing the in-view gate).
 - **Banner Manager (done)** — `Banner` model + named-placement registry (`lib/banners.ts`:
   `homeTop`/`productsTop`/`categoryTop`); admin `/admin/banners` (create/edit, desktop+mobile
   images via `ImageUploadField`, link to product/category/URL, priority, schedule, publish

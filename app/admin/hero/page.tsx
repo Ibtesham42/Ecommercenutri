@@ -5,6 +5,8 @@ import {
   HeroSliderManager,
   type HeroSlideRow,
 } from "@/components/admin/hero-slider-manager";
+import { HeroRevealCard } from "@/components/admin/hero-reveal-card";
+import { getHeroRevealSettings } from "@/lib/queries/home";
 import { prisma } from "@/lib/prisma";
 import { isConfigured } from "@/lib/env";
 
@@ -13,7 +15,7 @@ export const metadata: Metadata = { title: "Hero Slider", robots: { index: false
 export default async function AdminHeroPage() {
   await guardSection("appearance");
 
-  const [slides, products, categories] = await Promise.all([
+  const [slides, products, categories, heroReveal] = await Promise.all([
     prisma.heroSlide.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] }),
     prisma.product.findMany({
       where: { isActive: true },
@@ -25,6 +27,7 @@ export default async function AdminHeroPage() {
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
+    getHeroRevealSettings(),
   ]);
 
   const rows: HeroSlideRow[] = slides.map((s) => ({
@@ -64,6 +67,9 @@ export default async function AdminHeroPage() {
         categories={categories}
         cloudinaryReady={isConfigured.cloudinary()}
       />
+      <div className="mt-6">
+        <HeroRevealCard initial={heroReveal} cloudinaryReady={isConfigured.cloudinary()} />
+      </div>
     </div>
   );
 }

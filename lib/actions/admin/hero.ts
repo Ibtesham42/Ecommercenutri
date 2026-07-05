@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
-import { heroSlideSchema } from "@/lib/validations/admin";
+import { heroRevealSchema, heroSlideSchema } from "@/lib/validations/admin";
+import { resolveHeroReveal } from "@/lib/hero-reveal";
 import { destroyAssetByUrl, publicIdFromUrl } from "@/lib/cloudinary";
 import type { AdminResult, BulkOutcome } from "@/lib/actions/admin/types";
 
@@ -225,4 +226,53 @@ export async function reorderHeroSlides(ids: string[]): Promise<AdminResult> {
   );
   revalidate();
   return { ok: true };
+}
+
+/**
+ * Save the hero "Product Reveal" animation config (StoreSetting.heroReveal
+ * JSON blob). Replaced packet/piece images are destroyed on Cloudinary
+ * best-effort — they live in the dedicated `hero-reveal` folder, so they're
+ * never shared with slides.
+ */
+export async function updateHeroReveal(input: unknown): Promise<AdminResult> {
+  await requirePermission("appearance");
+
+  const parsed = heroRevealSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid settings." };
+  }
+  const next = resolveHeroReveal(parsed.data);
+
+  try {
+    const row = await prisma.storeSetting.findUnique({
+      where: { id: "singleton" },
+      select: { heroReveal: true },
+    });
+    const prev = resolveHeroReveal(row?.heroReveal);
+
+    const blob = next as Prisma.InputJsonValue;
+    await prisma.storeSetting.upsert({
+      where: { id: "singleton" },
+      update: { heroReveal: blob },
+      create: { id: "singleton", heroReveal: blob },
+    });
+
+    // Storage cleanup for replaced images (best-effort; DB is source of truth).
+    const kept = new Set([next.packetImage, next.pieceImage]);
+    for (const url of [prev.packetImage, prev.pieceImage]) {
+      if (url && !kept.has(url)) {
+        try {
+          await destroyAssetByUrl(url);
+        } catch (err) {
+          console.error("[admin] hero-reveal asset cleanup failed:", err);
+        }
+      }
+    }
+
+    revalidate();
+    return { ok: true };
+  } catch (err) {
+    console.error("[admin] updateHeroReveal failed:", err);
+    return { ok: false, error: "Could not save the animation settings." };
+  }
 }
