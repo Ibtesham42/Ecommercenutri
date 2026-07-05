@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { effectivePrice, formatPrice } from "@/lib/format";
+import { expandSearchTerms } from "@/lib/recommendations/intent";
 import { siteConfig } from "@/config/site";
 
 /**
@@ -51,14 +52,16 @@ function facts(value: Prisma.JsonValue | null): NutritionFact[] {
 }
 
 function toChunk(p: RetrievedProduct, detailed = false): ContextChunk {
-  const inStock = p.variants.some((v) => v.stock > 0);
+  const total = p.variants.reduce((s, v) => s + Math.max(0, v.stock), 0);
+  const stockLine =
+    total === 0 ? "Out of stock" : total <= 10 ? `In stock (only ${total} left)` : "In stock";
   const nf = facts(p.nutritionFacts);
   const parts = [
     `Product: ${p.name}`,
     `Category: ${p.category.name}`,
     `Price: ${priceRange(p.variants)}`,
     `Sizes: ${p.variants.map((v) => v.weightLabel).join(", ") || "—"}`,
-    inStock ? "In stock" : "Out of stock",
+    stockLine,
   ];
   if (p.shortDescription) parts.push(`Summary: ${p.shortDescription}`);
   if (p.benefits) parts.push(`Benefits: ${detailed ? p.benefits : p.benefits.slice(0, 220)}`);
@@ -73,30 +76,39 @@ function toChunk(p: RetrievedProduct, detailed = false): ContextChunk {
   };
 }
 
-/** Retrieve catalog context relevant to a free-text query (keyword today). */
+/**
+ * Retrieve catalog context relevant to a free-text query. Keyword matching is
+ * intent-expanded (goal phrases like "weight loss" or "office snacks" map to
+ * real catalog terms via `expandSearchTerms`), and in-stock products are
+ * surfaced first so the model grounds its suggestions in what's purchasable.
+ */
 export async function retrieveProductContext(
   query: string,
   limit = 8,
 ): Promise<ContextChunk[]> {
   const q = query.trim();
+  // The raw query + any goal-implied catalog terms ("weight loss" → flax/chia…).
+  const terms = [...new Set([q, ...expandSearchTerms(q)].filter(Boolean))].slice(0, 10);
 
-  const where: Prisma.ProductWhereInput = q
-    ? {
-        isActive: true,
-        OR: [
-          { name: { contains: q, mode: "insensitive" } },
-          { shortDescription: { contains: q, mode: "insensitive" } },
-          { description: { contains: q, mode: "insensitive" } },
-          { benefits: { contains: q, mode: "insensitive" } },
-          { category: { name: { contains: q, mode: "insensitive" } } },
-        ],
-      }
-    : { isActive: true };
+  const matchOne = (t: string): Prisma.ProductWhereInput => ({
+    OR: [
+      { name: { contains: t, mode: "insensitive" } },
+      { shortDescription: { contains: t, mode: "insensitive" } },
+      { description: { contains: t, mode: "insensitive" } },
+      { benefits: { contains: t, mode: "insensitive" } },
+      { category: { name: { contains: t, mode: "insensitive" } } },
+    ],
+  });
+
+  const where: Prisma.ProductWhereInput =
+    terms.length > 0
+      ? { isActive: true, OR: terms.map(matchOne) }
+      : { isActive: true };
 
   let products = await prisma.product.findMany({
     where,
     select: productSelect,
-    take: limit,
+    take: limit * 2,
     orderBy: [{ isBestSeller: "desc" }, { ratingCount: "desc" }],
   });
 
@@ -105,12 +117,16 @@ export async function retrieveProductContext(
     products = await prisma.product.findMany({
       where: { isActive: true },
       select: productSelect,
-      take: limit,
+      take: limit * 2,
       orderBy: [{ isFeatured: "desc" }, { ratingCount: "desc" }],
     });
   }
 
-  return products.map((p) => toChunk(p));
+  // Purchasable products first — the model must prefer what's in stock.
+  const inStock = (p: RetrievedProduct) => p.variants.some((v) => v.stock > 0);
+  products.sort((a, b) => Number(inStock(b)) - Number(inStock(a)));
+
+  return products.slice(0, limit).map((p) => toChunk(p));
 }
 
 /** Detailed context for a single product (used by the product assistant). */

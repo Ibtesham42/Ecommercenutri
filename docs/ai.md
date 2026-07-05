@@ -44,6 +44,34 @@ AI SDK `generateObject` fails on it. Use **`generateText` + defensive JSON parse
 structured output (see `lib/ai/search.ts`, `lib/marketing/ai.ts`). Don't reintroduce
 `generateObject` without checking model support.
 
+## Grounded recommendation cards (chat)
+
+The assistant is a **database-grounded recommendation engine**, not a free-talking bot:
+
+- **Engine** (`lib/ai/recommend.ts#getGroundedRecommendations`): fetches ACTIVE products
+  only, scores them against message intent (`expandSearchTerms` + query tokens), the
+  shopper's latest health-quiz goal, behavioral signals (`getUserSignals` category
+  affinity, repeat purchases), real ratings/best-seller flags, live discounts and stock
+  health — then returns `AiRecoPayload` cards (types in `lib/ai/reco-types.ts`,
+  client-safe). Cards carry real variant/pack/price/discount/stock data + a rule-composed
+  personal `reason`; **out-of-stock/disabled products are never recommended**. If the
+  shopper names an out-of-stock product, the payload leads with in-stock alternatives +
+  a `note`. Cross-sell comes from `frequentlyBoughtTogether`/`similarProducts`.
+- **Transport:** the chat route runs the engine in parallel with the LLM stream (gated by
+  `wantsRecommendations` — educational questions get no cards) and appends
+  `RECO_MARKER + JSON` after the text. `ai-chat.tsx` splits on the marker and renders
+  `components/storefront/ai-reco-cards.tsx` (image, pack, price/MRP/discount, rating,
+  highlights, honest stock badge — 🟢 in/popular, 🟡 only-N-left, never fake urgency —
+  delivery window, Quick Add via `useCart` + View). **Card data never comes from the
+  model, so cards cannot hallucinate.** Keyless mode still returns cards with a friendly
+  line (`X-AI-Fallback` + marker).
+- **Grounding rules** live OUTSIDE the persona in `lib/ai/prompts.ts` (`GROUNDING_RULES`)
+  so they apply even with an admin-configured custom system prompt: only context
+  products, never invent flavours/pack sizes/prices/offers, prefer in-stock, no fake
+  urgency, educate first. The system prompt also carries the IST day-part and the
+  shopper's quiz goal. Retrieval (`lib/ai/retrieval.ts`) is intent-expanded and sorts
+  in-stock products first; chunks state real stock ("In stock (only N left)").
+
 ## Search
 
 - `lib/ai/search.ts#aiProductSearch()` extracts structured filters with generateText +

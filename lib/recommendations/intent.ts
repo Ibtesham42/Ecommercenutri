@@ -41,6 +41,22 @@ const INTENT_MAP: IntentEntry[] = [
     triggers: ["pregnancy", "pregnant", "iron"],
     terms: ["dates", "almond", "raisin", "seeds", "dry fruit"],
   },
+  {
+    triggers: ["office", "work snack", "desk", "meeting", "office snack"],
+    terms: ["makhana", "roasted", "nuts", "almond", "trail", "dry fruit"],
+  },
+  {
+    triggers: ["kids", "children", "child", "school", "tiffin", "lunchbox"],
+    terms: ["makhana", "dry fruit", "dates", "almond", "peanut", "raisin"],
+  },
+  {
+    triggers: ["evening", "late night", "midnight", "craving", "crunchy", "light snack"],
+    terms: ["makhana", "roasted", "chana", "nuts", "seeds"],
+  },
+  {
+    triggers: ["gift", "gifting", "festive", "diwali", "hamper"],
+    terms: ["dry fruit", "nuts", "almond", "cashew", "gift", "combo"],
+  },
 ];
 
 /** Catalog search terms implied by a goal-oriented query (deduped). */

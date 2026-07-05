@@ -1,4 +1,5 @@
 import { streamText, type ModelMessage } from "ai";
+import { prisma } from "@/lib/prisma";
 import { getModel } from "@/lib/ai/provider";
 import { getAISettings } from "@/lib/ai/settings";
 import { retrieveProductContext, buildProductChunk } from "@/lib/ai/retrieval";
@@ -22,6 +23,9 @@ export type AssistantStream =
 export async function runAssistantStream(opts: {
   messages: ChatMessage[];
   productId?: string | null;
+  /** Shopper identity for personalization (quiz goal in the system prompt). */
+  userId?: string | null;
+  anonId?: string | null;
   onFinish?: (text: string, totalTokens: number) => void | Promise<void>;
 }): Promise<AssistantStream> {
   const settings = await getAISettings();
@@ -45,8 +49,11 @@ export async function runAssistantStream(opts: {
     system = buildProductSystemPrompt(settings, chunk);
   } else {
     const lastUser = [...opts.messages].reverse().find((m) => m.role === "user");
-    const chunks = await retrieveProductContext(lastUser?.content ?? "");
-    system = buildAssistantSystemPrompt(settings, chunks);
+    const [chunks, quizGoal] = await Promise.all([
+      retrieveProductContext(lastUser?.content ?? ""),
+      latestQuizGoal(opts.userId, opts.anonId),
+    ]);
+    system = buildAssistantSystemPrompt(settings, chunks, { quizGoal });
   }
 
   const result = streamText({
@@ -61,4 +68,23 @@ export async function runAssistantStream(opts: {
   });
 
   return { ok: true, result };
+}
+
+/** Most recent health-quiz goal for this shopper (null when none / on error). */
+async function latestQuizGoal(
+  userId?: string | null,
+  anonId?: string | null,
+): Promise<string | null> {
+  if (!userId && !anonId) return null;
+  try {
+    const row = await prisma.healthQuizResult.findFirst({
+      where: userId ? { userId } : { anonId: anonId! },
+      orderBy: { createdAt: "desc" },
+      select: { answers: true },
+    });
+    const answers = (row?.answers ?? {}) as Record<string, string>;
+    return answers.goal ?? null;
+  } catch {
+    return null;
+  }
 }

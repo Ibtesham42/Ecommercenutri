@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { runAssistantStream } from "@/lib/ai/chat";
+import { getGroundedRecommendations, wantsRecommendations } from "@/lib/ai/recommend";
+import { RECO_MARKER } from "@/lib/ai/reco-types";
 import { recordAIUsage } from "@/lib/ai/settings";
 import { persistChatTurn } from "@/lib/ai/history";
 import { checkRateLimit, limiters } from "@/lib/rate-limit";
@@ -74,11 +77,26 @@ export async function POST(req: Request) {
   }
 
   const user = await getCurrentUser();
+  const anonId = (await cookies()).get("nut_anon")?.value ?? null;
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
+
+  // Grounded product cards (live DB data only) — computed in parallel with the
+  // LLM stream and appended after the text. General chat only, and only when
+  // the message actually asks for something shoppable; never blocks the reply.
+  const recoPromise =
+    !productId && lastUser && wantsRecommendations(lastUser.content)
+      ? getGroundedRecommendations({
+          query: lastUser.content,
+          userId: user?.id ?? null,
+          anonId,
+        })
+      : null;
 
   const stream = await runAssistantStream({
     messages,
     productId,
+    userId: user?.id ?? null,
+    anonId,
     onFinish: async (text, tokens) => {
       await recordAIUsage(tokens);
       if (user?.id && lastUser) {
@@ -94,8 +112,49 @@ export async function POST(req: Request) {
   });
 
   if (!stream.ok) {
+    // Keyless philosophy: the reco engine is pure DB — when the model isn't
+    // configured we can still answer a shoppable question with real products.
+    if (stream.reason === "unavailable" && recoPromise) {
+      const reco = await recoPromise;
+      if (reco && reco.primary.length > 0) {
+        const friendly =
+          "Here's what we recommend from our store based on what you asked — every pick below is in stock right now.";
+        return new Response(`${friendly}${RECO_MARKER}${JSON.stringify(reco)}`, {
+          status: 200,
+          headers: { "Content-Type": "text/plain; charset=utf-8", "X-AI-Fallback": "1" },
+        });
+      }
+    }
     return fallbackResponse(FALLBACK[stream.reason]);
   }
 
-  return stream.result.toTextStreamResponse();
+  if (!recoPromise) {
+    return stream.result.toTextStreamResponse();
+  }
+
+  // Pipe the model text through, then append the reco payload as a trailer the
+  // client splits on RECO_MARKER. Card data never comes from the model.
+  const encoder = new TextEncoder();
+  const textStream = stream.result.textStream;
+  const body = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        for await (const chunk of textStream) {
+          controller.enqueue(encoder.encode(chunk));
+        }
+        const reco = await recoPromise;
+        if (reco && (reco.primary.length > 0 || reco.crossSell.length > 0)) {
+          controller.enqueue(encoder.encode(`${RECO_MARKER}${JSON.stringify(reco)}`));
+        }
+      } catch (err) {
+        console.error("[ai] stream relay failed:", err);
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(body, {
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }

@@ -4,9 +4,40 @@ import { useEffect, useRef, useState } from "react";
 import { nanoid } from "nanoid";
 import { Sparkles, Send, Loader2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AiRecoCards } from "@/components/storefront/ai-reco-cards";
+import { RECO_MARKER, type AiRecoPayload } from "@/lib/ai/reco-types";
 import { cn } from "@/lib/utils";
 
-type Msg = { id: string; role: "user" | "assistant"; content: string };
+type Msg = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  /** Grounded product cards appended by the server after the text stream. */
+  reco?: AiRecoPayload;
+};
+
+/** Contextual, non-repetitive taglines for the empty state. */
+const TAGLINES = [
+  "🌿 Healthy choices start here",
+  "🥜 Smart snacking made simple",
+  "💚 Choose better. Feel better.",
+  "✨ One better choice today.",
+  "🌱 Healthy today. Stronger tomorrow.",
+  "⚡ Snack smart. Live better.",
+];
+
+/** Parse a finished stream into visible text + the optional reco payload. */
+function splitReco(raw: string): { text: string; reco?: AiRecoPayload } {
+  const idx = raw.indexOf(RECO_MARKER);
+  if (idx < 0) return { text: raw };
+  const text = raw.slice(0, idx).trimEnd();
+  try {
+    const reco = JSON.parse(raw.slice(idx + RECO_MARKER.length)) as AiRecoPayload;
+    return { text, reco };
+  } catch {
+    return { text };
+  }
+}
 
 export function AiChat({
   productId,
@@ -30,6 +61,9 @@ export function AiChat({
 }) {
   const page = variant === "page";
   const [sessionId] = useState(() => nanoid());
+  const [tagline] = useState(
+    () => TAGLINES[Math.floor(Math.random() * TAGLINES.length)],
+  );
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -67,11 +101,13 @@ export function AiChat({
       // Friendly fallbacks (disabled / rate-limited) come back as plain text;
       // render their message inline instead of a generic error.
       if (!res.ok || res.headers.get("X-AI-Fallback") === "1") {
-        const text = (await res.text()).trim();
+        const raw = (await res.text()).trim();
+        // Keyless mode can still carry grounded product cards.
+        const { text, reco } = splitReco(raw);
         setMessages((m) =>
           m.map((msg) =>
             msg.id === assistantId
-              ? { ...msg, content: text || "Something went wrong. Please try again." }
+              ? { ...msg, content: text || "Something went wrong. Please try again.", reco }
               : msg,
           ),
         );
@@ -86,8 +122,19 @@ export function AiChat({
         const { value, done } = await reader.read();
         if (done) break;
         acc += decoder.decode(value, { stream: true });
+        // Never render the trailing reco JSON as text.
+        const visible = acc.split(RECO_MARKER)[0];
         setMessages((m) =>
-          m.map((msg) => (msg.id === assistantId ? { ...msg, content: acc } : msg)),
+          m.map((msg) => (msg.id === assistantId ? { ...msg, content: visible } : msg)),
+        );
+      }
+      // Stream finished: attach the grounded product cards, if any.
+      const { text: finalText, reco } = splitReco(acc);
+      if (reco) {
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === assistantId ? { ...msg, content: finalText, reco } : msg,
+          ),
         );
       }
       if (!acc.trim()) {
@@ -151,6 +198,7 @@ export function AiChat({
             >
               {greeting ?? "Ask me anything about nutrition or our products."}
             </p>
+            <p className="mt-2 text-xs font-medium text-primary/80">{tagline}</p>
           </div>
         )}
 
@@ -176,17 +224,26 @@ export function AiChat({
             </span>
             <div
               className={cn(
-                "max-w-[80%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm",
-                m.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted",
-                page &&
-                  "max-sm:max-w-[86%] max-sm:break-words max-sm:px-3.5 max-sm:py-2.5 max-sm:text-[15px] max-sm:leading-relaxed max-sm:shadow-elev-1",
-                // Chat-app bubble tails on mobile.
-                page && (m.role === "user" ? "max-sm:rounded-br-md" : "max-sm:rounded-bl-md"),
+                "flex min-w-0 max-w-[80%] flex-col items-start gap-2",
+                m.role === "user" && "items-end",
+                page && "max-sm:max-w-[86%]",
               )}
             >
-              {m.content || (streaming ? <TypingDots /> : "")}
+              <div
+                className={cn(
+                  "whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm",
+                  m.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted",
+                  page &&
+                    "max-sm:break-words max-sm:px-3.5 max-sm:py-2.5 max-sm:text-[15px] max-sm:leading-relaxed max-sm:shadow-elev-1",
+                  // Chat-app bubble tails on mobile.
+                  page && (m.role === "user" ? "max-sm:rounded-br-md" : "max-sm:rounded-bl-md"),
+                )}
+              >
+                {m.content || (streaming ? <TypingDots /> : "")}
+              </div>
+              {m.reco && <AiRecoCards payload={m.reco} />}
             </div>
           </div>
         ))}
