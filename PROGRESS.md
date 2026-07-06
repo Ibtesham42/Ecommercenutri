@@ -13,6 +13,14 @@ _Last updated: 2026-07-06 · Auto-maintained. Update at the end of every milesto
 | Database (Neon)     | ✅ live, migrated (…`affiliate_program`, `marketing_hub`, `marketing_automation`, `push_subscriptions`, `analytics_tracking`), seeded |
 | Current milestone   | **M0–M6 + RBAC + CMS + Affiliate Program + Admin bulk actions + Marketing Hub + Advanced analytics — production-ready** |
 
+## Phase 2 (Revenue/Growth/Conversion) — FBT one-tap bundle (2026-07-07)
+The PDP "Frequently bought together" strip is now an interactive Amazon-style
+bundle: co-purchased companions render pre-selected with a live combined total
+and a single "Add N to cart" adds them all at once (AOV lever).
+`components/storefront/frequently-bought-together.tsx` (reuses cart store +
+pricing; in-stock only; falls back to the passive strip below 2 companions).
+No API/DB/auth change. Shared First-Load unchanged (103 kB; PDP +1 kB).
+
 ## Phase 2 (Revenue/Growth/Conversion) — AI Assessment real recs (2026-07-07)
 The health-quiz result now recommends REAL, in-stock, goal-matched catalog
 products (add-to-cart ready, works logged-out) instead of hard-coded search
