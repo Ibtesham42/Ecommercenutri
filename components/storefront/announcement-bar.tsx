@@ -14,11 +14,13 @@ export function AnnouncementBar({
   if (!active || !message) return null;
 
   const content = (
-    <span className="line-clamp-1 px-4">{message}</span>
+    // Mobile gets two balanced lines before clamping — a coupon code cut mid-
+    // string ("…use coupon HEALTHY2") is worse than a slightly taller bar.
+    <span className="line-clamp-2 px-4 max-sm:text-balance sm:line-clamp-1">{message}</span>
   );
 
   return (
-    <div className="bg-gradient-to-r from-primary via-primary to-emerald-600 text-center text-xs font-medium tracking-wide text-primary-foreground sm:text-sm">
+    <div className="bg-gradient-to-r from-primary via-primary to-[color-mix(in_oklab,var(--primary)_82%,black)] text-center text-xs font-medium tracking-wide text-primary-foreground sm:text-sm">
       {link ? (
         <Link href={link} className="block py-2 transition-opacity hover:opacity-90 hover:underline">
           {content}
