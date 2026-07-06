@@ -25,8 +25,8 @@ export function RecoSection({
   return (
     <section className={className}>
       <div className="mb-6">
-        <h2 className="text-xl font-bold sm:text-2xl">{title}</h2>
-        {subtitle && <p className="text-muted-foreground">{subtitle}</p>}
+        <h2 className="font-heading text-xl font-semibold tracking-tight sm:text-[1.6rem]">{title}</h2>
+        {subtitle && <p className="mt-1 text-muted-foreground">{subtitle}</p>}
       </div>
       {source ? <RecoClickArea source={source}>{grid}</RecoClickArea> : grid}
     </section>

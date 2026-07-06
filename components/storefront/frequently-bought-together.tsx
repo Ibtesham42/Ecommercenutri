@@ -96,7 +96,7 @@ export function FrequentlyBoughtTogether({
 
   return (
     <section className={className}>
-      <h2 className="mb-1 text-xl font-bold sm:text-2xl">Frequently bought together</h2>
+      <h2 className="mb-1 font-heading text-xl font-semibold tracking-tight sm:text-[1.6rem]">Frequently bought together</h2>
       <p className="mb-6 text-muted-foreground">Add the set in one tap — save a trip back.</p>
 
       <div className="rounded-2xl border bg-card p-4 shadow-elev-1 sm:p-6">
