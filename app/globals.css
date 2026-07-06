@@ -575,6 +575,32 @@
   }
 }
 
+/* Crafted solid CTA (the base `default` Button variant). A subtle top sheen
+   (inset white highlight) + a brand-tinted elevation that DEEPENS on hover —
+   replacing the flat opacity-fade hover that read generic. This is the
+   Stripe/Linear/Apple hallmark: buttons look dimensional and invite the tap.
+   Static (no motion; the press transform lives on the Button base), so it needs
+   no reduced-motion gate. */
+.btn-solid {
+  box-shadow:
+    0 1px 2px oklch(0.32 0.06 150 / 0.28),
+    inset 0 1px 0 oklch(1 0 0 / 0.13);
+  transition:
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+.btn-solid:hover {
+  filter: brightness(1.06);
+  box-shadow:
+    0 4px 14px -2px oklch(0.32 0.06 150 / 0.4),
+    inset 0 1px 0 oklch(1 0 0 / 0.16);
+}
+.dark .btn-solid {
+  box-shadow:
+    0 1px 2px oklch(0 0 0 / 0.4),
+    inset 0 1px 0 oklch(1 0 0 / 0.08);
+}
+
 /* Premium toast styling (sonner). Branded per-type icon colors + an elevated,
    softly-rounded card so system feedback (add-to-cart, wishlist, coupon, saves,
    errors) feels handcrafted rather than default. Static only — sonner owns the
