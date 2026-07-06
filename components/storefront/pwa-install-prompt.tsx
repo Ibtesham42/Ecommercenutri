@@ -313,6 +313,16 @@ export function PwaInstallPrompt({
     const show = (mode: "native" | "ios") => {
       if (showTimer.current) return;
       showTimer.current = setTimeout(() => {
+        // Never cover task-critical surfaces — an install nag must not block
+        // the cart CTA, checkout or the auth flow.
+        const path = window.location.pathname;
+        if (["/checkout", "/cart", "/login", "/register"].some((p) => path.startsWith(p))) {
+          return;
+        }
+        // Stamp the session at SHOW time (not only on dismiss) so ignoring the
+        // card doesn't re-summon it on every subsequent page load — this is
+        // what the "once per session" promise above actually means.
+        ssSet(K_SESSION, "1");
         setVisible(mode);
         track(mode === "ios" ? "pwa-ios-guide-shown" : "pwa-prompt-shown");
       }, 4000);

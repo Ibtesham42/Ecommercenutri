@@ -1,6 +1,6 @@
 # Nutriyet — Progress Tracker
 
-_Last updated: 2026-07-04 · Auto-maintained. Update at the end of every milestone._
+_Last updated: 2026-07-06 · Auto-maintained. Update at the end of every milestone._
 
 ## Snapshot
 
@@ -13,7 +13,24 @@ _Last updated: 2026-07-04 · Auto-maintained. Update at the end of every milesto
 | Database (Neon)     | ✅ live, migrated (…`affiliate_program`, `marketing_hub`, `marketing_automation`, `push_subscriptions`, `analytics_tracking`), seeded |
 | Current milestone   | **M0–M6 + RBAC + CMS + Affiliate Program + Admin bulk actions + Marketing Hub + Advanced analytics — production-ready** |
 
-## Latest: Conversion Optimization — Phase 1 (2026-07-05)
+## Latest: Auth Redesign — Phone-OTP login + profile completion (2026-07-06)
+Mobile number + OTP is the primary sign-in (email + Google kept as a full alternate
+panel); backend reused — phone auth is a second NextAuth Credentials provider.
+- **Schema** (migration `phone_auth_profile`): `User.phone` unique (legacy values
+  normalized to `+91…` + deduped in-migration), `phoneVerified`, `gender`, `dob`.
+- **OTP**: `lib/otp.ts` — crypto 6-digit, sha256-hashed in `VerificationToken`, 5-min
+  TTL, MSG91 delivery (`MSG91_AUTH_KEY`/`MSG91_TEMPLATE_ID`); dev keyless toasts the
+  code, production keyless hides phone login (classic email card unchanged).
+  **MSG91 keys pending on the owner's side (DLT registration in progress).**
+- **Login** (`components/auth/auth-shell.tsx`): phone → OTP → in, all client-side view
+  switches; `OtpInput` (auto-advance/paste/SMS-autofill/resend); premium email panel.
+- **Profile completion** (`/account`): avatar (direct-to-Cloudinary, user-scoped
+  signature route), gender + DOB, email change w/ re-verification, set/change
+  password, phone add/change with inline OTP. Header Sign in is now a filled pill CTA.
+- Same-day: welcome popup + quiz redesigned into premium staged experiences
+  (benefit cards, hero assessment CTA, coach lead-ins, analyzing beats).
+
+## Conversion Optimization — Phase 1 (2026-07-05)
 Additive signup-conversion features, all admin-toggleable via the new `StoreSetting.growth` JSON blob
 (migration `growth_conversion`; also new `HealthQuizResult` model + `QUIZ_*`/`POPUP_*`/`COUPON_CLAIM`/
 `STICKY_CLICK` event types). Existing analytics/checkout/admin/AI untouched.
