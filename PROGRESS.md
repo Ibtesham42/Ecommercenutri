@@ -13,6 +13,13 @@ _Last updated: 2026-07-06 · Auto-maintained. Update at the end of every milesto
 | Database (Neon)     | ✅ live, migrated (…`affiliate_program`, `marketing_hub`, `marketing_automation`, `push_subscriptions`, `analytics_tracking`), seeded |
 | Current milestone   | **M0–M6 + RBAC + CMS + Affiliate Program + Admin bulk actions + Marketing Hub + Advanced analytics — production-ready** |
 
+## Phase 2 (Revenue/Growth/Conversion) — Product rich-result SEO (2026-07-07)
+Completed the PDP Product JSON-LD for Google rich results (organic CTR / free
+acquisition): AggregateOffer now has highPrice + itemCondition + priceValidUntil
++ url (was lowPrice-only); aggregateRating gains bestRating/worstRating;
+individual Review nodes from real approved reviews. Server-rendered, no bundle
+change. `app/(storefront)/products/[slug]/page.tsx`.
+
 ## Phase 2 (Revenue/Growth/Conversion) — Buy-it-again reorder (2026-07-07)
 Every past order (list card + detail) now has a one-tap "Buy it again" that
 re-adds its still-available items to the cart at current server-authoritative
