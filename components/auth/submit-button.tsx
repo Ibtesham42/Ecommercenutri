@@ -18,10 +18,9 @@ export function SubmitButton({
       type="submit"
       disabled={pending}
       className={cn(
-        "w-full",
-        // Mobile-only premium treatment: 48px target, softer radius, gentle
-        // press-down. Desktop (sm+) keeps the stock button exactly.
-        "max-sm:h-12 max-sm:rounded-xl max-sm:text-base max-sm:font-semibold max-sm:shadow-elev-1 max-sm:transition-transform max-sm:active:scale-[0.98]",
+        "btn-rich w-full shadow-elev-1",
+        // Mobile: 48px target, softer radius (desktop keeps stock sizing).
+        "max-sm:h-12 max-sm:rounded-xl max-sm:text-base max-sm:font-semibold",
         className,
       )}
     >

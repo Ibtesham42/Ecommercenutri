@@ -1,13 +1,26 @@
 "use server";
 
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { profileSchema, addressSchema } from "@/lib/validations/account";
+import {
+  profileSchema,
+  addressSchema,
+  emailChangeSchema,
+  passwordChangeSchema,
+  avatarSchema,
+} from "@/lib/validations/account";
+import { normalizeIndianPhone, otpRequestSchema, otpVerifySchema } from "@/lib/validations/auth";
+import { generateOtpCode, sendOtpSms, storeOtp, verifyOtp } from "@/lib/otp";
+import { env, isConfigured } from "@/lib/env";
+import { checkRateLimit, limiters } from "@/lib/rate-limit";
+import { createVerificationToken } from "@/lib/tokens";
 import { transitionOrderStatus } from "@/lib/orders";
 import { isCustomerCancellable } from "@/lib/order-status";
-import { orderStatusEmail } from "@/lib/emails";
+import { orderStatusEmail, verificationEmail } from "@/lib/emails";
 import { sendEmail } from "@/lib/email";
 
 export type AccountState = { error?: string; success?: string } | undefined;
@@ -21,7 +34,8 @@ export async function updateProfile(
 
   const parsed = profileSchema.safeParse({
     name: formData.get("name"),
-    phone: formData.get("phone") || undefined,
+    gender: formData.get("gender") || undefined,
+    dob: formData.get("dob") || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -29,10 +43,173 @@ export async function updateProfile(
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { name: parsed.data.name, phone: parsed.data.phone ?? null },
+    data: {
+      name: parsed.data.name,
+      gender: parsed.data.gender ?? null,
+      dob: parsed.data.dob ? new Date(`${parsed.data.dob}T00:00:00Z`) : null,
+    },
   });
   revalidatePath("/account");
   return { success: "Profile updated." };
+}
+
+/** Changes the account email (uniqueness-checked) and re-triggers verification. */
+export async function updateEmail(
+  _prev: AccountState,
+  formData: FormData,
+): Promise<AccountState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Not signed in." };
+
+  const parsed = emailChangeSchema.safeParse({ email: formData.get("email") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+  const email = parsed.data.email.trim().toLowerCase();
+
+  const current = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { email: true },
+  });
+  if (!current) return { error: "Not signed in." };
+  if (current.email === email) return { success: "That's already your email." };
+
+  const taken = await prisma.user.findUnique({ where: { email } });
+  if (taken) return { error: "That email is already in use on another account." };
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { email, emailVerified: null },
+  });
+
+  // Best-effort verification link — never fail the update over email delivery.
+  try {
+    const token = await createVerificationToken(email);
+    const url = `${env.appUrl}/verify-email?token=${token}`;
+    await sendEmail({ to: email, ...verificationEmail(url, user.name ?? null) });
+  } catch (mailErr) {
+    console.error("[account] verification email failed:", mailErr);
+  }
+
+  revalidatePath("/account");
+  return { success: "Email updated — check your inbox for a verification link." };
+}
+
+/** Sets a password (phone/Google accounts) or changes it (current required). */
+export async function changePassword(
+  _prev: AccountState,
+  formData: FormData,
+): Promise<AccountState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Not signed in." };
+
+  const parsed = passwordChangeSchema.safeParse({
+    currentPassword: formData.get("currentPassword") || undefined,
+    password: formData.get("password"),
+    confirm: formData.get("confirm"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  const record = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { passwordHash: true },
+  });
+  if (!record) return { error: "Not signed in." };
+
+  if (record.passwordHash) {
+    if (!parsed.data.currentPassword) {
+      return { error: "Enter your current password." };
+    }
+    const ok = await bcrypt.compare(parsed.data.currentPassword, record.passwordHash);
+    if (!ok) return { error: "Your current password is incorrect." };
+  }
+
+  const passwordHash = await bcrypt.hash(parsed.data.password, 10);
+  await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+  return {
+    success: record.passwordHash ? "Password changed." : "Password set — you can now sign in with email too.",
+  };
+}
+
+/** Saves the Cloudinary avatar URL set by the direct browser upload. */
+export async function updateAvatar(url: unknown): Promise<AccountState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Not signed in." };
+
+  const parsed = avatarSchema.safeParse(url);
+  if (!parsed.success) return { error: "Invalid image." };
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { image: parsed.data || null },
+  });
+  revalidatePath("/account");
+  return { success: parsed.data ? "Photo updated." : "Photo removed." };
+}
+
+export type ProfileOtpResult =
+  | { ok: true; phone: string; devCode?: string }
+  | { ok: false; error: string };
+
+/** Sends a verification OTP for changing the account's phone number. */
+export async function requestProfilePhoneOtp(raw: unknown): Promise<ProfileOtpResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+
+  const parsed = otpRequestSchema.safeParse(raw);
+  const phone = parsed.success ? normalizeIndianPhone(parsed.data.phone) : null;
+  if (!phone) return { ok: false, error: "Enter a valid 10-digit mobile number." };
+
+  const taken = await prisma.user.findUnique({ where: { phone }, select: { id: true } });
+  if (taken && taken.id !== user.id) {
+    return { ok: false, error: "That number is already linked to another account." };
+  }
+
+  const h = await headers();
+  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? "anon";
+  const [byPhone, byIp] = await Promise.all([
+    checkRateLimit(limiters.auth, `otp:${phone}`),
+    checkRateLimit(limiters.auth, `otp:${ip}`),
+  ]);
+  if (!byPhone.success || !byIp.success) {
+    return { ok: false, error: "Too many codes requested. Please wait a minute." };
+  }
+
+  const code = generateOtpCode();
+  await storeOtp(phone, code);
+  const sent = await sendOtpSms(phone, code);
+  if (!sent) return { ok: false, error: "We couldn't send the code right now. Please try again." };
+
+  const devCode =
+    !isConfigured.msg91() && process.env.NODE_ENV !== "production" ? code : undefined;
+  return { ok: true, phone, devCode };
+}
+
+/** Verifies the OTP and links the phone to the signed-in account. */
+export async function confirmProfilePhone(raw: unknown): Promise<AccountState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Not signed in." };
+
+  const parsed = otpVerifySchema.safeParse(raw);
+  const phone = parsed.success ? normalizeIndianPhone(parsed.data.phone) : null;
+  if (!phone || !parsed.success) return { error: "Enter the 6-digit code." };
+
+  const valid = await verifyOtp(phone, parsed.data.code);
+  if (!valid) return { error: "That code didn't match (or expired). Request a new one." };
+
+  const taken = await prisma.user.findUnique({ where: { phone }, select: { id: true } });
+  if (taken && taken.id !== user.id) {
+    return { error: "That number is already linked to another account." };
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { phone, phoneVerified: new Date() },
+  });
+  revalidatePath("/account");
+  return { success: "Phone number verified." };
 }
 
 export async function saveAddress(

@@ -7,7 +7,9 @@ import type { Provider } from "next-auth/providers";
 import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { env, isConfigured } from "@/lib/env";
-import { loginSchema } from "@/lib/validations/auth";
+import { loginSchema, otpVerifySchema, normalizeIndianPhone } from "@/lib/validations/auth";
+import { placeholderEmailFor } from "@/lib/phone-account";
+import { verifyOtp } from "@/lib/otp";
 import { authConfig } from "@/lib/auth.config";
 import { checkRateLimit, limiters } from "@/lib/rate-limit";
 import type { Permission } from "@/lib/permissions";
@@ -50,6 +52,64 @@ providers.push(
 
       const valid = await bcrypt.compare(password, user.passwordHash);
       if (!valid) return null;
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        image: user.image,
+        role: user.role,
+      };
+    },
+  }),
+);
+
+providers.push(
+  Credentials({
+    id: "phone-otp",
+    name: "phone-otp",
+    credentials: {
+      phone: { label: "Phone", type: "tel" },
+      code: { label: "Code", type: "text" },
+    },
+    authorize: async (raw, request) => {
+      const ip =
+        request?.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        request?.headers?.get("x-real-ip") ||
+        "anon";
+      const { success } = await checkRateLimit(limiters.auth, `otp-verify:${ip}`);
+      if (!success) return null;
+
+      const parsed = otpVerifySchema.safeParse(raw);
+      if (!parsed.success) return null;
+      const phone = normalizeIndianPhone(parsed.data.phone);
+      if (!phone) return null;
+
+      const valid = await verifyOtp(phone, parsed.data.code);
+      if (!valid) return null;
+
+      // A verified phone either belongs to an existing account (link/login) or
+      // silently creates one — no name/email/password asked at first login.
+      // Phone-created accounts get a placeholder email (User.email is unique +
+      // required); the profile page invites them to replace it later.
+      let user = await prisma.user.findUnique({ where: { phone } });
+      if (user) {
+        if (!user.isActive) return null;
+        if (!user.phoneVerified) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: { phoneVerified: new Date() },
+          });
+        }
+      } else {
+        user = await prisma.user.create({
+          data: {
+            phone,
+            phoneVerified: new Date(),
+            email: placeholderEmailFor(phone),
+          },
+        });
+      }
 
       return {
         id: user.id,

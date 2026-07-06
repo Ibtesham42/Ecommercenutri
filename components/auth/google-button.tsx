@@ -37,7 +37,9 @@ export function GoogleButton({ callbackUrl }: { callbackUrl?: string }) {
       <Button
         type="submit"
         variant="outline"
-        className="w-full gap-2 max-sm:h-12 max-sm:gap-2.5 max-sm:rounded-xl max-sm:bg-background max-sm:text-[15px] max-sm:font-medium max-sm:shadow-elev-1 max-sm:transition-transform max-sm:active:scale-[0.98] max-sm:[&_svg]:size-5"
+        // Google-guideline surface: neutral background, subtle border, the
+        // official "G", roomy tap target — matched to the premium auth CTAs.
+        className="btn-rich h-11 w-full gap-2.5 rounded-xl bg-background text-[15px] font-medium shadow-elev-1 max-sm:h-12 [&_svg]:size-5"
       >
         <GoogleIcon />
         Continue with Google

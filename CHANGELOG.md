@@ -3,6 +3,42 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [Auth Redesign] — Phone-OTP-first login + profile completion — 2026-07-06
+
+Mobile-number + OTP is now the primary sign-in (Flipkart/Zepto-style); email +
+Google remain as a full alternate panel. Existing backend (NextAuth v5 JWT,
+Google, credentials, user DB) reused — phone auth is a second Credentials
+provider, not a rebuild.
+
+### Added
+- **Schema** (migration `phone_auth_profile`): `User.phone` unique (legacy
+  values normalized to `+91…` + deduped in-migration), `phoneVerified`,
+  `gender` enum, `dob`.
+- **OTP backend**: `lib/otp.ts` (crypto 6-digit codes, sha256-hashed in
+  `VerificationToken`, 5-min TTL, one active code per phone) + MSG91 delivery
+  (`MSG91_AUTH_KEY`/`MSG91_TEMPLATE_ID`, `isConfigured.msg91`). Keyless: dev
+  logs/toasts the code; production hides phone login entirely.
+- **`phone-otp` NextAuth Credentials provider**: verifies the code, links by
+  verified phone or silently auto-creates an account (placeholder email via
+  `lib/phone-account.ts`) — no name/email/password asked at first login.
+  Rate-limited per phone + per IP (`limiters.auth`).
+- **Login UI** (`components/auth/auth-shell.tsx`): phone → OTP → in, as
+  client-side view switches; `OtpInput` (6 boxes, auto-advance, paste, SMS
+  autofill, countdown + resend, change number); "Continue with Email" premium
+  panel hosting the existing LoginForm + Google button.
+- **Profile completion** (`/account`): avatar upload (direct-to-Cloudinary via
+  user-scoped `/api/account/avatar-signature`), gender chips + DOB, email
+  change (uniqueness + re-verification), set/change password (current-password
+  check when one exists), phone add/change with inline OTP verify.
+
+### Notes
+- New auth surfaces reuse the `btn-rich`/`shadow-elev-*` premium language;
+  keyless-parity: production without MSG91 keys shows the classic email-first
+  card unchanged.
+- Verified: typecheck/lint/build (shared First-Load 103 kB unchanged), DB
+  smoke (unique phone, OTP token round-trip, account create/link), login
+  screenshots at 390/1280.
+
 ## [CMS Phase 4] — Homepage Section Builder — 2026-06-25
 
 Admins can show/hide and drag-reorder homepage sections from `/admin/homepage`.

@@ -150,6 +150,8 @@ Groups: **App** (`NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SITE_NAME`) · **DB**
 (`UPSTASH_REDIS_REST_URL/TOKEN`) · **Push/WhatsApp/SMS**
 (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`,
 `WHATSAPP_TOKEN`/`WHATSAPP_PHONE_ID`, `TWILIO_ACCOUNT_SID`/`TWILIO_AUTH_TOKEN`/`TWILIO_FROM`)
+· **Phone-OTP login** (`MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID` — keyless: OTP is
+console-logged in dev; phone login hidden in production without keys)
 · **Cron** (`CRON_SECRET`) · **Analytics** (`NEXT_PUBLIC_ANALYTICS_SRC`/`_DOMAIN`)
 · **Admin bootstrap** (`ADMIN_EMAIL`, `ADMIN_PASSWORD`, used by the seed).
 

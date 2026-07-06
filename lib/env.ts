@@ -59,6 +59,10 @@ export const env = {
   twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
   twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
   twilioFrom: process.env.TWILIO_FROM ?? "",
+
+  // Login OTP SMS via MSG91 (India, DLT-approved OTP template).
+  msg91AuthKey: process.env.MSG91_AUTH_KEY ?? "",
+  msg91TemplateId: process.env.MSG91_TEMPLATE_ID ?? "",
 };
 
 export const isConfigured = {
@@ -78,4 +82,5 @@ export const isConfigured = {
   webPush: () => Boolean(env.vapidPublicKey && env.vapidPrivateKey),
   whatsapp: () => Boolean(env.whatsappToken && env.whatsappPhoneId),
   sms: () => Boolean(env.twilioAccountSid && env.twilioAuthToken && env.twilioFrom),
+  msg91: () => Boolean(env.msg91AuthKey && env.msg91TemplateId),
 };
