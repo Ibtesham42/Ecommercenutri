@@ -494,6 +494,71 @@
   .onboard-glow {
     animation: nutri-onboard-glow 2s ease-in-out infinite;
   }
+
+  /* Premium CTA micro-interactions: lift + soft brand glow on hover, gentle
+     press on tap. The glow color is themeable via --glow (see .btn-rich-gold).
+     Layers ON TOP of an elevation utility — hover box-shadow includes its own
+     depth so the swap never flattens the button. */
+  .btn-rich {
+    transition:
+      transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.25s ease,
+      filter 0.2s ease;
+  }
+  .btn-rich:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+    box-shadow:
+      0 2px 4px oklch(0.18 0.02 150 / 0.05),
+      0 6px 20px color-mix(in oklab, var(--glow, var(--primary)) 35%, transparent);
+  }
+  .btn-rich:active {
+    transform: scale(0.97);
+    filter: brightness(0.98);
+  }
+
+  /* Staggered entrance — pair with `motion-safe:animate-fade-up` on siblings.
+     The keyframe's `both` fill keeps each item hidden until its turn. */
+  .fade-delay-1 {
+    animation-delay: 70ms;
+  }
+  .fade-delay-2 {
+    animation-delay: 140ms;
+  }
+  .fade-delay-3 {
+    animation-delay: 210ms;
+  }
+  .fade-delay-4 {
+    animation-delay: 280ms;
+  }
+  .fade-delay-5 {
+    animation-delay: 350ms;
+  }
+
+  /* Calm concentric "thinking" halo for the quiz analyzing beat — two soft
+     rings expanding and fading around a centered icon tile. Decorative only. */
+  @keyframes nutri-halo {
+    0% {
+      transform: scale(1);
+      opacity: 0.55;
+    }
+    100% {
+      transform: scale(1.9);
+      opacity: 0;
+    }
+  }
+  .pulse-halo::before,
+  .pulse-halo::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 1px solid color-mix(in oklab, var(--primary) 40%, transparent);
+    animation: nutri-halo 2s ease-out infinite;
+  }
+  .pulse-halo::after {
+    animation-delay: -1s;
+  }
 }
 
 /* Image blur-up reveal: starts blurred/transparent, clears when loaded. */
@@ -517,6 +582,36 @@
     filter: blur(0);
     transform: none;
   }
+}
+
+/* Premium CTA sheen — a whisper of top light over any solid button fill so it
+   reads dimensional instead of flat. Static (works under reduced motion);
+   the hover lift/glow above layers on only when motion is allowed. */
+.btn-rich {
+  position: relative;
+  background-image: linear-gradient(
+    to bottom,
+    oklch(1 0 0 / 0.14),
+    transparent 55%
+  );
+}
+.btn-rich-gold {
+  --glow: var(--gold);
+  background-image: linear-gradient(
+    to bottom,
+    oklch(1 0 0 / 0.35),
+    transparent 55%
+  );
+}
+.dark .btn-rich-gold {
+  background-image: linear-gradient(
+    to bottom,
+    oklch(1 0 0 / 0.06),
+    transparent 55%
+  );
+}
+.pulse-halo {
+  position: relative;
 }
 
 /* Static fallback so the sign-in spotlight is still clearly discoverable without

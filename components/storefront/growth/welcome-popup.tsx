@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
-import { PartyPopper, Gift, Sparkles, Salad, ClipboardCheck } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Leaf, Gift, Sparkles, Salad, ClipboardCheck } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { trackClient } from "@/components/storefront/behavior-tracker";
 import { revealWelcomeCoupon } from "@/lib/actions/quiz";
+import { cn } from "@/lib/utils";
 
 const SEEN_KEY = "nut_welcome_seen";
 const DAY_MS = 86_400_000;
@@ -15,6 +16,8 @@ const DELAY_MS = 10_000;
 const SCROLL_TRIGGER = 0.4;
 
 const HIDE_ON = ["/checkout", "/quiz", "/login", "/register"];
+
+const FADE_DELAYS = ["fade-delay-1", "fade-delay-2", "fade-delay-3"];
 
 /**
  * Smart welcome popup — first-time, logged-out visitors only, never during
@@ -99,40 +102,85 @@ export function WelcomePopup({
   }
 
   const benefits = [
-    { icon: Gift, text: `Get ${couponPercent}% OFF your first order` },
-    { icon: Sparkles, text: "Free AI health assessment" },
-    { icon: Salad, text: "Personalized snack recommendations" },
+    {
+      icon: Sparkles,
+      title: "Free AI health check",
+      desc: "60 seconds to your personal wellness score",
+    },
+    {
+      icon: Salad,
+      title: "Snacks picked for you",
+      desc: "Matched to your goal, not generic bestsellers",
+    },
+    {
+      icon: Gift,
+      title: `${couponPercent}% welcome reward`,
+      desc: "Unlocked on your first order",
+    },
   ];
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-sm overflow-hidden rounded-3xl p-0">
-        <div className="surface-rich px-6 py-7 text-center text-surface-deep-foreground">
-          <span className="mx-auto grid size-14 place-items-center rounded-full bg-white/10">
-            <PartyPopper className="size-7 text-gold" />
-          </span>
-          <h2 className="mt-3 font-heading text-2xl font-bold">{title}</h2>
-          <p className="mx-auto mt-1.5 max-w-xs text-sm text-surface-deep-foreground/80">{subtitle}</p>
+      <DialogContent className="max-w-sm gap-0 overflow-hidden rounded-3xl border-none p-0">
+        <div className="surface-rich relative px-6 pt-8 pb-7 text-center text-surface-deep-foreground">
+          <Sparkles className="badge-breathe absolute top-8 left-7 size-4 text-gold/40" aria-hidden />
+          <Sparkles className="absolute right-9 bottom-7 size-3 text-gold/25" aria-hidden />
+          <div className="relative mx-auto size-14">
+            <div className="absolute inset-0 rounded-2xl bg-gold/25 blur-xl" aria-hidden />
+            <span className="relative grid size-14 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15">
+              <Leaf className="size-7 text-gold" />
+            </span>
+          </div>
+          <p className="mt-4 text-[11px] font-semibold tracking-[0.18em] text-gold uppercase">
+            A welcome gift for you
+          </p>
+          <DialogTitle className="mt-1.5 font-heading text-[26px] leading-tight font-bold text-surface-deep-foreground">
+            {title}
+          </DialogTitle>
+          <DialogDescription className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-surface-deep-foreground/80">
+            {subtitle}
+          </DialogDescription>
         </div>
-        <div className="p-6">
+
+        <div className="p-5 sm:p-6">
           <ul className="space-y-2.5">
-            {benefits.map((b) => (
-              <li key={b.text} className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 text-sm font-medium">
-                <b.icon className="size-4 shrink-0 text-primary" /> {b.text}
+            {benefits.map((b, i) => (
+              <li
+                key={b.title}
+                className={cn(
+                  "animate-fade-up hover-lift flex items-start gap-3 rounded-2xl bg-secondary/60 px-4 py-3.5 shadow-elev-1 dark:bg-secondary/40",
+                  FADE_DELAYS[i],
+                )}
+              >
+                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <b.icon className="size-4.5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">{b.title}</span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{b.desc}</span>
+                </span>
               </li>
             ))}
           </ul>
-          <div className="mt-5 space-y-2">
-            <Button onClick={claim} className="h-12 w-full gap-2 text-base font-semibold shadow-elev-1">
-              <Gift className="size-4" /> Claim My {couponPercent}% OFF
+
+          <div className="animate-fade-up fade-delay-4 mt-5 space-y-2.5">
+            <Button
+              onClick={assessment}
+              className="btn-rich h-auto min-h-12 w-full gap-2 py-2.5 text-[15px] font-semibold whitespace-normal shadow-elev-2"
+            >
+              <Sparkles className="size-4" /> Start My Free Health Assessment
             </Button>
-            <Button onClick={assessment} variant="outline" className="h-11 w-full gap-1.5">
-              <Sparkles className="size-4" /> Take Free Assessment
+            <Button
+              onClick={claim}
+              variant="outline"
+              className="btn-rich btn-rich-gold h-auto min-h-11 w-full gap-2 border-gold/40 bg-gold/10 py-2.5 font-semibold whitespace-normal hover:bg-gold/15"
+            >
+              <Gift className="size-4 text-gold" /> Unlock My {couponPercent}% Welcome Reward
             </Button>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="mx-auto block pt-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="mx-auto block px-4 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               Maybe later
             </button>
