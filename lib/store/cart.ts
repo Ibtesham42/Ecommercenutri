@@ -63,7 +63,26 @@ export const useCart = create<CartState>()(
         })),
       clear: () => set({ items: [] }),
     }),
-    { name: "nutriyet-cart" },
+    {
+      name: "nutriyet-cart",
+      // Self-heal on rehydrate: drop malformed persisted items (stale schema,
+      // manual edits) so a bad entry can never NaN-poison badge/totals/checkout.
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<CartState>;
+        const items = Array.isArray(p.items)
+          ? p.items.filter(
+              (i): i is CartItem =>
+                Boolean(i) &&
+                typeof i.variantId === "string" &&
+                typeof i.slug === "string" &&
+                Number.isFinite(i.price) &&
+                Number.isFinite(i.quantity) &&
+                i.quantity > 0,
+            )
+          : [];
+        return { ...current, ...p, items };
+      },
+    },
   ),
 );
 
