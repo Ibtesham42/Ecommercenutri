@@ -36,6 +36,10 @@ export function ProductGallery({
       >
         {main && (
           <BlurImage
+            // Key on the active index so switching thumbnails remounts the
+            // image and replays the blur-up reveal — a soft focus-pull between
+            // shots instead of a hard cut (reduced-motion gated in globals).
+            key={active}
             src={main.url}
             alt={main.alt ?? name}
             fill
@@ -138,10 +142,12 @@ function Lightbox({
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
+                // Crossfade between shots on prev/next + thumbnail nav.
+                key={active}
                 src={current.url}
                 alt={current.alt ?? name}
                 className={cn(
-                  "mx-auto h-full w-full object-contain transition-transform duration-300",
+                  "mx-auto h-full w-full object-contain transition-transform duration-300 motion-safe:animate-fade-in",
                   zoomed && "scale-[1.8] cursor-zoom-out",
                 )}
               />

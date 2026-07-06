@@ -337,6 +337,20 @@
   .animate-fade-up {
     animation: nutri-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
+  /* Pure-opacity crossfade — no translate, so it's right for swapping images
+     (gallery lightbox) where a slide would look like a glitch. Key the element
+     on the active index to replay it on each switch. */
+  @keyframes nutri-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .animate-fade-in {
+    animation: nutri-fade-in 0.32s ease-out both;
+  }
   /* Full-screen overlay entrance/exit (mobile search). */
   @keyframes nutri-overlay-in {
     from {
@@ -559,6 +573,33 @@
   .pulse-halo::after {
     animation-delay: -1s;
   }
+}
+
+/* Premium toast styling (sonner). Branded per-type icon colors + an elevated,
+   softly-rounded card so system feedback (add-to-cart, wishlist, coupon, saves,
+   errors) feels handcrafted rather than default. Static only — sonner owns the
+   enter/exit motion, so nothing here needs the reduced-motion gate. */
+.cn-toast {
+  border-radius: var(--radius-xl);
+  box-shadow:
+    0 4px 8px oklch(0.18 0.02 150 / 0.06),
+    0 16px 40px oklch(0.18 0.02 150 / 0.14);
+}
+.dark .cn-toast {
+  box-shadow: 0 16px 48px oklch(0 0 0 / 0.6);
+}
+.cn-toast[data-type="success"] [data-icon] {
+  color: var(--primary);
+}
+.cn-toast[data-type="error"] [data-icon] {
+  color: var(--destructive);
+}
+.cn-toast[data-type="warning"] [data-icon] {
+  color: var(--gold);
+}
+.cn-toast[data-type="info"] [data-icon],
+.cn-toast[data-type="loading"] [data-icon] {
+  color: var(--primary);
 }
 
 /* Image blur-up reveal: starts blurred/transparent, clears when loaded. */
