@@ -23,6 +23,7 @@ import {
   RecentlyViewedTracker,
 } from "@/components/storefront/recently-viewed";
 import { RecoSection } from "@/components/storefront/reco-section";
+import { FrequentlyBoughtTogether } from "@/components/storefront/frequently-bought-together";
 import { BehaviorTracker } from "@/components/storefront/behavior-tracker";
 import { StarRating } from "@/components/storefront/star-rating";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -249,14 +250,19 @@ export default async function ProductPage({
         }))}
       />
 
-      {/* Frequently bought together */}
-      <RecoSection
-        className="mt-14"
-        title="Frequently bought together"
-        products={fbt}
-        wishlistedIds={wishlistIds}
-        source="fbt"
-      />
+      {/* Frequently bought together — interactive one-tap bundle (AOV). Falls
+          back to a passive strip when there aren't ≥2 in-stock companions. */}
+      {fbt.length >= 2 ? (
+        <FrequentlyBoughtTogether className="mt-14" products={fbt} />
+      ) : (
+        <RecoSection
+          className="mt-14"
+          title="Frequently bought together"
+          products={fbt}
+          wishlistedIds={wishlistIds}
+          source="fbt"
+        />
+      )}
 
       {/* Customers also bought */}
       <RecoSection
