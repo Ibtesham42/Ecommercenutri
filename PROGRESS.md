@@ -13,6 +13,14 @@ _Last updated: 2026-07-06 · Auto-maintained. Update at the end of every milesto
 | Database (Neon)     | ✅ live, migrated (…`affiliate_program`, `marketing_hub`, `marketing_automation`, `push_subscriptions`, `analytics_tracking`), seeded |
 | Current milestone   | **M0–M6 + RBAC + CMS + Affiliate Program + Admin bulk actions + Marketing Hub + Advanced analytics — production-ready** |
 
+## Phase 2 (Revenue/Growth/Conversion) — order-success retention (2026-07-07)
+Post-purchase page turned from a dead end into a retention+discovery moment
+(additive; no logic/API/DB/auth change): delivery-reassurance strip (cuts WISMO
+support load), "Popular with our customers" cross-sell (existing `getBestSellers`
++ `RecoSection`, excludes just-purchased items → repeat purchase/AOV), and a
+conditional AI-Assessment invite (only when the shopper has no HealthQuizResult).
+`app/(storefront)/checkout/success/page.tsx`. Shared First-Load unchanged (103 kB).
+
 ## Latest: Auth Redesign — Phone-OTP login + profile completion (2026-07-06)
 Mobile number + OTP is the primary sign-in (email + Google kept as a full alternate
 panel); backend reused — phone auth is a second NextAuth Credentials provider.
