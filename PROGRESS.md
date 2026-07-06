@@ -13,6 +13,16 @@ _Last updated: 2026-07-06 · Auto-maintained. Update at the end of every milesto
 | Database (Neon)     | ✅ live, migrated (…`affiliate_program`, `marketing_hub`, `marketing_automation`, `push_subscriptions`, `analytics_tracking`), seeded |
 | Current milestone   | **M0–M6 + RBAC + CMS + Affiliate Program + Admin bulk actions + Marketing Hub + Advanced analytics — production-ready** |
 
+## Phase 2 (Revenue/Growth/Conversion) — AI Assessment real recs (2026-07-07)
+The health-quiz result now recommends REAL, in-stock, goal-matched catalog
+products (add-to-cart ready, works logged-out) instead of hard-coded search
+links — the AI moat + a direct conversion path, honoring "only in-DB in-stock
+recs". `lib/quiz/recommend.ts#getQuizRecommendedProducts` maps focus tags →
+products via the existing search (active-only), filters in-stock, round-robins +
+dedupes, backfills with in-stock best-sellers; `completeQuiz` returns them
+(best-effort); `health-quiz.tsx` renders a "Snacks picked for you" grid. No
+scoring/API/DB/auth change. Shared First-Load unchanged (103 kB).
+
 ## Phase 2 (Revenue/Growth/Conversion) — order-success retention (2026-07-07)
 Post-purchase page turned from a dead end into a retention+discovery moment
 (additive; no logic/API/DB/auth change): delivery-reassurance strip (cuts WISMO
