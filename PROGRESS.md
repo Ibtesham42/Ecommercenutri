@@ -13,6 +13,14 @@ _Last updated: 2026-07-06 · Auto-maintained. Update at the end of every milesto
 | Database (Neon)     | ✅ live, migrated (…`affiliate_program`, `marketing_hub`, `marketing_automation`, `push_subscriptions`, `analytics_tracking`), seeded |
 | Current milestone   | **M0–M6 + RBAC + CMS + Affiliate Program + Admin bulk actions + Marketing Hub + Advanced analytics — production-ready** |
 
+## Design refinement — button + modal systems (2026-07-07)
+Primary Button `default` variant recrafted with a `.btn-solid` treatment (inset
+top sheen + brand-tinted elevation that deepens on hover, replacing the flat
+opacity-fade) — lifts every buy button/CTA at once. Base Dialog refined: black/45
+focus scrim (was black/10), shadow-elev-3 depth, gentler settled entrance — lifts
+every modal (welcome/AI popup, lightbox, dialogs). `components/ui/button.tsx`,
+`app/globals.css`, `components/ui/dialog.tsx`. Shared First-Load unchanged (103 kB).
+
 ## Design refinement — About page editorial story (2026-07-07)
 About reworked from a thin 3-card template into an editorial brand story: gold
 "Our story" eyebrow + Fraunces headline, a "From the heart of Mithila" deep-green
