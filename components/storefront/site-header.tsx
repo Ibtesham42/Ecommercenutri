@@ -145,15 +145,16 @@ export function SiteHeader({
             </Button>
           ) : (
             <SigninSpotlight>
+              {/* Filled brand pill — the one loud CTA in the header, so new
+                  visitors can't miss the account entry point. */}
               <Button
                 asChild
-                variant="ghost"
                 size="sm"
-                className={cn("h-11 gap-1.5 px-3 sm:h-10", onDeep)}
+                className="btn-rich h-11 gap-1.5 rounded-full px-4 text-sm font-bold shadow-elev-2 sm:h-10"
               >
                 <Link href="/login">
                   <User className="size-[18px]" />
-                  <span className="text-sm font-semibold">Sign in</span>
+                  <span>Sign in</span>
                 </Link>
               </Button>
             </SigninSpotlight>
