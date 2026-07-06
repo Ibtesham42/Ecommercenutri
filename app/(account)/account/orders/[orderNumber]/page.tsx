@@ -9,6 +9,7 @@ import { OrderSummaryCard } from "@/components/storefront/order-summary-card";
 import { OrderTimeline } from "@/components/storefront/order-timeline";
 import { CancelOrderButton } from "@/components/storefront/cancel-order-button";
 import { ReturnRequestButton } from "@/components/account/return-request-button";
+import { BuyAgainButton } from "@/components/account/buy-again-button";
 import { isCustomerCancellable } from "@/lib/order-status";
 import { returnStatusLabel } from "@/lib/return-status";
 import { getReturnEligibility } from "@/lib/returns";
@@ -47,6 +48,7 @@ export default async function OrderDetailPage({
           <ArrowLeft className="size-4" /> Back to orders
         </Link>
         <div className="flex flex-wrap gap-2">
+          <BuyAgainButton orderNumber={order.orderNumber} />
           {cancellable && <CancelOrderButton orderNumber={order.orderNumber} />}
           {eligibility.eligible && (
             <ReturnRequestButton
