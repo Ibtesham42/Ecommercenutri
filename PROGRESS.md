@@ -13,6 +13,12 @@ _Last updated: 2026-07-06 · Auto-maintained. Update at the end of every milesto
 | Database (Neon)     | ✅ live, migrated (…`affiliate_program`, `marketing_hub`, `marketing_automation`, `push_subscriptions`, `analytics_tracking`), seeded |
 | Current milestone   | **M0–M6 + RBAC + CMS + Affiliate Program + Admin bulk actions + Marketing Hub + Advanced analytics — production-ready** |
 
+## Design refinement — About page editorial story (2026-07-07)
+About reworked from a thin 3-card template into an editorial brand story: gold
+"Our story" eyebrow + Fraunces headline, a "From the heart of Mithila" deep-green
+pull-quote (authentic brand roots), values in one cohesive dividered panel with
+gold thin-stroke icons. `app/(storefront)/about/page.tsx`. No bundle change.
+
 ## Design refinement — cohesive trust band (2026-07-07)
 Homepage product-promises row reworked from 6 identical bordered cards into a
 single considered band: bare gold thin-stroke icons, softer labels, desktop
