@@ -48,16 +48,18 @@ export async function TrustSection() {
             ))}
           </div>
         )}
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {/* Product promises as one cohesive band (not 6 stamped cards): bare
+            gold icons with a refined thin stroke, hairline dividers on desktop
+            for rhythm — reads like a considered statement of values, not a
+            template grid. */}
+        <ul className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-6 lg:gap-x-0 lg:divide-x lg:divide-border/60">
           {BADGES.map((b) => (
             <li
               key={b.label}
-              className="flex items-center gap-2.5 rounded-xl border bg-card px-3.5 py-3 shadow-elev-1 sm:flex-col sm:gap-2 sm:py-4 sm:text-center"
+              className="flex flex-col items-center gap-2 px-2 text-center lg:px-5"
             >
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                <b.icon className="size-4.5" />
-              </span>
-              <span className="text-xs font-semibold leading-tight sm:text-[13px]">{b.label}</span>
+              <b.icon className="size-5 text-gold" strokeWidth={1.75} aria-hidden />
+              <span className="text-xs font-medium leading-snug text-foreground/80 sm:text-[13px]">{b.label}</span>
             </li>
           ))}
         </ul>
