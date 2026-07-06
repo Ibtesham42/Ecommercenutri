@@ -7,6 +7,8 @@ import {
 } from "@/lib/queries/products";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
 import { getPricingSettings } from "@/lib/queries/settings";
+import { effectivePrice } from "@/lib/format";
+import { env } from "@/lib/env";
 import {
   similarProducts,
   frequentlyBoughtTogether,
@@ -79,6 +81,24 @@ export default async function ProductPage({
     : [];
 
   const min = minVariantPrice(product.variants) ?? 0;
+  const max = product.variants.length
+    ? Math.max(...product.variants.map((v) => effectivePrice(v.price, v.discountPrice)))
+    : min;
+  const inStock = product.variants.some((v) => v.stock > 0);
+  const productUrl = `${env.appUrl}/products/${product.slug}`;
+  // Google recommends a priceValidUntil; a rolling ~30-day window keeps offers
+  // "fresh" for rich results without implying a fixed sale end.
+  const priceValidUntil = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+  // Individual review nodes broaden review rich-result eligibility (real,
+  // approved customer reviews only — never fabricated). Capped for a lean blob.
+  const reviewNodes = product.reviews.slice(0, 12).map((r) => ({
+    "@type": "Review",
+    reviewRating: { "@type": "Rating", ratingValue: r.rating, bestRating: 5, worstRating: 1 },
+    author: { "@type": "Person", name: r.user?.name ?? "Verified buyer" },
+    datePublished: r.createdAt.toISOString().slice(0, 10),
+    ...(r.title ? { name: r.title } : {}),
+    ...(r.comment ? { reviewBody: r.comment } : {}),
+  }));
 
   const jsonLdData = {
     "@context": "https://schema.org",
@@ -88,23 +108,31 @@ export default async function ProductPage({
     description: product.shortDescription ?? product.description.slice(0, 200),
     sku: product.sku ?? product.id,
     brand: { "@type": "Brand", name: product.brand?.name ?? "Nutriyet" },
+    ...(product.category ? { category: product.category.name } : {}),
     ...(product.ratingCount > 0
       ? {
           aggregateRating: {
             "@type": "AggregateRating",
             ratingValue: product.ratingAvg.toFixed(1),
             reviewCount: product.ratingCount,
+            bestRating: 5,
+            worstRating: 1,
           },
         }
       : {}),
+    ...(reviewNodes.length > 0 ? { review: reviewNodes } : {}),
     offers: {
       "@type": "AggregateOffer",
       priceCurrency: "INR",
       lowPrice: (min / 100).toFixed(2),
+      highPrice: (max / 100).toFixed(2),
       offerCount: product.variants.length,
-      availability: product.variants.some((v) => v.stock > 0)
+      availability: inStock
         ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock",
+      itemCondition: "https://schema.org/NewCondition",
+      priceValidUntil,
+      url: productUrl,
     },
   };
 
