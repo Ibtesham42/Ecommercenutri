@@ -13,6 +13,13 @@ _Last updated: 2026-07-06 · Auto-maintained. Update at the end of every milesto
 | Database (Neon)     | ✅ live, migrated (…`affiliate_program`, `marketing_hub`, `marketing_automation`, `push_subscriptions`, `analytics_tracking`), seeded |
 | Current milestone   | **M0–M6 + RBAC + CMS + Affiliate Program + Admin bulk actions + Marketing Hub + Advanced analytics — production-ready** |
 
+## Design refinement — editorial section headings (2026-07-07)
+Storefront section titles moved from the body sans (Hanken bold) to the brand
+editorial serif (Fraunces `font-heading`, semibold, refined leading/tracking),
+matching the hero's voice; the repeated primary→gold gradient accent bar became
+a quieter solid-gold hairline. Homepage `SectionHeading`, PDP/order-success
+`RecoSection`, FBT bundle. CSS-only; shared First-Load unchanged (103 kB).
+
 ## Phase 2 (Revenue/Growth/Conversion) — Product rich-result SEO (2026-07-07)
 Completed the PDP Product JSON-LD for Google rich results (organic CTR / free
 acquisition): AggregateOffer now has highPrice + itemCondition + priceValidUntil
