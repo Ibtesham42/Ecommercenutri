@@ -13,6 +13,14 @@ _Last updated: 2026-07-06 · Auto-maintained. Update at the end of every milesto
 | Database (Neon)     | ✅ live, migrated (…`affiliate_program`, `marketing_hub`, `marketing_automation`, `push_subscriptions`, `analytics_tracking`), seeded |
 | Current milestone   | **M0–M6 + RBAC + CMS + Affiliate Program + Admin bulk actions + Marketing Hub + Advanced analytics — production-ready** |
 
+## Phase 2 (Revenue/Growth/Conversion) — Buy-it-again reorder (2026-07-07)
+Every past order (list card + detail) now has a one-tap "Buy it again" that
+re-adds its still-available items to the cart at current server-authoritative
+prices (skipping now-unavailable ones) and routes to checkout — the core
+repeat-purchase/LTV lever for a consumables brand. `lib/actions/orders.ts`
+(getReorderItems), `components/account/buy-again-button.tsx`. No API/DB/auth
+change; reuses cart store + pricing. Shared First-Load unchanged (103 kB).
+
 ## Phase 2 (Revenue/Growth/Conversion) — FBT one-tap bundle (2026-07-07)
 The PDP "Frequently bought together" strip is now an interactive Amazon-style
 bundle: co-purchased companions render pre-selected with a live combined total
