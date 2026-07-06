@@ -16,6 +16,8 @@ import { createVerificationToken } from "@/lib/tokens";
 import { registerSchema } from "@/lib/validations/auth";
 import { quizAnswersSchema } from "@/lib/validations/quiz";
 import { scoreQuiz, type QuizRecommendations, type QuizBand } from "@/lib/quiz/score";
+import { getQuizRecommendedProducts } from "@/lib/quiz/recommend";
+import type { ProductCardData } from "@/lib/queries/products";
 import { getGrowthSettings } from "@/lib/growth-settings";
 import { getModel, aiAvailable } from "@/lib/ai/provider";
 import { getAISettings } from "@/lib/ai/settings";
@@ -73,6 +75,9 @@ export type CompleteQuizResult =
       teaserTips: string[]; // first tip only — the rest unlock after signup
       totalTips: number;
       focusCount: number;
+      // Real, in-stock, goal-matched products (add-to-cart ready) — the AI
+      // Assessment's actual recommendations, not bare search links.
+      recommendedProducts: ProductCardData[];
     }
   | { ok: false; error: string };
 
@@ -108,6 +113,15 @@ export async function completeQuiz(input: unknown): Promise<CompleteQuizResult> 
 
     await trackEvent({ type: "QUIZ_COMPLETE", anonId: anon, source: result.band });
 
+    // Real in-stock product recs — best-effort so catalog/search issues never
+    // break the result the shopper just earned.
+    let recommendedProducts: ProductCardData[] = [];
+    try {
+      recommendedProducts = await getQuizRecommendedProducts(recommendations.focus, 4);
+    } catch (recErr) {
+      console.error("[quiz] product recs failed:", recErr);
+    }
+
     return {
       ok: true,
       id: row.id,
@@ -117,6 +131,7 @@ export async function completeQuiz(input: unknown): Promise<CompleteQuizResult> 
       teaserTips: recommendations.tips.slice(0, 1),
       totalTips: recommendations.tips.length,
       focusCount: recommendations.focus.length,
+      recommendedProducts,
     };
   } catch (err) {
     console.error("[quiz] completeQuiz failed:", err);

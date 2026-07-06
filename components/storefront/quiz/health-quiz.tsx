@@ -23,6 +23,7 @@ import { SubmitButton } from "@/components/auth/submit-button";
 import { GoogleButton } from "@/components/auth/google-button";
 import { PasswordField } from "@/components/auth/password-field";
 import { ScoreGauge } from "@/components/storefront/quiz/score-gauge";
+import { ProductGrid } from "@/components/storefront/product-card";
 import { trackClient } from "@/components/storefront/behavior-tracker";
 import { cn } from "@/lib/utils";
 import { QUIZ_QUESTIONS, type QuizAnswers, type QuizKey } from "@/lib/quiz/questions";
@@ -301,8 +302,23 @@ function QuizResult({
         )}
       </div>
 
+      {/* Real, in-stock products matched to the shopper's goal — add-to-cart
+          ready. The AI Assessment's payoff: personalized picks they can buy now
+          (works logged-out; the cart is client-side). */}
+      {result.recommendedProducts.length > 0 && (
+        <div className="mt-8">
+          <div className="mb-4 text-center">
+            <h2 className="font-heading text-xl font-semibold sm:text-2xl">Snacks picked for you</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Matched to your goal — in stock and ready to add.
+            </p>
+          </div>
+          <ProductGrid products={result.recommendedProducts} />
+        </div>
+      )}
+
       {isLoggedIn ? (
-        <div className="mt-5 rounded-3xl border bg-card p-6 text-center shadow-elev-1">
+        <div className="mt-8 rounded-3xl border bg-card p-6 text-center shadow-elev-1">
           <Check className="mx-auto size-8 text-primary" />
           <p className="mt-2 font-semibold">Report saved to your account</p>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -313,7 +329,9 @@ function QuizResult({
           </Button>
         </div>
       ) : (
-        <UnlockSignup result={result} couponPercent={couponPercent} />
+        <div className="mt-8">
+          <UnlockSignup result={result} couponPercent={couponPercent} />
+        </div>
       )}
     </div>
   );
