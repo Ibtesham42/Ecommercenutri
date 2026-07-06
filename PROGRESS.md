@@ -13,6 +13,12 @@ _Last updated: 2026-07-06 · Auto-maintained. Update at the end of every milesto
 | Database (Neon)     | ✅ live, migrated (…`affiliate_program`, `marketing_hub`, `marketing_automation`, `push_subscriptions`, `analytics_tracking`), seeded |
 | Current milestone   | **M0–M6 + RBAC + CMS + Affiliate Program + Admin bulk actions + Marketing Hub + Advanced analytics — production-ready** |
 
+## Design refinement — cohesive trust band (2026-07-07)
+Homepage product-promises row reworked from 6 identical bordered cards into a
+single considered band: bare gold thin-stroke icons, softer labels, desktop
+hairline dividers; mobile airy 2-col. Real-stats cards kept. `trust-section.tsx`.
+CSS-only; shared First-Load unchanged (103 kB).
+
 ## Design refinement — editorial section headings (2026-07-07)
 Storefront section titles moved from the body sans (Hanken bold) to the brand
 editorial serif (Fraunces `font-heading`, semibold, refined leading/tracking),
