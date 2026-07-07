@@ -4,7 +4,15 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
-import { FileText, Download, Truck, Trash2, MoreHorizontal, Eye } from "lucide-react";
+import {
+  FileText,
+  Download,
+  Truck,
+  Trash2,
+  MoreHorizontal,
+  Eye,
+  ChevronsRight,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -37,14 +45,21 @@ import { BulkBar, type BulkAction } from "@/components/admin/bulk/bulk-bar";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import { toastBulk } from "@/lib/admin/run-bulk";
 import { downloadCsv } from "@/lib/admin/csv-export";
-import { bulkUpdateOrderStatus, bulkDeleteOrders, deleteOrder } from "@/lib/actions/admin/orders";
+import {
+  bulkUpdateOrderStatus,
+  bulkDeleteOrders,
+  deleteOrder,
+  updateOrderStatus,
+} from "@/lib/actions/admin/orders";
 import { formatPrice, formatDate } from "@/lib/format";
 import {
   ADMIN_STATUS_OPTIONS,
+  ORDER_FLOW,
   ORDER_STATUS_LABEL,
   statusBadgeVariant,
   statusLabel,
   isOrderDeletable,
+  flowIndex,
 } from "@/lib/order-status";
 import type { OrderStatus } from "@prisma/client";
 
@@ -145,6 +160,28 @@ export function OrderTable({ orders }: { orders: OrderRow[] }) {
     }
   }
 
+  /** The natural next fulfilment stage for this order, if any — powers the
+   *  one-click "Mark as …" row action (Shopify-style). Legacy PAID orders
+   *  advance into the flow at APPROVED. */
+  function nextStage(status: OrderStatus): OrderStatus | null {
+    if (status === "PAID") return "APPROVED";
+    const idx = flowIndex(status);
+    if (idx < 0 || idx >= ORDER_FLOW.length - 1) return null;
+    return ORDER_FLOW[idx + 1];
+  }
+
+  function advance(o: OrderRow, next: OrderStatus) {
+    startTransition(async () => {
+      const res = await updateOrderStatus({ orderId: o.id, status: next });
+      if (res.ok) {
+        toast.success(`#${o.orderNumber} → ${statusLabel(next)}`);
+        router.refresh();
+      } else {
+        toast.error(res.error);
+      }
+    });
+  }
+
   function confirmDelete() {
     if (!toDelete) return;
     const order = toDelete;
@@ -233,6 +270,20 @@ export function OrderTable({ orders }: { orders: OrderRow[] }) {
                           <Link href={`/admin/orders/${o.orderNumber}`}>
                             <Eye className="size-4" /> View
                           </Link>
+                        </DropdownMenuItem>
+                        {(() => {
+                          const next = nextStage(o.status as OrderStatus);
+                          return next ? (
+                            <DropdownMenuItem onClick={() => advance(o, next)}>
+                              <ChevronsRight className="size-4" /> Mark as{" "}
+                              {statusLabel(next)}
+                            </DropdownMenuItem>
+                          ) : null;
+                        })()}
+                        <DropdownMenuItem asChild>
+                          <a href={`/api/invoices/${o.orderNumber}?download=1`} download>
+                            <FileText className="size-4" /> Invoice PDF
+                          </a>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         {deletable ? (
