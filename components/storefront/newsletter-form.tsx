@@ -36,13 +36,17 @@ export function NewsletterForm({ source = "footer" }: { source?: string }) {
     );
   }
 
+  // Scope the input id by source — the form can appear twice on one page
+  // (e.g. a blog CTA band plus the footer).
+  const inputId = `newsletter-${source}`;
+
   return (
     <form onSubmit={onSubmit} className="flex w-full max-w-md items-center gap-2">
-      <label htmlFor="footer-newsletter" className="sr-only">
+      <label htmlFor={inputId} className="sr-only">
         Email address
       </label>
       <input
-        id="footer-newsletter"
+        id={inputId}
         type="email"
         required
         value={email}

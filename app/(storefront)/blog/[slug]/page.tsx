@@ -10,6 +10,14 @@ import { cldUrl } from "@/lib/cld";
 import { formatDate } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
+import { ShareButtons } from "@/components/storefront/share-buttons";
+import { NewsletterForm } from "@/components/storefront/newsletter-form";
+
+/** ~220 wpm over the visible text — floor of 1 so short notes still read "1 min". */
+function readingMinutes(html: string): number {
+  const words = html.replace(/<[^>]+>/g, " ").split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.round(words / 220));
+}
 
 export async function generateMetadata({
   params,
@@ -81,10 +89,13 @@ export default async function BlogPostPage({
       <header className="mt-6">
         {post.tag && <Badge variant="secondary">{post.tag}</Badge>}
         <h1 className="mt-3 text-3xl font-bold leading-tight sm:text-4xl">{post.title}</h1>
-        <p className="mt-3 text-sm text-muted-foreground">
-          {post.author ? `${post.author} · ` : ""}
-          {formatDate(post.publishedAt)}
-        </p>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            {post.author ? `${post.author} · ` : ""}
+            {formatDate(post.publishedAt)} · {readingMinutes(post.content)} min read
+          </p>
+          <ShareButtons url={articleUrl} title={post.title} />
+        </div>
       </header>
 
       {post.coverImage && (
@@ -103,13 +114,27 @@ export default async function BlogPostPage({
         dangerouslySetInnerHTML={{ __html: sanitizeRichText(post.content) }}
       />
 
-      <div className="mt-10 border-t pt-6">
+      {/* Share again at the end — readers share after finishing, not before. */}
+      <div className="mt-10 flex items-center justify-between border-t pt-6">
         <Link
           href="/blog"
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" /> Back to all articles
         </Link>
+        <ShareButtons url={articleUrl} title={post.title} />
+      </div>
+
+      {/* Newsletter CTA — the reader just got value; offer more of it. */}
+      <div className="surface-rich mt-12 rounded-2xl p-6 text-surface-deep-foreground sm:p-8">
+        <h2 className="font-heading text-xl font-semibold">Enjoyed this? Get more like it</h2>
+        <p className="mt-1.5 text-sm text-surface-deep-foreground/70">
+          Fresh nutrition tips, recipes and member-only offers — straight to your
+          inbox. No spam, ever.
+        </p>
+        <div className="mt-4">
+          <NewsletterForm source="blog" />
+        </div>
       </div>
 
       {related.length > 0 && (

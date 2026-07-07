@@ -8,6 +8,11 @@ _Last updated: 2026-07-07 · Auto-maintained. Update at the end of every milesto
   pages; blog Article JSON-LD hardened per Google's Article guidelines
   (`mainEntityOfPage`, `url`, `publisher.logo`, author URL). Verified against
   the production build (sitemap.xml + rendered article JSON-LD).
+- **S3** — Blog articles now carry the full sharing + retention loop: reading
+  time in the byline, `ShareButtons` (WhatsApp/X/Facebook/copy-link, pure
+  share-intent URLs, no SDKs) at the top and end of every article, and a
+  deep-green newsletter CTA band (`source="blog"`) after the content.
+  Verified in served HTML + 390px screenshot.
 - **S2** — The footer newsletter form now actually works (it was decorative).
   Additive `newsletter` migration (`NewsletterSubscriber`: unique email,
   source, unsubscribedAt), rate-limited idempotent `subscribeToNewsletter`
