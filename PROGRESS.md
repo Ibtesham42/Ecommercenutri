@@ -8,6 +8,12 @@ _Last updated: 2026-07-07 · Auto-maintained. Update at the end of every milesto
   pages; blog Article JSON-LD hardened per Google's Article guidelines
   (`mainEntityOfPage`, `url`, `publisher.logo`, author URL). Verified against
   the production build (sitemap.xml + rendered article JSON-LD).
+- **S5** — Collection pages now emit `ItemList` structured data: the `/products`
+  "Shop all" landing page and every category page list their visible products
+  (positioned links + names + images) via a new `itemListSchema` helper. Helps
+  Google understand the listing for list rich results and product discovery.
+  Verified in served HTML (12 ListItems on /products; category numberOfItems
+  matches the catalog).
 - **S4** — Newsletter signups now get a branded welcome email (was silent).
   `newsletterWelcomeEmail` (confirms subscription, invites the free AI Health
   Assessment + first-order reward); `subscribeToNewsletter` sends it once on a

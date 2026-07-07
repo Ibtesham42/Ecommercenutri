@@ -85,6 +85,30 @@ export function websiteSchema() {
   };
 }
 
+/**
+ * ItemList schema for a collection/category page — helps Google understand the
+ * product listing (list rich results, product discovery). Summary-page form:
+ * each element is a positioned link to the product's detail page.
+ */
+export function itemListSchema(
+  items: { name: string; path: string; image?: string }[],
+  name?: string,
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    ...(name ? { name } : {}),
+    numberOfItems: items.length,
+    itemListElement: items.map((item, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: item.name,
+      url: new URL(item.path, siteConfig.url).toString(),
+      ...(item.image ? { image: item.image } : {}),
+    })),
+  };
+}
+
 /** BreadcrumbList schema from ordered { name, path } crumbs. */
 export function breadcrumbSchema(items: { name: string; path: string }[]) {
   return {

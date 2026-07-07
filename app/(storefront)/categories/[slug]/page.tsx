@@ -6,7 +6,7 @@ import { getWishlistProductIds } from "@/lib/queries/wishlist";
 import { ProductGrid } from "@/components/storefront/product-card";
 import { SortSelect } from "@/components/storefront/sort-select";
 import { PaginationBar } from "@/components/storefront/pagination-bar";
-import { buildMetadata, breadcrumbSchema, jsonLd } from "@/lib/seo";
+import { buildMetadata, breadcrumbSchema, itemListSchema, jsonLd } from "@/lib/seo";
 import { BannerStrip } from "@/components/storefront/banner-strip";
 import { BehaviorTracker } from "@/components/storefront/behavior-tracker";
 
@@ -57,6 +57,21 @@ export default async function CategoryPage({
           ]),
         )}
       />
+      {result.products.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={jsonLd(
+            itemListSchema(
+              result.products.map((p) => ({
+                name: p.name,
+                path: `/products/${p.slug}`,
+                image: p.images[0]?.url,
+              })),
+              category.name,
+            ),
+          )}
+        />
+      )}
       <BehaviorTracker event={{ type: "CATEGORY_VIEW", categoryId: category.id }} />
       <BannerStrip position="categoryTop" className="mb-6 px-0" />
       <header className="mb-6 rounded-2xl bg-gradient-to-r from-accent/50 to-secondary p-8">

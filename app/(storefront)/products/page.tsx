@@ -10,7 +10,7 @@ import { PaginationBar } from "@/components/storefront/pagination-bar";
 import { BannerStrip } from "@/components/storefront/banner-strip";
 import { EmptyState } from "@/components/storefront/empty-state";
 import { PackageSearch } from "lucide-react";
-import { buildMetadata } from "@/lib/seo";
+import { buildMetadata, itemListSchema, jsonLd } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
   title: "Shop all products",
@@ -45,6 +45,21 @@ export default async function ProductsPage({
 
   return (
     <>
+      {result.products.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={jsonLd(
+            itemListSchema(
+              result.products.map((p) => ({
+                name: p.name,
+                path: `/products/${p.slug}`,
+                image: p.images[0]?.url,
+              })),
+              heading,
+            ),
+          )}
+        />
+      )}
       <BannerStrip position="productsTop" className="pt-6" />
       <div className="mx-auto w-full max-w-7xl px-4 py-8">
         <header className="mb-6">
