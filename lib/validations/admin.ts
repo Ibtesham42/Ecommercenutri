@@ -506,6 +506,13 @@ export const variantInputSchema = z
     sku: z.string().max(60).nullable().optional(),
     isDefault: z.boolean().default(false),
     isActive: z.boolean().default(true),
+    // Per-variant media & identity — all optional; storefront falls back to
+    // the product gallery/description when empty. images[0] is the cover.
+    images: z.array(z.string().url("Enter a valid image URL")).max(10).default([]),
+    description: z.string().max(4000).nullable().optional(),
+    barcode: z.string().max(64).nullable().optional(),
+    badge: z.string().max(30).nullable().optional(),
+    nutritionImageUrl: optionalUrl,
   })
   .refine((v) => !v.discountPrice || v.discountPrice < v.price, {
     message: "Discount must be below price",

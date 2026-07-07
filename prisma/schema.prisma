@@ -179,6 +179,13 @@ model ProductVariant {
   sku           String?     @unique
   isDefault     Boolean     @default(false)
   isActive      Boolean     @default(true)
+  // Per-variant media & identity (all optional — the storefront falls back to
+  // the product-level gallery/description when empty). images[0] is the cover.
+  images            String[] @default([])
+  description       String?
+  barcode           String?
+  badge             String?
+  nutritionImageUrl String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   cartItems     CartItem[]

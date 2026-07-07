@@ -3,7 +3,17 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
-import { Plus, Trash2, Loader2, Star, ImageIcon } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Loader2,
+  Star,
+  ImageIcon,
+  ChevronDown,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +45,14 @@ const emptyVariant = (): ProductFormValues["variants"][number] => ({
   sku: "",
   isActive: true,
   isDefault: false,
+  images: [],
+  description: "",
+  barcode: "",
+  badge: "",
+  nutritionImageUrl: "",
 });
+
+const BADGE_SUGGESTIONS = ["Best Seller", "New", "Limited", "Value Pack", "Family Pack"];
 
 export function ProductForm({
   categories,
@@ -128,6 +145,11 @@ export function ProductForm({
           sku: v.sku || null,
           isActive: v.isActive,
           isDefault: v.isDefault,
+          images: (v.images ?? []).filter(Boolean),
+          description: v.description || null,
+          barcode: v.barcode || null,
+          badge: v.badge || null,
+          nutritionImageUrl: v.nutritionImageUrl || null,
         };
       }),
       images: values.images.map((im, i) => ({
@@ -172,6 +194,20 @@ export function ProductForm({
   function makeMainImage(index: number) {
     watch("images").forEach((_, i) => setValue(`images.${i}.isMain`, i === index));
   }
+
+  // Per-variant "Media & details" disclosure, keyed by field id so the open
+  // state survives add/remove of sibling variants.
+  const [openMedia, setOpenMedia] = useState<Record<string, boolean>>({});
+  const variantImages = (i: number): string[] => watch(`variants.${i}.images`) ?? [];
+  const setVariantImages = (i: number, imgs: string[]) =>
+    setValue(`variants.${i}.images`, imgs, { shouldDirty: true });
+  const moveVariantImage = (i: number, from: number, to: number) => {
+    const imgs = [...variantImages(i)];
+    if (to < 0 || to >= imgs.length) return;
+    const [img] = imgs.splice(from, 1);
+    imgs.splice(to, 0, img);
+    setVariantImages(i, imgs);
+  };
 
   const sectionClass = "rounded-xl border bg-background p-5 space-y-4";
 
@@ -323,10 +359,171 @@ export function ProductForm({
                         </label>
                       )}
                     />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenMedia((s) => ({ ...s, [field.id]: !s[field.id] }))
+                      }
+                      className="ml-auto flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary"
+                    >
+                      <ChevronDown
+                        className={cn(
+                          "size-3.5 transition-transform",
+                          openMedia[field.id] && "rotate-180",
+                        )}
+                      />
+                      {openMedia[field.id]
+                        ? "Hide media & details"
+                        : `Media & details${
+                            variantImages(i).length > 0
+                              ? ` · ${variantImages(i).length} photo${variantImages(i).length > 1 ? "s" : ""}`
+                              : ""
+                          }`}
+                    </button>
                   </div>
+
+                  {openMedia[field.id] && (
+                    <div className="mt-3 space-y-4 border-t pt-3">
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">SKU (optional)</Label>
+                          <Input placeholder="NUT-MAK-250" {...register(`variants.${i}.sku`)} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Barcode (optional)</Label>
+                          <Input placeholder="EAN / UPC" {...register(`variants.${i}.barcode`)} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Badge (optional)</Label>
+                          <Input
+                            list="variant-badges"
+                            placeholder="Best Seller"
+                            {...register(`variants.${i}.badge`)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-xs">Variant description (optional)</Label>
+                        <Textarea
+                          rows={3}
+                          placeholder="Leave blank to use the product description"
+                          {...register(`variants.${i}.description`)}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs">Variant photos</Label>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1 text-xs"
+                            onClick={() => setVariantImages(i, [...variantImages(i), ""])}
+                          >
+                            <Plus className="size-3.5" /> Add photo
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Shown when this variant is selected — leave empty to use the
+                          product gallery. The first photo is the cover.
+                        </p>
+                        {variantImages(i).map((url, j) => (
+                          <div key={`${field.id}-img-${j}`} className="rounded-lg border p-2.5">
+                            <ImageUploadField
+                              value={url}
+                              onChange={(u) => {
+                                const next = [...variantImages(i)];
+                                next[j] = u;
+                                setVariantImages(i, next);
+                              }}
+                              cloudinaryReady={cloudinaryReady}
+                              folder="products"
+                            />
+                            <div className="mt-2 flex items-center gap-1.5">
+                              {j === 0 ? (
+                                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                                  Cover
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => moveVariantImage(i, j, 0)}
+                                  className="text-xs text-muted-foreground hover:text-primary"
+                                >
+                                  Make cover
+                                </button>
+                              )}
+                              <div className="ml-auto flex items-center">
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  className="size-7 text-muted-foreground"
+                                  onClick={() => moveVariantImage(i, j, j - 1)}
+                                  disabled={j === 0}
+                                  aria-label="Move photo up"
+                                >
+                                  <ArrowUp className="size-3.5" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  className="size-7 text-muted-foreground"
+                                  onClick={() => moveVariantImage(i, j, j + 1)}
+                                  disabled={j === variantImages(i).length - 1}
+                                  aria-label="Move photo down"
+                                >
+                                  <ArrowDown className="size-3.5" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  className="size-7 text-muted-foreground hover:text-destructive"
+                                  onClick={() =>
+                                    setVariantImages(
+                                      i,
+                                      variantImages(i).filter((_, k) => k !== j),
+                                    )
+                                  }
+                                  aria-label="Remove photo"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-xs">Nutrition image (optional)</Label>
+                        <Controller
+                          control={control}
+                          name={`variants.${i}.nutritionImageUrl`}
+                          render={({ field: f }) => (
+                            <ImageUploadField
+                              value={f.value ?? ""}
+                              onChange={f.onChange}
+                              cloudinaryReady={cloudinaryReady}
+                              folder="products"
+                            />
+                          )}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
+            <datalist id="variant-badges">
+              {BADGE_SUGGESTIONS.map((b) => (
+                <option key={b} value={b} />
+              ))}
+            </datalist>
           </div>
 
           {/* Images */}

@@ -37,6 +37,13 @@ export type ProductFormValues = {
     sku?: string;
     isActive: boolean;
     isDefault: boolean;
+    // Per-variant media & identity (optional; storefront falls back to the
+    // product gallery/description). images[0] is the cover.
+    images: string[];
+    description?: string;
+    barcode?: string;
+    badge?: string;
+    nutritionImageUrl?: string;
   }[];
   images: { id?: string; url: string; alt?: string; isMain: boolean }[];
 };
@@ -73,6 +80,11 @@ export function productToFormValues(p: {
     sku: string | null;
     isActive: boolean;
     isDefault: boolean;
+    images: string[];
+    description: string | null;
+    barcode: string | null;
+    badge: string | null;
+    nutritionImageUrl: string | null;
   }[];
   images: { id: string; url: string; alt: string | null; isMain: boolean }[];
 }): ProductFormValues {
@@ -110,6 +122,11 @@ export function productToFormValues(p: {
       sku: v.sku ?? "",
       isActive: v.isActive,
       isDefault: v.isDefault,
+      images: v.images ?? [],
+      description: v.description ?? "",
+      barcode: v.barcode ?? "",
+      badge: v.badge ?? "",
+      nutritionImageUrl: v.nutritionImageUrl ?? "",
     })),
     images: p.images.map((im) => ({
       id: im.id,

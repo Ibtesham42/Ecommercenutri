@@ -56,6 +56,11 @@ function variantData(v: VariantInput) {
     sku: v.sku || null,
     isDefault: v.isDefault,
     isActive: v.isActive,
+    images: v.images,
+    description: v.description || null,
+    barcode: v.barcode || null,
+    badge: v.badge || null,
+    nutritionImageUrl: v.nutritionImageUrl || null,
   };
 }
 
