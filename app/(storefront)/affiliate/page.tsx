@@ -18,13 +18,16 @@ import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/storefront/reveal";
 import { formatPrice } from "@/lib/format";
 import { siteConfig } from "@/config/site";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+// buildMetadata for full parity (OG + Twitter card, not just canonical) — the
+// public affiliate page is a recruitment landing page people share.
+export const metadata: Metadata = buildMetadata({
   title: "Affiliate Program — Earn with Nutriyet",
   description:
     "Join the Nutriyet affiliate program. Share your link, QR code and coupon, and earn commission on every sale you refer. Free to join, real-time tracking, easy payouts.",
-  alternates: { canonical: "/affiliate" },
-};
+  path: "/affiliate",
+});
 
 const steps = [
   {

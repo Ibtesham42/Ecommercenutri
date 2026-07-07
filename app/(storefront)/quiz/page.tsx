@@ -4,14 +4,18 @@ import { Button } from "@/components/ui/button";
 import { HealthQuiz } from "@/components/storefront/quiz/health-quiz";
 import { getGrowthSettings } from "@/lib/growth-settings";
 import { getCurrentUser } from "@/lib/auth";
+import { buildMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+// buildMetadata for full parity (canonical + OG + Twitter card) — the quiz is a
+// primary, heavily-promoted landing page that previously had none of those.
+export const metadata: Metadata = buildMetadata({
   title: "Health Score Assessment — Free AI Nutrition Quiz",
   description:
     "Take the free 45-second Nutriyet Health Score assessment. Get your personal wellness score, AI snack recommendations and a welcome coupon.",
-};
+  path: "/quiz",
+});
 
 export default async function QuizPage() {
   const [growth, user] = await Promise.all([getGrowthSettings(), getCurrentUser()]);

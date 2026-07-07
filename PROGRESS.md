@@ -8,6 +8,11 @@ _Last updated: 2026-07-07 · Auto-maintained. Update at the end of every milesto
   pages; blog Article JSON-LD hardened per Google's Article guidelines
   (`mainEntityOfPage`, `url`, `publisher.logo`, author URL). Verified against
   the production build (sitemap.xml + rendered article JSON-LD).
+- **S14** — Two heavily-promoted landing pages (`/quiz` AI Health Assessment,
+  `/affiliate`) had bare metadata objects — no Open Graph, no Twitter card
+  (quiz had no canonical either). Switched both to `buildMetadata` for full
+  parity with the rest of the site. Verified canonical + og:title +
+  twitter:card render on both.
 - **S13** — Added the missing Pinterest channel to `ShareButtons` (explicitly
   in the brief). Image-centric, so it appears only where a media image exists —
   product pages (product image) and blog articles (cover image) — a strong
