@@ -3,6 +3,32 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [Admin Experience & Variant Media] — 2026-07-07
+
+Premium variant management end to end + admin productivity sweep (A1–A8).
+
+### Added
+- **Schema** (migration `variant_media`, additive): `ProductVariant.images[]`
+  (ordered, first = cover), `description`, `barcode`, `badge`,
+  `nutritionImageUrl` — all optional; the storefront falls back to the
+  product-level gallery/description, so existing products render unchanged.
+- **Admin variant editor**: collapsible "Media & details" panel per variant —
+  photo upload with grip-handle drag-reorder + make-cover, description with
+  fallback placeholder, SKU/barcode/badge (suggestion datalist), nutrition
+  image. One-click **duplicate variant** on every card.
+- **PDP instant variant switching**: shared `VariantSelectionProvider` — the
+  purchase panel drives selection; gallery (keyed blur-up crossfade, lightbox
+  included), description tab, nutrition image, gold badge and SKU line follow
+  instantly, no reload. Cart lines use the selected variant's cover image.
+- **MultiImageDrop**: drag & drop / browse up to 10 images at once, client
+  compression, direct signed Cloudinary uploads with batch progress; wired
+  into product Images and variant photo panels (hidden when keyless).
+- **One-click Duplicate product** (row menu): full copy incl. variant media
+  as an unpublished draft with a unique `-copy` slug; SKUs left blank.
+- **Order row quick actions**: "Mark as ‹next stage›" (ORDER_FLOW progression
+  via `transitionOrderStatus`) + per-row Invoice PDF download.
+- **Dashboard**: low-stock rows and a Restock link now open inventory.
+
 ## [Auth Redesign] — Phone-OTP-first login + profile completion — 2026-07-06
 
 Mobile-number + OTP is now the primary sign-in (Flipkart/Zepto-style); email +
