@@ -8,6 +8,11 @@ _Last updated: 2026-07-07 · Auto-maintained. Update at the end of every milesto
   pages; blog Article JSON-LD hardened per Google's Article guidelines
   (`mainEntityOfPage`, `url`, `publisher.logo`, author URL). Verified against
   the production build (sitemap.xml + rendered article JSON-LD).
+- **S6** — Product pages get a share row (WhatsApp/X/Facebook/copy-link) at the
+  foot of the info column — WhatsApp-first product discovery, dominant in India.
+  Reuses the S3 `ShareButtons`; the existing Product OG/Twitter metadata powers
+  the rich previews. Verified in served HTML + desktop screenshot (clean,
+  uncluttered placement under the AI assistant).
 - **S5** — Collection pages now emit `ItemList` structured data: the `/products`
   "Shop all" landing page and every category page list their visible products
   (positioned links + names + images) via a new `itemListSchema` helper. Helps

@@ -22,6 +22,7 @@ import {
   VariantDescription,
   VariantNutritionImage,
 } from "@/components/storefront/variant-selection";
+import { ShareButtons } from "@/components/storefront/share-buttons";
 import { NutritionFacts } from "@/components/storefront/nutrition-facts";
 import { ProductReviews } from "@/components/storefront/product-reviews";
 import { ProductAiAssistant } from "@/components/storefront/product-ai-assistant";
@@ -237,6 +238,11 @@ export default async function ProductPage({
           />
 
           <ProductAiAssistant productId={product.id} productName={product.name} />
+
+          {/* Share — WhatsApp-first product discovery (dominant in India). */}
+          <div className="border-t pt-4">
+            <ShareButtons url={productUrl} title={product.name} />
+          </div>
         </div>
       </div>
 
