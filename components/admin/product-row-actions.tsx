@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { MoreHorizontal, Pencil, Trash2, Eye, EyeOff, Star } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, Eye, EyeOff, Star, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +23,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { deleteProduct, toggleProductFlag } from "@/lib/actions/admin/products";
+import {
+  deleteProduct,
+  duplicateProduct,
+  toggleProductFlag,
+} from "@/lib/actions/admin/products";
 
 export function ProductRowActions({
   id,
@@ -45,6 +49,19 @@ export function ProductRowActions({
       const res = await toggleProductFlag(id, flag, value);
       if (res.ok) {
         toast.success(label);
+        router.refresh();
+      } else {
+        toast.error(res.error);
+      }
+    });
+  }
+
+  function onDuplicate() {
+    startTransition(async () => {
+      const res = await duplicateProduct(id);
+      if (res.ok) {
+        toast.success("Duplicated as a draft — opening the copy");
+        router.push(`/admin/products/${res.data!.id}`);
         router.refresh();
       } else {
         toast.error(res.error);
@@ -83,6 +100,9 @@ export function ProductRowActions({
             <Link href={`/products/${slug}`} target="_blank">
               <Eye className="size-4" /> View
             </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onDuplicate}>
+            <Copy className="size-4" /> Duplicate
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

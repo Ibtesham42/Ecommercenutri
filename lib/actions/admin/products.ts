@@ -185,6 +185,98 @@ export async function saveProduct(input: unknown): Promise<AdminResult<{ id: str
   }
 }
 
+/** Shopify-style one-click duplicate: copies everything — variants (including
+ *  per-variant media), images, pricing, tax/shipping, SEO — as an UNPUBLISHED
+ *  draft with a unique "-copy" slug. SKUs are not copied (unique columns); the
+ *  admin assigns fresh ones on the copy. */
+export async function duplicateProduct(
+  id: string,
+): Promise<AdminResult<{ id: string }>> {
+  await requirePermission("products");
+  try {
+    const source = await prisma.product.findUnique({
+      where: { id },
+      include: {
+        variants: { orderBy: { weightInGrams: "asc" } },
+        images: { orderBy: [{ isMain: "desc" }, { sortOrder: "asc" }] },
+      },
+    });
+    if (!source) return { ok: false, error: "Product not found." };
+
+    // First free "-copy[-n]" slug.
+    const base = `${source.slug}-copy`;
+    const taken = new Set(
+      (
+        await prisma.product.findMany({
+          where: { slug: { startsWith: base } },
+          select: { slug: true },
+        })
+      ).map((p) => p.slug),
+    );
+    let slug = base;
+    for (let n = 2; taken.has(slug); n++) slug = `${base}-${n}`;
+
+    const created = await prisma.product.create({
+      data: {
+        name: `${source.name} (copy)`,
+        slug,
+        sku: null,
+        shortDescription: source.shortDescription,
+        description: source.description,
+        benefits: source.benefits,
+        ingredients: source.ingredients,
+        categoryId: source.categoryId,
+        brandId: source.brandId,
+        isActive: false, // a duplicate never silently goes live
+        isFeatured: false,
+        isBestSeller: false,
+        returnable: source.returnable,
+        returnWindowDays: source.returnWindowDays,
+        gstRate: source.gstRate,
+        deliveryCharge: source.deliveryCharge,
+        metaTitle: source.metaTitle,
+        metaDescription: source.metaDescription,
+        nutritionFacts:
+          source.nutritionFacts == null
+            ? Prisma.JsonNull
+            : (source.nutritionFacts as Prisma.InputJsonValue),
+        variants: {
+          create: source.variants.map((v) => ({
+            weightLabel: v.weightLabel,
+            weightInGrams: v.weightInGrams,
+            price: v.price,
+            discountPrice: v.discountPrice,
+            stock: v.stock,
+            sku: null,
+            isDefault: v.isDefault,
+            isActive: v.isActive,
+            images: v.images,
+            description: v.description,
+            barcode: v.barcode,
+            badge: v.badge,
+            nutritionImageUrl: v.nutritionImageUrl,
+          })),
+        },
+        images: {
+          create: source.images.map((im, i) => ({
+            url: im.url,
+            alt: im.alt,
+            isMain: im.isMain,
+            sortOrder: i,
+          })),
+        },
+      },
+      select: { id: true },
+    });
+
+    revalidateCatalog();
+    return { ok: true, data: { id: created.id } };
+  } catch (err) {
+    console.error("[admin] duplicateProduct failed:", err);
+    return { ok: false, error: "Could not duplicate the product." };
+  }
+}
+
 export async function deleteProduct(id: string): Promise<AdminResult> {
   await requirePermission("products");
   try {
