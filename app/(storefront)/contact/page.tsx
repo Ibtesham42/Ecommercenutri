@@ -91,27 +91,31 @@ export default async function ContactPage() {
             })}
           </section>
 
-          <section>
-            <h2 className="text-lg font-semibold">Find us</h2>
-            <div className="mt-3 overflow-hidden rounded-2xl border">
-              {store.mapsEmbedUrl ? (
-                <iframe
-                  src={store.mapsEmbedUrl}
-                  title="Store location"
-                  className="h-64 w-full"
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  allowFullScreen
-                />
-              ) : (
-                <div className="flex h-64 flex-col items-center justify-center gap-2 bg-accent/30 text-center text-muted-foreground">
-                  <MapPin className="size-8" />
-                  <p className="text-sm font-medium">Map coming soon</p>
-                  {store.address && <p className="max-w-xs px-4 text-xs">{store.address}</p>}
-                </div>
-              )}
-            </div>
-          </section>
+          {/* Only render when there is something real to show — an empty
+              "coming soon" box reads unfinished. Address-only stores get a
+              clean address card instead of a placeholder map. */}
+          {(store.mapsEmbedUrl || store.address) && (
+            <section>
+              <h2 className="text-lg font-semibold">Find us</h2>
+              <div className="mt-3 overflow-hidden rounded-2xl border">
+                {store.mapsEmbedUrl ? (
+                  <iframe
+                    src={store.mapsEmbedUrl}
+                    title="Store location"
+                    className="h-64 w-full"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    allowFullScreen
+                  />
+                ) : (
+                  <div className="flex items-start gap-3 bg-accent/30 p-4">
+                    <MapPin className="mt-0.5 size-5 shrink-0 text-primary" />
+                    <p className="text-sm font-medium">{store.address}</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
 
           <section>
             <h2 className="text-lg font-semibold">Frequently asked</h2>
