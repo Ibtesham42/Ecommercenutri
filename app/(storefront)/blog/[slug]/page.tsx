@@ -38,6 +38,7 @@ export default async function BlogPostPage({
 
   const related = await getRelatedPosts(post.slug);
 
+  const articleUrl = new URL(`/blog/${post.slug}`, siteConfig.url).toString();
   const articleSchema = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -46,8 +47,17 @@ export default async function BlogPostPage({
     image: post.coverImage ? new URL(post.coverImage, siteConfig.url).toString() : undefined,
     datePublished: post.publishedAt.toISOString(),
     dateModified: post.updatedAt.toISOString(),
-    author: { "@type": "Organization", name: post.author ?? siteConfig.name },
-    publisher: { "@type": "Organization", name: siteConfig.name },
+    mainEntityOfPage: { "@type": "WebPage", "@id": articleUrl },
+    url: articleUrl,
+    author: { "@type": "Organization", name: post.author ?? siteConfig.name, url: siteConfig.url },
+    publisher: {
+      "@type": "Organization",
+      name: siteConfig.name,
+      logo: {
+        "@type": "ImageObject",
+        url: new URL(siteConfig.ogImage, siteConfig.url).toString(),
+      },
+    },
   };
 
   return (

@@ -1,6 +1,16 @@
 # Nutriyet — Progress Tracker
 
-_Last updated: 2026-07-06 · Auto-maintained. Update at the end of every milestone._
+_Last updated: 2026-07-07 · Auto-maintained. Update at the end of every milestone._
+
+## Latest: SEO & Marketing Growth loop (2026-07-07, in progress)
+
+- **S1** — Sitemap now includes `/quiz` (AI assessment) and `/b2b` landing
+  pages; blog Article JSON-LD hardened per Google's Article guidelines
+  (`mainEntityOfPage`, `url`, `publisher.logo`, author URL). Verified against
+  the production build (sitemap.xml + rendered article JSON-LD).
+- Also landed today (separate loops): premium variant management A1–A8
+  (see CHANGELOG "Admin Experience & Variant Media") and storefront
+  craftsmanship C6–C11.
 
 ## Snapshot
 
