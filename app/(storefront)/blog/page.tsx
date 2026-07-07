@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Newspaper, ArrowRight } from "lucide-react";
-import { buildMetadata } from "@/lib/seo";
+import { buildMetadata, blogListSchema, breadcrumbSchema, jsonLd } from "@/lib/seo";
 import { getBlogPosts } from "@/lib/queries/blog";
 import { cldUrl } from "@/lib/cld";
 import { formatDate } from "@/lib/format";
@@ -22,6 +22,32 @@ export default async function BlogPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-12">
+      {posts.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={jsonLd(
+            blogListSchema(
+              posts.map((p) => ({
+                slug: p.slug,
+                title: p.title,
+                excerpt: p.excerpt,
+                image: p.coverImage,
+                datePublished: p.publishedAt.toISOString(),
+                author: p.author,
+              })),
+            ),
+          )}
+        />
+      )}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLd(
+          breadcrumbSchema([
+            { name: "Home", path: "/" },
+            { name: "Blog", path: "/blog" },
+          ]),
+        )}
+      />
       <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "Blog" }]} />
 
       <header className="mt-6 max-w-2xl">

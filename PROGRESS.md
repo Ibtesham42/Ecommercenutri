@@ -8,6 +8,14 @@ _Last updated: 2026-07-07 · Auto-maintained. Update at the end of every milesto
   pages; blog Article JSON-LD hardened per Google's Article guidelines
   (`mainEntityOfPage`, `url`, `publisher.logo`, author URL). Verified against
   the production build (sitemap.xml + rendered article JSON-LD).
+- **S10** — Two clean wins: (1) `buildMetadata` Twitter cards now carry
+  `site`/`creator` = `@nutriyet` (derived from the social URL), adding brand
+  attribution to X cards site-wide (products, categories, blog, about, …).
+  (2) The blog index emits `Blog` + `BlogPosting` structured data (new
+  `blogListSchema`) so Google understands the article listing — parallel to
+  the S5 collection ItemList. Verified in served HTML on /about + /blog.
+  Note: the homepage/DB-driven pages use the admin SEO manager (separate
+  pipeline), so their cards are owner-controlled.
 - **S9** — Affiliate share experience: the referral card's mobile-only native
   share (copy-only fallback on desktop) is replaced with explicit one-tap
   WhatsApp/X/Facebook/copy channels carrying a ready-to-send referral message —

@@ -38,6 +38,9 @@ export function buildMetadata({
     },
     twitter: {
       card: "summary_large_image",
+      // Attribute the card to the brand's X account (derived from the social URL).
+      site: `@${siteConfig.social.twitter.split("/").filter(Boolean).pop()}`,
+      creator: `@${siteConfig.social.twitter.split("/").filter(Boolean).pop()}`,
       title: title ?? `${siteConfig.name} — ${siteConfig.tagline}`,
       description: desc,
       images: [ogImage],
@@ -113,6 +116,30 @@ export function itemListSchema(
       name: item.name,
       url: new URL(item.path, siteConfig.url).toString(),
       ...(item.image ? { image: item.image } : {}),
+    })),
+  };
+}
+
+/**
+ * Blog schema for the blog index — a `Blog` with lightweight `BlogPosting`
+ * entries, so Google understands the article listing and can surface posts.
+ */
+export function blogListSchema(
+  posts: { slug: string; title: string; excerpt?: string | null; image?: string | null; datePublished?: string | null; author?: string | null }[],
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    name: `${siteConfig.name} Journal`,
+    url: new URL("/blog", siteConfig.url).toString(),
+    blogPost: posts.map((p) => ({
+      "@type": "BlogPosting",
+      headline: p.title,
+      url: new URL(`/blog/${p.slug}`, siteConfig.url).toString(),
+      ...(p.excerpt ? { description: p.excerpt } : {}),
+      ...(p.image ? { image: new URL(p.image, siteConfig.url).toString() } : {}),
+      ...(p.datePublished ? { datePublished: p.datePublished } : {}),
+      author: { "@type": "Organization", name: p.author ?? siteConfig.name },
     })),
   };
 }
