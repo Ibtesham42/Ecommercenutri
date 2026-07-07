@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Mail, Phone, MapPin, Clock, MessageCircle } from "lucide-react";
-import { buildMetadata } from "@/lib/seo";
+import { buildMetadata, faqSchema, breadcrumbSchema, jsonLd } from "@/lib/seo";
 import { getStoreSettings } from "@/lib/queries/settings";
 import { ContactForm } from "@/components/storefront/contact-form";
 import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
@@ -55,6 +55,18 @@ export default async function ContactPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-12">
+      {/* FAQPage marks up the real on-page Q&A below (helps AI/search
+          understanding); breadcrumb for consistency with other pages. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(faqSchema(FAQS))} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLd(
+          breadcrumbSchema([
+            { name: "Home", path: "/" },
+            { name: "Contact", path: "/contact" },
+          ]),
+        )}
+      />
       <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "Contact" }]} />
 
       <header className="mt-6 max-w-2xl">

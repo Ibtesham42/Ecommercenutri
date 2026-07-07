@@ -144,6 +144,22 @@ export function blogListSchema(
   };
 }
 
+/**
+ * FAQPage schema from real on-page Q&A. Only use where the questions and
+ * answers are genuinely present in the page content (never fabricate).
+ */
+export function faqSchema(items: { q: string; a: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
+    })),
+  };
+}
+
 /** BreadcrumbList schema from ordered { name, path } crumbs. */
 export function breadcrumbSchema(items: { name: string; path: string }[]) {
   return {

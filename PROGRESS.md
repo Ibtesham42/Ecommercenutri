@@ -8,6 +8,11 @@ _Last updated: 2026-07-07 · Auto-maintained. Update at the end of every milesto
   pages; blog Article JSON-LD hardened per Google's Article guidelines
   (`mainEntityOfPage`, `url`, `publisher.logo`, author URL). Verified against
   the production build (sitemap.xml + rendered article JSON-LD).
+- **S12** — The contact page's real FAQ accordion (delivery, shipping,
+  returns, tracking) now emits `FAQPage` structured data + a breadcrumb. New
+  `faqSchema` helper marks up the existing on-page Q&A (no fabricated content),
+  aiding search + AI/LLM understanding. Verified: FAQPage with 4 Question
+  entries in served HTML.
 - **S11** — Extended S10 to the homepage/DB-SEO pipeline: the root
   `generateMetadata` Twitter card now falls back to the brand X handle
   (`@nutriyet`) when the admin hasn't set a `twitterCreator`, so every page
