@@ -6,7 +6,7 @@ import { addDays, format } from "date-fns";
 import {
   Minus,
   Plus,
-  Zap,
+  ArrowRight,
   ShieldCheck,
   Truck,
   RotateCcw,
@@ -259,29 +259,31 @@ export function ProductPurchase({
         )}
       </div>
 
-      {/* Inline actions */}
+      {/* Inline actions — crafted purchase pair: soft brand-green Add to cart
+          beside the wishlist circle, then the gold hero Buy now pill (gold is
+          the brand's premium-moment accent; the arrow nudges on hover). */}
       <div ref={actionsRef} className="space-y-3">
         <div className="flex gap-3">
           <AddToCartButton
             onAdd={add}
             disabled={outOfStock}
             label={outOfStock ? "Out of stock" : "Add to cart"}
-            className="h-12 flex-1 gap-2 text-base"
+            className="btn-rich h-12 flex-1 gap-2 rounded-full border-primary/35 bg-primary/[0.04] text-base font-semibold text-primary hover:border-primary/50 hover:bg-primary/10 hover:text-primary dark:bg-primary/10 dark:hover:bg-primary/15"
           />
           <WishlistButton
             productId={productId}
             initial={wishlisted}
-            className="size-12 shrink-0 rounded-xl border hover:bg-accent"
+            className="size-12 shrink-0 rounded-full border hover:bg-accent"
           />
         </div>
         <Button
           size="lg"
-          className="h-12 w-full gap-2 text-base shadow-elev-2"
+          className="btn-rich btn-rich-gold h-13 w-full gap-2 rounded-full bg-gold text-base font-bold text-gold-foreground shadow-elev-2 focus-visible:border-gold-foreground/40 focus-visible:ring-gold/45"
           onClick={buyNow}
           disabled={outOfStock}
         >
-          <Zap className="size-5" />
           Buy now
+          <ArrowRight className="size-5 transition-transform duration-200 group-hover/button:translate-x-0.5" />
         </Button>
       </div>
 
@@ -348,11 +350,12 @@ export function ProductPurchase({
       <div
         className={cn(
           "fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 backdrop-blur transition-transform duration-300 lg:hidden",
+          "[box-shadow:0_-8px_24px_-12px_oklch(0.2_0.03_150/0.25)]",
           showSticky ? "translate-y-0" : "translate-y-full",
         )}
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
-        <div className="mx-auto flex max-w-7xl items-center gap-3">
+        <div className="mx-auto flex max-w-7xl items-center gap-2.5">
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{formatPrice(price)}</p>
             <p className="truncate text-xs text-muted-foreground">
@@ -363,12 +366,16 @@ export function ProductPurchase({
             onAdd={add}
             disabled={outOfStock}
             label="Add"
-            className="h-11 gap-1.5"
+            className="h-11 gap-1.5 rounded-full border-primary/35 bg-primary/[0.04] font-semibold text-primary hover:bg-primary/10 hover:text-primary dark:bg-primary/10 dark:hover:bg-primary/15"
             iconClassName="size-4"
           />
-          <Button className="h-11 gap-1.5" onClick={buyNow} disabled={outOfStock}>
-            <Zap className="size-4" />
+          <Button
+            className="btn-rich btn-rich-gold h-11 gap-1 rounded-full bg-gold px-4 font-bold text-gold-foreground focus-visible:border-gold-foreground/40 focus-visible:ring-gold/45"
+            onClick={buyNow}
+            disabled={outOfStock}
+          >
             Buy now
+            <ArrowRight className="size-4" />
           </Button>
         </div>
       </div>
