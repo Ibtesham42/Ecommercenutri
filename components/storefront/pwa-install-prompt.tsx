@@ -71,6 +71,12 @@ function ssSet(key: string, value: string): void {
   }
 }
 
+/** True while any Radix dialog (welcome popup, coupon reveal, …) is open —
+ *  the install/notification card must never stack on top of a modal moment. */
+function modalIsOpen(): boolean {
+  return !!document.querySelector('[role="dialog"][data-state="open"]');
+}
+
 function isStandalone(): boolean {
   return (
     window.matchMedia?.("(display-mode: standalone)").matches ||
@@ -258,7 +264,8 @@ export function PwaInstallPrompt({
         // Re-check at fire time, and never replace a card that's already open
         // (if the install card is up, we simply don't ask this visit — the
         // one-time flag is only set when the user actually sees and closes it).
-        if (canAskPush()) setVisible((v) => v ?? "push");
+        // Likewise yield to an open modal: skipping this visit beats stacking.
+        if (canAskPush() && !modalIsOpen()) setVisible((v) => v ?? "push");
       }, delayMs);
     },
     [canAskPush],
@@ -312,11 +319,17 @@ export function PwaInstallPrompt({
 
     const show = (mode: "native" | "ios") => {
       if (showTimer.current) return;
-      showTimer.current = setTimeout(() => {
+      const fire = () => {
         // Never cover task-critical surfaces — an install nag must not block
         // the cart CTA, checkout or the auth flow.
         const path = window.location.pathname;
         if (["/checkout", "/cart", "/login", "/register"].some((p) => path.startsWith(p))) {
+          return;
+        }
+        // A modal (welcome popup, coupon reveal) owns the screen — wait our
+        // turn instead of stacking a second overlay on top of it.
+        if (modalIsOpen()) {
+          showTimer.current = setTimeout(fire, 12_000);
           return;
         }
         // Stamp the session at SHOW time (not only on dismiss) so ignoring the
@@ -325,7 +338,8 @@ export function PwaInstallPrompt({
         ssSet(K_SESSION, "1");
         setVisible(mode);
         track(mode === "ios" ? "pwa-ios-guide-shown" : "pwa-prompt-shown");
-      }, 4000);
+      };
+      showTimer.current = setTimeout(fire, 4000);
     };
 
     const onBip = (e: Event) => {
@@ -404,7 +418,9 @@ export function PwaInstallPrompt({
       role="dialog"
       aria-label={visible === "push" ? "Enable notifications" : "Install app"}
       className={cn(
-        "fixed inset-x-3 z-[60] animate-fade-up",
+        // Below the dialog overlay (z-50): if a modal opens while the card is
+        // up, the scrim covers it instead of the card floating on top.
+        "fixed inset-x-3 z-40 animate-fade-up",
         // Clear the mobile bottom tab bar; float bottom-right on desktop.
         "bottom-[calc(4.5rem+env(safe-area-inset-bottom)+0.75rem)]",
         "md:inset-x-auto md:bottom-6 md:right-6 md:w-96",
