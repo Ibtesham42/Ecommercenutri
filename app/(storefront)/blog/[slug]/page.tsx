@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
 import { ShareButtons } from "@/components/storefront/share-buttons";
 import { NewsletterForm } from "@/components/storefront/newsletter-form";
+import { TableOfContents } from "@/components/storefront/table-of-contents";
+import { buildToc } from "@/lib/toc";
 
 /** ~220 wpm over the visible text — floor of 1 so short notes still read "1 min". */
 function readingMinutes(html: string): number {
@@ -109,10 +111,17 @@ export default async function BlogPostPage({
         </div>
       )}
 
-      <div
-        className="rich-content mt-8"
-        dangerouslySetInnerHTML={{ __html: sanitizeRichText(post.content) }}
-      />
+      {(() => {
+        const { html, headings } = buildToc(sanitizeRichText(post.content));
+        return (
+          <>
+            {/* TOC only when the article is long enough to benefit — also earns
+                Google "jump to" links in results. */}
+            {headings.length >= 3 && <TableOfContents headings={headings} />}
+            <div className="rich-content mt-8" dangerouslySetInnerHTML={{ __html: html }} />
+          </>
+        );
+      })()}
 
       {/* Share again at the end — readers share after finishing, not before. */}
       <div className="mt-10 flex items-center justify-between border-t pt-6">

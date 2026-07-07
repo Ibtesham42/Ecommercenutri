@@ -8,6 +8,13 @@ _Last updated: 2026-07-07 · Auto-maintained. Update at the end of every milesto
   pages; blog Article JSON-LD hardened per Google's Article guidelines
   (`mainEntityOfPage`, `url`, `publisher.logo`, author URL). Verified against
   the production build (sitemap.xml + rendered article JSON-LD).
+- **S15** — Blog **Table of Contents** (explicitly requested, P2). New
+  `buildToc` post-processes sanitized article HTML to inject slugified `id`
+  anchors into h2/h3 headings and returns the heading list; a plain-anchor
+  `TableOfContents` "On this page" card renders when an article has ≥3
+  headings. Headings get `scroll-mt-24` so jumps clear the sticky header.
+  Improves reading experience and can earn Google "jump to" links. Verified:
+  6 slugged anchors + TOC card on the live article.
 - **S14** — Two heavily-promoted landing pages (`/quiz` AI Health Assessment,
   `/affiliate`) had bare metadata objects — no Open Graph, no Twitter card
   (quiz had no canonical either). Switched both to `buildMetadata` for full

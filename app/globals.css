@@ -173,10 +173,11 @@
   @apply mt-4;
 }
 .rich-content h2 {
-  @apply mt-8 text-xl font-semibold;
+  /* scroll-margin clears the sticky header when jumping from the Table of Contents. */
+  @apply mt-8 scroll-mt-24 text-xl font-semibold;
 }
 .rich-content h3 {
-  @apply mt-6 text-lg font-semibold;
+  @apply mt-6 scroll-mt-24 text-lg font-semibold;
 }
 .rich-content p {
   @apply text-muted-foreground;
