@@ -496,9 +496,10 @@ export function CheckoutClient({
           )}
         </div>
 
+        {/* Gold hero pill — the purchase language carried from PDP and cart. */}
         <Button
           size="lg"
-          className="h-12 w-full gap-2 text-base"
+          className="btn-rich btn-rich-gold h-13 w-full gap-2 rounded-full bg-gold text-base font-bold text-gold-foreground shadow-elev-2 focus-visible:border-gold-foreground/40 focus-visible:ring-gold/45"
           onClick={onPlaceOrder}
           disabled={placing || addresses.length === 0}
         >

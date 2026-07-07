@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Minus, Plus, Trash2, ShoppingBag, Truck, ShieldCheck, ArrowLeft } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag, Truck, ShieldCheck, ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/storefront/empty-state";
 import { useCart } from "@/lib/store/cart";
@@ -218,8 +218,16 @@ export function CartView({ settings = PRICING_DEFAULTS }: { settings?: PricingSe
             <span>{formatPrice(total)}</span>
           </div>
         </div>
-        <Button asChild size="lg" className="h-12 w-full text-base shadow-elev-1">
-          <Link href="/checkout">Proceed to checkout</Link>
+        {/* Gold hero pill — same purchase language as the PDP Buy now. */}
+        <Button
+          asChild
+          size="lg"
+          className="btn-rich btn-rich-gold h-13 w-full gap-2 rounded-full bg-gold text-base font-bold text-gold-foreground shadow-elev-2 focus-visible:border-gold-foreground/40 focus-visible:ring-gold/45"
+        >
+          <Link href="/checkout">
+            Proceed to checkout
+            <ArrowRight className="size-5 transition-transform duration-200 group-hover/button:translate-x-0.5" />
+          </Link>
         </Button>
         <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
           <ShieldCheck className="size-3.5 text-primary" /> Secure checkout · easy returns
@@ -238,8 +246,15 @@ export function CartView({ settings = PRICING_DEFAULTS }: { settings?: PricingSe
               {formatPrice(total)}
             </p>
           </div>
-          <Button asChild size="lg" className="h-12 flex-1 text-base">
-            <Link href="/checkout">Checkout</Link>
+          <Button
+            asChild
+            size="lg"
+            className="btn-rich btn-rich-gold h-12 flex-1 gap-1.5 rounded-full bg-gold text-base font-bold text-gold-foreground focus-visible:border-gold-foreground/40 focus-visible:ring-gold/45"
+          >
+            <Link href="/checkout">
+              Checkout
+              <ArrowRight className="size-4" />
+            </Link>
           </Button>
         </div>
       </div>
