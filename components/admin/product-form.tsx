@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ArrowUp,
   ArrowDown,
+  Copy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -322,6 +323,29 @@ export function ProductForm({
                       />
                     </div>
                     <div className="flex items-end">
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="text-muted-foreground hover:text-primary"
+                        onClick={() => {
+                          // Copy everything except identity: fresh row, blank
+                          // label (validation nudges the admin to set it) and
+                          // blank SKU (unique), never default.
+                          const v = watch(`variants.${i}`);
+                          variants.append({
+                            ...v,
+                            id: undefined,
+                            weightLabel: "",
+                            sku: "",
+                            isDefault: false,
+                            images: [...(v.images ?? [])],
+                          });
+                        }}
+                        aria-label="Duplicate variant"
+                      >
+                        <Copy className="size-4" />
+                      </Button>
                       <Button
                         type="button"
                         size="icon"
