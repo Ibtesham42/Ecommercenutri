@@ -78,9 +78,12 @@ export function SigninSpotlight({ children }: { children: React.ReactNode }) {
       {active && (
         <>
           <span aria-hidden className="onboard-glow pointer-events-none absolute inset-0 rounded-lg" />
+          {/* The hint chip is desktop-only: on mobile it would float over the
+              search row (and the announcement bar + coupon strip already carry
+              the offer), so the breathing ring alone spotlights the button. */}
           <span
             role="status"
-            className="pointer-events-none absolute right-0 top-full z-50 mt-2 flex items-center gap-1.5 whitespace-nowrap rounded-full bg-surface-deep px-3 py-1.5 text-xs font-semibold text-surface-deep-foreground shadow-elev-2 motion-safe:animate-fade-up"
+            className="pointer-events-none absolute right-0 top-full z-50 mt-2 hidden items-center gap-1.5 whitespace-nowrap rounded-full bg-surface-deep px-3 py-1.5 text-xs font-semibold text-surface-deep-foreground shadow-elev-2 motion-safe:animate-fade-up lg:flex"
           >
             <Sparkles className="size-3.5 text-gold" aria-hidden />
             Join Free – Get 20% OFF
