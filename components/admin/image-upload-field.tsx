@@ -24,7 +24,7 @@ const MAX_DIM = 1600;
  * already small enough to be a logo/icon with possible transparency. Falls back
  * to the original file on any failure.
  */
-async function prepareBlob(file: File): Promise<{ blob: Blob; filename: string }> {
+export async function prepareBlob(file: File): Promise<{ blob: Blob; filename: string }> {
   const fallback = { blob: file, filename: file.name || "upload" };
   if (!COMPRESSIBLE.includes(file.type) || typeof createImageBitmap !== "function") {
     return fallback;
@@ -76,7 +76,7 @@ async function prepareBlob(file: File): Promise<{ blob: Blob; filename: string }
  */
 export type UploadInfo = CloudinaryUploadInfo & { secure_url: string };
 
-async function uploadToCloudinary(
+export async function uploadToCloudinary(
   blob: Blob,
   filename: string,
   folder?: string,

@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { MultiImageDrop } from "@/components/admin/multi-image-drop";
 import { saveProduct } from "@/lib/actions/admin/products";
 import { rupeesToPaise, slugify } from "@/lib/format";
 import type { ProductFormValues } from "@/lib/admin/product-form-values";
@@ -429,6 +430,14 @@ export function ProductForm({
                           Shown when this variant is selected — leave empty to use the
                           product gallery. The first photo is the cover.
                         </p>
+                        <MultiImageDrop
+                          cloudinaryReady={cloudinaryReady}
+                          folder="products"
+                          label="Drop variant photos here, or browse"
+                          onUploaded={(urls) =>
+                            setVariantImages(i, [...variantImages(i), ...urls])
+                          }
+                        />
                         {variantImages(i).map((url, j) => (
                           <div key={`${field.id}-img-${j}`} className="rounded-lg border p-2.5">
                             <ImageUploadField
@@ -540,11 +549,21 @@ export function ProductForm({
                 <Plus className="size-4" /> Add image
               </Button>
             </div>
+            <MultiImageDrop
+              cloudinaryReady={cloudinaryReady}
+              folder="products"
+              onUploaded={(urls) => {
+                const startEmpty = images.fields.length === 0;
+                urls.forEach((url, k) =>
+                  images.append({ url, alt: "", isMain: startEmpty && k === 0 }),
+                );
+              }}
+            />
             {images.fields.length === 0 ? (
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
                 <ImageIcon className="size-4" />
                 {cloudinaryReady
-                  ? "Upload images or paste URLs."
+                  ? "Drop several photos above, or add URL rows below."
                   : "Paste image URLs (add Cloudinary keys to enable uploads)."}
               </p>
             ) : (
