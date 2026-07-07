@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { WishlistButton } from "@/components/storefront/wishlist-button";
+import { useVariantSelection } from "@/components/storefront/variant-selection";
 import { useCart } from "@/lib/store/cart";
 import { trackClient } from "@/components/storefront/behavior-tracker";
 import { formatPrice, discountPercent, effectivePrice } from "@/lib/format";
@@ -35,6 +36,10 @@ type Variant = {
   price: number;
   discountPrice: number | null;
   stock: number;
+  sku?: string | null;
+  badge?: string | null;
+  /** Variant photo set; [0] is the cover (falls back to the product image). */
+  images?: string[];
 };
 
 type Highlight = { label: string; value: string };
@@ -73,7 +78,13 @@ export function ProductPurchase({
   const addItem = useCart((s) => s.addItem);
 
   const firstAvailable = variants.find((v) => v.stock > 0) ?? variants[0];
-  const [variantId, setVariantId] = useState(firstAvailable?.id);
+  // Selection lives in the shared PDP context when present (so the gallery,
+  // description and nutrition islands switch with it); local state otherwise.
+  const selection = useVariantSelection();
+  const [localVariantId, setLocalVariantId] = useState(firstAvailable?.id);
+  const variantId = selection?.variantId ?? localVariantId;
+  const setVariantId = (id: string) =>
+    selection ? selection.setVariantId(id) : setLocalVariantId(id);
   const [qty, setQty] = useState(1);
 
   // Show a sticky bar once the inline actions scroll out of view (mobile only).
@@ -116,7 +127,9 @@ export function ProductPurchase({
         productId,
         slug,
         name,
-        image,
+        // The variant's own cover when it has one — the cart line then shows
+        // exactly what the shopper picked.
+        image: variant.images?.[0] ?? image,
         weightLabel: variant.weightLabel,
         price,
         maxStock: variant.stock,
@@ -152,6 +165,14 @@ export function ProductPurchase({
               </Badge>
             </>
           )}
+          {variant?.badge && (
+            <Badge
+              key={variant.id}
+              className="border-gold/40 bg-gold/15 text-gold-foreground motion-safe:animate-fade-in"
+            >
+              {variant.badge}
+            </Badge>
+          )}
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 text-sm">
           {savings > 0 && (
@@ -164,6 +185,9 @@ export function ProductPurchase({
               ? `incl. ${effectiveGstRate}% GST (${formatPrice(gstAmount)})`
               : "inclusive of all taxes"}
           </span>
+          {variant?.sku && (
+            <span className="text-xs text-muted-foreground/80">SKU {variant.sku}</span>
+          )}
         </div>
       </div>
 

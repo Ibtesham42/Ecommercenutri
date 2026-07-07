@@ -17,6 +17,11 @@ import {
 import { buildMetadata, breadcrumbSchema, jsonLd } from "@/lib/seo";
 import { ProductGallery } from "@/components/storefront/product-gallery";
 import { ProductPurchase } from "@/components/storefront/product-purchase";
+import {
+  VariantSelectionProvider,
+  VariantDescription,
+  VariantNutritionImage,
+} from "@/components/storefront/variant-selection";
 import { NutritionFacts } from "@/components/storefront/nutrition-facts";
 import { ProductReviews } from "@/components/storefront/product-reviews";
 import { ProductAiAssistant } from "@/components/storefront/product-ai-assistant";
@@ -177,10 +182,18 @@ export default async function ProductPage({
         </BreadcrumbList>
       </Breadcrumb>
 
+      {/* One shared variant selection: picking a weight switches the gallery,
+          price panel, description and nutrition image together — no reload. */}
+      <VariantSelectionProvider
+        initialId={
+          (product.variants.find((v) => v.stock > 0) ?? product.variants[0])?.id ?? null
+        }
+      >
       <div className="grid gap-10 lg:grid-cols-2">
         <ProductGallery
           images={product.images.map((i) => ({ url: i.url, alt: i.alt }))}
           name={product.name}
+          variantMedia={product.variants.map((v) => ({ id: v.id, images: v.images }))}
         />
 
         <div className="space-y-5">
@@ -212,6 +225,9 @@ export default async function ProductPage({
               price: v.price,
               discountPrice: v.discountPrice,
               stock: v.stock,
+              sku: v.sku,
+              badge: v.badge,
+              images: v.images,
             }))}
             wishlisted={wishlistIds.has(product.id)}
             highlights={facts.slice(0, 3)}
@@ -241,7 +257,13 @@ export default async function ProductPage({
               value="description"
               className="prose prose-sm max-w-none pt-4 text-muted-foreground"
             >
-              <p className="whitespace-pre-line">{product.description}</p>
+              <VariantDescription
+                fallback={product.description}
+                variants={product.variants.map((v) => ({
+                  id: v.id,
+                  description: v.description,
+                }))}
+              />
             </TabsContent>
             {product.benefits && (
               <TabsContent value="benefits" className="pt-4 text-muted-foreground">
@@ -258,8 +280,18 @@ export default async function ProductPage({
             )}
           </Tabs>
         </div>
-        <div>{facts.length > 0 && <NutritionFacts facts={facts} />}</div>
+        <div className="space-y-6">
+          {facts.length > 0 && <NutritionFacts facts={facts} />}
+          <VariantNutritionImage
+            variants={product.variants.map((v) => ({
+              id: v.id,
+              nutritionImageUrl: v.nutritionImageUrl,
+            }))}
+            name={product.name}
+          />
+        </div>
       </div>
+      </VariantSelectionProvider>
 
       {/* Reviews */}
       <ProductReviews

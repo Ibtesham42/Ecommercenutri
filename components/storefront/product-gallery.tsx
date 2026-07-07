@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Expand, ZoomIn } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { BlurImage } from "@/components/storefront/blur-image";
+import { useVariantSelection } from "@/components/storefront/variant-selection";
 import { cn } from "@/lib/utils";
 
 type GalleryImage = { url: string; alt: string | null };
@@ -11,14 +12,31 @@ type GalleryImage = { url: string; alt: string | null };
 export function ProductGallery({
   images,
   name,
+  variantMedia,
 }: {
   images: GalleryImage[];
   name: string;
+  /** Per-variant photo sets — when the selected variant has photos, the whole
+   *  gallery switches to them (falls back to the product gallery otherwise). */
+  variantMedia?: { id: string; images: string[] }[];
 }) {
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState(false);
-  const main = images[active] ?? images[0];
-  const count = images.length;
+
+  const selection = useVariantSelection();
+  const variantShots =
+    variantMedia?.find((v) => v.id === selection?.variantId)?.images ?? [];
+  const shots: GalleryImage[] =
+    variantShots.length > 0
+      ? variantShots.map((url) => ({ url, alt: null }))
+      : images;
+  // Identity of the current image SET — keys the main image so a variant
+  // switch replays the blur-up crossfade, and resets to the cover shot.
+  const setKey = variantShots.length > 0 ? (selection?.variantId ?? "product") : "product";
+  useEffect(() => setActive(0), [setKey]);
+
+  const main = shots[active] ?? shots[0];
+  const count = shots.length;
 
   const go = useCallback(
     (dir: 1 | -1) => setActive((i) => (i + dir + count) % count),
@@ -36,10 +54,11 @@ export function ProductGallery({
       >
         {main && (
           <BlurImage
-            // Key on the active index so switching thumbnails remounts the
-            // image and replays the blur-up reveal — a soft focus-pull between
-            // shots instead of a hard cut (reduced-motion gated in globals).
-            key={active}
+            // Key on the image-set identity + active index so both thumbnail
+            // switches AND variant switches remount the image and replay the
+            // blur-up reveal — a soft focus-pull between shots instead of a
+            // hard cut (reduced-motion gated in globals).
+            key={`${setKey}-${active}`}
             src={main.url}
             alt={main.alt ?? name}
             fill
@@ -55,9 +74,9 @@ export function ProductGallery({
 
       {count > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {images.map((img, i) => (
+          {shots.map((img, i) => (
             <button
-              key={i}
+              key={`${setKey}-${i}`}
               type="button"
               onClick={() => setActive(i)}
               aria-label={`View image ${i + 1}`}
@@ -77,7 +96,7 @@ export function ProductGallery({
       <Lightbox
         open={open}
         onOpenChange={setOpen}
-        images={images}
+        images={shots}
         name={name}
         active={active}
         setActive={setActive}
