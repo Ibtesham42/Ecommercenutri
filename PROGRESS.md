@@ -8,6 +8,11 @@ _Last updated: 2026-07-07 · Auto-maintained. Update at the end of every milesto
   pages; blog Article JSON-LD hardened per Google's Article guidelines
   (`mainEntityOfPage`, `url`, `publisher.logo`, author URL). Verified against
   the production build (sitemap.xml + rendered article JSON-LD).
+- **S13** — Added the missing Pinterest channel to `ShareButtons` (explicitly
+  in the brief). Image-centric, so it appears only where a media image exists —
+  product pages (product image) and blog articles (cover image) — a strong
+  discovery channel for food/wellness content. Verified: "Save to Pinterest"
+  renders on both PDP and articles.
 - **S12** — The contact page's real FAQ accordion (delivery, shipping,
   returns, tracking) now emits `FAQPage` structured data + a breadcrumb. New
   `faqSchema` helper marks up the existing on-page Q&A (no fabricated content),

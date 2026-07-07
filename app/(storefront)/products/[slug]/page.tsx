@@ -241,7 +241,11 @@ export default async function ProductPage({
 
           {/* Share — WhatsApp-first product discovery (dominant in India). */}
           <div className="border-t pt-4">
-            <ShareButtons url={productUrl} title={product.name} />
+            <ShareButtons
+              url={productUrl}
+              title={product.name}
+              image={product.images[0]?.url ?? null}
+            />
           </div>
         </div>
       </div>

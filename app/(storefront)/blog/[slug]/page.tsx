@@ -94,7 +94,7 @@ export default async function BlogPostPage({
             {post.author ? `${post.author} · ` : ""}
             {formatDate(post.publishedAt)} · {readingMinutes(post.content)} min read
           </p>
-          <ShareButtons url={articleUrl} title={post.title} />
+          <ShareButtons url={articleUrl} title={post.title} image={post.coverImage} />
         </div>
       </header>
 
