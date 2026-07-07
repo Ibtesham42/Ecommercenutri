@@ -8,6 +8,12 @@ _Last updated: 2026-07-07 · Auto-maintained. Update at the end of every milesto
   pages; blog Article JSON-LD hardened per Google's Article guidelines
   (`mainEntityOfPage`, `url`, `publisher.logo`, author URL). Verified against
   the production build (sitemap.xml + rendered article JSON-LD).
+- **S2** — The footer newsletter form now actually works (it was decorative).
+  Additive `newsletter` migration (`NewsletterSubscriber`: unique email,
+  source, unsubscribedAt), rate-limited idempotent `subscribeToNewsletter`
+  server action (guests welcome; re-subscribing reactivates), and a client
+  `NewsletterForm` with busy/success states in the footer band. Verified by
+  DB round-trip (subscribe → unsubscribe → re-subscribe) + rendered form.
 - Also landed today (separate loops): premium variant management A1–A8
   (see CHANGELOG "Admin Experience & Variant Media") and storefront
   craftsmanship C6–C11.

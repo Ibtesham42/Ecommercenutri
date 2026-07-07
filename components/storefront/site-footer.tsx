@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Truck, ShieldCheck, Leaf, RotateCcw, Send } from "lucide-react";
+import { Truck, ShieldCheck, Leaf, RotateCcw } from "lucide-react";
 import { Logo } from "@/components/storefront/logo";
+import { NewsletterForm } from "@/components/storefront/newsletter-form";
 import {
   InstagramIcon,
   FacebookIcon,
@@ -64,24 +65,7 @@ export async function SiteFooter() {
               offers. No spam, ever.
             </p>
           </div>
-          <form className="flex w-full max-w-md items-center gap-2">
-            <label htmlFor="footer-newsletter" className="sr-only">
-              Email address
-            </label>
-            <input
-              id="footer-newsletter"
-              type="email"
-              placeholder="Your email address"
-              className="h-12 flex-1 rounded-xl border border-white/15 bg-white/5 px-4 text-sm text-surface-deep-foreground placeholder:text-surface-deep-foreground/50 outline-none transition focus:border-gold/60 focus:ring-2 focus:ring-gold/30"
-            />
-            <button
-              type="button"
-              className="inline-flex h-12 shrink-0 items-center gap-2 rounded-xl bg-gold px-5 text-sm font-bold text-gold-foreground transition-transform hover:brightness-105 active:scale-95"
-            >
-              Subscribe
-              <Send className="size-4" />
-            </button>
-          </form>
+          <NewsletterForm source="footer" />
         </div>
       </div>
 

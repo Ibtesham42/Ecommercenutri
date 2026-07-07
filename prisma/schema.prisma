@@ -741,6 +741,19 @@ model ContactMessage {
   @@index([status])
 }
 
+/** Newsletter audience — emails captured from the footer/blog signup forms.
+ *  Independent of User accounts (guests can subscribe); re-subscribing clears
+ *  unsubscribedAt. */
+model NewsletterSubscriber {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  source         String? // where they signed up: "footer", "blog", …
+  createdAt      DateTime  @default(now())
+  unsubscribedAt DateTime?
+
+  @@index([createdAt])
+}
+
 model ContactReply {
   id        String         @id @default(cuid())
   messageId String
