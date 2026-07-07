@@ -8,6 +8,12 @@ _Last updated: 2026-07-07 · Auto-maintained. Update at the end of every milesto
   pages; blog Article JSON-LD hardened per Google's Article guidelines
   (`mainEntityOfPage`, `url`, `publisher.logo`, author URL). Verified against
   the production build (sitemap.xml + rendered article JSON-LD).
+- **S7** — Brand-authority / E-E-A-T: the site-wide `Organization` schema now
+  carries a `contactPoint` (customer support, email, `areaServed: IN`, en/hi)
+  and `areaServed`; the About page gains a breadcrumb (was the only main page
+  without one), `AboutPage` + nested `Organization` structured data, and a
+  richer meta description. Verified in served HTML (AboutPage + BreadcrumbList
+  on /about, ContactPoint site-wide).
 - **S6** — Product pages get a share row (WhatsApp/X/Facebook/copy-link) at the
   foot of the info column — WhatsApp-first product discovery, dominant in India.
   Reuses the S3 `ShareButtons`; the existing Product OG/Twitter metadata powers

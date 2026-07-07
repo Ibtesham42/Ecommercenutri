@@ -1,12 +1,24 @@
 import type { Metadata } from "next";
 import { Leaf, ShieldCheck, HeartPulse } from "lucide-react";
-import { buildMetadata } from "@/lib/seo";
+import { buildMetadata, breadcrumbSchema, organizationSchema, jsonLd } from "@/lib/seo";
+import { siteConfig } from "@/config/site";
+import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
 
 export const metadata: Metadata = buildMetadata({
   title: "About us",
-  description: "The story and mission behind Nutriyet.",
+  description:
+    "The story and mission behind Nutriyet — India's AI-powered nutrition brand " +
+    "bringing premium makhana and superfoods from the heart of Mithila to your everyday snacking.",
   path: "/about",
 });
+
+const aboutSchema = {
+  "@context": "https://schema.org",
+  "@type": "AboutPage",
+  name: `About ${siteConfig.name}`,
+  url: new URL("/about", siteConfig.url).toString(),
+  mainEntity: organizationSchema(),
+};
 
 const VALUES = [
   { icon: Leaf, title: "Clean ingredients", desc: "No artificial preservatives or additives — just the good stuff." },
@@ -17,8 +29,20 @@ const VALUES = [
 export default function AboutPage() {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-14 sm:py-20">
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(aboutSchema)} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={jsonLd(
+          breadcrumbSchema([
+            { name: "Home", path: "/" },
+            { name: "About", path: "/about" },
+          ]),
+        )}
+      />
+      <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "About" }]} />
+
       {/* Lead — editorial, warm */}
-      <p className="text-sm font-medium tracking-[0.16em] text-gold uppercase">Our story</p>
+      <p className="mt-6 text-sm font-medium tracking-[0.16em] text-gold uppercase">Our story</p>
       <h1 className="mt-3 font-heading text-4xl leading-[1.05] font-semibold tracking-tight sm:text-5xl">
         Clean nutrition,
         <br className="hidden sm:block" /> made joyful.

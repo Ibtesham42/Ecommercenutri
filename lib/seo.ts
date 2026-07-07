@@ -63,6 +63,14 @@ export function organizationSchema() {
     logo: new URL(siteConfig.ogImage, siteConfig.url).toString(),
     description: siteConfig.description,
     email: siteConfig.contact.email,
+    areaServed: "IN",
+    contactPoint: {
+      "@type": "ContactPoint",
+      contactType: "customer support",
+      email: siteConfig.contact.email,
+      areaServed: "IN",
+      availableLanguage: ["en", "hi"],
+    },
     sameAs: Object.values(siteConfig.social),
   };
 }
