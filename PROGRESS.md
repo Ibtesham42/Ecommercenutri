@@ -8,6 +8,11 @@ _Last updated: 2026-07-07 · Auto-maintained. Update at the end of every milesto
   pages; blog Article JSON-LD hardened per Google's Article guidelines
   (`mainEntityOfPage`, `url`, `publisher.logo`, author URL). Verified against
   the production build (sitemap.xml + rendered article JSON-LD).
+- **S11** — Extended S10 to the homepage/DB-SEO pipeline: the root
+  `generateMetadata` Twitter card now falls back to the brand X handle
+  (`@nutriyet`) when the admin hasn't set a `twitterCreator`, so every page
+  (not just `buildMetadata` ones) carries `twitter:site`/`creator`. Admin
+  override still wins. Verified: homepage now emits both tags.
 - **S10** — Two clean wins: (1) `buildMetadata` Twitter cards now carry
   `site`/`creator` = `@nutriyet` (derived from the social URL), adding brand
   attribution to X cards site-wide (products, categories, blog, about, …).

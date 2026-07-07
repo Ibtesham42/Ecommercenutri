@@ -3,6 +3,7 @@ import { Hanken_Grotesk, Geist_Mono, Fraunces } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { organizationSchema, websiteSchema, jsonLd } from "@/lib/seo";
+import { siteConfig } from "@/config/site";
 import { getStoreSettings } from "@/lib/queries/settings";
 import { getSeoSettings } from "@/lib/seo-settings";
 import { cldFavicon } from "@/lib/cld";
@@ -70,7 +71,15 @@ export async function generateMetadata(): Promise<Metadata> {
       title: seo.shareTitle,
       description: seo.shareDescription,
       images: [seo.twitterImage],
-      ...(seo.twitterCreator ? { site: seo.twitterCreator, creator: seo.twitterCreator } : {}),
+      // Admin-set handle wins; otherwise fall back to the brand's X account so
+      // cards always carry site attribution (extends to the homepage + all
+      // DB-SEO pages, not just buildMetadata pages).
+      ...((() => {
+        const handle =
+          seo.twitterCreator ||
+          `@${siteConfig.social.twitter.split("/").filter(Boolean).pop()}`;
+        return handle ? { site: handle, creator: handle } : {};
+      })()),
     },
     // Drive icons from the admin-uploaded favicon when set, else the generated
     // brand default. Favicons are normalized through Cloudinary (f_auto) so any
