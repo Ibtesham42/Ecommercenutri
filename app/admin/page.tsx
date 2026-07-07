@@ -228,8 +228,16 @@ export default async function AdminDashboardPage() {
           {showProducts && (
             <div className={showOrders ? "space-y-6" : "space-y-6 lg:col-span-3"}>
               <div className="rounded-xl border bg-background">
-                <div className="flex items-center gap-2 border-b p-4 font-semibold">
-                  <AlertTriangle className="size-4 text-amber-500" /> Low stock
+                <div className="flex items-center justify-between border-b p-4">
+                  <span className="flex items-center gap-2 font-semibold">
+                    <AlertTriangle className="size-4 text-amber-500" /> Low stock
+                  </span>
+                  <Link
+                    href="/admin/inventory"
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Restock
+                  </Link>
                 </div>
                 {lowStock.length === 0 ? (
                   <p className="p-4 text-sm text-muted-foreground">
@@ -238,17 +246,20 @@ export default async function AdminDashboardPage() {
                 ) : (
                   <ul className="divide-y">
                     {lowStock.map((v) => (
-                      <li
-                        key={v.id}
-                        className="flex items-center justify-between gap-2 p-3 text-sm"
-                      >
-                        <span className="truncate">
-                          {v.product.name}{" "}
-                          <span className="text-muted-foreground">({v.weightLabel})</span>
-                        </span>
-                        <Badge variant={v.stock === 0 ? "destructive" : "secondary"}>
-                          {v.stock} left
-                        </Badge>
+                      <li key={v.id}>
+                        {/* Straight to the inventory quick-edit for this item. */}
+                        <Link
+                          href="/admin/inventory"
+                          className="flex items-center justify-between gap-2 p-3 text-sm transition hover:bg-muted/40"
+                        >
+                          <span className="truncate">
+                            {v.product.name}{" "}
+                            <span className="text-muted-foreground">({v.weightLabel})</span>
+                          </span>
+                          <Badge variant={v.stock === 0 ? "destructive" : "secondary"}>
+                            {v.stock} left
+                          </Badge>
+                        </Link>
                       </li>
                     ))}
                   </ul>
