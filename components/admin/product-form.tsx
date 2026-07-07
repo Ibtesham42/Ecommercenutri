@@ -13,6 +13,7 @@ import {
   ArrowUp,
   ArrowDown,
   Copy,
+  GripVertical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -200,6 +201,10 @@ export function ProductForm({
   // Per-variant "Media & details" disclosure, keyed by field id so the open
   // state survives add/remove of sibling variants.
   const [openMedia, setOpenMedia] = useState<Record<string, boolean>>({});
+  // Native HTML5 drag-reorder (hero-manager pattern): the grip is the drag
+  // source, the row is the drop target. Arrows remain the keyboard path.
+  const [dragImage, setDragImage] = useState<number | null>(null);
+  const [dragPhoto, setDragPhoto] = useState<{ v: number; j: number } | null>(null);
   const variantImages = (i: number): string[] => watch(`variants.${i}.images`) ?? [];
   const setVariantImages = (i: number, imgs: string[]) =>
     setValue(`variants.${i}.images`, imgs, { shouldDirty: true });
@@ -463,17 +468,43 @@ export function ProductForm({
                           }
                         />
                         {variantImages(i).map((url, j) => (
-                          <div key={`${field.id}-img-${j}`} className="rounded-lg border p-2.5">
-                            <ImageUploadField
-                              value={url}
-                              onChange={(u) => {
-                                const next = [...variantImages(i)];
-                                next[j] = u;
-                                setVariantImages(i, next);
-                              }}
-                              cloudinaryReady={cloudinaryReady}
-                              folder="products"
-                            />
+                          <div
+                            key={`${field.id}-img-${j}`}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={() => {
+                              if (dragPhoto && dragPhoto.v === i && dragPhoto.j !== j) {
+                                moveVariantImage(i, dragPhoto.j, j);
+                              }
+                              setDragPhoto(null);
+                            }}
+                            className={cn(
+                              "rounded-lg border p-2.5 transition-opacity",
+                              dragPhoto?.v === i && dragPhoto.j === j && "opacity-50",
+                            )}
+                          >
+                            <div className="flex items-start gap-2">
+                              <span
+                                draggable
+                                onDragStart={() => setDragPhoto({ v: i, j })}
+                                onDragEnd={() => setDragPhoto(null)}
+                                className="mt-2.5 cursor-grab text-muted-foreground/60 hover:text-muted-foreground active:cursor-grabbing"
+                                aria-label="Drag to reorder"
+                              >
+                                <GripVertical className="size-4" />
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <ImageUploadField
+                                  value={url}
+                                  onChange={(u) => {
+                                    const next = [...variantImages(i)];
+                                    next[j] = u;
+                                    setVariantImages(i, next);
+                                  }}
+                                  cloudinaryReady={cloudinaryReady}
+                                  folder="products"
+                                />
+                              </div>
+                            </div>
                             <div className="mt-2 flex items-center gap-1.5">
                               {j === 0 ? (
                                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
@@ -593,20 +624,44 @@ export function ProductForm({
             ) : (
               <div className="space-y-3">
                 {images.fields.map((field, i) => (
-                  <div key={field.id} className="rounded-lg border p-3">
-                    <Controller
-                      control={control}
-                      name={`images.${i}.url`}
-                      rules={{ required: true }}
-                      render={({ field: f }) => (
-                        <ImageUploadField
-                          value={f.value}
-                          onChange={f.onChange}
-                          cloudinaryReady={cloudinaryReady}
-                          folder="products"
+                  <div
+                    key={field.id}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => {
+                      if (dragImage != null && dragImage !== i) images.move(dragImage, i);
+                      setDragImage(null);
+                    }}
+                    className={cn(
+                      "rounded-lg border p-3 transition-opacity",
+                      dragImage === i && "opacity-50",
+                    )}
+                  >
+                    <div className="flex items-start gap-2">
+                      <span
+                        draggable
+                        onDragStart={() => setDragImage(i)}
+                        onDragEnd={() => setDragImage(null)}
+                        className="mt-2.5 cursor-grab text-muted-foreground/60 hover:text-muted-foreground active:cursor-grabbing"
+                        aria-label="Drag to reorder"
+                      >
+                        <GripVertical className="size-4" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <Controller
+                          control={control}
+                          name={`images.${i}.url`}
+                          rules={{ required: true }}
+                          render={({ field: f }) => (
+                            <ImageUploadField
+                              value={f.value}
+                              onChange={f.onChange}
+                              cloudinaryReady={cloudinaryReady}
+                              folder="products"
+                            />
+                          )}
                         />
-                      )}
-                    />
+                      </div>
+                    </div>
                     <div className="mt-2 flex items-center gap-2">
                       <Input
                         placeholder="Alt text"
