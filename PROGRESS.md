@@ -8,6 +8,11 @@ _Last updated: 2026-07-07 · Auto-maintained. Update at the end of every milesto
   pages; blog Article JSON-LD hardened per Google's Article guidelines
   (`mainEntityOfPage`, `url`, `publisher.logo`, author URL). Verified against
   the production build (sitemap.xml + rendered article JSON-LD).
+- **S9** — Affiliate share experience: the referral card's mobile-only native
+  share (copy-only fallback on desktop) is replaced with explicit one-tap
+  WhatsApp/X/Facebook/copy channels carrying a ready-to-send referral message —
+  WhatsApp-first for India, and working on desktop where many affiliates manage
+  sharing. Reuses the S3 `ShareButtons`. Typecheck/lint/build clean.
 - **S8** — Newsletter subscribers (captured in S2/S4) are now actionable in
   admin: a new **Subscribers** page (`/admin/subscribers`, marketing-gated) lists
   every signup with source + date + active/unsubscribed status, shows the active

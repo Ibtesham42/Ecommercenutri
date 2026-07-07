@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check, Download, Share2, Printer } from "lucide-react";
+import { Copy, Check, Download, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ShareButtons } from "@/components/storefront/share-buttons";
 
 export function AffiliateReferralCard({
   referralUrl,
@@ -23,19 +24,6 @@ export function AffiliateReferralCard({
         setTimeout(() => setCopied(null), 1500);
       })
       .catch(() => toast.error("Couldn't copy"));
-  }
-
-  async function share() {
-    const data = { title: "Shop Nutriyet", text: "Healthy nutrition — use my link:", url: referralUrl };
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share(data);
-      } catch {
-        /* user cancelled */
-      }
-    } else {
-      copy(referralUrl, "share");
-    }
   }
 
   function printQr() {
@@ -91,9 +79,13 @@ export function AffiliateReferralCard({
           </div>
         )}
 
-        <Button variant="outline" size="sm" className="gap-1.5" onClick={share}>
-          <Share2 className="size-4" /> Share link
-        </Button>
+        {/* Explicit one-tap channels — WhatsApp-first (dominant in India) with a
+            ready-to-send referral message; works on desktop too, unlike the
+            mobile-only native share sheet. */}
+        <ShareButtons
+          url={referralUrl}
+          title="Shop healthy with Nutriyet — premium makhana & superfoods. Use my link:"
+        />
       </div>
 
       {/* QR */}
