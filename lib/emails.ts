@@ -122,6 +122,28 @@ export function b2bAdminAlertEmail(d: {
   };
 }
 
+/** Welcome email for a new newsletter subscriber (footer/blog signup). */
+export function newsletterWelcomeEmail(): Email {
+  return {
+    subject: `Welcome to the Nutriyet family 🌿`,
+    html: shell({
+      heading: "You're on the list! 🌿",
+      intro:
+        "Thanks for subscribing to Nutriyet. You'll be first to hear about new " +
+        "launches, honest nutrition tips, simple recipes and member-only offers — " +
+        "no spam, ever.<br><br>While you're here, take our free 60-second AI Health " +
+        "Assessment for snack picks matched to your goals, and unlock a welcome reward " +
+        "on your first order.",
+      ctaLabel: "Take the free assessment",
+      ctaUrl: `${siteConfig.url}/quiz`,
+      outro: "Prefer to browse? Explore the shop:",
+    }),
+    text:
+      "Welcome to Nutriyet! You'll be first to hear about new launches, nutrition " +
+      `tips, recipes and member-only offers. Take the free assessment: ${siteConfig.url}/quiz`,
+  };
+}
+
 export function verificationEmail(url: string, name?: string | null): Email {
   return {
     subject: `Verify your email — ${siteConfig.name}`,

@@ -8,6 +8,12 @@ _Last updated: 2026-07-07 · Auto-maintained. Update at the end of every milesto
   pages; blog Article JSON-LD hardened per Google's Article guidelines
   (`mainEntityOfPage`, `url`, `publisher.logo`, author URL). Verified against
   the production build (sitemap.xml + rendered article JSON-LD).
+- **S4** — Newsletter signups now get a branded welcome email (was silent).
+  `newsletterWelcomeEmail` (confirms subscription, invites the free AI Health
+  Assessment + first-order reward); `subscribeToNewsletter` sends it once on a
+  genuinely new subscription (re-subscribe stays silent), best-effort so a mail
+  failure never fails signup. Keyless-safe via the console stub. Verified by a
+  new-vs-resubscribe detection smoke.
 - **S3** — Blog articles now carry the full sharing + retention loop: reading
   time in the byline, `ShareButtons` (WhatsApp/X/Facebook/copy-link, pure
   share-intent URLs, no SDKs) at the top and end of every article, and a

@@ -4,6 +4,8 @@ import { z } from "zod";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit, limiters } from "@/lib/rate-limit";
+import { sendEmail } from "@/lib/email";
+import { newsletterWelcomeEmail } from "@/lib/emails";
 
 const subscribeSchema = z.object({
   email: z
@@ -38,12 +40,29 @@ export async function subscribeToNewsletter(
     return { ok: false, error: "Too many attempts — please try again in a minute." };
   }
 
+  const { email, source } = parsed.data;
   try {
-    await prisma.newsletterSubscriber.upsert({
-      where: { email: parsed.data.email },
-      update: { unsubscribedAt: null },
-      create: { email: parsed.data.email, source: parsed.data.source ?? null },
+    // Detect a genuinely new subscriber so the welcome email fires once — a
+    // re-subscribe just reactivates the row silently.
+    const existing = await prisma.newsletterSubscriber.findUnique({
+      where: { email },
+      select: { id: true },
     });
+    await prisma.newsletterSubscriber.upsert({
+      where: { email },
+      update: { unsubscribedAt: null },
+      create: { email, source: source ?? null },
+    });
+
+    if (!existing) {
+      // Best-effort — a mail failure must never fail the subscription.
+      try {
+        const mail = newsletterWelcomeEmail();
+        await sendEmail({ to: email, ...mail });
+      } catch (err) {
+        console.error("[newsletter] welcome email failed:", err);
+      }
+    }
     return { ok: true };
   } catch (err) {
     console.error("[newsletter] subscribe failed:", err);
