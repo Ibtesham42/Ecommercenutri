@@ -8,6 +8,11 @@ _Last updated: 2026-07-07 · Auto-maintained. Update at the end of every milesto
   pages; blog Article JSON-LD hardened per Google's Article guidelines
   (`mainEntityOfPage`, `url`, `publisher.logo`, author URL). Verified against
   the production build (sitemap.xml + rendered article JSON-LD).
+- **S8** — Newsletter subscribers (captured in S2/S4) are now actionable in
+  admin: a new **Subscribers** page (`/admin/subscribers`, marketing-gated) lists
+  every signup with source + date + active/unsubscribed status, shows the active
+  count, and exports active subscribers to CSV for use in the Marketing Hub or
+  any email tool. Verified: route compiles + auth-guards (307 → login).
 - **S7** — Brand-authority / E-E-A-T: the site-wide `Organization` schema now
   carries a `contactPoint` (customer support, email, `areaServed: IN`, en/hi)
   and `areaServed`; the About page gains a breadcrumb (was the only main page
