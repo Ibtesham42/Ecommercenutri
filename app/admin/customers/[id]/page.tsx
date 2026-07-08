@@ -62,6 +62,7 @@ export default async function CustomerDetailPage({
       healthQuizzes: { orderBy: { createdAt: "desc" }, take: 8, select: { score: true, createdAt: true } },
       reviews: { orderBy: { createdAt: "desc" }, take: 8, select: { createdAt: true } },
       _count: { select: { reviews: true, wishlist: true, healthQuizzes: true } },
+      cart: { select: { _count: { select: { items: true } } } },
       orders: {
         orderBy: { createdAt: "desc" },
         take: 50,
@@ -303,6 +304,10 @@ export default async function CustomerDetailPage({
               <li className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-muted-foreground"><Heart className="size-4" /> Wishlist</span>
                 <span className="font-medium">{user._count.wishlist}</span>
+              </li>
+              <li className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-muted-foreground"><ShoppingBag className="size-4" /> Cart items</span>
+                <span className="font-medium">{user.cart?._count.items ?? 0}</span>
               </li>
               <li className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-muted-foreground"><Sparkles className="size-4" /> Assessment</span>
