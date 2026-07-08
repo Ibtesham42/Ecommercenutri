@@ -60,6 +60,25 @@ const BUILT_INS: { name: string; pillar: SocialContentPillar; promptGuidance: st
   },
 ];
 
+/**
+ * Pick one template's guidance for a pillar, rotating by `rotation` so posts on
+ * the same pillar draw varied steering. Returns undefined when none exist (the
+ * generator then relies on the pillar/angle alone).
+ */
+export async function pickTemplateGuidance(
+  pillar: SocialContentPillar,
+  rotation: number,
+): Promise<string | undefined> {
+  const list = await prisma.socialTemplate.findMany({
+    where: { pillar },
+    orderBy: { name: "asc" },
+    select: { promptGuidance: true },
+  });
+  if (list.length === 0) return undefined;
+  const i = ((rotation % list.length) + list.length) % list.length;
+  return list[i].promptGuidance;
+}
+
 export async function ensureBuiltInSocialTemplates(): Promise<void> {
   for (const t of BUILT_INS) {
     await prisma.socialTemplate.upsert({

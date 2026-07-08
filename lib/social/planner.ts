@@ -9,6 +9,7 @@ import {
   generateSocialPost,
   type SocialProductContext,
 } from "@/lib/social/ai";
+import { pickTemplateGuidance } from "@/lib/social/templates";
 
 /**
  * The planner turns enabled SocialCampaigns into concrete SocialPost rows for
@@ -216,6 +217,7 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
       const angle = angleAt(slot, rotation);
       const ctx = toContext(product);
 
+      const templateGuidance = await pickTemplateGuidance(slot.pillar, rotation);
       const gen = await generateSocialPost({
         product: ctx,
         pillar: slot.pillar,
@@ -226,6 +228,7 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
         bannedWords: settings.bannedWords,
         recentHooks,
         recentHashtags,
+        templateGuidance,
       });
       if (!gen.ok) {
         skipped++;

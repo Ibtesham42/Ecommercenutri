@@ -10,7 +10,7 @@ import { planDuePosts, buildSocialMaterials } from "@/lib/social/planner";
 import { publishDuePosts, publishPostNow } from "@/lib/social/publish";
 import { generateSocialPost } from "@/lib/social/ai";
 import { slotForDate, angleAt, weekOfMonth } from "@/lib/social/strategy";
-import { ensureBuiltInSocialTemplates } from "@/lib/social/templates";
+import { ensureBuiltInSocialTemplates, pickTemplateGuidance } from "@/lib/social/templates";
 import {
   socialCampaignSchema,
   socialSettingsSchema,
@@ -147,6 +147,7 @@ export async function generateSocialDraft(
     bannedWords: settings.bannedWords,
     recentHooks,
     recentHashtags,
+    templateGuidance: await pickTemplateGuidance(d.pillar, count),
   });
   if (!gen.ok) return { ok: false, error: gen.error };
 
@@ -202,6 +203,7 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
     bannedWords: settings.bannedWords,
     recentHooks,
     recentHashtags,
+    templateGuidance: await pickTemplateGuidance(post.pillar, count + 1),
   });
   if (!gen.ok) return { ok: false, error: gen.error };
 
