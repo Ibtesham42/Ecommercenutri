@@ -262,7 +262,9 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
           altText: gen.data.altText,
           imageUrls,
           contentHash: gen.data.contentHash,
-          scheduledFor: status === "SCHEDULED" ? scheduledFor : null,
+          // Always record the intended slot time so the per-slot idempotency
+          // guard works for every mode (the publisher only acts on SCHEDULED).
+          scheduledFor,
         },
       });
 

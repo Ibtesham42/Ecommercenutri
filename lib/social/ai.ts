@@ -84,16 +84,22 @@ function sanitizeHashtags(tags: string[], defaults: string[]): string[] {
   return out;
 }
 
-/** Remove banned claim words/phrases from generated copy (health-claim safety). */
+/** Remove banned claim words/phrases from generated copy (health-claim safety).
+ *  Matches whole words only (word boundaries) so legitimate words that merely
+ *  contain a banned substring — "secure", "manicure" — are never mangled;
+ *  longer phrases are handled before shorter ones. */
 export function stripBannedClaims(text: string, banned: string[]): string {
   let out = text;
-  for (const word of banned) {
-    const w = word.trim();
-    if (!w) continue;
-    const re = new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+  const ordered = [...banned].map((w) => w.trim()).filter(Boolean).sort((a, b) => b.length - a.length);
+  for (const w of ordered) {
+    const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi");
     out = out.replace(re, "");
   }
-  return out.replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  return out
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\s+([,.!?])/g, "$1")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /** Factual product block for the prompt — DB facts only, nothing invented. */
