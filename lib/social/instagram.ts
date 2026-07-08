@@ -95,7 +95,14 @@ export async function publishToInstagram(input: PublishInput): Promise<PublishRe
     };
   }
 
-  const igUserId = env.instagramBusinessId;
+  // The Instagram Login API (IGAA token → graph.instagram.com) addresses the
+  // account as `me`; using the numeric `user_id` there triggers a (#10)
+  // permission error at media_publish. The classic Facebook-Login flow
+  // (EAA token → graph.facebook.com) uses the numeric business id.
+  const igUserId =
+    !env.instagramApiBase.trim() && env.instagramAccessToken.startsWith("IG")
+      ? "me"
+      : env.instagramBusinessId;
   try {
     let creationId: string;
     if (images.length === 1) {
