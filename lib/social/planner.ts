@@ -1,0 +1,266 @@
+import "server-only";
+import type { Prisma, SocialDaypart, SocialPostStatus } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { formatPrice, effectivePrice, discountPercent } from "@/lib/format";
+import { getSocialSettings } from "@/lib/social/settings";
+import { pickPostImages } from "@/lib/social/image";
+import { slotFor, angleAt } from "@/lib/social/strategy";
+import {
+  generateSocialPost,
+  type SocialProductContext,
+} from "@/lib/social/ai";
+
+/**
+ * The planner turns enabled SocialCampaigns into concrete SocialPost rows for
+ * the day's slots (morning/evening), generating content from real product data.
+ * Idempotent: it never creates a second post for the same campaign + daypart on
+ * the same IST day, and skips exact-duplicate content (contentHash). Called by
+ * the social cron before publishing. Mirrors the Marketing Hub's due-queue idea.
+ */
+
+const IST_OFFSET_MS = 330 * 60 * 1000; // IST = UTC+5:30, no DST
+const PAST_SLOT_GRACE_MS = 3 * 60 * 60 * 1000; // don't plan slots >3h in the past
+
+type IstParts = { year: number; month: number; day: number; weekday: number };
+
+function istParts(now: Date): IstParts {
+  const d = new Date(now.getTime() + IST_OFFSET_MS);
+  return {
+    year: d.getUTCFullYear(),
+    month: d.getUTCMonth(),
+    day: d.getUTCDate(),
+    weekday: d.getUTCDay(), // 0=Sun..6=Sat, in IST
+  };
+}
+
+function weekOfMonthIST(day: number): number {
+  return Math.min(4, Math.floor((day - 1) / 7) + 1);
+}
+
+/** UTC instant for "today at HH:mm IST" relative to `now`. */
+export function scheduledUtc(now: Date, hhmm: string): Date {
+  const p = istParts(now);
+  const [h, m] = hhmm.split(":").map((x) => Number(x) || 0);
+  // Build the IST wall-clock instant as if it were UTC, then shift back to real UTC.
+  const wall = Date.UTC(p.year, p.month, p.day, h, m);
+  return new Date(wall - IST_OFFSET_MS);
+}
+
+/** [start, end) UTC range covering the current IST calendar day. */
+function istDayRange(now: Date): { start: Date; end: Date } {
+  const p = istParts(now);
+  const startWall = Date.UTC(p.year, p.month, p.day, 0, 0);
+  const start = new Date(startWall - IST_OFFSET_MS);
+  return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
+}
+
+type NutritionFact = { label: string; value: string };
+
+function toNutritionFacts(json: Prisma.JsonValue | null): NutritionFact[] | null {
+  if (!Array.isArray(json)) return null;
+  const facts = json
+    .map((f) =>
+      f && typeof f === "object" && "label" in f && "value" in f
+        ? { label: String((f as NutritionFact).label), value: String((f as NutritionFact).value) }
+        : null,
+    )
+    .filter((f): f is NutritionFact => Boolean(f));
+  return facts.length ? facts : null;
+}
+
+const PRODUCT_SELECT = {
+  id: true,
+  name: true,
+  shortDescription: true,
+  description: true,
+  ingredients: true,
+  benefits: true,
+  nutritionFacts: true,
+  isFeatured: true,
+  category: { select: { name: true } },
+  brand: { select: { name: true } },
+  images: { select: { url: true, isMain: true, sortOrder: true } },
+  variants: {
+    where: { isActive: true },
+    select: { price: true, discountPrice: true, stock: true, images: true },
+  },
+} satisfies Prisma.ProductSelect;
+
+type ProductRow = Prisma.ProductGetPayload<{ select: typeof PRODUCT_SELECT }>;
+
+function toContext(p: ProductRow): SocialProductContext {
+  const prices = p.variants.map((v) => effectivePrice(v.price, v.discountPrice));
+  const minPrice = prices.length ? Math.min(...prices) : null;
+  // Best discount across variants (largest percent off).
+  let bestPct: number | null = null;
+  for (const v of p.variants) {
+    const pct = discountPercent(v.price, v.discountPrice);
+    if (pct && (bestPct === null || pct > bestPct)) bestPct = pct;
+  }
+  return {
+    id: p.id,
+    name: p.name,
+    shortDescription: p.shortDescription,
+    description: p.description,
+    ingredients: p.ingredients,
+    benefits: p.benefits,
+    nutritionFacts: toNutritionFacts(p.nutritionFacts),
+    categoryName: p.category?.name ?? null,
+    brandName: p.brand?.name ?? null,
+    priceLabel: minPrice != null ? formatPrice(minPrice) : null,
+    discountLabel: bestPct ? `${bestPct}% off` : null,
+    inStock: p.variants.some((v) => v.stock > 0),
+  };
+}
+
+/** Products a campaign draws from, in order. Falls back to active/featured. */
+async function resolveCampaignProducts(productIds: string[]): Promise<ProductRow[]> {
+  if (productIds.length > 0) {
+    const rows = await prisma.product.findMany({
+      where: { id: { in: productIds }, isActive: true },
+      select: PRODUCT_SELECT,
+    });
+    // Preserve the admin's chosen order.
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    return productIds.map((id) => byId.get(id)).filter((r): r is ProductRow => Boolean(r));
+  }
+  return prisma.product.findMany({
+    where: { isActive: true },
+    orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+    take: 50,
+    select: PRODUCT_SELECT,
+  });
+}
+
+const STATUS_FOR_MODE: Record<string, SocialPostStatus> = {
+  DRAFT: "DRAFT",
+  MANUAL_APPROVAL: "PENDING_APPROVAL",
+  AUTO_PUBLISH: "SCHEDULED",
+};
+
+export type PlanReport = { planned: number; skipped: number; campaigns: number };
+
+export async function planDuePosts(now = new Date()): Promise<PlanReport> {
+  const settings = await getSocialSettings();
+  if (!settings.enabled) return { planned: 0, skipped: 0, campaigns: 0 };
+
+  const campaigns = await prisma.socialCampaign.findMany({ where: { enabled: true } });
+  const ist = istParts(now);
+  const { start, end } = istDayRange(now);
+
+  // Recent hooks/hashtags across all posts, for uniqueness.
+  const recent = await prisma.socialPost.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 25,
+    select: { hook: true, hashtags: true },
+  });
+  const recentHooks = recent.map((r) => r.hook).filter(Boolean);
+  const recentHashtags = [...new Set(recent.flatMap((r) => r.hashtags))];
+
+  let planned = 0;
+  let skipped = 0;
+  let activeCampaigns = 0;
+
+  for (const c of campaigns) {
+    if (c.startsAt && c.startsAt > now) continue;
+    if (c.endsAt && c.endsAt < now) continue;
+    if (!c.days.includes(ist.weekday)) continue;
+    activeCampaigns++;
+
+    const products = await resolveCampaignProducts(c.productIds);
+    if (products.length === 0) continue;
+
+    // Dayparts for today, limited by maxPerDay (max 2 real slots).
+    const dayparts: { daypart: SocialDaypart; time: string }[] = (
+      [
+        { daypart: "MORNING", time: c.morningTime },
+        { daypart: "EVENING", time: c.eveningTime },
+      ] as { daypart: SocialDaypart; time: string }[]
+    ).slice(0, Math.max(1, Math.min(2, c.maxPerDay)));
+
+    // Rotation base: how many posts this campaign has produced so far.
+    const baseCount = await prisma.socialPost.count({ where: { campaignId: c.id } });
+    let createdThisRun = 0;
+
+    for (const { daypart, time } of dayparts) {
+      const scheduledFor = scheduledUtc(now, time);
+      if (scheduledFor.getTime() < now.getTime() - PAST_SLOT_GRACE_MS) continue;
+
+      // One post per campaign+daypart+IST-day.
+      const exists = await prisma.socialPost.findFirst({
+        where: { campaignId: c.id, daypart, scheduledFor: { gte: start, lt: end } },
+        select: { id: true },
+      });
+      if (exists) continue;
+
+      const rotation = baseCount + createdThisRun;
+      const product = products[rotation % products.length];
+      const week = weekOfMonthIST(ist.day);
+      const slot = slotFor(week, daypart);
+      const angle = angleAt(slot, rotation);
+      const ctx = toContext(product);
+
+      const gen = await generateSocialPost({
+        product: ctx,
+        pillar: slot.pillar,
+        daypart,
+        angle,
+        brandVoice: settings.brandVoice,
+        defaultHashtags: settings.defaultHashtags,
+        bannedWords: settings.bannedWords,
+        recentHooks,
+        recentHashtags,
+      });
+      if (!gen.ok) {
+        skipped++;
+        continue;
+      }
+
+      // Skip exact-duplicate content.
+      const dup = await prisma.socialPost.findFirst({
+        where: { contentHash: gen.data.contentHash },
+        select: { id: true },
+      });
+      if (dup) {
+        skipped++;
+        continue;
+      }
+
+      const imageUrls = pickPostImages(product, settings.carouselEnabled);
+      const status = STATUS_FOR_MODE[c.mode] ?? "PENDING_APPROVAL";
+
+      await prisma.socialPost.create({
+        data: {
+          platform: c.platforms[0] ?? "INSTAGRAM",
+          status,
+          pillar: slot.pillar,
+          daypart,
+          weekOfMonth: week,
+          productId: product.id,
+          campaignId: c.id,
+          hook: gen.data.hook,
+          caption: gen.data.caption,
+          captionLong: gen.data.captionLong,
+          cta: gen.data.cta,
+          hashtags: gen.data.hashtags,
+          altText: gen.data.altText,
+          imageUrls,
+          contentHash: gen.data.contentHash,
+          scheduledFor: status === "SCHEDULED" ? scheduledFor : null,
+        },
+      });
+
+      recentHooks.unshift(gen.data.hook);
+      recentHashtags.unshift(...gen.data.hashtags);
+      planned++;
+      createdThisRun++;
+    }
+
+    await prisma.socialCampaign.update({
+      where: { id: c.id },
+      data: { lastPlannedAt: now },
+    });
+  }
+
+  return { planned, skipped, campaigns: activeCampaigns };
+}

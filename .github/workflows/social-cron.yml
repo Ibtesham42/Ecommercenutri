@@ -1,0 +1,37 @@
+name: AI Marketing social cron
+
+# Free, laptop-independent scheduler for the AI Marketing Automation Hub.
+# Pings the site's social cron endpoint, which plans due posts and publishes any
+# that are scheduled. Runs every 30 minutes; can also be triggered manually.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   SITE_URL     e.g. https://nutriyet.in   (no trailing slash)
+#   CRON_SECRET  same value as the CRON_SECRET env var on the deployment
+#
+# GitHub cron is best-effort and may drift a few minutes; the endpoint is
+# idempotent, so extra or slightly-late runs are safe.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: social-cron
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger social cron
+        run: |
+          if [ -z "${{ secrets.SITE_URL }}" ]; then
+            echo "SITE_URL secret not set — skipping."; exit 0
+          fi
+          code=$(curl -sS -o /tmp/out.json -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.SITE_URL }}/api/cron/social")
+          echo "HTTP $code"; cat /tmp/out.json || true
+          test "$code" = "200"
