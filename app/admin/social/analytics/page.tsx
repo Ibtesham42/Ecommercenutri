@@ -3,17 +3,10 @@ import { PageHeader } from "@/components/admin/page-header";
 import { getSocialAnalytics } from "@/lib/queries/social";
 import { PILLAR_LABEL } from "@/lib/social/strategy";
 import type { Pillar } from "@/lib/social/strategy";
+import { StatCard as Stat } from "@/components/admin/social/stat-card";
+import { CheckCircle2, AlertTriangle, Gauge, Package } from "lucide-react";
 
 export const metadata: Metadata = { title: "Analytics", robots: { index: false } };
-
-function Stat({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-xl border p-4 shadow-elev-1">
-      <p className="text-2xl font-bold tracking-tight">{value}</p>
-      <p className="text-sm text-muted-foreground">{label}</p>
-    </div>
-  );
-}
 
 export default async function SocialAnalyticsPage() {
   const a = await getSocialAnalytics();
@@ -24,11 +17,11 @@ export default async function SocialAnalyticsPage() {
     <div>
       <PageHeader title="Analytics" description="How your automated content is performing." />
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Published" value={a.totalPublished} />
-        <Stat label="Failed" value={a.totalFailed} />
-        <Stat label="Success rate" value={`${a.successRate}%`} />
-        <Stat label="Products promoted" value={a.topProducts.length} />
+      <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <Stat label="Published" value={a.totalPublished} icon={CheckCircle2} />
+        <Stat label="Failed" value={a.totalFailed} icon={AlertTriangle} />
+        <Stat label="Success rate" value={`${a.successRate}%`} icon={Gauge} />
+        <Stat label="Promoted" value={a.topProducts.length} icon={Package} hint="products" />
       </div>
 
       <div className="mb-6 grid gap-3 sm:grid-cols-2">

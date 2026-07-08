@@ -4,19 +4,19 @@ import { getSocialOverview, getSocialProductOptions } from "@/lib/queries/social
 import { SocialActionBar } from "@/components/admin/social/social-action-bar";
 import { InstagramConnectCard } from "@/components/admin/social/instagram-connect-card";
 import { Badge } from "@/components/ui/badge";
+import { StatCard } from "@/components/admin/social/stat-card";
 import { PILLAR_LABEL } from "@/lib/social/strategy";
 import { POST_STATUS_LABEL, POST_STATUS_VARIANT } from "@/lib/social/status";
+import {
+  Megaphone,
+  FileEdit,
+  CalendarClock,
+  CheckCircle2,
+  AlertTriangle,
+  Package,
+} from "lucide-react";
 
 export const metadata: Metadata = { title: "AI Marketing", robots: { index: false } };
-
-function Stat({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-xl border p-4 shadow-elev-1">
-      <p className="text-2xl font-bold tracking-tight">{value}</p>
-      <p className="text-sm text-muted-foreground">{label}</p>
-    </div>
-  );
-}
 
 export default async function AdminSocialPage() {
   const [overview, products] = await Promise.all([
@@ -46,13 +46,13 @@ export default async function AdminSocialPage() {
         </div>
       )}
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <Stat label="Active campaigns" value={overview.enabledCampaigns} />
-        <Stat label="In queue" value={counts.DRAFT + counts.PENDING_APPROVAL} />
-        <Stat label="Scheduled" value={counts.SCHEDULED} />
-        <Stat label="Published" value={counts.PUBLISHED} />
-        <Stat label="Failed" value={counts.FAILED} />
-        <Stat label="Products promoted" value={overview.productsPromoted} />
+      <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+        <StatCard label="Campaigns" value={overview.enabledCampaigns} icon={Megaphone} hint="active" />
+        <StatCard label="In queue" value={counts.DRAFT + counts.PENDING_APPROVAL} icon={FileEdit} hint="drafts + approvals" />
+        <StatCard label="Scheduled" value={counts.SCHEDULED} icon={CalendarClock} />
+        <StatCard label="Published" value={counts.PUBLISHED} icon={CheckCircle2} />
+        <StatCard label="Failed" value={counts.FAILED} icon={AlertTriangle} />
+        <StatCard label="Promoted" value={overview.productsPromoted} icon={Package} hint="products" />
       </div>
 
       {!overview.instagramConnected && (
@@ -61,25 +61,29 @@ export default async function AdminSocialPage() {
         </div>
       )}
 
-      <h2 className="mb-2 text-sm font-semibold text-muted-foreground">Recent activity</h2>
-      {overview.recent.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No posts yet. Create a campaign, or use “Generate a post” to make your first draft.
-        </div>
-      ) : (
-        <div className="grid gap-2">
-          {overview.recent.map((p) => (
-            <div key={p.id} className="flex items-center gap-3 rounded-lg border p-2.5 text-sm">
-              <Badge variant={POST_STATUS_VARIANT[p.status]}>{POST_STATUS_LABEL[p.status]}</Badge>
-              <span className="min-w-0 flex-1 truncate">{p.hook || p.caption.split("\n")[0]}</span>
-              <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
-                {PILLAR_LABEL[p.pillar]}
-                {p.productName ? ` · ${p.productName}` : ""}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="overflow-hidden rounded-xl border bg-card shadow-elev-1">
+        <div className="border-b px-4 py-2.5 text-sm font-semibold">Recent activity</div>
+        {overview.recent.length === 0 ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            No posts yet. Create a campaign, or use “Generate a post” to make your first draft.
+          </div>
+        ) : (
+          <ul className="divide-y">
+            {overview.recent.map((p) => (
+              <li key={p.id} className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-muted/40">
+                <Badge variant={POST_STATUS_VARIANT[p.status]} className="shrink-0">
+                  {POST_STATUS_LABEL[p.status]}
+                </Badge>
+                <span className="min-w-0 flex-1 truncate">{p.hook || p.caption.split("\n")[0]}</span>
+                <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
+                  {PILLAR_LABEL[p.pillar]}
+                  {p.productName ? ` · ${p.productName}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
