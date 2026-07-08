@@ -33,7 +33,14 @@ export function composeCaption(caption: string, hashtags: string[]): string {
 }
 
 function graphBase(): string {
-  return `https://graph.facebook.com/${env.instagramApiVersion}`;
+  // IGAA… tokens are "Instagram API with Instagram Login" and must use
+  // graph.instagram.com; classic Facebook-Login (EAA…) tokens use graph.facebook.com.
+  const host =
+    env.instagramApiBase.trim() ||
+    (env.instagramAccessToken.startsWith("IG")
+      ? "https://graph.instagram.com"
+      : "https://graph.facebook.com");
+  return `${host.replace(/\/$/, "")}/${env.instagramApiVersion}`;
 }
 
 /** POST to a Graph edge with form-encoded params; throws with the API message. */

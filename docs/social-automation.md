@@ -111,7 +111,10 @@ return `AdminResult` and start with `requirePermission("social")`.
 2. Create a Meta app with the Instagram Graph API; get a **long-lived access
    token** and the **IG user id**.
 3. Set env: `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_BUSINESS_ID` (optional
-   `INSTAGRAM_API_VERSION`, default `v21.0`).
+   `INSTAGRAM_API_VERSION`, default `v21.0`). The Graph host is auto-detected
+   from the token — `IGAA…` (Instagram Login) → `graph.instagram.com`, else
+   `graph.facebook.com`; override with `INSTAGRAM_API_BASE` if needed. Legacy key
+   names `INSTA_AUTOGRAPH_TOKEN` / `INSTAGRAM_ACCOUNT_ID` are accepted as aliases.
 4. Set `CRON_SECRET` (deployment env) and add `SITE_URL` + `CRON_SECRET` as
    **GitHub repo secrets** so the Action can trigger the endpoint.
 

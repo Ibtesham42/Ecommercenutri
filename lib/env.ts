@@ -66,11 +66,16 @@ export const env = {
 
   // AI Marketing — Instagram publishing via the Meta Graph API. Optional: the
   // social automation degrades to draft/mock-publish until these are set. The
-  // token must belong to an Instagram Business/Creator account linked to a
-  // Facebook Page. See docs/social-automation.md.
-  instagramAccessToken: process.env.INSTAGRAM_ACCESS_TOKEN ?? "",
-  instagramBusinessId: process.env.INSTAGRAM_BUSINESS_ID ?? "",
+  // token belongs to an Instagram Business/Creator account. Aliases accept the
+  // older key names too. See docs/social-automation.md.
+  instagramAccessToken:
+    process.env.INSTAGRAM_ACCESS_TOKEN ?? process.env.INSTA_AUTOGRAPH_TOKEN ?? "",
+  instagramBusinessId:
+    process.env.INSTAGRAM_BUSINESS_ID ?? process.env.INSTAGRAM_ACCOUNT_ID ?? "",
   instagramApiVersion: process.env.INSTAGRAM_API_VERSION ?? "v21.0",
+  // Optional override for the Graph host. When unset it's auto-detected from the
+  // token: IGAA… (Instagram Login) → graph.instagram.com, else graph.facebook.com.
+  instagramApiBase: process.env.INSTAGRAM_API_BASE ?? "",
 
   // Shared secret guarding the social cron endpoint (GitHub Actions sends it as
   // `Authorization: Bearer <CRON_SECRET>`). Reused by the marketing cron too.
