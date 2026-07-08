@@ -9,7 +9,7 @@ import { getSocialSettings } from "@/lib/social/settings";
 import { planDuePosts, buildSocialMaterials } from "@/lib/social/planner";
 import { publishDuePosts, publishPostNow } from "@/lib/social/publish";
 import { generateSocialPost } from "@/lib/social/ai";
-import { slotForDate, angleAt, weekOfMonth } from "@/lib/social/strategy";
+import { slotForPillar, angleAt, weekOfMonth } from "@/lib/social/strategy";
 import { ensureBuiltInSocialTemplates, pickTemplateGuidance } from "@/lib/social/templates";
 import {
   socialCampaignSchema,
@@ -132,7 +132,7 @@ export async function generateSocialDraft(
   const materials = productId ? await buildSocialMaterials(productId, settings.carouselEnabled) : null;
 
   const now = new Date();
-  const slot = slotForDate(now, d.daypart);
+  const slot = slotForPillar(d.pillar);
   const count = await prisma.socialPost.count();
   const angle = d.angle || angleAt(slot, count);
   const { recentHooks, recentHashtags } = await recentHooksAndTags();
@@ -189,7 +189,7 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
   const materials = post.productId
     ? await buildSocialMaterials(post.productId, settings.carouselEnabled)
     : null;
-  const slot = slotForDate(new Date(), post.daypart);
+  const slot = slotForPillar(post.pillar);
   const count = await prisma.socialPost.count();
   const { recentHooks, recentHashtags } = await recentHooksAndTags();
 

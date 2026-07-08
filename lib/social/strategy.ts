@@ -176,6 +176,11 @@ export function slotForDate(date: Date, daypart: Daypart): StrategySlot {
   return slotFor(weekOfMonth(date), daypart);
 }
 
+/** The slot for a given pillar (each pillar appears exactly once in the plan). */
+export function slotForPillar(pillar: Pillar): StrategySlot {
+  return STRATEGY.find((s) => s.pillar === pillar) ?? STRATEGY[0];
+}
+
 /**
  * Pick the next angle for a pillar, rotating past the ones most recently used.
  * `usedCount` is how many times this pillar has been posted before — cycling
