@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useForm, useFieldArray, Controller, type FieldPath } from "react-hook-form";
 import {
   Plus,
   Trash2,
@@ -77,6 +77,7 @@ export function ProductForm({
     control,
     watch,
     setValue,
+    setError,
     formState: { errors },
   } = useForm<ProductFormValues>({
     defaultValues: initial ?? {
@@ -109,6 +110,13 @@ export function ProductForm({
     const n = Number(v);
     return v != null && v !== "" && Number.isFinite(n) ? n : null;
   };
+  // Integer variants — counts/days/grams can't be fractional, so round a stray
+  // decimal instead of rejecting it (e.g. stock "10.5" → 10).
+  const int = (v: unknown): number => Math.round(num(v));
+  const optInt = (v: unknown): number | null => {
+    const n = optNum(v);
+    return n == null ? null : Math.round(n);
+  };
 
   async function onSubmit(values: ProductFormValues) {
     setSaving(true);
@@ -127,8 +135,8 @@ export function ProductForm({
       isFeatured: values.isFeatured,
       isBestSeller: values.isBestSeller,
       returnable: values.returnable,
-      returnWindowDays: optNum(values.returnWindowDays),
-      gstRate: optNum(values.gstRate),
+      returnWindowDays: optInt(values.returnWindowDays),
+      gstRate: optInt(values.gstRate),
       deliveryCharge: (() => {
         const d = optNum(values.deliveryRupees);
         return d != null ? rupeesToPaise(d) : null;
@@ -141,10 +149,10 @@ export function ProductForm({
         return {
           id: v.id,
           weightLabel: v.weightLabel,
-          weightInGrams: optNum(v.weightInGrams),
+          weightInGrams: optInt(v.weightInGrams),
           price: rupeesToPaise(num(v.priceRupees)),
           discountPrice: discount != null ? rupeesToPaise(discount) : null,
-          stock: num(v.stock),
+          stock: int(v.stock),
           sku: v.sku || null,
           isActive: v.isActive,
           isDefault: v.isDefault,
@@ -164,6 +172,9 @@ export function ProductForm({
       })),
     };
 
+    if (process.env.NODE_ENV !== "production") {
+      console.debug("[product-form] submitting payload", payload);
+    }
     const res = await saveProduct(payload);
     setSaving(false);
     if (res.ok) {
@@ -172,10 +183,31 @@ export function ProductForm({
       router.refresh();
     } else {
       toast.error(res.error);
+      // Highlight the exact offending field (inline) and scroll to it.
+      if (res.field) {
+        setError(res.field as FieldPath<ProductFormValues>, {
+          type: "server",
+          message: res.error,
+        });
+        focusField(res.field);
+      }
     }
   }
 
-  // Never let a blocked submit fail silently — point the admin at what's missing.
+  /** Scroll to + focus a form control by its RHF field name (or id fallback). */
+  function focusField(name: string) {
+    if (typeof document === "undefined") return;
+    const el =
+      document.querySelector<HTMLElement>(`[name="${name}"]`) ??
+      document.querySelector<HTMLElement>(`[id="${name}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.focus({ preventScroll: true });
+    }
+  }
+
+  // Never let a blocked submit fail silently — point the admin at what's missing
+  // and scroll to the first offending field.
   function onInvalid() {
     const missing: string[] = [];
     if (errors.name) missing.push("name");
@@ -189,6 +221,15 @@ export function ProductForm({
         ? `Please complete: ${missing.join(", ")}.`
         : "Please complete the highlighted fields before saving.",
     );
+    // Scroll to the first field with an error.
+    const first =
+      (errors.name && "name") ||
+      (errors.slug && "slug") ||
+      (errors.description && "description") ||
+      (errors.categoryId && "categoryId") ||
+      (errors.variants && "variants.0.weightLabel") ||
+      "";
+    if (first) focusField(first);
   }
 
   function makeDefaultVariant(index: number) {
@@ -234,16 +275,24 @@ export function ProductForm({
                   if (!watch("slug")) setValue("slug", slugify(e.target.value));
                 }}
               />
-              {errors.name && <p className="text-xs text-destructive">Name is required.</p>}
+              {errors.name && (
+                <p className="text-xs text-destructive">{errors.name.message ?? "Name is required."}</p>
+              )}
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="slug">Slug</Label>
                 <Input id="slug" {...register("slug", { required: true })} />
+                {errors.slug && (
+                  <p className="text-xs text-destructive">{errors.slug.message ?? "Slug is required."}</p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="sku">SKU (optional)</Label>
                 <Input id="sku" {...register("sku")} />
+                {errors.sku && (
+                  <p className="text-xs text-destructive">{errors.sku.message}</p>
+                )}
               </div>
             </div>
             <div className="space-y-1.5">
@@ -254,7 +303,7 @@ export function ProductForm({
               <Label htmlFor="description">Description</Label>
               <Textarea id="description" rows={4} {...register("description", { required: true })} />
               {errors.description && (
-                <p className="text-xs text-destructive">Description is required.</p>
+                <p className="text-xs text-destructive">{errors.description.message ?? "Description is required."}</p>
               )}
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -294,7 +343,7 @@ export function ProductForm({
                         {...register(`variants.${i}.weightLabel`, { required: true })}
                       />
                       {errors.variants?.[i]?.weightLabel && (
-                        <p className="text-xs text-destructive">Required</p>
+                        <p className="text-xs text-destructive">{errors.variants[i]?.weightLabel?.message ?? "Required"}</p>
                       )}
                     </div>
                     <div className="space-y-1">
@@ -309,7 +358,7 @@ export function ProductForm({
                         })}
                       />
                       {errors.variants?.[i]?.priceRupees && (
-                        <p className="text-xs text-destructive">Enter a price</p>
+                        <p className="text-xs text-destructive">{errors.variants[i]?.priceRupees?.message ?? "Enter a price"}</p>
                       )}
                     </div>
                     <div className="space-y-1">
@@ -326,6 +375,9 @@ export function ProductForm({
                         type="number"
                         {...register(`variants.${i}.stock`, { valueAsNumber: true })}
                       />
+                      {errors.variants?.[i]?.stock && (
+                        <p className="text-xs text-destructive">{errors.variants[i]?.stock?.message ?? "Invalid stock"}</p>
+                      )}
                     </div>
                     <div className="flex items-end">
                       <Button
@@ -763,7 +815,7 @@ export function ProductForm({
                 )}
               />
               {errors.categoryId && (
-                <p className="text-xs text-destructive">Pick a category.</p>
+                <p className="text-xs text-destructive">{errors.categoryId.message ?? "Pick a category."}</p>
               )}
             </div>
             <div className="space-y-1.5">
@@ -830,6 +882,9 @@ export function ProductForm({
                       </button>
                     ))}
                   </div>
+                  {errors.gstRate && (
+                    <p className="text-xs text-destructive">{errors.gstRate.message ?? "Enter a whole number."}</p>
+                  )}
                 </div>
               )}
             />

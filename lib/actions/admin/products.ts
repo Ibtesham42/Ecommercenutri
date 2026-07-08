@@ -12,25 +12,90 @@ import {
 } from "@/lib/validations/admin";
 import type { AdminResult, BulkOutcome } from "@/lib/actions/admin/types";
 
-/** Turn the first validation issue into a readable, field-aware message. */
+/** Result of saving a product. On failure, `field` is the form field path to
+ *  highlight/scroll to (RHF dot-notation, e.g. "variants.0.priceRupees"). */
+export type ProductSaveResult =
+  | { ok: true; data: { id: string } }
+  | { ok: false; error: string; field?: string };
+
+/** Human labels for every product/variant/image/nutrition field. */
+const FIELD_LABELS: Record<string, string> = {
+  name: "Product name",
+  slug: "Slug",
+  sku: "SKU",
+  shortDescription: "Short description",
+  description: "Description",
+  benefits: "Benefits",
+  ingredients: "Ingredients",
+  categoryId: "Category",
+  brandId: "Brand",
+  returnWindowDays: "Return window (days)",
+  gstRate: "GST rate",
+  deliveryCharge: "Delivery charge",
+  metaTitle: "Meta title",
+  metaDescription: "Meta description",
+  nutritionFacts: "Nutrition facts",
+  variants: "Variants",
+  images: "Images",
+  // nested
+  weightLabel: "Weight label",
+  weightInGrams: "Weight (grams)",
+  price: "Selling price",
+  discountPrice: "Discount price",
+  stock: "Stock",
+  url: "Image URL",
+  alt: "Image alt text",
+  label: "Nutrition label",
+  value: "Nutrition value",
+  nutritionImageUrl: "Nutrition image URL",
+  barcode: "Barcode",
+  badge: "Badge",
+};
+
+/** Map a server schema path to the matching RHF form field name (the form uses
+ *  rupee-denominated fields where the schema uses paise). */
+function toFormField(path: PropertyKey[]): string {
+  const remap: Record<string, string> = {
+    price: "priceRupees",
+    discountPrice: "discountRupees",
+    deliveryCharge: "deliveryRupees",
+  };
+  return path.map((p) => remap[String(p)] ?? String(p)).join(".");
+}
+
+/** Translate one Zod issue into a friendly, field-named sentence. Zod v4 phrases
+ *  every type error as "Invalid input: expected <t>, received <r>", which is
+ *  useless to a shop admin — rewrite those; keep the schema's own custom copy. */
+function humanizeIssue(issue: { path: PropertyKey[]; message: string }): string {
+  const leaf = String(issue.path[issue.path.length - 1] ?? "");
+  const label = FIELD_LABELS[leaf] ?? "This field";
+  const m = issue.message ?? "";
+  if (/expected int/i.test(m)) return `${label} must be a whole number.`;
+  if (/expected number/i.test(m)) return `${label} must be a number.`;
+  if (/expected string/i.test(m) || /received (undefined|null)/i.test(m))
+    return `${label} is required.`;
+  if (/expected boolean|expected array|expected object/i.test(m))
+    return `${label} is invalid.`;
+  if (/^Invalid input/i.test(m)) return `${label} is invalid.`;
+  return m; // custom schema message — already human ("Select a category", etc.)
+}
+
+/** First validation issue as a message + the form field to highlight. */
 function describeIssue(error: {
   issues: { path: PropertyKey[]; message: string }[];
-}): string {
+}): { message: string; field?: string } {
   const issue = error.issues[0];
-  if (!issue) return "Invalid product.";
-  const [section, index, field] = issue.path;
-  const fieldName = typeof field === "string" ? field : undefined;
-  // Friendlier copy for the NaN/empty-number case.
-  const msg = /expected number/i.test(issue.message)
-    ? "enter a valid number"
-    : issue.message;
-  if (section === "variants" && typeof index === "number") {
-    return `Variant ${index + 1}${fieldName ? ` (${fieldName})` : ""}: ${msg}`;
-  }
-  if (section === "images" && typeof index === "number") {
-    return `Image ${index + 1}: ${msg}`;
-  }
-  return msg;
+  if (!issue) return { message: "Please check the product details." };
+  const [section, index] = issue.path;
+  const base = humanizeIssue(issue);
+  const field = toFormField(issue.path);
+  if (section === "variants" && typeof index === "number")
+    return { message: `Variant ${index + 1} — ${base}`, field };
+  if (section === "images" && typeof index === "number")
+    return { message: `Image ${index + 1} — ${base}`, field };
+  if (section === "nutritionFacts" && typeof index === "number")
+    return { message: `Nutrition row ${index + 1} — ${base}`, field };
+  return { message: base, field };
 }
 
 /** Force exactly one default variant (first marked, else the first variant). */
@@ -81,12 +146,13 @@ function revalidateCatalog(slug?: string) {
   if (slug) revalidatePath(`/products/${slug}`);
 }
 
-export async function saveProduct(input: unknown): Promise<AdminResult<{ id: string }>> {
+export async function saveProduct(input: unknown): Promise<ProductSaveResult> {
   await requirePermission("products");
 
   const parsed = productInputSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: describeIssue(parsed.error) };
+    const { message, field } = describeIssue(parsed.error);
+    return { ok: false, error: message, field };
   }
   const data: ProductInput = parsed.data;
   const variants = withSingleDefault(data.variants);
@@ -97,7 +163,19 @@ export async function saveProduct(input: unknown): Promise<AdminResult<{ id: str
     where: { slug: data.slug, ...(data.id ? { NOT: { id: data.id } } : {}) },
     select: { id: true },
   });
-  if (slugClash) return { ok: false, error: "Another product already uses that slug." };
+  if (slugClash)
+    return { ok: false, error: "Another product already uses that slug.", field: "slug" };
+
+  // Pre-check the product SKU so a clash names the field (the DB unique
+  // constraint would otherwise surface only as a generic P2002 in the catch).
+  if (data.sku) {
+    const skuClash = await prisma.product.findFirst({
+      where: { sku: data.sku, ...(data.id ? { NOT: { id: data.id } } : {}) },
+      select: { id: true },
+    });
+    if (skuClash)
+      return { ok: false, error: "That SKU is already in use — enter a unique SKU.", field: "sku" };
+  }
 
   const scalar = {
     name: data.name,
@@ -180,6 +258,17 @@ export async function saveProduct(input: unknown): Promise<AdminResult<{ id: str
     revalidateCatalog(data.slug);
     return { ok: true, data: { id: productId } };
   } catch (err) {
+    // Surface unique-constraint clashes as real, field-named messages (e.g. a
+    // duplicate variant SKU) instead of a generic failure.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      const target = err.meta?.target;
+      const t = Array.isArray(target) ? target.join(",") : String(target ?? "");
+      if (/sku/i.test(t))
+        return { ok: false, error: "That SKU is already in use — every SKU must be unique.", field: "sku" };
+      if (/slug/i.test(t))
+        return { ok: false, error: "Another product already uses that slug.", field: "slug" };
+      return { ok: false, error: "A value that must be unique is already taken." };
+    }
     console.error("[admin] saveProduct failed:", err);
     return { ok: false, error: "Could not save the product. Please try again." };
   }
