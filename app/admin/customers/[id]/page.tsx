@@ -265,6 +265,9 @@ export default async function CustomerDetailPage({
             <p className="mb-3 text-xs font-semibold uppercase text-muted-foreground">Account</p>
             <div className="space-y-2">
               <InfoRow label="Registered">{formatDateTime(user.createdAt)}</InfoRow>
+              <InfoRow label="Last active">
+                {timelineTop[0] ? formatDate(timelineTop[0].at) : "—"}
+              </InfoRow>
               <InfoRow label="Login method">{SOURCE_LABEL[source]}</InfoRow>
               <InfoRow label="Status">
                 {user.isActive ? "Active" : <span className="text-destructive">Blocked</span>}
