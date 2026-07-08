@@ -1,8 +1,35 @@
 # Nutriyet — Progress Tracker
 
-_Last updated: 2026-07-07 · Auto-maintained. Update at the end of every milestone._
+_Last updated: 2026-07-08 · Auto-maintained. Update at the end of every milestone._
 
-## Latest: SEO & Marketing Growth loop (2026-07-07, in progress)
+## Latest: AI Marketing Automation Hub (2026-07-08, in progress)
+
+Auto-generates + publishes social content (Instagram-first) from the catalog —
+no daily manual captioning. New `/admin/social` section (`social` RBAC key).
+
+- **S1** — Schema (`social_automation` migration, additive): `SocialPost`,
+  `SocialCampaign`, `SocialTemplate`, `SocialAccount` + enums and
+  `StoreSetting.social` blob. New `social` permission + nav item; Instagram env
+  (`INSTAGRAM_ACCESS_TOKEN`/`BUSINESS_ID`/`API_VERSION`) + `CRON_SECRET` with
+  `isConfigured.instagram()` keyless gate.
+- **S2** — `lib/social/`: client-safe 4-week content-strategy catalog, settings
+  resolver (growth-settings pattern), status labels/transitions, image picker,
+  and the AI generator (`generateSocialPost`) — keyless fallback, `generateText`
+  + defensive parse, health-claim safety (prompt rules + banned-word stripper),
+  uniqueness via recent hook/hashtag injection + `contentHash` dedup.
+- **S3** — Pipeline: `planDuePosts` (IST-aware, idempotent per campaign+daypart+
+  day, product/angle rotation), `publishDuePosts` (atomic claim → publish),
+  Instagram Graph API adapter (single + carousel, keyless mock), cron route
+  `/api/cron/social`, and a free GitHub Actions every-30-min scheduler.
+- **S4** — Admin UI + `AdminResult` actions + queries + Zod: Dashboard, Calendar,
+  Queue, Scheduled, Published, Failed, Campaigns, Analytics, Templates, Settings.
+  Generate/plan/run-cycle, approve/reject/schedule/publish-now/edit/regenerate/
+  delete (+ bulk), campaign editor (product multiselect), settings & templates.
+- Verified: typecheck/lint/build green; shared First-Load JS unchanged (103 kB);
+  DB-free logic smoke (generation, claim-safety, image pick, mock publish).
+  _Live DB round-trip smoke pending Neon availability._
+
+## SEO & Marketing Growth loop (2026-07-07, in progress)
 
 - **S1** — Sitemap now includes `/quiz` (AI assessment) and `/b2b` landing
   pages; blog Article JSON-LD hardened per Google's Article guidelines

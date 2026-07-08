@@ -44,6 +44,15 @@ you go to switch each feature from fallback to live.
   public key is inlined into the client bundle at build time. Full guide:
   `docs/guides/push-notifications.md`.
 - **Analytics** (optional): set `NEXT_PUBLIC_ANALYTICS_SRC` + `_DOMAIN`.
+- **AI Marketing (social)**: to publish to Instagram for real, set
+  `INSTAGRAM_ACCESS_TOKEN` (long-lived token for an IG Business/Creator account
+  linked to a Facebook Page) and `INSTAGRAM_BUSINESS_ID` (optional
+  `INSTAGRAM_API_VERSION`, default `v21.0`). Without them the hub still generates
+  and queues drafts and simulates publishing. Set `CRON_SECRET` (also guards
+  `/api/cron/marketing`), then add `SITE_URL` + `CRON_SECRET` as **GitHub repo
+  secrets** so `.github/workflows/social-cron.yml` can trigger `/api/cron/social`
+  every 30 min (Vercel Hobby crons are daily-only). Full guide:
+  `docs/social-automation.md`.
 
 ## 5. Verify production
 - `https://<domain>/` loads; `/sitemap.xml`, `/robots.txt`, `/manifest.webmanifest`

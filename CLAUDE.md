@@ -175,6 +175,7 @@ workflow changes. Don't update files unnecessarily; never duplicate content acro
 | `docs/affiliates.md` | Affiliate program: attribution, commission engine, payouts, admin |
 | `docs/marketing.md` | Marketing Hub: campaigns, channels (push/WhatsApp/SMS), cron, recurrence, automations |
 | `docs/growth.md` | Conversion features (quiz/popup/bar/trust/coupon) + bilingual consumer survey |
+| `docs/social-automation.md` | AI Marketing Automation Hub: 4-week content strategy, AI generation + claim-safety, planner/publisher, Instagram Graph API, GitHub Actions cron, `/admin/social` |
 | `docs/seo-pwa.md` | SEO manager, favicon system, service worker/PWA, Cloudinary upload + delivery |
 | `docs/guides/marketing-hub.md` | Non-technical admin user guide for the Marketing Hub |
 | `docs/guides/push-notifications.md` | Web Push (VAPID) setup & operations |

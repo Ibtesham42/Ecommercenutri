@@ -3,6 +3,32 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [AI Marketing Automation Hub] — 2026-07-08
+
+AI-generated, auto-published social content (Instagram-first) from the catalog.
+
+### Added
+- **Schema** (migration `social_automation`, additive): `SocialPost`,
+  `SocialCampaign`, `SocialTemplate`, `SocialAccount` + enums
+  (`SocialPlatform`/`SocialPostStatus`/`SocialContentPillar`/`SocialDaypart`/
+  `SocialPublishMode`) and a `StoreSetting.social` JSON blob.
+- **Content engine** (`lib/social/`): client-safe 4-week content-strategy catalog
+  (Product Knowledge / Healthy Snacking → … → Customer Stories) with angle
+  rotation; `generateSocialPost` (keyless fallback, `generateText` + defensive
+  parse, no invented health claims + banned-word stripper, uniqueness via recent
+  hook/hashtag injection + `contentHash`); best-image / carousel picker.
+- **Automation**: IST-aware, idempotent planner; atomic-claim publisher; Instagram
+  Graph API adapter (single + carousel, keyless mock publish); cron endpoint
+  `/api/cron/social` (CRON_SECRET-guarded) driven by a free GitHub Actions
+  every-30-min workflow (laptop-independent).
+- **Admin** `/admin/social` (`social` RBAC key): Dashboard, Calendar, Queue,
+  Scheduled, Published, Failed, Campaign Manager, Analytics, Templates, Automation
+  Settings — full `AdminResult` action set with generate/plan/run-cycle,
+  approve/schedule/publish-now/regenerate/edit/delete (+ bulk).
+- **Env**: `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_BUSINESS_ID`,
+  `INSTAGRAM_API_VERSION`, `CRON_SECRET`; `isConfigured.instagram()` keyless gate.
+- **Docs**: `docs/social-automation.md`; DEPLOYMENT env/secret checklist.
+
 ## [Admin Experience & Variant Media] — 2026-07-07
 
 Premium variant management end to end + admin productivity sweep (A1–A8).
