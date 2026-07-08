@@ -72,11 +72,18 @@ export type OrderRow = {
   status: string;
   total: number;
   items: number;
+  paymentMethod?: string;
+  shipName?: string;
+  phone?: string;
+  addressLine?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
 };
 
 const ACTIONS: BulkAction[] = [
   { key: "invoices", label: "Invoices", icon: FileText },
-  { key: "labels", label: "Labels", icon: Truck },
+  { key: "shipping", label: "Shipping list", icon: Truck },
   { key: "export", label: "Export CSV", icon: Download },
   {
     key: "delete",
@@ -139,8 +146,25 @@ export function OrderTable({ orders }: { orders: OrderRow[] }) {
       toast.success(`Downloading ${rows.length} invoice(s)…`);
       return;
     }
-    if (key === "labels") {
-      toast.info("Shipping label generation is coming soon.");
+    if (key === "shipping") {
+      // Courier-ready manifest for the selected orders: who, where, and how much
+      // to collect (COD amount is the order total; prepaid collects nothing).
+      downloadCsv(
+        "shipping-list",
+        ["Order", "Name", "Phone", "Address", "City", "State", "Pincode", "Items", "Payment", "Collect (₹)"],
+        rows.map((o) => [
+          o.orderNumber,
+          o.shipName || o.customer,
+          o.phone ?? "",
+          o.addressLine ?? "",
+          o.city ?? "",
+          o.state ?? "",
+          o.pincode ?? "",
+          String(o.items),
+          o.paymentMethod === "COD" ? "COD" : "Prepaid",
+          o.paymentMethod === "COD" ? (o.total / 100).toFixed(2) : "0.00",
+        ]),
+      );
       return;
     }
     if (key === "export") {

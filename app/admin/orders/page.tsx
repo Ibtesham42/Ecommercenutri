@@ -70,6 +70,8 @@ export default async function AdminOrdersPage({
         total: true,
         status: true,
         paymentStatus: true,
+        paymentMethod: true,
+        shippingAddress: true,
         createdAt: true,
         user: { select: { name: true, email: true } },
         _count: { select: { items: true } },
@@ -78,16 +80,35 @@ export default async function AdminOrdersPage({
     prisma.order.count({ where }),
   ]);
 
-  const rows: OrderRow[] = orders.map((o) => ({
-    id: o.id,
-    orderNumber: o.orderNumber,
-    customer: o.user.name ?? o.user.email ?? "—",
-    createdAt: o.createdAt.toISOString(),
-    paymentStatus: o.paymentStatus,
-    status: o.status,
-    total: o.total,
-    items: o._count.items,
-  }));
+  type ShipTo = {
+    fullName?: string;
+    phone?: string;
+    line1?: string;
+    line2?: string | null;
+    city?: string;
+    state?: string;
+    pincode?: string;
+  };
+  const rows: OrderRow[] = orders.map((o) => {
+    const a = (o.shippingAddress ?? {}) as ShipTo;
+    return {
+      id: o.id,
+      orderNumber: o.orderNumber,
+      customer: o.user.name ?? o.user.email ?? "—",
+      createdAt: o.createdAt.toISOString(),
+      paymentStatus: o.paymentStatus,
+      status: o.status,
+      total: o.total,
+      items: o._count.items,
+      paymentMethod: o.paymentMethod,
+      shipName: a.fullName ?? "",
+      phone: a.phone ?? "",
+      addressLine: [a.line1, a.line2].filter(Boolean).join(", "),
+      city: a.city ?? "",
+      state: a.state ?? "",
+      pincode: a.pincode ?? "",
+    };
+  });
 
   const pageCount = Math.max(1, Math.ceil(total / PER_PAGE));
   const qs = (next: Record<string, string>) => {
