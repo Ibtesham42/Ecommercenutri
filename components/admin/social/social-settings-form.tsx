@@ -70,7 +70,7 @@ export function SocialSettingsForm({ settings }: { settings: SocialSettings }) {
         <p className="mt-1 text-xs text-muted-foreground">Guides tone for every generated caption.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <Label htmlFor="s-morning">Default morning time (IST)</Label>
           <Input id="s-morning" type="time" value={s.morningTime} onChange={(e) => set("morningTime", e.target.value)} />
@@ -105,7 +105,7 @@ export function SocialSettingsForm({ settings }: { settings: SocialSettings }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <Label htmlFor="s-max">Default max posts/day</Label>
           <Input id="s-max" type="number" min={1} max={10} value={s.maxPerDay} onChange={(e) => set("maxPerDay", Number(e.target.value) || 1)} />

@@ -230,7 +230,7 @@ export function CampaignEditor({
                 <p className="mt-1 text-xs text-muted-foreground">{PUBLISH_MODE_DESCRIPTION[form.mode]}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="c-morning">Morning time (IST)</Label>
                   <Input id="c-morning" type="time" value={form.morningTime} onChange={(e) => set("morningTime", e.target.value)} />
@@ -263,7 +263,7 @@ export function CampaignEditor({
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div>
                   <Label htmlFor="c-max">Max/day</Label>
                   <Input id="c-max" type="number" min={1} max={10} value={form.maxPerDay} onChange={(e) => set("maxPerDay", Number(e.target.value) || 1)} />
