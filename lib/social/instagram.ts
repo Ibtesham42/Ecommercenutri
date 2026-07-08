@@ -53,10 +53,14 @@ async function graphPost(path: string, params: Record<string, string>): Promise<
   });
   const json = (await res.json().catch(() => ({}))) as {
     id?: string;
-    error?: { message?: string };
+    error?: { message?: string; code?: number; error_subcode?: number; fbtrace_id?: string };
   };
   if (!res.ok || !json.id) {
-    throw new Error(json.error?.message || `Graph API error (${res.status})`);
+    const e = json.error;
+    const detail = e
+      ? `${e.message ?? "Graph API error"}${e.code ? ` (code ${e.code}${e.error_subcode ? `/${e.error_subcode}` : ""})` : ""}${e.fbtrace_id ? ` [trace ${e.fbtrace_id}]` : ""}`
+      : `Graph API error (${res.status})`;
+    throw new Error(detail);
   }
   return { id: json.id };
 }
