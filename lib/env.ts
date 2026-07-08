@@ -63,6 +63,18 @@ export const env = {
   // Login OTP SMS via MSG91 (India, DLT-approved OTP template).
   msg91AuthKey: process.env.MSG91_AUTH_KEY ?? "",
   msg91TemplateId: process.env.MSG91_TEMPLATE_ID ?? "",
+
+  // AI Marketing — Instagram publishing via the Meta Graph API. Optional: the
+  // social automation degrades to draft/mock-publish until these are set. The
+  // token must belong to an Instagram Business/Creator account linked to a
+  // Facebook Page. See docs/social-automation.md.
+  instagramAccessToken: process.env.INSTAGRAM_ACCESS_TOKEN ?? "",
+  instagramBusinessId: process.env.INSTAGRAM_BUSINESS_ID ?? "",
+  instagramApiVersion: process.env.INSTAGRAM_API_VERSION ?? "v21.0",
+
+  // Shared secret guarding the social cron endpoint (GitHub Actions sends it as
+  // `Authorization: Bearer <CRON_SECRET>`). Reused by the marketing cron too.
+  cronSecret: process.env.CRON_SECRET ?? "",
 };
 
 export const isConfigured = {
@@ -83,4 +95,5 @@ export const isConfigured = {
   whatsapp: () => Boolean(env.whatsappToken && env.whatsappPhoneId),
   sms: () => Boolean(env.twilioAccountSid && env.twilioAuthToken && env.twilioFrom),
   msg91: () => Boolean(env.msg91AuthKey && env.msg91TemplateId),
+  instagram: () => Boolean(env.instagramAccessToken && env.instagramBusinessId),
 };

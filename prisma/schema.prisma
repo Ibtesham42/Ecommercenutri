@@ -982,6 +982,11 @@ model StoreSetting {
   // speed/delaySec/pieceCount). Merged over defaults by lib/hero-reveal.ts.
   // Managed from Admin → Hero Slider → Product Reveal Animation.
   heroReveal                      Json?
+  // AI Marketing (social automation) global defaults — brand voice, default
+  // schedule (morning/evening times, days, max/day), default publish mode,
+  // default hashtags, banned words/claims. Additive JSON blob merged over
+  // defaults by lib/social/settings.ts. Managed from Admin → AI Marketing → Settings.
+  social                          Json?
 }
 
 // Result of the "Discover Your Nutriyet Health Score" quiz. Taken anonymously
@@ -1434,4 +1439,139 @@ model SurveyResponse {
   createdAt           DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI Marketing Automation (social) — generates + schedules + publishes social
+// posts from the product catalog. Mirrors the Marketing Hub's due-queue pattern.
+// Access token stays in env (INSTAGRAM_ACCESS_TOKEN); only account metadata is
+// persisted. See docs/social-automation.md.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum SocialPlatform {
+  INSTAGRAM
+  FACEBOOK
+}
+
+enum SocialPostStatus {
+  DRAFT
+  PENDING_APPROVAL
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  CANCELLED
+}
+
+// The 4-week rotating content strategy (morning vs evening pillars).
+enum SocialContentPillar {
+  PRODUCT_KNOWLEDGE
+  HEALTHY_SNACKING
+  TARGET_AUDIENCE
+  WHY_NUTRIYET
+  LIFESTYLE
+  RECIPES
+  COMMUNITY
+  CUSTOMER_STORIES
+}
+
+enum SocialDaypart {
+  MORNING
+  EVENING
+}
+
+enum SocialPublishMode {
+  AUTO_PUBLISH
+  MANUAL_APPROVAL
+  DRAFT
+}
+
+// A single AI-generated social post, moving through the queue lifecycle
+// (draft/approval → scheduled → published/failed).
+model SocialPost {
+  id          String              @id @default(cuid())
+  platform    SocialPlatform      @default(INSTAGRAM)
+  status      SocialPostStatus    @default(DRAFT)
+  pillar      SocialContentPillar
+  daypart     SocialDaypart
+  weekOfMonth Int // 1-4, the strategy week
+  productId   String? // plain id (no FK) — matches Campaign convention
+  campaignId  String?
+  // Generated content
+  hook        String
+  caption     String              @db.Text
+  captionLong String?             @db.Text
+  cta         String
+  hashtags    String[]            @default([])
+  altText     String
+  imageUrls   String[]            @default([]) // Cloudinary URLs; [0] = cover, rest = carousel
+  contentHash String // dedup / uniqueness guard
+  // Scheduling + publish results
+  scheduledFor DateTime?
+  publishedAt  DateTime?
+  externalId   String? // IG media id
+  permalink    String?
+  error        String?
+  // Analytics (filled post-publish where the API allows)
+  reach       Int?
+  impressions Int?
+  likes       Int?
+  comments    Int?
+  clicks      Int?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([status, scheduledFor])
+  @@index([contentHash])
+  @@index([campaignId])
+  @@index([createdAt])
+}
+
+// A configured automation run: which products, on what schedule, in what mode,
+// over what window. Global defaults live in StoreSetting.social; a campaign
+// overrides them for its own window.
+model SocialCampaign {
+  id            String            @id @default(cuid())
+  name          String
+  enabled       Boolean           @default(true)
+  platforms     SocialPlatform[]  @default([INSTAGRAM])
+  productIds    String[]          @default([])
+  mode          SocialPublishMode @default(MANUAL_APPROVAL)
+  morningTime   String            @default("09:00") // HH:mm IST
+  eveningTime   String            @default("18:00") // HH:mm IST
+  days          Int[]             @default([0, 1, 2, 3, 4, 5, 6]) // 0=Sun..6=Sat
+  maxPerDay     Int               @default(2)
+  startsAt      DateTime?
+  endsAt        DateTime?
+  lastPlannedAt DateTime? // last date a slot was planned (idempotency)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([enabled])
+  @@index([createdAt])
+}
+
+// Reusable per-pillar prompt/style guidance for generation.
+model SocialTemplate {
+  id             String              @id @default(cuid())
+  name           String
+  pillar         SocialContentPillar
+  promptGuidance String              @db.Text
+  isBuiltIn      Boolean             @default(false)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([name])
+  @@index([pillar])
+}
+
+// Connected Instagram/Facebook account metadata (single row). The access token
+// is NEVER stored here — it lives in env (INSTAGRAM_ACCESS_TOKEN).
+model SocialAccount {
+  id          String   @id @default("singleton")
+  igUserId    String?
+  username    String?
+  pageId      String?
+  connectedAt DateTime?
+  updatedAt   DateTime @updatedAt
 }
