@@ -22,6 +22,12 @@ function timeFor(events: TimelineEvent[], status: OrderStatus): string | null {
   return hit ? hit.createdAt : null;
 }
 
+/** Most recent admin note recorded for a status (e.g. tracking number), if any. */
+function noteFor(events: TimelineEvent[], status: OrderStatus): string | null {
+  const hit = events.filter((e) => e.status === status && e.note?.trim()).at(-1);
+  return hit?.note?.trim() ?? null;
+}
+
 /**
  * Vertical order tracker. Renders the linear fulfilment journey with timestamps,
  * marking reached steps; cancelled/returned orders show a dedicated terminal row
@@ -56,6 +62,7 @@ export function OrderTimeline({
           const isCurrent = !closed && i === currentIndex;
           const at =
             timeFor(events, step) ?? (step === "PENDING" ? placedAt : null);
+          const note = reached ? noteFor(events, step) : null;
           const isLast = i === ORDER_FLOW.length - 1;
           return (
             <li key={step} className="flex gap-3">
@@ -99,6 +106,11 @@ export function OrderTimeline({
                 {at && reached && (
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {formatDateTime(at)}
+                  </p>
+                )}
+                {note && (
+                  <p className="mt-1 rounded-md bg-muted/60 px-2 py-1 text-xs text-foreground/80">
+                    {note}
                   </p>
                 )}
               </div>
