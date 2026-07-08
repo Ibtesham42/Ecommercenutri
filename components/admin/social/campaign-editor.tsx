@@ -187,7 +187,7 @@ export function CampaignEditor({
       )}
 
       <Dialog open={Boolean(form)} onOpenChange={(o) => !o && setForm(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{form?.id ? "Edit campaign" : "New campaign"}</DialogTitle>
           </DialogHeader>

@@ -73,7 +73,7 @@ export function PostEditDialog({
 
   return (
     <Dialog open={Boolean(post)} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Edit post</DialogTitle>
         </DialogHeader>

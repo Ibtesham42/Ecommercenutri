@@ -65,7 +65,10 @@ function DialogContent({
         className={cn(
           // Gentle, settled entrance (ease-out ~220ms, barely-there zoom) instead
           // of the abrupt 100ms zoom-95 pop — a crafted modal, not a template one.
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground shadow-elev-3 ring-1 ring-foreground/10 duration-200 ease-out outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-[0.98] data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-[0.98]",
+          // max-h + overflow so a dialog taller than the viewport (small phones)
+          // scrolls internally instead of clipping off-screen; overscroll-contain
+          // stops scroll-chaining to the page behind it.
+          "fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto overscroll-contain rounded-xl bg-popover p-4 text-sm text-popover-foreground shadow-elev-3 ring-1 ring-foreground/10 duration-200 ease-out outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-[0.98] data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-[0.98]",
           className
         )}
         {...props}
