@@ -132,6 +132,22 @@ async function resolveCampaignProducts(productIds: string[]): Promise<ProductRow
   });
 }
 
+/**
+ * Build the AI generation context + publish images for one product. Shared by
+ * the planner and the admin "generate / regenerate" actions.
+ */
+export async function buildSocialMaterials(
+  productId: string,
+  carousel: boolean,
+): Promise<{ ctx: SocialProductContext; imageUrls: string[] } | null> {
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: PRODUCT_SELECT,
+  });
+  if (!product) return null;
+  return { ctx: toContext(product), imageUrls: pickPostImages(product, carousel) };
+}
+
 const STATUS_FOR_MODE: Record<string, SocialPostStatus> = {
   DRAFT: "DRAFT",
   MANUAL_APPROVAL: "PENDING_APPROVAL",
