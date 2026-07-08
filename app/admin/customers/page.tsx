@@ -41,6 +41,7 @@ export default async function AdminCustomersPage({
             { name: { contains: q, mode: "insensitive" } },
             { email: { contains: q, mode: "insensitive" } },
             { phone: { contains: q, mode: "insensitive" } },
+            { addresses: { some: { city: { contains: q, mode: "insensitive" } } } },
           ],
         }
       : {}),
@@ -62,6 +63,11 @@ export default async function AdminCustomersPage({
       createdAt: true,
       affiliate: { select: { status: true } },
       accounts: { select: { provider: true } },
+      addresses: {
+        orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+        take: 1,
+        select: { city: true, state: true },
+      },
       _count: { select: { orders: true } },
       orders: { where: { paymentStatus: "PAID" }, select: { total: true } },
     },
@@ -89,6 +95,8 @@ export default async function AdminCustomersPage({
         phoneVerified: Boolean(u.phoneVerified),
       }),
       affiliateStatus: u.affiliate?.status ?? null,
+      city: u.addresses[0]?.city ?? null,
+      state: u.addresses[0]?.state ?? null,
     };
   });
 

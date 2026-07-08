@@ -47,6 +47,8 @@ export type CustomerRow = {
   segment: CustomerSegment;
   source: RegistrationSource;
   affiliateStatus: string | null;
+  city: string | null;
+  state: string | null;
 };
 
 const ACTIONS: BulkAction[] = [
@@ -82,11 +84,13 @@ export function CustomerTable({ customers }: { customers: CustomerRow[] }) {
       const rows = customers.filter((c) => sel.isSelected(c.id));
       downloadCsv(
         "customers",
-        ["Name", "Email", "Phone", "Segment", "Joined", "Orders", "Total spend (₹)", "AOV (₹)", "Source", "Status"],
+        ["Name", "Email", "Phone", "City", "State", "Segment", "Joined", "Orders", "Total spend (₹)", "AOV (₹)", "Source", "Status"],
         rows.map((c) => [
           c.name ?? "",
           c.email,
           c.phone ?? "",
+          c.city ?? "",
+          c.state ?? "",
           SEGMENT_LABEL[c.segment],
           formatDate(c.createdAt),
           String(c.orders),
@@ -124,6 +128,7 @@ export function CustomerTable({ customers }: { customers: CustomerRow[] }) {
             </TableHead>
             <TableHead>Customer</TableHead>
             <TableHead>Contact</TableHead>
+            <TableHead>Location</TableHead>
             <TableHead>Segment</TableHead>
             <TableHead className="text-center">Orders</TableHead>
             <TableHead className="text-right">Spend</TableHead>
@@ -135,7 +140,7 @@ export function CustomerTable({ customers }: { customers: CustomerRow[] }) {
         <TableBody>
           {customers.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
+              <TableCell colSpan={10} className="py-10 text-center text-muted-foreground">
                 No customers found.
               </TableCell>
             </TableRow>
@@ -195,6 +200,16 @@ export function CustomerTable({ customers }: { customers: CustomerRow[] }) {
                     </span>
                   ) : (
                     <span className="text-xs text-muted-foreground">—</span>
+                  )}
+                </TableCell>
+                <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                  {u.city ? (
+                    <>
+                      {u.city}
+                      {u.state ? <span className="block text-[11px]">{u.state}</span> : null}
+                    </>
+                  ) : (
+                    "—"
                   )}
                 </TableCell>
                 <TableCell>
