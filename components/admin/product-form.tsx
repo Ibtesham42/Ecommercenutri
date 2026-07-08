@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray, Controller, type FieldPath } from "react-hook-form";
 import {
@@ -70,6 +70,9 @@ export function ProductForm({
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  // Suppresses the unsaved-changes prompt once we navigate away after a save.
+  const savedRef = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const {
     register,
@@ -78,7 +81,7 @@ export function ProductForm({
     watch,
     setValue,
     setError,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ProductFormValues>({
     defaultValues: initial ?? {
       name: "",
@@ -98,6 +101,31 @@ export function ProductForm({
   const variants = useFieldArray({ control, name: "variants" });
   const images = useFieldArray({ control, name: "images" });
   const facts = useFieldArray({ control, name: "nutritionFacts" });
+
+  // Warn before losing unsaved edits on tab close / refresh / external nav —
+  // standard for a premium seller admin. In-app Cancel is guarded separately.
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty && !savedRef.current) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
+
+  // ⌘/Ctrl+S saves — a small productivity nicety for power sellers.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        formRef.current?.requestSubmit();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   // Empty numeric inputs come back as NaN (react-hook-form `valueAsNumber`);
   // coerce to a finite number so the server never sees NaN (which fails Zod with
@@ -179,6 +207,7 @@ export function ProductForm({
     setSaving(false);
     if (res.ok) {
       toast.success(values.id ? "Product updated" : "Product created");
+      savedRef.current = true; // don't warn on the programmatic navigation
       router.push("/admin/products");
       router.refresh();
     } else {
@@ -260,7 +289,7 @@ export function ProductForm({
   const sectionClass = "rounded-xl border bg-background p-5 space-y-4";
 
   return (
-    <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
+    <form ref={formRef} onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           {/* Basics */}
@@ -976,11 +1005,25 @@ export function ProductForm({
         </div>
       </div>
 
-      <div className="flex justify-end gap-3">
-        <Button type="button" variant="outline" onClick={() => router.back()}>
+      <div className="flex items-center justify-end gap-3">
+        {isDirty && !saving && (
+          <span className="mr-auto text-xs text-muted-foreground">Unsaved changes</span>
+        )}
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            if (
+              isDirty &&
+              !window.confirm("Discard your unsaved changes?")
+            )
+              return;
+            router.back();
+          }}
+        >
           Cancel
         </Button>
-        <Button type="submit" disabled={saving} className="gap-2">
+        <Button type="submit" disabled={saving} className="gap-2" title="Save (⌘/Ctrl+S)">
           {saving && <Loader2 className="size-4 animate-spin" />}
           {initial?.id ? "Save changes" : "Create product"}
         </Button>
