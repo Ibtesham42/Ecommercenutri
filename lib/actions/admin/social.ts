@@ -8,6 +8,7 @@ import { requirePermission } from "@/lib/auth";
 import { getSocialSettings } from "@/lib/social/settings";
 import { planDuePosts, buildSocialMaterials } from "@/lib/social/planner";
 import { publishDuePosts, publishPostNow } from "@/lib/social/publish";
+import { syncRecentInsights } from "@/lib/social/insights";
 import { generateSocialPost } from "@/lib/social/ai";
 import { slotForPillar, angleAt, weekOfMonth } from "@/lib/social/strategy";
 import { ensureBuiltInSocialTemplates, pickTemplateGuidance } from "@/lib/social/templates";
@@ -384,7 +385,11 @@ export async function runSocialCycleNow(): Promise<
     const now = new Date();
     const plan = await planDuePosts(now);
     const pub = await publishDuePosts(now);
+    // Refresh engagement for recently published posts (best-effort) so the
+    // manual run is a full mirror of the cron — the only other insights trigger.
+    await syncRecentInsights(now).catch(() => undefined);
     revalidate();
+    revalidatePath("/admin/social/analytics");
     return { ok: true, data: { planned: plan.planned, published: pub.published, failed: pub.failed } };
   } catch (e) {
     console.error("[social] runCycle failed:", e);

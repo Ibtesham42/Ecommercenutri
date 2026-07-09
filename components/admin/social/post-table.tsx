@@ -169,6 +169,13 @@ export function PostTable({
                   : p.scheduledFor
                     ? `Scheduled ${fmt(p.scheduledFor)}`
                     : `Created ${fmt(p.createdAt)}`}
+                {context === "published" && p.insightsAt && (
+                  <span className="text-muted-foreground">
+                    {" · "}
+                    {p.likes ?? 0} likes · {p.comments ?? 0} comments · {p.saved ?? 0} saved
+                    {(p.reach ?? 0) > 0 ? ` · ${p.reach} reach` : ""}
+                  </span>
+                )}
                 {p.retryCount > 0 && (
                   <span className="text-muted-foreground"> · retried {p.retryCount}×</span>
                 )}
