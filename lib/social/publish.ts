@@ -93,5 +93,11 @@ export async function publishPostNow(
   const post = await prisma.socialPost.findUnique({ where: { id: postId } });
   if (!post) return { ok: false, error: "Post not found." };
   const ok = await publishClaimed(post);
-  return ok ? { ok: true } : { ok: false, error: "Publish failed — see the post for details." };
+  if (ok) return { ok: true };
+  // Surface the exact failure reason (stored on the post by publishClaimed).
+  const failed = await prisma.socialPost.findUnique({
+    where: { id: postId },
+    select: { error: true },
+  });
+  return { ok: false, error: failed?.error ?? "Publish failed — see the post for details." };
 }
