@@ -220,6 +220,7 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
         contentHash: gen.data.contentHash,
         imageUrls: materials?.imageUrls ?? post.imageUrls,
         error: null,
+        retryCount: 0,
       },
     });
     revalidate();
@@ -266,7 +267,7 @@ export async function approveSocialPost(id: string): Promise<AdminResult> {
   try {
     await prisma.socialPost.update({
       where: { id },
-      data: { status: "SCHEDULED", scheduledFor: post.scheduledFor ?? new Date(), error: null },
+      data: { status: "SCHEDULED", scheduledFor: post.scheduledFor ?? new Date(), error: null, retryCount: 0 },
     });
     revalidate();
     return { ok: true };
@@ -282,7 +283,7 @@ export async function scheduleSocialPost(id: string, when: string): Promise<Admi
   try {
     await prisma.socialPost.update({
       where: { id },
-      data: { status: "SCHEDULED", scheduledFor: date, error: null },
+      data: { status: "SCHEDULED", scheduledFor: date, error: null, retryCount: 0 },
     });
     revalidate();
     return { ok: true };
@@ -332,9 +333,17 @@ export async function bulkSocialPostAction(
       const r = await prisma.socialPost.deleteMany({ where: { id: { in: ids } } });
       done = r.count;
     } else if (action === "approve") {
+      const approvable = { in: ["DRAFT", "PENDING_APPROVAL", "FAILED"] as SocialPostStatus[] };
+      // Preserve each post's planned slot time; only un-timed posts (manual
+      // drafts) fall back to "now" — mirrors single-post approveSocialPost so
+      // bulk approve doesn't fire every planned post immediately.
+      await prisma.socialPost.updateMany({
+        where: { id: { in: ids }, status: approvable, scheduledFor: null },
+        data: { scheduledFor: new Date() },
+      });
       const r = await prisma.socialPost.updateMany({
-        where: { id: { in: ids }, status: { in: ["DRAFT", "PENDING_APPROVAL", "FAILED"] as SocialPostStatus[] } },
-        data: { status: "SCHEDULED", scheduledFor: new Date() },
+        where: { id: { in: ids }, status: approvable },
+        data: { status: "SCHEDULED", error: null, retryCount: 0 },
       });
       done = r.count;
     } else {

@@ -117,6 +117,7 @@ export async function getSocialProductOptions(): Promise<SocialProductOption[]> 
 export type SocialAnalytics = {
   totalPublished: number;
   totalFailed: number;
+  totalRetries: number; // sum of auto-retry attempts across all posts
   successRate: number; // 0-100
   byPillar: { pillar: string; count: number }[];
   byDaypart: { daypart: string; count: number }[];
@@ -125,9 +126,10 @@ export type SocialAnalytics = {
 };
 
 export async function getSocialAnalytics(): Promise<SocialAnalytics> {
-  const [published, failed, pillarGroups, daypartGroups, productGroups, sums] = await Promise.all([
+  const [published, failed, retrySum, pillarGroups, daypartGroups, productGroups, sums] = await Promise.all([
     prisma.socialPost.count({ where: { status: "PUBLISHED" } }),
     prisma.socialPost.count({ where: { status: "FAILED" } }),
+    prisma.socialPost.aggregate({ _sum: { retryCount: true } }),
     prisma.socialPost.groupBy({
       by: ["pillar"],
       where: { status: "PUBLISHED" },
@@ -162,6 +164,7 @@ export async function getSocialAnalytics(): Promise<SocialAnalytics> {
   return {
     totalPublished: published,
     totalFailed: failed,
+    totalRetries: retrySum._sum.retryCount ?? 0,
     successRate: published + failed > 0 ? Math.round((published / (published + failed)) * 100) : 0,
     byPillar: pillarGroups.map((g) => ({ pillar: g.pillar, count: g._count._all })),
     byDaypart: daypartGroups.map((g) => ({ daypart: g.daypart, count: g._count._all })),

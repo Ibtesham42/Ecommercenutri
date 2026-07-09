@@ -11,7 +11,14 @@ import { publishToInstagram } from "@/lib/social/instagram";
  * the post FAILED for retry from the admin.
  */
 
-export type PublishReport = { published: number; failed: number };
+export type PublishReport = { published: number; failed: number; retried: number };
+
+/**
+ * Failed posts are auto-retried on later cron runs up to this many times before
+ * they're left FAILED for manual review — this rides out transient Meta/token
+ * hiccups without hammering permanent failures (bad image, expired token).
+ */
+const MAX_RETRIES = 3;
 
 async function publishClaimed(post: SocialPost): Promise<boolean> {
   try {
@@ -51,7 +58,7 @@ async function publishClaimed(post: SocialPost): Promise<boolean> {
   }
 }
 
-/** Cron entry: publish all due scheduled posts. */
+/** Cron entry: publish all due scheduled posts, then auto-retry recent failures. */
 export async function publishDuePosts(now = new Date()): Promise<PublishReport> {
   const due = await prisma.socialPost.findMany({
     where: { status: "SCHEDULED", scheduledFor: { lte: now } },
@@ -61,6 +68,7 @@ export async function publishDuePosts(now = new Date()): Promise<PublishReport> 
 
   let published = 0;
   let failed = 0;
+  let retried = 0;
   for (const post of due) {
     // Claim: only one worker can move SCHEDULED → PUBLISHING.
     const claim = await prisma.socialPost.updateMany({
@@ -71,7 +79,31 @@ export async function publishDuePosts(now = new Date()): Promise<PublishReport> 
     if (await publishClaimed({ ...post, status: "PUBLISHING" })) published++;
     else failed++;
   }
-  return { published, failed };
+
+  // Auto-retry: pick failed posts that were due and haven't exhausted retries.
+  const retryable = await prisma.socialPost.findMany({
+    where: {
+      status: "FAILED",
+      retryCount: { lt: MAX_RETRIES },
+      scheduledFor: { lte: now },
+    },
+    orderBy: { scheduledFor: "asc" },
+    take: 15,
+  });
+  for (const post of retryable) {
+    // Claim + count the attempt atomically so a double-fired cron can't
+    // retry the same post twice or exceed MAX_RETRIES.
+    const claim = await prisma.socialPost.updateMany({
+      where: { id: post.id, status: "FAILED", retryCount: { lt: MAX_RETRIES } },
+      data: { status: "PUBLISHING", retryCount: { increment: 1 } },
+    });
+    if (claim.count === 0) continue;
+    retried++;
+    if (await publishClaimed({ ...post, status: "PUBLISHING" })) published++;
+    else failed++;
+  }
+
+  return { published, failed, retried };
 }
 
 /**

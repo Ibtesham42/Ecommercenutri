@@ -4,7 +4,7 @@ import { getSocialAnalytics } from "@/lib/queries/social";
 import { PILLAR_LABEL } from "@/lib/social/strategy";
 import type { Pillar } from "@/lib/social/strategy";
 import { StatCard as Stat } from "@/components/admin/social/stat-card";
-import { CheckCircle2, AlertTriangle, Gauge, Package } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Gauge, Package, RotateCw } from "lucide-react";
 
 export const metadata: Metadata = { title: "Analytics", robots: { index: false } };
 
@@ -17,10 +17,11 @@ export default async function SocialAnalyticsPage() {
     <div>
       <PageHeader title="Analytics" description="How your automated content is performing." />
 
-      <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
         <Stat label="Published" value={a.totalPublished} icon={CheckCircle2} />
         <Stat label="Failed" value={a.totalFailed} icon={AlertTriangle} />
         <Stat label="Success rate" value={`${a.successRate}%`} icon={Gauge} />
+        <Stat label="Auto-retries" value={a.totalRetries} icon={RotateCw} hint="on failure" />
         <Stat label="Promoted" value={a.topProducts.length} icon={Package} hint="products" />
       </div>
 

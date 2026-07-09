@@ -169,6 +169,9 @@ export function PostTable({
                   : p.scheduledFor
                     ? `Scheduled ${fmt(p.scheduledFor)}`
                     : `Created ${fmt(p.createdAt)}`}
+                {p.retryCount > 0 && (
+                  <span className="text-muted-foreground"> · retried {p.retryCount}×</span>
+                )}
                 {p.error && <span className="text-destructive"> · {p.error}</span>}
               </div>
             </div>
