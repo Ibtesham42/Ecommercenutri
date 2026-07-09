@@ -11,7 +11,6 @@ export const metadata: Metadata = { title: "Analytics", robots: { index: false }
 export default async function SocialAnalyticsPage() {
   const a = await getSocialAnalytics();
   const bestPillar = [...a.byPillar].sort((x, y) => y.count - x.count)[0];
-  const bestDaypart = [...a.byDaypart].sort((x, y) => y.count - x.count)[0];
 
   return (
     <div>
@@ -29,16 +28,49 @@ export default async function SocialAnalyticsPage() {
         <div className="rounded-xl border p-4 shadow-elev-1">
           <p className="mb-1 text-sm font-semibold text-muted-foreground">Best posting time</p>
           <p className="text-lg font-medium">
-            {bestDaypart ? (bestDaypart.daypart === "MORNING" ? "Mornings" : "Evenings") : "—"}
+            {a.bestDaypart ? (a.bestDaypart.daypart === "MORNING" ? "Mornings" : "Evenings") : "—"}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {a.bestDaypart?.basis === "engagement"
+              ? "by average engagement"
+              : "by post volume — engagement pending"}
           </p>
         </div>
         <div className="rounded-xl border p-4 shadow-elev-1">
-          <p className="mb-1 text-sm font-semibold text-muted-foreground">Best-performing pillar</p>
+          <p className="mb-1 text-sm font-semibold text-muted-foreground">
+            {a.hasEngagementData ? "Most-posted pillar" : "Most-used pillar"}
+          </p>
           <p className="text-lg font-medium">
             {bestPillar ? PILLAR_LABEL[bestPillar.pillar as Pillar] : "—"}
           </p>
         </div>
       </div>
+
+      {a.topPosts.length > 0 && a.hasEngagementData && (
+        <div className="mb-6 rounded-xl border p-4 shadow-elev-1">
+          <p className="mb-3 text-sm font-semibold">Top-performing posts</p>
+          <div className="space-y-2">
+            {a.topPosts.map((p) => (
+              <div key={p.id} className="flex items-center gap-3 text-sm">
+                <span className="min-w-0 flex-1 truncate">
+                  {p.permalink ? (
+                    <a href={p.permalink} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                      {p.hook}
+                    </a>
+                  ) : (
+                    p.hook
+                  )}
+                  {p.productName && <span className="text-muted-foreground"> · {p.productName}</span>}
+                </span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {p.likes}❤ · {p.comments}💬 · {p.saved}🔖
+                </span>
+                <span className="w-10 shrink-0 text-right text-xs font-medium">{p.engagement}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="mb-6 grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border p-4 shadow-elev-1">
@@ -84,15 +116,18 @@ export default async function SocialAnalyticsPage() {
 
       <div className="rounded-xl border p-4 shadow-elev-1">
         <p className="mb-3 text-sm font-semibold">Engagement (where available)</p>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <Stat label="Reach" value={a.engagement.reach} />
-          <Stat label="Impressions" value={a.engagement.impressions} />
           <Stat label="Likes" value={a.engagement.likes} />
           <Stat label="Comments" value={a.engagement.comments} />
-          <Stat label="Clicks" value={a.engagement.clicks} />
+          <Stat label="Saved" value={a.engagement.saved} />
+          <Stat label="Shares" value={a.engagement.shares} />
+          <Stat label="Impressions" value={a.engagement.impressions} />
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Populated after publishing once Instagram is connected and insights are fetched.
+          {a.hasEngagementData
+            ? "Synced from Instagram after each publish; numbers keep updating as posts age."
+            : "Populated automatically once Instagram is connected and published posts accrue engagement."}
         </p>
       </div>
     </div>

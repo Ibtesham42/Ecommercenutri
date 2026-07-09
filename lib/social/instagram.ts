@@ -244,6 +244,17 @@ async function waitForContainer(creationId: string): Promise<void> {
   );
 }
 
+/** Read-only Graph GET for a media object (insights, counts). Best-effort:
+ *  returns the parsed body + ok flag, never throws. Only usable when Instagram
+ *  is configured (callers guard on isConfigured.instagram()). */
+export async function igGraphGet(
+  path: string,
+  params: Record<string, string>,
+): Promise<{ ok: boolean; status: number; json: Record<string, unknown> }> {
+  const res = await graphRequest("GET", path, params);
+  return { ok: res.ok, status: res.status, json: res.json };
+}
+
 async function fetchPermalink(mediaId: string): Promise<string | null> {
   try {
     const res = await graphRequest("GET", mediaId, { fields: "permalink" });

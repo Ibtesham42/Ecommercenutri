@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { planDuePosts } from "@/lib/social/planner";
 import { publishDuePosts } from "@/lib/social/publish";
+import { syncRecentInsights } from "@/lib/social/insights";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +26,9 @@ async function handle(req: Request) {
     const now = new Date();
     const planned = await planDuePosts(now);
     const published = await publishDuePosts(now);
-    return NextResponse.json({ ok: true, planned, published });
+    // Refresh engagement for recently published posts (best-effort).
+    const insights = await syncRecentInsights(now).catch(() => ({ synced: 0 }));
+    return NextResponse.json({ ok: true, planned, published, insights });
   } catch (err) {
     console.error("[cron/social] failed:", err);
     return NextResponse.json({ ok: false, error: "Social cron failed" }, { status: 500 });

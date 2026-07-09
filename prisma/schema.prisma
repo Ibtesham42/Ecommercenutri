@@ -1519,6 +1519,9 @@ model SocialPost {
   likes       Int?
   comments    Int?
   clicks      Int?
+  saved       Int? // IG "saved" insight — the signal we optimise content for
+  shares      Int? // IG "shares" insight
+  insightsAt  DateTime? // last time insights were synced from the Graph API
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 

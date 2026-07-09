@@ -114,6 +114,17 @@ export async function getSocialProductOptions(): Promise<SocialProductOption[]> 
   return products.map((p) => ({ id: p.id, name: p.name, image: p.images[0]?.url ?? null }));
 }
 
+export type SocialTopPost = {
+  id: string;
+  hook: string;
+  productName: string | null;
+  permalink: string | null;
+  engagement: number;
+  likes: number;
+  comments: number;
+  saved: number;
+};
+
 export type SocialAnalytics = {
   totalPublished: number;
   totalFailed: number;
@@ -122,44 +133,113 @@ export type SocialAnalytics = {
   byPillar: { pillar: string; count: number }[];
   byDaypart: { daypart: string; count: number }[];
   topProducts: { productId: string; name: string; count: number }[];
-  engagement: { reach: number; impressions: number; likes: number; comments: number; clicks: number };
+  topPosts: SocialTopPost[]; // best-performing published posts by real engagement
+  /** Best daypart by AVERAGE engagement; `basis` says whether that's real
+   *  engagement data or just post volume (when no insights yet). */
+  bestDaypart: { daypart: string; basis: "engagement" | "volume" } | null;
+  hasEngagementData: boolean;
+  engagement: {
+    reach: number;
+    impressions: number;
+    likes: number;
+    comments: number;
+    saved: number;
+    shares: number;
+    clicks: number;
+  };
 };
 
 export async function getSocialAnalytics(): Promise<SocialAnalytics> {
-  const [published, failed, retrySum, pillarGroups, daypartGroups, productGroups, sums] = await Promise.all([
-    prisma.socialPost.count({ where: { status: "PUBLISHED" } }),
-    prisma.socialPost.count({ where: { status: "FAILED" } }),
-    prisma.socialPost.aggregate({ _sum: { retryCount: true } }),
-    prisma.socialPost.groupBy({
-      by: ["pillar"],
-      where: { status: "PUBLISHED" },
-      _count: { _all: true },
-    }),
-    prisma.socialPost.groupBy({
-      by: ["daypart"],
-      where: { status: "PUBLISHED" },
-      _count: { _all: true },
-    }),
-    prisma.socialPost.groupBy({
-      by: ["productId"],
-      where: { status: "PUBLISHED", productId: { not: null } },
-      _count: { _all: true },
-    }),
-    prisma.socialPost.aggregate({
-      where: { status: "PUBLISHED" },
-      _sum: { reach: true, impressions: true, likes: true, comments: true, clicks: true },
-    }),
-  ]);
+  const [published, failed, retrySum, pillarGroups, daypartGroups, productGroups, sums, pubPosts] =
+    await Promise.all([
+      prisma.socialPost.count({ where: { status: "PUBLISHED" } }),
+      prisma.socialPost.count({ where: { status: "FAILED" } }),
+      prisma.socialPost.aggregate({ _sum: { retryCount: true } }),
+      prisma.socialPost.groupBy({
+        by: ["pillar"],
+        where: { status: "PUBLISHED" },
+        _count: { _all: true },
+      }),
+      prisma.socialPost.groupBy({
+        by: ["daypart"],
+        where: { status: "PUBLISHED" },
+        _count: { _all: true },
+      }),
+      prisma.socialPost.groupBy({
+        by: ["productId"],
+        where: { status: "PUBLISHED", productId: { not: null } },
+        _count: { _all: true },
+      }),
+      prisma.socialPost.aggregate({
+        where: { status: "PUBLISHED" },
+        _sum: {
+          reach: true, impressions: true, likes: true,
+          comments: true, saved: true, shares: true, clicks: true,
+        },
+      }),
+      prisma.socialPost.findMany({
+        where: { status: "PUBLISHED" },
+        orderBy: { publishedAt: "desc" },
+        take: 500,
+        select: {
+          id: true, hook: true, caption: true, productId: true, permalink: true,
+          daypart: true, likes: true, comments: true, saved: true, shares: true,
+        },
+      }),
+    ]);
 
   const topIds = productGroups
     .sort((a, b) => b._count._all - a._count._all)
     .slice(0, 5)
     .map((g) => g.productId)
     .filter((x): x is string => Boolean(x));
-  const names = topIds.length
-    ? await prisma.product.findMany({ where: { id: { in: topIds } }, select: { id: true, name: true } })
+
+  // Best-performing posts by real engagement (likes+comments+saved+shares).
+  const eng = (p: { likes: number | null; comments: number | null; saved: number | null; shares: number | null }) =>
+    (p.likes ?? 0) + (p.comments ?? 0) + (p.saved ?? 0) + (p.shares ?? 0);
+  const hasEngagementData = pubPosts.some((p) => eng(p) > 0);
+
+  const postProductIds = [...new Set(pubPosts.map((p) => p.productId).filter((x): x is string => Boolean(x)))];
+  const names = [...new Set([...topIds, ...postProductIds])].length
+    ? await prisma.product.findMany({
+        where: { id: { in: [...new Set([...topIds, ...postProductIds])] } },
+        select: { id: true, name: true },
+      })
     : [];
   const nameById = new Map(names.map((n) => [n.id, n.name]));
+
+  const topPosts: SocialTopPost[] = [...pubPosts]
+    .sort((a, b) => eng(b) - eng(a))
+    .slice(0, 5)
+    .map((p) => ({
+      id: p.id,
+      hook: p.hook || p.caption.split("\n")[0],
+      productName: p.productId ? nameById.get(p.productId) ?? null : null,
+      permalink: p.permalink,
+      engagement: eng(p),
+      likes: p.likes ?? 0,
+      comments: p.comments ?? 0,
+      saved: p.saved ?? 0,
+    }));
+
+  // Best daypart: prefer real average engagement; fall back to post volume.
+  const dpStats = new Map<string, { total: number; count: number }>();
+  for (const p of pubPosts) {
+    const s = dpStats.get(p.daypart) ?? { total: 0, count: 0 };
+    s.total += eng(p);
+    s.count += 1;
+    dpStats.set(p.daypart, s);
+  }
+  let bestDaypart: SocialAnalytics["bestDaypart"] = null;
+  if (hasEngagementData) {
+    const ranked = [...dpStats.entries()]
+      .map(([daypart, s]) => ({ daypart, avg: s.count ? s.total / s.count : 0 }))
+      .sort((a, b) => b.avg - a.avg);
+    if (ranked[0]) bestDaypart = { daypart: ranked[0].daypart, basis: "engagement" };
+  } else {
+    const byVolume = [...daypartGroups].sort((a, b) => b._count._all - a._count._all)[0];
+    if (byVolume) bestDaypart = { daypart: byVolume.daypart, basis: "volume" };
+  }
 
   return {
     totalPublished: published,
@@ -173,11 +253,16 @@ export async function getSocialAnalytics(): Promise<SocialAnalytics> {
       name: nameById.get(id) ?? "Unknown",
       count: productGroups.find((g) => g.productId === id)?._count._all ?? 0,
     })),
+    topPosts,
+    bestDaypart,
+    hasEngagementData,
     engagement: {
       reach: sums._sum.reach ?? 0,
       impressions: sums._sum.impressions ?? 0,
       likes: sums._sum.likes ?? 0,
       comments: sums._sum.comments ?? 0,
+      saved: sums._sum.saved ?? 0,
+      shares: sums._sum.shares ?? 0,
       clicks: sums._sum.clicks ?? 0,
     },
   };
