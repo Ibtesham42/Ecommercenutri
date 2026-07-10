@@ -120,3 +120,39 @@ return `AdminResult` and start with `requirePermission("social")`.
 
 Until step 3, the whole flow works with simulated publishing so it's fully
 testable. See `DEPLOYMENT.md` for the env/secret checklist.
+
+## Competitor Intelligence (`/admin/social/intelligence`)
+
+Market research inside the hub: **learn from the market, never copy** — every
+AI prompt hard-forbids reproducing competitor captions/creatives; only patterns,
+trends and opportunities are extracted, and suggested content is always original.
+
+- **Data model:** `Competitor` (admin watchlist; 9 Indian healthy-snacking
+  defaults seeded idempotently by `ensureDefaultCompetitors`), `CompetitorSignal`
+  (admin-recorded observations of *public* content — own words, public permalink,
+  rough engagement, topic tags; nothing scraped, no ToS bypass),
+  `IntelligenceReport` (`COMPETITOR_PROFILE` / `MARKET_TRENDS` / `CONTENT_GAPS`,
+  cached via `@@unique([kind, periodKey])`), `ContentIdea` (scored ideas, one
+  batch per IST day via `batchDate`).
+- **Engine:** `lib/intelligence/engine.ts#runIntelligenceCycle` — refreshes stale
+  profiles (priority-first, 3/run), weekly + monthly `MARKET_TRENDS`, weekly
+  `CONTENT_GAPS`, then the daily ideas batch. Everything is idempotent/cached so
+  the every-30-min cron is near-free; generation starts only after the
+  configured IST `runHour`.
+- **AI:** `lib/intelligence/ai.ts` — same seam as `lib/social/ai.ts`
+  (`aiAvailable()` guard, `generateText` + defensive JSON parse, deterministic
+  keyless fallbacks). Ideas are scored 0–100 on 7 dimensions (originality, brand
+  voice, educational, trust, share, save, SEO); only ideas ≥ `minIdeaScore`
+  (default 90) are badged "Recommended".
+- **Settings:** `StoreSetting.intelligence` JSON blob →
+  `lib/intelligence/settings.ts` (enabled, runHour, competitorRefreshDays,
+  ideasPerBatch, minIdeaScore).
+- **Admin:** Intelligence tab → dashboard (weekly/monthly insights, seasonal +
+  festival opportunities, trend heatmap, engagement comparison, gap report, top
+  themes, idea preview, competitor overview), `/competitors` (CRUD + pause +
+  priority + signal recorder + per-competitor re-analysis), `/ideas` (score
+  breakdown, shortlist/dismiss, **Use** → generates a fresh original draft into
+  the Queue via `createDraftFromIdea`). Actions in `lib/actions/admin/intelligence.ts`
+  (`requirePermission("social")`, `AdminResult`).
+- **Cron:** `GET|POST /api/cron/intelligence` (CRON_SECRET-guarded), triggered
+  as a second step of `.github/workflows/social-cron.yml`.

@@ -35,3 +35,14 @@ jobs:
             "${{ secrets.SITE_URL }}/api/cron/social")
           echo "HTTP $code"; cat /tmp/out.json || true
           test "$code" = "200"
+      - name: Trigger intelligence cron
+        run: |
+          if [ -z "${{ secrets.SITE_URL }}" ]; then
+            echo "SITE_URL secret not set — skipping."; exit 0
+          fi
+          code=$(curl -sS -o /tmp/intel.json -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.SITE_URL }}/api/cron/intelligence")
+          echo "HTTP $code"; cat /tmp/intel.json || true
+          test "$code" = "200"

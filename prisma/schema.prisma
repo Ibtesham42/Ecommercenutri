@@ -987,6 +987,10 @@ model StoreSetting {
   // default hashtags, banned words/claims. Additive JSON blob merged over
   // defaults by lib/social/settings.ts. Managed from Admin → AI Marketing → Settings.
   social                          Json?
+  // Competitor Intelligence config (enabled, auto-run hour, cadence, ideas per
+  // batch, min idea score). Additive JSON blob merged over defaults by
+  // lib/intelligence/settings.ts. Managed from Admin → AI Marketing → Intelligence.
+  intelligence                    Json?
 }
 
 // Result of the "Discover Your Nutriyet Health Score" quiz. Taken anonymously
@@ -1578,4 +1582,158 @@ model SocialAccount {
   pageId      String?
   connectedAt DateTime?
   updatedAt   DateTime @updatedAt
+}
+
+// ── Competitor Intelligence ──────────────────────────────────────────────────
+// Market research inside the AI Marketing hub: an admin-managed competitor
+// watchlist, publicly-observed signals, AI-generated insight reports and scored
+// original content ideas. Insight = learning from the market — NEVER copying:
+// generated content stays original and brand-voiced (enforced in
+// lib/intelligence/ai.ts prompts).
+
+enum CompetitorPriority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+// Where a public signal was observed.
+enum IntelSource {
+  INSTAGRAM
+  FACEBOOK
+  LINKEDIN
+  YOUTUBE
+  BLOG
+  WEBSITE
+  OTHER
+}
+
+// What kind of public artifact the signal describes.
+enum IntelSignalKind {
+  POST
+  REEL
+  CAROUSEL
+  STORY
+  VIDEO
+  BLOG_POST
+  PRODUCT_LAUNCH
+  CAMPAIGN
+  HASHTAG
+  OTHER
+}
+
+enum IntelReportKind {
+  COMPETITOR_PROFILE // per-competitor style/pattern analysis
+  MARKET_TRENDS // weekly/monthly trending topics, ingredients, concerns
+  CONTENT_GAPS // opportunities nobody in the market covers well
+}
+
+enum ContentIdeaFormat {
+  REEL
+  CAROUSEL
+  STORY
+  POST
+  BLOG
+}
+
+enum ContentIdeaDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ContentIdeaStatus {
+  SUGGESTED
+  SHORTLISTED
+  USED
+  DISMISSED
+}
+
+// A monitored competitor brand (admin-managed watchlist; defaults seeded
+// idempotently by lib/intelligence/competitors.ts#ensureDefaultCompetitors).
+model Competitor {
+  id             String             @id @default(cuid())
+  name           String             @unique
+  category       String             @default("Healthy snacks")
+  priority       CompetitorPriority @default(MEDIUM)
+  active         Boolean            @default(true) // false = monitoring paused
+  instagram      String? // public handle, no leading @
+  facebook       String?
+  linkedin       String?
+  website        String?
+  blogUrl        String?
+  notes          String?            @db.Text
+  isDefault      Boolean            @default(false) // seeded built-in
+  lastAnalyzedAt DateTime? // last COMPETITOR_PROFILE generation (cache key)
+  signals        CompetitorSignal[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([active, priority])
+}
+
+// One publicly-observed data point about a competitor (a post, launch,
+// campaign…). Admin-entered observations of public content only — never
+// scraped private data, never stored creative assets.
+model CompetitorSignal {
+  id           String          @id @default(cuid())
+  competitorId String
+  competitor   Competitor      @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  source       IntelSource     @default(INSTAGRAM)
+  kind         IntelSignalKind @default(POST)
+  title        String // short factual description of what was observed
+  summary      String?         @db.Text // observed theme/angle in the admin's own words
+  url          String? // public permalink
+  postedAt     DateTime?
+  likes        Int?
+  comments     Int?
+  shares       Int?
+  views        Int?
+  hashtags     String[]        @default([])
+  topics       String[]        @default([]) // free-form topic tags for trend rollups
+  createdAt    DateTime        @default(now())
+
+  @@index([competitorId, createdAt])
+  @@index([createdAt])
+}
+
+// An AI-generated analysis snapshot. `data` holds the structured payload
+// (typed in lib/intelligence/types.ts); `periodKey` makes generation
+// idempotent/cached per period (e.g. "2026-W28", "2026-07", competitor id).
+model IntelligenceReport {
+  id           String          @id @default(cuid())
+  kind         IntelReportKind
+  competitorId String? // set for COMPETITOR_PROFILE
+  periodKey    String // cache/idempotency key for the covered window
+  summary      String          @db.Text
+  data         Json
+  model        String? // AI model used ("" = deterministic fallback)
+  generatedAt  DateTime        @default(now())
+
+  @@unique([kind, periodKey])
+  @@index([kind, generatedAt])
+  @@index([competitorId])
+}
+
+// A scored, original content idea for Nutriyet (never derived from competitor
+// wording). `batchDate` (IST "YYYY-MM-DD") keys the daily morning batch.
+model ContentIdea {
+  id                  String                @id @default(cuid())
+  topic               String
+  rationale           String                @db.Text // why it's trending / worth doing
+  audience            String
+  format              ContentIdeaFormat     @default(POST)
+  difficulty          ContentIdeaDifficulty @default(MEDIUM)
+  engagementPotential Int                   @default(0) // 0-100
+  bestTime            String? // suggested posting time (IST) or descriptor
+  cta                 String?
+  scores              Json? // { originality, brandVoice, educational, trust, share, save, seo } 0-100 each
+  totalScore          Int                   @default(0) // 0-100 composite; recommend only >= threshold
+  status              ContentIdeaStatus     @default(SUGGESTED)
+  batchDate           String // IST day the batch was generated for
+  createdAt           DateTime              @default(now())
+
+  @@index([status, createdAt])
+  @@index([batchDate])
+  @@index([totalScore])
 }

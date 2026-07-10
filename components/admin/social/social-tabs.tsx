@@ -12,6 +12,7 @@ const tabs = [
   { href: "/admin/social/published", label: "Published" },
   { href: "/admin/social/failed", label: "Failed" },
   { href: "/admin/social/campaigns", label: "Campaigns" },
+  { href: "/admin/social/intelligence", label: "Intelligence" },
   { href: "/admin/social/analytics", label: "Analytics" },
   { href: "/admin/social/templates", label: "Templates" },
   { href: "/admin/social/settings", label: "Settings" },

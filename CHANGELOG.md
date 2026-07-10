@@ -3,6 +3,36 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [Competitor Intelligence] — 2026-07-10
+
+Market research inside the AI Marketing hub: learn from the market, never copy.
+
+### Added
+- **Schema** (migration `competitor_intelligence`, additive): `Competitor`,
+  `CompetitorSignal`, `IntelligenceReport`, `ContentIdea` + enums and a
+  `StoreSetting.intelligence` JSON blob (runHour, refresh days, ideas/batch,
+  min idea score).
+- **Watchlist**: 9 default Indian healthy-snacking competitors (The Whole Truth,
+  Yoga Bar, Slurrp Farm, Open Secret, Farmley, Happilo, Tata Soulfull, RiteBite
+  Max Protein, True Elements) seeded idempotently; add/edit/pause/prioritize/
+  delete from the admin. Signals are admin-recorded observations of *public*
+  content only — own words, no scraping, no stored creatives.
+- **Engine** (`lib/intelligence/`): cached idempotent cycle — per-competitor
+  style profiles (posting patterns, pillars, hook/CTA styles, hashtags, learnable
+  takeaways), weekly + monthly market-trend reports (topics, ingredients, health
+  concerns, categories, seasonal + festival opportunities, top themes), weekly
+  content-gap report (white space + recommended campaigns), and a daily batch of
+  original content ideas scored 0–100 on 7 dimensions (originality, brand voice,
+  educational, trust, share, save, SEO). Anti-copy rules are hard-coded into
+  every prompt; keyless fallbacks throughout.
+- **Admin** `/admin/social/intelligence` (Intelligence tab): dashboard with trend
+  heatmap + engagement comparison, competitor manager with signal recorder,
+  ideas board with score breakdown and one-click "Use" → generates a fresh,
+  original draft into the AI Marketing queue.
+- **Cron**: `/api/cron/intelligence` (CRON_SECRET-guarded), triggered from the
+  existing every-30-min GitHub Actions workflow; all generation is cached per
+  period/day so repeat fires are near-free.
+
 ## [AI Marketing Automation Hub] — 2026-07-08
 
 AI-generated, auto-published social content (Instagram-first) from the catalog.

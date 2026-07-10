@@ -1,8 +1,34 @@
 # Nutriyet — Progress Tracker
 
-_Last updated: 2026-07-08 · Auto-maintained. Update at the end of every milestone._
+_Last updated: 2026-07-10 · Auto-maintained. Update at the end of every milestone._
 
-## Latest: AI Marketing Automation Hub (2026-07-08, in progress)
+## Latest: Competitor Intelligence (2026-07-10, in progress)
+
+Market-research module inside the AI Marketing hub (`/admin/social/intelligence`,
+`social` RBAC key): learn from the market — trends, gaps, original ideas — never copy.
+
+- **CI1** — Schema (`competitor_intelligence` migration, additive): `Competitor`
+  (watchlist, priority/pause, 9 seeded Indian healthy-snacking defaults),
+  `CompetitorSignal` (admin-recorded public observations), `IntelligenceReport`
+  (profile/trends/gaps, cached per `(kind, periodKey)`), `ContentIdea` (scored
+  daily batches) + `StoreSetting.intelligence` blob.
+- **CI2** — Engine + AI (`lib/intelligence/`): idempotent cycle (stale-profile
+  refresh 3/run priority-first, weekly + monthly trends, weekly gap report,
+  daily ideas batch after configurable IST hour); Groq seam with deterministic
+  keyless fallbacks; anti-copy guardrails hard-coded into every prompt; ideas
+  scored 0–100 on 7 dimensions, "Recommended" ≥ `minIdeaScore` (default 90).
+- **CI3** — Admin UI: Intelligence dashboard (weekly/monthly insights, seasonal/
+  festival opportunities, trend heatmap, engagement comparison, gap report, top
+  themes, ideas preview, competitor overview), competitor manager (CRUD, pause,
+  signal recorder, re-analyze), ideas board (score breakdown, shortlist/dismiss,
+  Use → fresh original draft into the Queue). Cron `/api/cron/intelligence` via
+  the existing GitHub Actions workflow.
+- Verified: typecheck/lint/build green; shared First-Load JS unchanged (103 kB);
+  migration applied to Neon. _Live cron round-trip pending: dev machine's network
+  has broken IPv6 to Neon (Prisma engine picks the IPv6 answer) — verify via the
+  GH Actions cron log after deploy._
+
+## AI Marketing Automation Hub (2026-07-08, in progress)
 
 Auto-generates + publishes social content (Instagram-first) from the catalog —
 no daily manual captioning. New `/admin/social` section (`social` RBAC key).
