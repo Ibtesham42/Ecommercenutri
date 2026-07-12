@@ -3,9 +3,24 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { checkRateLimit, limiters } from "@/lib/rate-limit";
 import { reviewSchema } from "@/lib/validations/review";
 
 export type ReviewState = { error?: string; success?: string } | undefined;
+
+/** Turn a Zod failure into the field-level message the reviewer can act on. */
+function reviewError(field: string | undefined): string {
+  switch (field) {
+    case "rating":
+      return "Please select a star rating from 1 to 5.";
+    case "title":
+      return "Please shorten your headline to 120 characters or less.";
+    case "comment":
+      return "Please shorten your review to 2000 characters or less.";
+    default:
+      return "We couldn't read that review — please reload the page and try again.";
+  }
+}
 
 export async function submitReview(
   _prev: ReviewState,
@@ -21,9 +36,24 @@ export async function submitReview(
     title: formData.get("title") || undefined,
     comment: formData.get("comment") || undefined,
   });
-  if (!parsed.success) return { error: "Please select a star rating." };
+  if (!parsed.success) {
+    return { error: reviewError(parsed.error.issues[0]?.path[0]?.toString()) };
+  }
 
   const { productId, slug, rating, title, comment } = parsed.data;
+
+  // Reviews publish immediately, so throttle the write path.
+  const rl = await checkRateLimit(limiters.api, `review:${user.id}`);
+  if (!rl.success) {
+    return { error: "You're submitting reviews too quickly — please wait a minute and try again." };
+  }
+
+  // A review for a product that doesn't exist would 500 on the FK; fail kindly.
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: { id: true },
+  });
+  if (!product) return { error: "That product is no longer available." };
 
   await prisma.review.upsert({
     where: { productId_userId: { productId, userId: user.id } },

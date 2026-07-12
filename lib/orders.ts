@@ -131,13 +131,30 @@ export async function confirmOrder(
   const order = await prisma.$transaction(async (tx) => {
     const existing = await tx.order.findUnique({
       where: { id },
-      include: { items: true },
+      select: { id: true, couponId: true },
     });
     if (!existing) throw new Error("ORDER_NOT_FOUND");
-    if (existing.stockDeducted) return null; // already confirmed
+
+    // Claim the confirmation ATOMICALLY before doing any of the side-effects.
+    // The success page and the Razorpay webhook race by design; a read-then-write
+    // check on `stockDeducted` passes in both under Read Committed, which would
+    // double-decrement stock and double-count the coupon. A conditional update
+    // makes the loser block on the row lock, re-evaluate, and match 0 rows.
+    const claim = await tx.order.updateMany({
+      where: { id, stockDeducted: false },
+      data: {
+        stockDeducted: true,
+        paymentStatus: opts.paymentStatus,
+        razorpayPaymentId: opts.payment?.paymentId,
+        razorpaySignature: opts.payment?.signature,
+      },
+    });
+    if (claim.count === 0) return null; // already confirmed by the other caller
+
+    const items = await tx.orderItem.findMany({ where: { orderId: id } });
 
     // Decrement stock for each line (guarded against going negative).
-    for (const line of existing.items) {
+    for (const line of items) {
       if (!line.variantId) continue;
       await tx.productVariant.updateMany({
         where: { id: line.variantId, stock: { gte: line.quantity } },
@@ -152,14 +169,8 @@ export async function confirmOrder(
       });
     }
 
-    const updated = await tx.order.update({
+    const updated = await tx.order.findUniqueOrThrow({
       where: { id },
-      data: {
-        paymentStatus: opts.paymentStatus,
-        stockDeducted: true,
-        razorpayPaymentId: opts.payment?.paymentId,
-        razorpaySignature: opts.payment?.signature,
-      },
       include: { items: true, user: { select: { email: true, name: true } } },
     });
 
@@ -271,10 +282,22 @@ export async function transitionOrderStatus(
     paymentStatus = "PAID";
   }
 
-  const shouldRestock = closing && !isClosed(order.status) && order.stockDeducted;
+  const wantsRestock = closing && !isClosed(order.status) && order.stockDeducted;
 
   const updated = await prisma.$transaction(async (tx) => {
-    if (shouldRestock) {
+    // Same race as confirmOrder in reverse: two concurrent closes (admin click
+    // + customer cancel, or a double submit) would both see stockDeducted=true
+    // and restock twice. Claim the flag conditionally and only restock if THIS
+    // transaction is the one that flipped it.
+    let restock = false;
+    if (wantsRestock) {
+      const claim = await tx.order.updateMany({
+        where: { id: orderId, stockDeducted: true },
+        data: { stockDeducted: false },
+      });
+      restock = claim.count > 0;
+    }
+    if (restock) {
       for (const item of order.items) {
         if (!item.variantId) continue;
         await tx.productVariant.update({
@@ -288,7 +311,6 @@ export async function transitionOrderStatus(
       data: {
         status,
         paymentStatus,
-        ...(shouldRestock ? { stockDeducted: false } : {}),
         ...(status === "CANCELLED" ? { cancelReason: reason } : {}),
       },
       select: {

@@ -51,8 +51,12 @@ export function buildMetadata({
 
 /** Render a JSON-LD <script> payload object. */
 export function jsonLd(data: Record<string, unknown>) {
+  // Escape "<" as unicode (still valid JSON) so no embedded string can contain
+  // a literal script-close tag: the HTML parser would terminate the script
+  // element there even inside a JSON string. Review text and other
+  // user-supplied values flow into these blobs.
   return {
-    __html: JSON.stringify(data),
+    __html: JSON.stringify(data).replace(/</g, "\\u003c"),
   };
 }
 

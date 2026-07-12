@@ -85,6 +85,13 @@ providers.push(
       const phone = normalizeIndianPhone(parsed.data.phone);
       if (!phone) return null;
 
+      // Per-phone brute-force cap (wrong guesses don't consume the code, and
+      // per-IP alone is defeated by distributing the guesses). Lives here —
+      // not in the login action — so direct POSTs to the NextAuth callback
+      // endpoint are covered too.
+      const byPhone = await checkRateLimit(limiters.auth, `otp-verify:${phone}`);
+      if (!byPhone.success) return null;
+
       const valid = await verifyOtp(phone, parsed.data.code);
       if (!valid) return null;
 

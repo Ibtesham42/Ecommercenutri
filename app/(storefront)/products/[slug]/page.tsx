@@ -146,7 +146,7 @@ export default async function ProductPage({
     <div className="mx-auto w-full max-w-7xl px-4 pt-8 pb-28 lg:pb-8">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }}
+        dangerouslySetInnerHTML={jsonLd(jsonLdData)}
       />
       <script
         type="application/ld+json"
