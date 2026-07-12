@@ -76,7 +76,9 @@ async function loadOpen(
 export async function reviewReturn(input: unknown): Promise<AdminResult> {
   await requirePermission("returns");
   const parsed = returnIdSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Invalid request." };
+  if (!parsed.success) {
+    return { ok: false, error: "We couldn't identify that return. Refresh the page and try again." };
+  }
   const found = await loadOpen(parsed.data.returnId);
   if (!found.ok) return found;
   const ret = await transitionReturnStatus(parsed.data.returnId, "UNDER_REVIEW", {

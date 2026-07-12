@@ -56,8 +56,12 @@ export async function trackOrder(input: unknown): Promise<TrackResult> {
   let order: Awaited<ReturnType<typeof findOrder>>;
   try {
     order = await findOrder(orderNumber);
-  } catch {
-    return { ok: false, error: "Something went wrong. Please try again." };
+  } catch (err) {
+    console.error("[track] order lookup failed:", err);
+    return {
+      ok: false,
+      error: "We couldn't reach our order system just now. Please try again in a moment.",
+    };
   }
 
   // Match the checkout email against the account email (constant message on

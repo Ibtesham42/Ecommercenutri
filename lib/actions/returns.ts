@@ -108,7 +108,9 @@ export async function cancelReturn(input: unknown): Promise<ReturnResult> {
   if (!user?.id) return { ok: false, error: "Please sign in." };
 
   const parsed = cancelReturnSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Invalid request." };
+  if (!parsed.success) {
+    return { ok: false, error: "We couldn't identify that return. Please refresh the page and try again." };
+  }
 
   const ret = await prisma.returnRequest.findFirst({
     where: { returnNumber: parsed.data.returnNumber, userId: user.id },

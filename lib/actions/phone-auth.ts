@@ -98,5 +98,6 @@ export async function phoneOtpLoginAction(
     }
     throw error; // success = NEXT_REDIRECT — must bubble up
   }
-  return { ok: false, error: "Something went wrong. Please try again." };
+  // Unreachable in practice: a successful signIn throws NEXT_REDIRECT above.
+  return { ok: false, error: "We couldn't complete the sign-in. Please request a fresh code and try again." };
 }

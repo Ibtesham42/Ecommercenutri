@@ -157,12 +157,29 @@ async function abandonedCartCandidates(delayHours: number): Promise<Candidate[]>
     },
     take: 2000,
   });
-  for (const c of carts) {
-    if (byUser.has(c.userId)) continue;
-    const ordered = await prisma.order.count({
-      where: { userId: c.userId, createdAt: { gte: c.updatedAt } },
+  // "Did they order after the cart went quiet?" — one grouped query for the
+  // whole batch instead of a count() per cart (this runs in the cron and the
+  // take is 2000, so the per-row version was 2000 sequential round-trips).
+  const pending = carts.filter((c) => !byUser.has(c.userId));
+  if (pending.length > 0) {
+    const oldestCart = pending.reduce(
+      (min, c) => (c.updatedAt < min ? c.updatedAt : min),
+      pending[0].updatedAt,
+    );
+    const laterOrders = await prisma.order.groupBy({
+      by: ["userId"],
+      where: {
+        userId: { in: pending.map((c) => c.userId) },
+        createdAt: { gte: oldestCart },
+      },
+      _max: { createdAt: true },
     });
-    if (ordered === 0) {
+    const lastOrderAt = new Map(laterOrders.map((o) => [o.userId, o._max.createdAt]));
+
+    for (const c of pending) {
+      // Ordered since this cart was last touched → not abandoned.
+      const orderedAt = lastOrderAt.get(c.userId);
+      if (orderedAt && orderedAt >= c.updatedAt) continue;
       byUser.set(c.userId, {
         userId: c.userId,
         email: c.user.email,

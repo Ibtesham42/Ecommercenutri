@@ -176,7 +176,7 @@ export async function suspendAffiliate(input: unknown): Promise<AdminResult> {
 export async function reactivateAffiliate(input: unknown): Promise<AdminResult> {
   await requirePermission("affiliates");
   const parsed = affiliateIdSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Invalid request." };
+  if (!parsed.success) return { ok: false, error: "We couldn't identify that affiliate. Refresh the page and try again." };
   const aff = await prisma.affiliate.findUnique({
     where: { id: parsed.data.affiliateId },
     select: { id: true, couponId: true },
@@ -208,7 +208,7 @@ export async function reactivateAffiliate(input: unknown): Promise<AdminResult> 
 export async function deleteAffiliate(input: unknown): Promise<AdminResult> {
   await requirePermission("affiliates");
   const parsed = affiliateIdSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Invalid request." };
+  if (!parsed.success) return { ok: false, error: "We couldn't identify that affiliate. Refresh the page and try again." };
 
   const aff = await prisma.affiliate.findUnique({
     where: { id: parsed.data.affiliateId },
@@ -353,7 +353,7 @@ export async function saveCommissionRule(input: unknown): Promise<AdminResult> {
 export async function deleteCommissionRule(input: unknown): Promise<AdminResult> {
   await requirePermission("affiliates");
   const parsed = ruleIdSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Invalid request." };
+  if (!parsed.success) return { ok: false, error: "We couldn't identify that commission rule. Refresh the page and try again." };
   await prisma.commissionRule.delete({ where: { id: parsed.data.id } });
   revalidatePath("/admin/affiliates/rules");
   return { ok: true };
@@ -374,7 +374,7 @@ export async function runMaturation(): Promise<AdminResult<{ count: number }>> {
 export async function approveCommission(input: unknown): Promise<AdminResult> {
   await requirePermission("affiliates");
   const parsed = commissionIdSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Invalid request." };
+  if (!parsed.success) return { ok: false, error: "We couldn't identify that commission. Refresh the page and try again." };
 
   const c = await prisma.commission.findUnique({
     where: { id: parsed.data.commissionId },
@@ -414,7 +414,7 @@ export async function approveCommission(input: unknown): Promise<AdminResult> {
 export async function cancelCommission(input: unknown): Promise<AdminResult> {
   await requirePermission("affiliates");
   const parsed = cancelCommissionSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Invalid request." };
+  if (!parsed.success) return { ok: false, error: "Please keep the cancellation reason under 300 characters." };
 
   const c = await prisma.commission.findUnique({
     where: { id: parsed.data.commissionId },
@@ -445,7 +445,7 @@ export async function cancelCommission(input: unknown): Promise<AdminResult> {
 export async function approvePayout(input: unknown): Promise<AdminResult> {
   await requirePermission("affiliates");
   const parsed = payoutIdSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Invalid request." };
+  if (!parsed.success) return { ok: false, error: "We couldn't identify that payout. Refresh the page and try again." };
 
   const payout = await prisma.payout.findUnique({
     where: { id: parsed.data.payoutId },
@@ -485,7 +485,7 @@ export async function approvePayout(input: unknown): Promise<AdminResult> {
 export async function rejectPayout(input: unknown): Promise<AdminResult> {
   await requirePermission("affiliates");
   const parsed = rejectPayoutSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Invalid request." };
+  if (!parsed.success) return { ok: false, error: "Please keep the rejection reason under 300 characters." };
 
   const payout = await prisma.payout.findUnique({
     where: { id: parsed.data.payoutId },

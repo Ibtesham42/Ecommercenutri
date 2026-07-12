@@ -198,7 +198,9 @@ export async function generateIdeasNow(): Promise<AdminResult<{ ideas: number }>
 export async function updateIdeaStatus(input: unknown): Promise<AdminResult> {
   await requirePermission("social");
   const parsed = ideaStatusSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Invalid input." };
+  if (!parsed.success) {
+    return { ok: false, error: "We couldn't identify that idea. Refresh the page and try again." };
+  }
   try {
     await prisma.contentIdea.update({
       where: { id: parsed.data.id },
