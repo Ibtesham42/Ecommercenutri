@@ -136,6 +136,14 @@ async function recentCorpus(excludeId?: string) {
   };
 }
 
+/** Turn an internal generation failure into something the admin can act on. */
+function generationError(code: string): string {
+  if (code === "AI_RATE_LIMITED") {
+    return "The AI daily limit has been reached, so we didn't write a post rather than fall back to flat, templated copy. It resets shortly — try again in a few minutes.";
+  }
+  return code;
+}
+
 /** Design the cover image (colour-harmonised, rotating template). Shared by the
  *  manual generate + regenerate actions so they match what the planner ships. */
 async function designCover(
@@ -228,7 +236,7 @@ export async function generateSocialDraft(
     },
     recentPosts,
   );
-  if (!gen.ok) return { ok: false, error: gen.error };
+  if (!gen.ok) return { ok: false, error: generationError(gen.error) };
 
   const cover = await designCover(
     materials?.imageUrls ?? [],
@@ -311,7 +319,7 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
     },
     corpus,
   );
-  if (!gen.ok) return { ok: false, error: gen.error };
+  if (!gen.ok) return { ok: false, error: generationError(gen.error) };
 
   const cover = await designCover(
     materials?.imageUrls ?? post.imageUrls,

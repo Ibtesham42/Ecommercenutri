@@ -173,16 +173,28 @@ export function stripBannedClaims(text: string, banned: string[]): string {
  * of shipping the bad one. Only 429/rate-limit errors are retried; everything
  * else fails through immediately.
  */
+function isRateLimit(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return /rate.?limit|429|too many requests|tokens per (day|minute)|TPD|TPM/i.test(msg);
+}
+
+/** Is this a PER-MINUTE limit (refills in seconds) rather than the daily cap? */
+function isPerMinuteLimit(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return /per minute|TPM/i.test(msg) && !/per day|TPD/i.test(msg);
+}
+
 async function withRateLimitRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
   for (let i = 1; ; i++) {
     try {
       return await fn();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      const rateLimited = /rate.?limit|429|too many requests/i.test(msg);
-      if (!rateLimited || i >= attempts) throw e;
+      // Only the per-minute bucket is worth waiting for — it refills in seconds.
+      // The DAILY cap resets hours away, so sleeping inside a 60s cron is
+      // pointless; let it surface so the caller can skip the slot instead.
+      if (!isPerMinuteLimit(e) || i >= attempts) throw e;
       const waitMs = 15_000 * i;
-      console.warn(`[social] Groq rate limit — waiting ${waitMs / 1000}s and retrying`);
+      console.warn(`[social] Groq per-minute limit — waiting ${waitMs / 1000}s and retrying`);
       await new Promise((r) => setTimeout(r, waitMs));
     }
   }
@@ -430,6 +442,16 @@ Recent hashtags to avoid overusing: ${recentHashtags.length ? recentHashtags.joi
     return { ok: true, data };
   } catch (e) {
     console.error("[social] AI generation failed:", e);
+    // The keyless fallback exists so the product WORKS without an API key — its
+    // deterministic copy is the honest best we can do then. But when the model IS
+    // configured and merely rate-limited (Groq's daily token budget is 100k and a
+    // busy day exhausts it), silently substituting that flat templated copy means
+    // a low-quality post gets planned and published as if it were the real thing.
+    // Better to plan nothing: the cron runs every 30 minutes and the budget
+    // resets, so the slot gets a REAL post on a later pass.
+    if (isRateLimit(e)) {
+      return { ok: false, error: "AI_RATE_LIMITED" };
+    }
     return { ok: true, data: fallbackPost(input) };
   }
 }

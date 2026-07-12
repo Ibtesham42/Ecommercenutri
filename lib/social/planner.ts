@@ -274,6 +274,15 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
         recentPosts,
       );
       if (!gen.ok) {
+        // AI_RATE_LIMITED means the model is configured but out of budget. The
+        // slot is deliberately left unplanned: the cron fires every 30 minutes,
+        // so a later pass will fill it with a REAL post rather than persisting
+        // the flat keyless fallback and publishing it as if it were genuine.
+        if (gen.error === "AI_RATE_LIMITED") {
+          console.warn(
+            `[social] campaign ${c.id} ${daypart}: AI rate-limited — leaving the slot for the next run`,
+          );
+        }
         skipped++;
         continue;
       }
