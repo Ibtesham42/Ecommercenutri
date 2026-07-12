@@ -14,7 +14,11 @@ import { slotForPillar, angleAt, weekOfMonth } from "@/lib/social/strategy";
 import { ensureBuiltInSocialTemplates, pickTemplateGuidance } from "@/lib/social/templates";
 import { pickStyle } from "@/lib/social/styles";
 import { COMPARE_WINDOW } from "@/lib/social/uniqueness";
-import { pickDesign, buildDesignedImageUrl } from "@/lib/social/design";
+import {
+  pickDesign,
+  buildDesignedImageUrl,
+  buildCarouselFrameUrl,
+} from "@/lib/social/design";
 import { paletteForImage } from "@/lib/social/palette";
 import {
   socialCampaignSchema,
@@ -152,7 +156,7 @@ async function designCover(
         template: design,
         palette,
       }),
-      ...rawImages.slice(1),
+      ...rawImages.slice(1).map((u) => buildCarouselFrameUrl(u, palette)),
     ],
     designKey: design.key,
   };

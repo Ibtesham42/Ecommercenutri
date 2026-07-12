@@ -12,7 +12,11 @@ import {
 import { pickTemplateGuidance } from "@/lib/social/templates";
 import { pickStyle } from "@/lib/social/styles";
 import { COMPARE_WINDOW, type RecentPost } from "@/lib/social/uniqueness";
-import { pickDesign, buildDesignedImageUrl } from "@/lib/social/design";
+import {
+  pickDesign,
+  buildDesignedImageUrl,
+  buildCarouselFrameUrl,
+} from "@/lib/social/design";
 import { paletteForImage } from "@/lib/social/palette";
 
 /**
@@ -118,6 +122,12 @@ function toContext(p: ProductRow): SocialProductContext {
   };
 }
 
+/** A post with no image can never publish — Instagram requires one, so the post
+ *  would fail, burn all 3 retries and sit FAILED forever. Never plan one. */
+function hasImage(p: ProductRow): boolean {
+  return p.images.length > 0 || p.variants.some((v) => v.images.length > 0);
+}
+
 /** Products a campaign draws from, in order. Falls back to active/featured. */
 async function resolveCampaignProducts(productIds: string[]): Promise<ProductRow[]> {
   if (productIds.length > 0) {
@@ -127,14 +137,18 @@ async function resolveCampaignProducts(productIds: string[]): Promise<ProductRow
     });
     // Preserve the admin's chosen order.
     const byId = new Map(rows.map((r) => [r.id, r]));
-    return productIds.map((id) => byId.get(id)).filter((r): r is ProductRow => Boolean(r));
+    return productIds
+      .map((id) => byId.get(id))
+      .filter((r): r is ProductRow => Boolean(r))
+      .filter(hasImage);
   }
-  return prisma.product.findMany({
+  const rows = await prisma.product.findMany({
     where: { isActive: true },
     orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
     take: 50,
     select: PRODUCT_SELECT,
   });
+  return rows.filter(hasImage);
 }
 
 /**
@@ -294,7 +308,10 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
               template: design,
               palette,
             }),
-            ...rawImages.slice(1),
+            // Frames share the cover's square canvas — Instagram crops a
+            // carousel to the FIRST item's aspect, so a raw 3:4 photo here
+            // would be cropped into the product.
+            ...rawImages.slice(1).map((u) => buildCarouselFrameUrl(u, palette)),
           ]
         : [];
       const status = STATUS_FOR_MODE[c.mode] ?? "PENDING_APPROVAL";

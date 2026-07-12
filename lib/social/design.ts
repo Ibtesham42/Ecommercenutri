@@ -456,3 +456,28 @@ export function buildDesignedImageUrl(input: DesignInput): string {
   chain.push("f_auto,q_auto");
   return imageUrl.replace("/upload/", `/upload/${chain.join("/")}/`);
 }
+
+/**
+ * A carousel frame that MATCHES the designed cover's canvas.
+ *
+ * Instagram crops every item in a carousel to the aspect ratio of the FIRST
+ * item. Our cover is 1:1, so a raw 3:4 product photo in slot 2 would be
+ * centre-cropped by Meta — cutting into the product. Padding each frame onto the
+ * same square canvas (never cropping, never upscaling) keeps the whole product
+ * visible and makes the carousel look like one set instead of a designed cover
+ * followed by loose photos. No type on these — the cover carries the message.
+ */
+export function buildCarouselFrameUrl(imageUrl: string, palette: Palette): string {
+  if (!imageUrl.includes("res.cloudinary.com") || !imageUrl.includes("/upload/")) {
+    return imageUrl;
+  }
+  const url = stripTransforms(imageUrl);
+  const chain = [
+    "e_trim:10",
+    "c_fit,w_880,h_880",
+    "r_24",
+    `c_lpad,w_${CANVAS},h_${CANVAS},b_rgb:${palette.bg},g_center`,
+    "f_auto,q_auto",
+  ];
+  return url.replace("/upload/", `/upload/${chain.join("/")}/`);
+}
