@@ -99,8 +99,10 @@ export async function syncRecentInsights(now = new Date()): Promise<{ synced: nu
   for (const p of posts) {
     if (!p.externalId) continue;
     try {
-      await syncPostInsights(p.id, p.externalId);
-      synced++;
+      // Count posts that actually RECEIVED data, not posts we merely touched.
+      // Counting attempts made the cron report "insights: 12" on a run where
+      // Instagram returned nothing at all — an honest zero is the whole point.
+      if (await syncPostInsights(p.id, p.externalId)) synced++;
     } catch (e) {
       console.error(`[social] insights sync failed for ${p.id}:`, e);
     }

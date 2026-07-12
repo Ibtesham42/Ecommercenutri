@@ -175,17 +175,28 @@ export async function generateSocialDraft(
   const d = parsed.data;
   const settings = await getSocialSettings();
 
-  // Resolve a product (chosen, or the first active one).
+  // Resolve a product (chosen, or the first active one that actually has a photo
+  // — the planner already skips imageless products; this path must too).
   let productId = d.productId ?? null;
   if (!productId) {
     const p = await prisma.product.findFirst({
-      where: { isActive: true },
+      where: { isActive: true, images: { some: {} } },
       orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
       select: { id: true },
     });
     productId = p?.id ?? null;
   }
   const materials = productId ? await buildSocialMaterials(productId, settings.carouselEnabled) : null;
+
+  // Instagram will not accept a post without an image: it would publish-fail,
+  // burn its retries and sit FAILED. Say so now, while the admin can fix it.
+  if (materials && materials.imageUrls.length === 0) {
+    return {
+      ok: false,
+      error:
+        "That product has no photo, so the post could never be published to Instagram. Add a product image first, then generate.",
+    };
+  }
 
   const now = new Date();
   const slot = slotForPillar(d.pillar);
