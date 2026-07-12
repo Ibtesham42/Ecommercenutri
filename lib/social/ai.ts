@@ -9,6 +9,7 @@ import {
   retryInstruction,
   type RecentPost,
 } from "@/lib/social/uniqueness";
+import { checkCaptionQuality } from "@/lib/social/quality";
 
 /**
  * Generates a unique social post from real catalog data using the existing Groq
@@ -59,6 +60,9 @@ export type GenerateSocialInput = {
   bannedWords: string[];
   recentHooks?: string[];
   recentHashtags?: string[];
+  /** Recent CTAs. Without these the model kept re-using "Share your recipe" —
+   *  it cannot avoid a repeat it has never been shown. */
+  recentCtas?: string[];
   templateGuidance?: string;
   /** Structural brief for this post's content style (lib/social/styles.ts). */
   styleBrief?: string;
@@ -301,6 +305,7 @@ export async function generateSocialPost(
   const { pillar, daypart, angle, brandVoice, product } = input;
   const recentHooks = (input.recentHooks ?? []).slice(0, 12);
   const recentHashtags = (input.recentHashtags ?? []).slice(0, 40);
+  const recentCtas = [...new Set(input.recentCtas ?? [])].slice(0, 10);
 
   const system = `You are a senior Instagram content strategist for Nutriyet, an Indian health & nutrition brand (makhana, dry fruits, seeds, protein, healthy snacks). You have grown real Indian D2C food accounts and you know exactly what makes people stop scrolling, save, and comment. Brand voice: ${brandVoice}
 
@@ -313,6 +318,8 @@ WRITE LIKE THIS:
 - End by inviting genuine interaction — a real question, a "save this for later", or a soft, non-pushy nudge. VARY this every time; never default to "Shop now".
 
 NEVER DO THIS (these instantly read as AI/spam):
+- Telegraphic bullet-fragments stacked as lines ("Rich in antioxidants", "Supports immunity", "Great for digestion"). Write complete, flowing sentences a person would actually say out loud. This is the single most common way to sound like a machine.
+- Asserting a health benefit that is NOT in the product facts above. Do not claim it boosts immunity, aids digestion, is rich in antioxidants or is anti-inflammatory unless the given facts say so. If you have no benefit to cite, write about the food, the taste, the habit or the moment instead — that is always better than an invented claim.
 - Formulaic openers: "Did you know", "Introducing", "Meet the", "In today's fast-paced world", "Looking for", "Say goodbye to", "Elevate your", "Unlock", "Level up", "Tired of".
 - Hype adjectives and filler ("amazing", "perfect", "ultimate", "game-changer", "must-have") or robotic transitions ("furthermore", "moreover").
 - Emoji on every line or used as bullets — 0-3 total, only where they add real warmth.
@@ -343,6 +350,7 @@ ${input.templateGuidance ? `Extra guidance: ${input.templateGuidance}\n` : ""}${
   }
 
 Recent hooks to avoid repeating: ${recentHooks.length ? recentHooks.map((h) => `"${h}"`).join(", ") : "none"}
+Recent CTAs already used — write a DIFFERENT one: ${recentCtas.length ? recentCtas.map((c) => `"${c}"`).join(", ") : "none"}
 Recent hashtags to avoid overusing: ${recentHashtags.length ? recentHashtags.join(" ") : "none"}${
     input.retryNote
       ? `\n\nIMPORTANT — your previous attempt was rejected as a near-duplicate. ${input.retryNote} Change the IDEA, not just the words.`
@@ -418,11 +426,17 @@ export async function generateUniqueSocialPost(
   let retryNote = "";
   let best: { data: GeneratedSocialPost; reason: string } | null = null;
 
+  const facts = input.product ? productFacts(input.product) : "";
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const gen = await generateSocialPost({ ...input, retryNote: retryNote || undefined });
     if (!gen.ok) return gen;
 
-    const verdict = checkUniqueness(
+    // Two gates, same loop: is it NEW, and is it GOOD? A post that repeats an
+    // earlier one and a post that is a stack of noun fragments with an invented
+    // health claim are both unpublishable — and both are fixable by telling the
+    // model precisely what was wrong and asking again.
+    const unique = checkUniqueness(
       {
         hook: gen.data.hook,
         caption: gen.data.caption,
@@ -431,14 +445,24 @@ export async function generateUniqueSocialPost(
       },
       recent,
     );
-    if (verdict.ok) return { ok: true, data: gen.data, attempts: attempt };
+    const quality = unique.ok
+      ? checkCaptionQuality(
+          { caption: gen.data.caption, hook: gen.data.hook, cta: gen.data.cta },
+          facts,
+        )
+      : ({ ok: true } as const);
+
+    if (unique.ok && quality.ok) return { ok: true, data: gen.data, attempts: attempt };
+
+    const reason = !unique.ok ? unique.reason : (quality as { reason: string }).reason;
+    const note = !unique.ok
+      ? retryInstruction(unique)
+      : (quality as { note: string }).note;
 
     // Keep the first rejected candidate as the fallback, then push the model.
-    if (!best) best = { data: gen.data, reason: verdict.reason };
-    retryNote = retryInstruction(verdict);
-    console.warn(
-      `[social] attempt ${attempt}/${maxAttempts} rejected as duplicate (${verdict.reason})`,
-    );
+    if (!best) best = { data: gen.data, reason };
+    retryNote = note;
+    console.warn(`[social] attempt ${attempt}/${maxAttempts} rejected (${reason})`);
 
     // The keyless fallback is deterministic — retrying it cannot produce
     // anything new, so don't burn attempts pretending otherwise.

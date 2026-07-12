@@ -200,6 +200,7 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
     hashtags: r.hashtags,
   }));
   const recentHooks = recent.map((r) => r.hook).filter(Boolean);
+  const recentCtas = recent.map((r) => r.cta).filter(Boolean);
   // Keep duplicates here — the tag sanitizer uses frequency to spot overuse.
   const recentHashtags = recent.flatMap((r) => r.hashtags);
   const recentStyles = recent.map((r) => r.styleKey).filter((k): k is string => Boolean(k));
@@ -264,6 +265,7 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
           bannedWords: settings.bannedWords,
           recentHooks,
           recentHashtags,
+          recentCtas,
           templateGuidance,
           styleLabel: style.label,
           styleBrief: style.brief,
@@ -351,6 +353,7 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
         hashtags: gen.data.hashtags,
       });
       recentHooks.unshift(gen.data.hook);
+      recentCtas.unshift(gen.data.cta);
       recentHashtags.unshift(...gen.data.hashtags);
       recentStyles.unshift(style.key);
       recentDesigns.unshift(design.key);

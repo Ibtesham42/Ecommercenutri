@@ -128,6 +128,7 @@ async function recentCorpus(excludeId?: string) {
       hashtags: r.hashtags,
     })),
     recentHooks: recent.map((r) => r.hook).filter(Boolean),
+    recentCtas: recent.map((r) => r.cta).filter(Boolean),
     // Duplicates retained on purpose — the tag sanitizer uses frequency.
     recentHashtags: recent.flatMap((r) => r.hashtags),
     recentStyles: recent.map((r) => r.styleKey).filter((k): k is string => Boolean(k)),
@@ -190,7 +191,7 @@ export async function generateSocialDraft(
   const slot = slotForPillar(d.pillar);
   const count = await prisma.socialPost.count();
   const angle = d.angle || angleAt(slot, count);
-  const { recentPosts, recentHooks, recentHashtags, recentStyles, recentDesigns } =
+  const { recentPosts, recentHooks, recentHashtags, recentCtas, recentStyles, recentDesigns } =
     await recentCorpus();
   const style = pickStyle(count, recentStyles, Boolean(materials));
 
@@ -205,6 +206,7 @@ export async function generateSocialDraft(
       bannedWords: settings.bannedWords,
       recentHooks,
       recentHashtags,
+      recentCtas,
       templateGuidance: await pickTemplateGuidance(d.pillar, count),
       styleLabel: style.label,
       styleBrief: style.brief,
@@ -268,7 +270,7 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
   // Regenerating means "give me something different" — so the post's CURRENT
   // copy is part of the corpus it must differ from, while the other posts are
   // compared without it being counted twice.
-  const { recentPosts, recentHooks, recentHashtags, recentStyles, recentDesigns } =
+  const { recentPosts, recentHooks, recentHashtags, recentCtas, recentStyles, recentDesigns } =
     await recentCorpus(id);
   const corpus = [
     { hook: post.hook, caption: post.caption, cta: post.cta, hashtags: post.hashtags },
@@ -287,6 +289,7 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
       bannedWords: settings.bannedWords,
       recentHooks: [post.hook, ...recentHooks],
       recentHashtags: [...post.hashtags, ...recentHashtags],
+      recentCtas: [post.cta, ...recentCtas],
       templateGuidance: await pickTemplateGuidance(post.pillar, count + 1),
       styleLabel: style.label,
       styleBrief: style.brief,
