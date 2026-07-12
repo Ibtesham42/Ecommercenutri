@@ -161,6 +161,33 @@ export function stripBannedClaims(text: string, banned: string[]): string {
     .trim();
 }
 
+/**
+ * Groq's limit is 12,000 tokens per MINUTE (measured against the live account —
+ * the daily budget is far larger). One planned post costs ~3k, and a cron run
+ * can spend 2 slots x up to 3 quality/uniqueness retries — enough to empty the
+ * per-minute bucket. When that happened, generateText threw, the catch below
+ * quietly returned the deterministic keyless fallback, and a flat, templated post
+ * went out as if nothing was wrong.
+ *
+ * The bucket refills in seconds, so a short wait recovers the good post instead
+ * of shipping the bad one. Only 429/rate-limit errors are retried; everything
+ * else fails through immediately.
+ */
+async function withRateLimitRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
+  for (let i = 1; ; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      const rateLimited = /rate.?limit|429|too many requests/i.test(msg);
+      if (!rateLimited || i >= attempts) throw e;
+      const waitMs = 15_000 * i;
+      console.warn(`[social] Groq rate limit — waiting ${waitMs / 1000}s and retrying`);
+      await new Promise((r) => setTimeout(r, waitMs));
+    }
+  }
+}
+
 /** Factual product block for the prompt — DB facts only, nothing invented. */
 function productFacts(p: SocialProductContext): string {
   const lines: string[] = [`Product: ${p.name}`];
@@ -358,16 +385,18 @@ Recent hashtags to avoid overusing: ${recentHashtags.length ? recentHashtags.joi
   }`;
 
   try {
-    const { text, usage } = await generateText({
-      model,
-      system,
-      prompt,
-      // Push the model further from its last answer on a duplicate-retry.
-      temperature: Math.min(
-        1,
-        (settings.temperature ?? 0.7) + (input.retryNote ? 0.3 : 0.15),
-      ),
-    });
+    const { text, usage } = await withRateLimitRetry(() =>
+      generateText({
+        model,
+        system,
+        prompt,
+        // Push the model further from its last answer on a duplicate-retry.
+        temperature: Math.min(
+          1,
+          (settings.temperature ?? 0.7) + (input.retryNote ? 0.3 : 0.15),
+        ),
+      }),
+    );
     const parsed = parsePost(text);
     if (!parsed || !parsed.caption) {
       return { ok: true, data: fallbackPost(input) };

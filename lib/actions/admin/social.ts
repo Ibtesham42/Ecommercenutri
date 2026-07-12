@@ -190,11 +190,14 @@ export async function generateSocialDraft(
 
   // Instagram will not accept a post without an image: it would publish-fail,
   // burn its retries and sit FAILED. Say so now, while the admin can fix it.
-  if (materials && materials.imageUrls.length === 0) {
+  // This also covers the no-product case — a brand-only post has no image source
+  // at all, so however good the copy is, it could never actually go out.
+  if (!materials || materials.imageUrls.length === 0) {
     return {
       ok: false,
-      error:
-        "That product has no photo, so the post could never be published to Instagram. Add a product image first, then generate.",
+      error: materials
+        ? "That product has no photo, so the post could never be published to Instagram. Add a product image first, then generate."
+        : "There's no product with a photo to build a post from. Add a product image first, then generate.",
     };
   }
 
