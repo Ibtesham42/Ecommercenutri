@@ -6,10 +6,12 @@ import { getSocialSettings } from "@/lib/social/settings";
 import { pickPostImages } from "@/lib/social/image";
 import { slotFor, angleAt } from "@/lib/social/strategy";
 import {
-  generateSocialPost,
+  generateUniqueSocialPost,
   type SocialProductContext,
 } from "@/lib/social/ai";
 import { pickTemplateGuidance } from "@/lib/social/templates";
+import { pickStyle } from "@/lib/social/styles";
+import { COMPARE_WINDOW, type RecentPost } from "@/lib/social/uniqueness";
 
 /**
  * The planner turns enabled SocialCampaigns into concrete SocialPost rows for
@@ -165,14 +167,23 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
   const ist = istParts(now);
   const { start, end } = istDayRange(now);
 
-  // Recent hooks/hashtags across all posts, for uniqueness.
+  // Recent posts — the corpus the uniqueness engine compares every candidate
+  // against (full caption/cta/tags, not just the hook).
   const recent = await prisma.socialPost.findMany({
     orderBy: { createdAt: "desc" },
-    take: 25,
-    select: { hook: true, hashtags: true },
+    take: COMPARE_WINDOW,
+    select: { hook: true, caption: true, cta: true, hashtags: true, styleKey: true },
   });
+  const recentPosts: RecentPost[] = recent.map((r) => ({
+    hook: r.hook,
+    caption: r.caption,
+    cta: r.cta,
+    hashtags: r.hashtags,
+  }));
   const recentHooks = recent.map((r) => r.hook).filter(Boolean);
-  const recentHashtags = [...new Set(recent.flatMap((r) => r.hashtags))];
+  // Keep duplicates here — the tag sanitizer uses frequency to spot overuse.
+  const recentHashtags = recent.flatMap((r) => r.hashtags);
+  const recentStyles = recent.map((r) => r.styleKey).filter((k): k is string => Boolean(k));
 
   let planned = 0;
   let skipped = 0;
@@ -217,25 +228,42 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
       const angle = angleAt(slot, rotation);
       const ctx = toContext(product);
 
+      // The pillar is pinned to week+daypart, so the STYLE is what keeps
+      // consecutive posts from reading alike. Never repeats the previous style.
+      const style = pickStyle(rotation, recentStyles, true);
+
       const templateGuidance = await pickTemplateGuidance(slot.pillar, rotation);
-      const gen = await generateSocialPost({
-        product: ctx,
-        pillar: slot.pillar,
-        daypart,
-        angle,
-        brandVoice: settings.brandVoice,
-        defaultHashtags: settings.defaultHashtags,
-        bannedWords: settings.bannedWords,
-        recentHooks,
-        recentHashtags,
-        templateGuidance,
-      });
+      const gen = await generateUniqueSocialPost(
+        {
+          product: ctx,
+          pillar: slot.pillar,
+          daypart,
+          angle,
+          brandVoice: settings.brandVoice,
+          defaultHashtags: settings.defaultHashtags,
+          bannedWords: settings.bannedWords,
+          recentHooks,
+          recentHashtags,
+          templateGuidance,
+          styleLabel: style.label,
+          styleBrief: style.brief,
+          rotation,
+        },
+        recentPosts,
+      );
       if (!gen.ok) {
         skipped++;
         continue;
       }
+      if (gen.forced) {
+        // Every retry still clashed. We ship the best candidate rather than
+        // leave the slot empty (the old behaviour), but it's worth knowing.
+        console.warn(
+          `[social] campaign ${c.id} ${daypart}: shipped a post that still echoes a recent ${gen.forced}`,
+        );
+      }
 
-      // Skip exact-duplicate content.
+      // Belt-and-braces: never write a byte-identical caption.
       const dup = await prisma.socialPost.findFirst({
         where: { contentHash: gen.data.contentHash },
         select: { id: true },
@@ -265,14 +293,24 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
           altText: gen.data.altText,
           imageUrls,
           contentHash: gen.data.contentHash,
+          styleKey: style.key,
           // Always record the intended slot time so the per-slot idempotency
           // guard works for every mode (the publisher only acts on SCHEDULED).
           scheduledFor,
         },
       });
 
+      // Feed this post back into the in-run corpus so the SECOND slot of the
+      // same run is checked against the first (previously it was not).
+      recentPosts.unshift({
+        hook: gen.data.hook,
+        caption: gen.data.caption,
+        cta: gen.data.cta,
+        hashtags: gen.data.hashtags,
+      });
       recentHooks.unshift(gen.data.hook);
       recentHashtags.unshift(...gen.data.hashtags);
+      recentStyles.unshift(style.key);
       planned++;
       createdThisRun++;
     }

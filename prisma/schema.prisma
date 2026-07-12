@@ -1510,6 +1510,9 @@ model SocialPost {
   altText     String
   imageUrls   String[]            @default([]) // Cloudinary URLs; [0] = cover, rest = carousel
   contentHash String // dedup / uniqueness guard
+  styleKey    String? // content style (lib/social/styles.ts) — drives no-repeat rotation
+  headline    String? // on-image headline (lib/social/design.ts)
+  designKey   String? // image template used (lib/social/design.ts)
   // Scheduling + publish results
   scheduledFor DateTime?
   publishedAt  DateTime?

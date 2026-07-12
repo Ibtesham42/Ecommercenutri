@@ -4,6 +4,11 @@ import { getModel, aiAvailable } from "@/lib/ai/provider";
 import { getAISettings, recordAIUsage } from "@/lib/ai/settings";
 import type { Pillar, Daypart } from "@/lib/social/strategy";
 import { PILLAR_LABEL } from "@/lib/social/strategy";
+import {
+  checkUniqueness,
+  retryInstruction,
+  type RecentPost,
+} from "@/lib/social/uniqueness";
 
 /**
  * Generates a unique social post from real catalog data using the existing Groq
@@ -51,9 +56,19 @@ export type GenerateSocialInput = {
   recentHooks?: string[];
   recentHashtags?: string[];
   templateGuidance?: string;
+  /** Structural brief for this post's content style (lib/social/styles.ts). */
+  styleBrief?: string;
+  styleLabel?: string;
+  /** Rotates the hashtag pool so successive posts don't share a tag tail. */
+  rotation?: number;
+  /** Set on a regeneration: tells the model exactly what read as a repeat. */
+  retryNote?: string;
 };
 
 const MAX_HASHTAGS = 12;
+/** Brand tags that are allowed to appear on every post — everything else in
+ *  `defaultHashtags` is treated as a rotating pool, not a fixed tail. */
+const BRAND_ANCHOR_LIMIT = 1;
 
 /** Stable, dependency-free hash (djb2) for uniqueness de-duplication. */
 export function contentHash(text: string): string {
@@ -69,19 +84,55 @@ function normTag(raw: string): string {
   return cleaned ? `#${cleaned}` : "";
 }
 
-function sanitizeHashtags(tags: string[], defaults: string[]): string[] {
+/**
+ * Build the tag set for a post.
+ *
+ * Previously every default hashtag was appended to every post, so each caption
+ * ended with the identical block (#Nutriyet #HealthySnacking #Makhana #EatClean)
+ * — the single biggest reason the feed's hashtags looked copy-pasted. Now only
+ * the first default acts as a permanent brand anchor; the remaining defaults are
+ * a rotating pool, seeded per post, and tags that dominate the recent window are
+ * dropped so the combination keeps moving.
+ */
+function sanitizeHashtags(
+  tags: string[],
+  defaults: string[],
+  opts: { seed?: number; recent?: string[] } = {},
+): string[] {
+  const seed = opts.seed ?? 0;
+  const recent = (opts.recent ?? []).map((t) => t.toLowerCase());
+  // A tag used in more than half the recent window is "overused" — keep it out
+  // unless the model chose it deliberately AND we are short on tags.
+  const overused = new Set(
+    [...new Set(recent)].filter(
+      (t) => recent.filter((r) => r === t).length > Math.max(2, recent.length / 2),
+    ),
+  );
+
+  const anchors = defaults.slice(0, BRAND_ANCHOR_LIMIT);
+  const pool = defaults.slice(BRAND_ANCHOR_LIMIT);
+  // Rotate the non-anchor defaults so successive posts draw a different slice.
+  const rotated = pool.map((_, i) => pool[(i + seed) % pool.length]);
+
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const t of [...tags, ...defaults]) {
-    const tag = normTag(t);
+  const push = (raw: string, allowOverused = false) => {
+    const tag = normTag(raw);
     const key = tag.toLowerCase();
-    if (tag.length > 1 && !seen.has(key)) {
-      seen.add(key);
-      out.push(tag);
-    }
-    if (out.length >= MAX_HASHTAGS) break;
-  }
-  return out;
+    if (tag.length <= 1 || seen.has(key)) return;
+    if (!allowOverused && overused.has(key)) return;
+    seen.add(key);
+    out.push(tag);
+  };
+
+  for (const t of anchors) push(t, true); // brand anchor always survives
+  for (const t of tags) push(t); // the model's own, novelty-filtered
+  for (const t of rotated.slice(0, 2)) push(t); // a rotating slice of the defaults
+
+  // Still thin? Let the filtered ones back in rather than ship a bare post.
+  if (out.length < 5) for (const t of [...tags, ...rotated]) push(t, true);
+
+  return out.slice(0, MAX_HASHTAGS);
 }
 
 /** Remove banned claim words/phrases from generated copy (health-claim safety).
@@ -129,8 +180,10 @@ function fallbackPost(input: GenerateSocialInput): GeneratedSocialPost {
   const { product, pillar, angle } = input;
   const name = product?.name ?? "Nutriyet";
   const label = PILLAR_LABEL[pillar];
-  const pick = <T,>(arr: T[]): T =>
-    arr[parseInt(contentHash(`${angle}|${name}`), 36) % arr.length];
+  // Seeded with the rotation as well as the angle+product, so the same product
+  // on the same angle doesn't produce a byte-identical keyless post every time.
+  const seed = parseInt(contentHash(`${angle}|${name}|${input.rotation ?? 0}`), 36);
+  const pick = <T,>(arr: T[]): T => arr[seed % arr.length];
 
   const value = product
     ? product.shortDescription || product.description.slice(0, 140)
@@ -159,13 +212,16 @@ function fallbackPost(input: GenerateSocialInput): GeneratedSocialPost {
   }\n\n${invite}`;
   const hashtags = sanitizeHashtags(
     [
-      "#Nutriyet",
-      "#HealthySnacking",
       product?.categoryName ? `#${product.categoryName.replace(/\s+/g, "")}` : "#EatClean",
-      "#IndianSnacks",
-      "#CleanEating",
+      ...pick([
+        ["#IndianSnacks", "#CleanEating", "#SnackSmart"],
+        ["#HealthyIndia", "#RealFood", "#MindfulEating"],
+        ["#DesiSnacks", "#GoodFats", "#EverydayNutrition"],
+        ["#GuiltFreeSnacking", "#WholesomeEating", "#SnackBetter"],
+      ]),
     ],
     input.defaultHashtags,
+    { seed: input.rotation ?? 0, recent: input.recentHashtags ?? [] },
   );
   const altText = product
     ? `${name} from Nutriyet — ${product.categoryName ?? "healthy snack"}.`
@@ -255,20 +311,28 @@ Respond with ONLY a single minified JSON object, no markdown, using EXACTLY thes
 
   const prompt = `Content pillar: ${PILLAR_LABEL[pillar]}
 Angle for this post: ${angle}
-(This post is scheduled for the ${daypart.toLowerCase()} — that is timing only; do not write about the time of day.)
+${input.styleLabel ? `Post style: ${input.styleLabel}\nStyle brief: ${input.styleBrief ?? ""}\n` : ""}(This post is scheduled for the ${daypart.toLowerCase()} — that is timing only; do not write about the time of day.)
 ${input.templateGuidance ? `Extra guidance: ${input.templateGuidance}\n` : ""}${
     product ? productFacts(product) : "No specific product — write educational / community content for the brand."
   }
 
 Recent hooks to avoid repeating: ${recentHooks.length ? recentHooks.map((h) => `"${h}"`).join(", ") : "none"}
-Recent hashtags to avoid overusing: ${recentHashtags.length ? recentHashtags.join(" ") : "none"}`;
+Recent hashtags to avoid overusing: ${recentHashtags.length ? recentHashtags.join(" ") : "none"}${
+    input.retryNote
+      ? `\n\nIMPORTANT — your previous attempt was rejected as a near-duplicate. ${input.retryNote} Change the IDEA, not just the words.`
+      : ""
+  }`;
 
   try {
     const { text, usage } = await generateText({
       model,
       system,
       prompt,
-      temperature: Math.min(1, (settings.temperature ?? 0.7) + 0.15),
+      // Push the model further from its last answer on a duplicate-retry.
+      temperature: Math.min(
+        1,
+        (settings.temperature ?? 0.7) + (input.retryNote ? 0.3 : 0.15),
+      ),
     });
     const parsed = parsePost(text);
     if (!parsed || !parsed.caption) {
@@ -279,8 +343,11 @@ Recent hashtags to avoid overusing: ${recentHashtags.length ? recentHashtags.joi
       hook: stripBannedClaims(parsed.hook || caption.split("\n")[0] || "", input.bannedWords).slice(0, 120),
       caption,
       captionLong: stripBannedClaims(parsed.captionLong || caption, input.bannedWords),
-      cta: (parsed.cta || (product ? "Shop now" : "Explore Nutriyet")).slice(0, 40),
-      hashtags: sanitizeHashtags(parsed.hashtags ?? [], input.defaultHashtags),
+      cta: (parsed.cta || (product ? "Save this for later" : "Explore Nutriyet")).slice(0, 40),
+      hashtags: sanitizeHashtags(parsed.hashtags ?? [], input.defaultHashtags, {
+        seed: input.rotation ?? 0,
+        recent: input.recentHashtags ?? [],
+      }),
       altText: (parsed.altText || fallbackPost(input).altText).slice(0, 160),
       contentHash: contentHash(caption),
     };
@@ -290,4 +357,63 @@ Recent hashtags to avoid overusing: ${recentHashtags.length ? recentHashtags.joi
     console.error("[social] AI generation failed:", e);
     return { ok: true, data: fallbackPost(input) };
   }
+}
+
+/**
+ * Generate a post that is actually NEW.
+ *
+ * The old flow generated once, compared an exact content hash, and on a match
+ * dropped the slot — so a reworded duplicate shipped, and a true duplicate meant
+ * no post at all. This regenerates (up to `maxAttempts`) against the full
+ * uniqueness engine, telling the model on each retry exactly which axis read as
+ * a repeat. If every attempt still clashes we return the least-similar candidate
+ * rather than silently skipping the slot, and report it so the caller can log it.
+ */
+export async function generateUniqueSocialPost(
+  input: GenerateSocialInput,
+  recent: RecentPost[],
+  maxAttempts = 3,
+): Promise<
+  | { ok: true; data: GeneratedSocialPost; attempts: number; forced?: string }
+  | { ok: false; error: string }
+> {
+  let retryNote = "";
+  let best: { data: GeneratedSocialPost; reason: string } | null = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const gen = await generateSocialPost({ ...input, retryNote: retryNote || undefined });
+    if (!gen.ok) return gen;
+
+    const verdict = checkUniqueness(
+      {
+        hook: gen.data.hook,
+        caption: gen.data.caption,
+        cta: gen.data.cta,
+        hashtags: gen.data.hashtags,
+      },
+      recent,
+    );
+    if (verdict.ok) return { ok: true, data: gen.data, attempts: attempt };
+
+    // Keep the first rejected candidate as the fallback, then push the model.
+    if (!best) best = { data: gen.data, reason: verdict.reason };
+    retryNote = retryInstruction(verdict);
+    console.warn(
+      `[social] attempt ${attempt}/${maxAttempts} rejected as duplicate (${verdict.reason})`,
+    );
+
+    // The keyless fallback is deterministic — retrying it cannot produce
+    // anything new, so don't burn attempts pretending otherwise.
+    if (!aiAvailable()) break;
+  }
+
+  if (best) {
+    return {
+      ok: true,
+      data: best.data,
+      attempts: maxAttempts,
+      forced: best.reason,
+    };
+  }
+  return { ok: false, error: "Could not generate a post." };
 }

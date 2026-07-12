@@ -9,9 +9,11 @@ import { getSocialSettings } from "@/lib/social/settings";
 import { planDuePosts, buildSocialMaterials } from "@/lib/social/planner";
 import { publishDuePosts, publishPostNow } from "@/lib/social/publish";
 import { syncRecentInsights } from "@/lib/social/insights";
-import { generateSocialPost } from "@/lib/social/ai";
+import { generateUniqueSocialPost } from "@/lib/social/ai";
 import { slotForPillar, angleAt, weekOfMonth } from "@/lib/social/strategy";
 import { ensureBuiltInSocialTemplates, pickTemplateGuidance } from "@/lib/social/templates";
+import { pickStyle } from "@/lib/social/styles";
+import { COMPARE_WINDOW } from "@/lib/social/uniqueness";
 import {
   socialCampaignSchema,
   socialSettingsSchema,
@@ -96,15 +98,30 @@ export async function deleteSocialCampaign(id: string): Promise<AdminResult> {
 
 // ── Generation ───────────────────────────────────────────────────────────────
 
-async function recentHooksAndTags() {
+/**
+ * The corpus every new post is checked against. Manual generation used to see
+ * only hooks + a de-duplicated tag list, so an admin-generated post could repeat
+ * a scheduled one wholesale; it now shares the planner's uniqueness engine.
+ * `excludeId` drops the post being regenerated so it isn't compared to itself.
+ */
+async function recentCorpus(excludeId?: string) {
   const recent = await prisma.socialPost.findMany({
+    where: excludeId ? { id: { not: excludeId } } : undefined,
     orderBy: { createdAt: "desc" },
-    take: 25,
-    select: { hook: true, hashtags: true },
+    take: COMPARE_WINDOW,
+    select: { hook: true, caption: true, cta: true, hashtags: true, styleKey: true },
   });
   return {
+    recentPosts: recent.map((r) => ({
+      hook: r.hook,
+      caption: r.caption,
+      cta: r.cta,
+      hashtags: r.hashtags,
+    })),
     recentHooks: recent.map((r) => r.hook).filter(Boolean),
-    recentHashtags: [...new Set(recent.flatMap((r) => r.hashtags))],
+    // Duplicates retained on purpose — the tag sanitizer uses frequency.
+    recentHashtags: recent.flatMap((r) => r.hashtags),
+    recentStyles: recent.map((r) => r.styleKey).filter((k): k is string => Boolean(k)),
   };
 }
 
@@ -136,20 +153,27 @@ export async function generateSocialDraft(
   const slot = slotForPillar(d.pillar);
   const count = await prisma.socialPost.count();
   const angle = d.angle || angleAt(slot, count);
-  const { recentHooks, recentHashtags } = await recentHooksAndTags();
+  const { recentPosts, recentHooks, recentHashtags, recentStyles } = await recentCorpus();
+  const style = pickStyle(count, recentStyles, Boolean(materials));
 
-  const gen = await generateSocialPost({
-    product: materials?.ctx ?? null,
-    pillar: d.pillar,
-    daypart: d.daypart,
-    angle,
-    brandVoice: settings.brandVoice,
-    defaultHashtags: settings.defaultHashtags,
-    bannedWords: settings.bannedWords,
-    recentHooks,
-    recentHashtags,
-    templateGuidance: await pickTemplateGuidance(d.pillar, count),
-  });
+  const gen = await generateUniqueSocialPost(
+    {
+      product: materials?.ctx ?? null,
+      pillar: d.pillar,
+      daypart: d.daypart,
+      angle,
+      brandVoice: settings.brandVoice,
+      defaultHashtags: settings.defaultHashtags,
+      bannedWords: settings.bannedWords,
+      recentHooks,
+      recentHashtags,
+      templateGuidance: await pickTemplateGuidance(d.pillar, count),
+      styleLabel: style.label,
+      styleBrief: style.brief,
+      rotation: count,
+    },
+    recentPosts,
+  );
   if (!gen.ok) return { ok: false, error: gen.error };
 
   try {
@@ -169,6 +193,7 @@ export async function generateSocialDraft(
         altText: gen.data.altText,
         imageUrls: materials?.imageUrls ?? [],
         contentHash: gen.data.contentHash,
+        styleKey: style.key,
       },
     });
     revalidate();
@@ -192,20 +217,34 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
     : null;
   const slot = slotForPillar(post.pillar);
   const count = await prisma.socialPost.count();
-  const { recentHooks, recentHashtags } = await recentHooksAndTags();
+  // Regenerating means "give me something different" — so the post's CURRENT
+  // copy is part of the corpus it must differ from, while the other posts are
+  // compared without it being counted twice.
+  const { recentPosts, recentHooks, recentHashtags, recentStyles } = await recentCorpus(id);
+  const corpus = [
+    { hook: post.hook, caption: post.caption, cta: post.cta, hashtags: post.hashtags },
+    ...recentPosts,
+  ];
+  const style = pickStyle(count + 1, [post.styleKey, ...recentStyles].filter((k): k is string => Boolean(k)), Boolean(materials));
 
-  const gen = await generateSocialPost({
-    product: materials?.ctx ?? null,
-    pillar: post.pillar,
-    daypart: post.daypart,
-    angle: angleAt(slot, count + 1),
-    brandVoice: settings.brandVoice,
-    defaultHashtags: settings.defaultHashtags,
-    bannedWords: settings.bannedWords,
-    recentHooks,
-    recentHashtags,
-    templateGuidance: await pickTemplateGuidance(post.pillar, count + 1),
-  });
+  const gen = await generateUniqueSocialPost(
+    {
+      product: materials?.ctx ?? null,
+      pillar: post.pillar,
+      daypart: post.daypart,
+      angle: angleAt(slot, count + 1),
+      brandVoice: settings.brandVoice,
+      defaultHashtags: settings.defaultHashtags,
+      bannedWords: settings.bannedWords,
+      recentHooks: [post.hook, ...recentHooks],
+      recentHashtags: [...post.hashtags, ...recentHashtags],
+      templateGuidance: await pickTemplateGuidance(post.pillar, count + 1),
+      styleLabel: style.label,
+      styleBrief: style.brief,
+      rotation: count + 1,
+    },
+    corpus,
+  );
   if (!gen.ok) return { ok: false, error: gen.error };
 
   try {
@@ -219,6 +258,7 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
         hashtags: gen.data.hashtags,
         altText: gen.data.altText,
         contentHash: gen.data.contentHash,
+        styleKey: style.key,
         imageUrls: materials?.imageUrls ?? post.imageUrls,
         error: null,
         retryCount: 0,
