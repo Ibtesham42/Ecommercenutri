@@ -74,16 +74,43 @@ const str = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 const strArr = (v: unknown, cap = 20): string[] =>
   Array.isArray(v) ? v.map((x) => str(x)).filter(Boolean).slice(0, cap) : [];
 
-function parseJsonBlock(text: string): unknown {
-  // Prefer an array if present at the top level, else the first object.
-  const arr = text.match(/^\s*\[[\s\S]*\]\s*$/);
-  const match = arr ? arr[0] : text.match(/\{[\s\S]*\}/)?.[0];
-  if (!match) return null;
+function tryParse(s: string): unknown {
   try {
-    return JSON.parse(match);
+    return JSON.parse(s);
   } catch {
     return null;
   }
+}
+
+function parseJsonBlock(text: string): unknown {
+  // Models routinely wrap JSON in ```json fences or add a line of preamble,
+  // and long arrays can arrive truncated (finish_reason: length) — tolerate
+  // all of that instead of silently dropping to the keyless fallback.
+  const cleaned = text.replace(/```(?:json)?/gi, "").trim();
+  const direct = tryParse(cleaned);
+  if (direct !== null) return direct;
+
+  const arrStart = cleaned.indexOf("[");
+  const objStart = cleaned.indexOf("{");
+  const objectFirst = objStart !== -1 && (arrStart === -1 || objStart < arrStart);
+
+  if (objectFirst) {
+    const end = cleaned.lastIndexOf("}");
+    return end > objStart ? tryParse(cleaned.slice(objStart, end + 1)) : null;
+  }
+  if (arrStart !== -1) {
+    const end = cleaned.lastIndexOf("]");
+    if (end > arrStart) {
+      const arr = tryParse(cleaned.slice(arrStart, end + 1));
+      if (arr !== null) return arr;
+    }
+    // Truncated array: cut back to the last complete element and close it.
+    const lastObjEnd = cleaned.lastIndexOf("}");
+    if (lastObjEnd > arrStart) {
+      return tryParse(`${cleaned.slice(arrStart, lastObjEnd + 1)}]`);
+    }
+  }
+  return null;
 }
 
 function clampScore(v: unknown): number {
@@ -121,13 +148,20 @@ async function runModel(
   system: string,
   prompt: string,
   temperature = 0.5,
+  maxOutputTokens = 4096,
 ): Promise<{ text: string; modelId: string } | null> {
   if (!aiAvailable()) return null;
   const settings = await getAISettings();
   const model = getModel(settings.model);
   if (!model) return null;
   try {
-    const { text, usage } = await generateText({ model, system, prompt, temperature });
+    const { text, usage } = await generateText({
+      model,
+      system,
+      prompt,
+      temperature,
+      maxOutputTokens,
+    });
     await recordAIUsage(usage?.totalTokens ?? 0);
     return { text, modelId: settings.model };
   } catch (e) {
@@ -502,7 +536,9 @@ Gap areas to lean into: ${args.gapTopics.join(", ") || "n/a"}
 Topics already suggested recently (do NOT repeat or lightly rephrase):
 ${args.existingTopics.slice(0, 40).map((t) => `- ${t}`).join("\n") || "none"}`;
 
-  const res = await runModel(system, prompt, 0.75);
+  // ~26 scored ideas run ~4.5k output tokens — the 4096 default truncates the
+  // array mid-object (observed in prod), so give this call real headroom.
+  const res = await runModel(system, prompt, 0.75, 8192);
   if (!res) return fallback();
   const arr = parseJsonBlock(res.text);
   if (!Array.isArray(arr)) return fallback();

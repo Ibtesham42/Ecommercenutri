@@ -3,6 +3,19 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [Competitor Intelligence fixes] — 2026-07-12
+
+### Fixed
+- **Daily content ideas silently never generated in production.** The ideas
+  prompt (~26 scored candidates) exceeded Groq's default 4096-token output cap,
+  so the JSON array arrived truncated (`finish_reason: length`), the strict
+  parser rejected it, and the keyless seed fallback exhausted after day one —
+  every cron run burned ~4.5k tokens and produced `ideas: 0`. Now: the ideas
+  call requests up to 8192 output tokens, `parseJsonBlock` tolerates code
+  fences/preamble and salvages a truncated array back to its last complete
+  element, and the idea repeat-avoidance window is scoped to the last 14 days
+  so the fallback seed pool can rotate instead of starving forever.
+
 ## [Competitor Intelligence] — 2026-07-10
 
 Market research inside the AI Marketing hub: learn from the market, never copy.

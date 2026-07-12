@@ -245,7 +245,11 @@ export async function generateDailyIdeas(now: Date, force = false): Promise<numb
       where: { kind: "CONTENT_GAPS" },
       orderBy: { generatedAt: "desc" },
     }),
+    // Repeat-avoidance window: only topics from the last 14 days block reuse.
+    // An all-time window would freeze forever once a day produced nothing
+    // (the keyless seed pool would stay "used" and every batch came up empty).
     prisma.contentIdea.findMany({
+      where: { createdAt: { gte: new Date(now.getTime() - 14 * 24 * 3600 * 1000) } },
       orderBy: { createdAt: "desc" },
       take: 60,
       select: { topic: true },
