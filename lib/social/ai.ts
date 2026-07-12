@@ -36,6 +36,10 @@ export type SocialProductContext = {
 };
 
 export type GeneratedSocialPost = {
+  /** Short on-image headline for the designed post picture (<= 32 chars). */
+  headline: string;
+  /** Optional supporting line under it (<= 40 chars). */
+  support: string;
   hook: string;
   caption: string;
   captionLong: string;
@@ -226,7 +230,25 @@ function fallbackPost(input: GenerateSocialInput): GeneratedSocialPost {
   const altText = product
     ? `${name} from Nutriyet — ${product.categoryName ?? "healthy snack"}.`
     : `Nutriyet — ${label.toLowerCase()} post.`;
+  // Keyless installs still get a DESIGNED image, so the fallback owes the
+  // renderer a headline. Rotated, product-aware, and free of any claim.
+  const headline = pick([
+    "Naturally Rich in Goodness",
+    "Smart Snacking Starts Here",
+    "Clean, Honest Snacking",
+    "Made for Everyday Good",
+    product ? `Why Choose ${product.categoryName ?? "Nutriyet"}?` : "Why Choose Nutriyet?",
+    "Real Food, Nothing Hidden",
+  ]).slice(0, 32);
+  const support = pick([
+    "Roasted, never fried",
+    "Nothing artificial",
+    "Everyday nutrition",
+    "",
+  ]);
   return {
+    headline,
+    support,
     hook,
     caption: stripBannedClaims(caption, input.bannedWords),
     captionLong: stripBannedClaims(captionLong, input.bannedWords),
@@ -251,6 +273,8 @@ function parsePost(text: string): Partial<GeneratedSocialPost> | null {
       Array.isArray(v) ? v.map((x) => (typeof x === "string" ? x : "")).filter(Boolean) : [];
     if (!str(o.caption) && !str(o.hook)) return null;
     return {
+      headline: str(o.headline),
+      support: str(o.support),
       hook: str(o.hook),
       caption: str(o.caption),
       captionLong: str(o.captionLong) || str(o.caption),
@@ -301,7 +325,9 @@ STRICT SAFETY:
 - Every post must be UNIQUE — a different opening pattern, angle and wording from every recent hook listed.
 
 Respond with ONLY a single minified JSON object, no markdown, using EXACTLY these keys:
-{"hook": string, "caption": string, "captionLong": string, "cta": string, "hashtags": string[], "altText": string}
+{"headline": string, "support": string, "hook": string, "caption": string, "captionLong": string, "cta": string, "hashtags": string[], "altText": string}
+- headline: the words PRINTED ON THE IMAGE. <= 32 chars, title case, no hashtags, no emoji, no price, no full stop. It must fit this specific product and post — e.g. "Naturally Rich in Goodness", "Smart Snacking Starts Here", "Why Choose Makhana?", "Premium Bihar Mango". Never reuse a recent headline.
+- support: an optional second line printed under the headline, <= 40 chars (e.g. "Roasted, never fried"). Empty string if the headline says enough — do not pad.
 - hook: the scroll-stopping first line, <= 80 chars, no hashtags, no label prefix.
 - caption: 3-6 short feed lines (the hook can be line 1); the last line is a real invitation to engage.
 - captionLong: a fuller 4-6 sentence version that tells a little more of the story.
@@ -339,7 +365,19 @@ Recent hashtags to avoid overusing: ${recentHashtags.length ? recentHashtags.joi
       return { ok: true, data: fallbackPost(input) };
     }
     const caption = stripBannedClaims(parsed.caption, input.bannedWords);
+    const fb = fallbackPost(input);
+    // The headline is PRINTED on the image, so it has a hard length budget —
+    // an overlong one would be shrunk to unreadability by c_fit. Trim at a word
+    // boundary, and fall back to the rotating pool if the model skipped it.
+    const rawHeadline = stripBannedClaims(parsed.headline || "", input.bannedWords)
+      .replace(/[."]+$/g, "")
+      .trim();
+    const headline = (rawHeadline.length > 32
+      ? rawHeadline.slice(0, 32).replace(/\s+\S*$/, "")
+      : rawHeadline) || fb.headline;
     const data: GeneratedSocialPost = {
+      headline,
+      support: stripBannedClaims(parsed.support || "", input.bannedWords).slice(0, 40),
       hook: stripBannedClaims(parsed.hook || caption.split("\n")[0] || "", input.bannedWords).slice(0, 120),
       caption,
       captionLong: stripBannedClaims(parsed.captionLong || caption, input.bannedWords),
@@ -348,7 +386,7 @@ Recent hashtags to avoid overusing: ${recentHashtags.length ? recentHashtags.joi
         seed: input.rotation ?? 0,
         recent: input.recentHashtags ?? [],
       }),
-      altText: (parsed.altText || fallbackPost(input).altText).slice(0, 160),
+      altText: (parsed.altText || fb.altText).slice(0, 160),
       contentHash: contentHash(caption),
     };
     await recordAIUsage(usage?.totalTokens ?? 0);

@@ -14,6 +14,8 @@ import { slotForPillar, angleAt, weekOfMonth } from "@/lib/social/strategy";
 import { ensureBuiltInSocialTemplates, pickTemplateGuidance } from "@/lib/social/templates";
 import { pickStyle } from "@/lib/social/styles";
 import { COMPARE_WINDOW } from "@/lib/social/uniqueness";
+import { pickDesign, buildDesignedImageUrl } from "@/lib/social/design";
+import { paletteForImage } from "@/lib/social/palette";
 import {
   socialCampaignSchema,
   socialSettingsSchema,
@@ -109,7 +111,10 @@ async function recentCorpus(excludeId?: string) {
     where: excludeId ? { id: { not: excludeId } } : undefined,
     orderBy: { createdAt: "desc" },
     take: COMPARE_WINDOW,
-    select: { hook: true, caption: true, cta: true, hashtags: true, styleKey: true },
+    select: {
+      hook: true, caption: true, cta: true, hashtags: true,
+      styleKey: true, designKey: true,
+    },
   });
   return {
     recentPosts: recent.map((r) => ({
@@ -122,6 +127,34 @@ async function recentCorpus(excludeId?: string) {
     // Duplicates retained on purpose — the tag sanitizer uses frequency.
     recentHashtags: recent.flatMap((r) => r.hashtags),
     recentStyles: recent.map((r) => r.styleKey).filter((k): k is string => Boolean(k)),
+    recentDesigns: recent.map((r) => r.designKey).filter((k): k is string => Boolean(k)),
+  };
+}
+
+/** Design the cover image (colour-harmonised, rotating template). Shared by the
+ *  manual generate + regenerate actions so they match what the planner ships. */
+async function designCover(
+  rawImages: string[],
+  headline: string,
+  support: string,
+  rotation: number,
+  recentDesigns: string[],
+): Promise<{ imageUrls: string[]; designKey: string }> {
+  const design = pickDesign(rotation, recentDesigns);
+  if (!rawImages.length) return { imageUrls: [], designKey: design.key };
+  const palette = await paletteForImage(rawImages[0]);
+  return {
+    imageUrls: [
+      buildDesignedImageUrl({
+        imageUrl: rawImages[0],
+        headline,
+        support,
+        template: design,
+        palette,
+      }),
+      ...rawImages.slice(1),
+    ],
+    designKey: design.key,
   };
 }
 
@@ -153,7 +186,8 @@ export async function generateSocialDraft(
   const slot = slotForPillar(d.pillar);
   const count = await prisma.socialPost.count();
   const angle = d.angle || angleAt(slot, count);
-  const { recentPosts, recentHooks, recentHashtags, recentStyles } = await recentCorpus();
+  const { recentPosts, recentHooks, recentHashtags, recentStyles, recentDesigns } =
+    await recentCorpus();
   const style = pickStyle(count, recentStyles, Boolean(materials));
 
   const gen = await generateUniqueSocialPost(
@@ -176,6 +210,14 @@ export async function generateSocialDraft(
   );
   if (!gen.ok) return { ok: false, error: gen.error };
 
+  const cover = await designCover(
+    materials?.imageUrls ?? [],
+    gen.data.headline,
+    gen.data.support,
+    count,
+    recentDesigns,
+  );
+
   try {
     const created = await prisma.socialPost.create({
       data: {
@@ -191,9 +233,11 @@ export async function generateSocialDraft(
         cta: gen.data.cta,
         hashtags: gen.data.hashtags,
         altText: gen.data.altText,
-        imageUrls: materials?.imageUrls ?? [],
+        imageUrls: cover.imageUrls,
         contentHash: gen.data.contentHash,
         styleKey: style.key,
+        headline: gen.data.headline,
+        designKey: cover.designKey,
       },
     });
     revalidate();
@@ -220,7 +264,8 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
   // Regenerating means "give me something different" — so the post's CURRENT
   // copy is part of the corpus it must differ from, while the other posts are
   // compared without it being counted twice.
-  const { recentPosts, recentHooks, recentHashtags, recentStyles } = await recentCorpus(id);
+  const { recentPosts, recentHooks, recentHashtags, recentStyles, recentDesigns } =
+    await recentCorpus(id);
   const corpus = [
     { hook: post.hook, caption: post.caption, cta: post.cta, hashtags: post.hashtags },
     ...recentPosts,
@@ -247,6 +292,14 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
   );
   if (!gen.ok) return { ok: false, error: gen.error };
 
+  const cover = await designCover(
+    materials?.imageUrls ?? post.imageUrls,
+    gen.data.headline,
+    gen.data.support,
+    count + 1,
+    [post.designKey, ...recentDesigns].filter((k): k is string => Boolean(k)),
+  );
+
   try {
     await prisma.socialPost.update({
       where: { id },
@@ -259,7 +312,9 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
         altText: gen.data.altText,
         contentHash: gen.data.contentHash,
         styleKey: style.key,
-        imageUrls: materials?.imageUrls ?? post.imageUrls,
+        headline: gen.data.headline,
+        designKey: cover.designKey,
+        imageUrls: cover.imageUrls,
         error: null,
         retryCount: 0,
       },

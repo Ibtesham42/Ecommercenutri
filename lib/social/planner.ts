@@ -12,6 +12,8 @@ import {
 import { pickTemplateGuidance } from "@/lib/social/templates";
 import { pickStyle } from "@/lib/social/styles";
 import { COMPARE_WINDOW, type RecentPost } from "@/lib/social/uniqueness";
+import { pickDesign, buildDesignedImageUrl } from "@/lib/social/design";
+import { paletteForImage } from "@/lib/social/palette";
 
 /**
  * The planner turns enabled SocialCampaigns into concrete SocialPost rows for
@@ -172,7 +174,10 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
   const recent = await prisma.socialPost.findMany({
     orderBy: { createdAt: "desc" },
     take: COMPARE_WINDOW,
-    select: { hook: true, caption: true, cta: true, hashtags: true, styleKey: true },
+    select: {
+      hook: true, caption: true, cta: true, hashtags: true,
+      styleKey: true, designKey: true,
+    },
   });
   const recentPosts: RecentPost[] = recent.map((r) => ({
     hook: r.hook,
@@ -184,6 +189,7 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
   // Keep duplicates here — the tag sanitizer uses frequency to spot overuse.
   const recentHashtags = recent.flatMap((r) => r.hashtags);
   const recentStyles = recent.map((r) => r.styleKey).filter((k): k is string => Boolean(k));
+  const recentDesigns = recent.map((r) => r.designKey).filter((k): k is string => Boolean(k));
 
   let planned = 0;
   let skipped = 0;
@@ -273,7 +279,24 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
         continue;
       }
 
-      const imageUrls = pickPostImages(product, settings.carouselEnabled);
+      // Design the cover: colours derived from the product photo itself, and a
+      // template that isn't the one the last posts used. The remaining carousel
+      // frames stay as the plain product photos.
+      const rawImages = pickPostImages(product, settings.carouselEnabled);
+      const design = pickDesign(rotation, recentDesigns);
+      const palette = await paletteForImage(rawImages[0]);
+      const imageUrls = rawImages.length
+        ? [
+            buildDesignedImageUrl({
+              imageUrl: rawImages[0],
+              headline: gen.data.headline,
+              support: gen.data.support,
+              template: design,
+              palette,
+            }),
+            ...rawImages.slice(1),
+          ]
+        : [];
       const status = STATUS_FOR_MODE[c.mode] ?? "PENDING_APPROVAL";
 
       await prisma.socialPost.create({
@@ -294,6 +317,8 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
           imageUrls,
           contentHash: gen.data.contentHash,
           styleKey: style.key,
+          headline: gen.data.headline,
+          designKey: design.key,
           // Always record the intended slot time so the per-slot idempotency
           // guard works for every mode (the publisher only acts on SCHEDULED).
           scheduledFor,
@@ -311,6 +336,7 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
       recentHooks.unshift(gen.data.hook);
       recentHashtags.unshift(...gen.data.hashtags);
       recentStyles.unshift(style.key);
+      recentDesigns.unshift(design.key);
       planned++;
       createdThisRun++;
     }
