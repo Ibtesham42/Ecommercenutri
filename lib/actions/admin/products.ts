@@ -220,6 +220,26 @@ export async function saveProduct(input: unknown): Promise<ProductSaveResult> {
     const keepVariantIds = variants.filter((v) => v.id).map((v) => v.id!);
     const keepImageIds = images.filter((i) => i.id).map((i) => i.id!);
 
+    // Removing a variant that past orders point at trips the Restrict FK on
+    // order lines and would surface as a generic save failure. Name the variant
+    // so the admin knows exactly which row to put back.
+    const removed = await prisma.productVariant.findMany({
+      where: {
+        productId,
+        ...(keepVariantIds.length ? { id: { notIn: keepVariantIds } } : {}),
+        orderItems: { some: {} },
+      },
+      select: { weightLabel: true },
+      take: 3,
+    });
+    if (removed.length > 0) {
+      const labels = removed.map((v) => `"${v.weightLabel}"`).join(", ");
+      return {
+        ok: false,
+        error: `Can't remove the ${labels} variant — it appears in past orders. Set its stock to 0 to retire it instead; the order history needs it to stay.`,
+      };
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.product.update({ where: { id: productId }, data: scalar });
 
@@ -368,6 +388,23 @@ export async function duplicateProduct(
 
 export async function deleteProduct(id: string): Promise<AdminResult> {
   await requirePermission("products");
+
+  // Order lines keep a Restrict FK to product/variant so history survives, but
+  // deleting the product cascades into its variants and trips that FK — the
+  // admin would just see a generic failure. Say what's actually wrong, and
+  // point at the action that does work (deactivate hides it from the store).
+  const ordered = await prisma.orderItem.count({
+    where: { OR: [{ productId: id }, { variant: { productId: id } }] },
+  });
+  if (ordered > 0) {
+    return {
+      ok: false,
+      error: `This product appears in ${ordered} past order line${
+        ordered === 1 ? "" : "s"
+      }, so deleting it would break that order history. Set it to Inactive instead — it disappears from the storefront but the orders stay intact.`,
+    };
+  }
+
   try {
     const product = await prisma.product.delete({
       where: { id },
@@ -401,8 +438,9 @@ export async function toggleProductFlag(
 const PRODUCT_BULK_ACTIONS = ["delete", "activate", "deactivate", "feature", "unfeature"] as const;
 type ProductBulkAction = (typeof PRODUCT_BULK_ACTIONS)[number];
 
-/** Bulk operation over selected products. Hard-deletes (orders keep their snapshots)
- *  or flips isActive/isFeatured. Server-authoritative + permission-checked. */
+/** Bulk operation over selected products. Hard-deletes the ones no order refers
+ *  to (the rest are reported as skipped — see deleteProduct) or flips
+ *  isActive/isFeatured. Server-authoritative + permission-checked. */
 export async function bulkProductAction(
   ids: string[],
   action: ProductBulkAction,
@@ -414,7 +452,32 @@ export async function bulkProductAction(
   try {
     let done = 0;
     if (action === "delete") {
-      const res = await prisma.product.deleteMany({ where: { id: { in: ids } } });
+      // A single ordered product would fail the whole deleteMany (Restrict FK
+      // on order lines) and delete nothing. Drop those from the batch so the
+      // rest still go, and let `skipped` report them.
+      const orderedRows = await prisma.orderItem.findMany({
+        where: {
+          OR: [
+            { productId: { in: ids } },
+            { variant: { productId: { in: ids } } },
+          ],
+        },
+        select: { productId: true, variant: { select: { productId: true } } },
+      });
+      const ordered = new Set(
+        orderedRows.flatMap((r) =>
+          [r.productId, r.variant?.productId].filter((v): v is string => Boolean(v)),
+        ),
+      );
+      const deletable = ids.filter((id) => !ordered.has(id));
+      if (deletable.length === 0) {
+        return {
+          ok: false,
+          error:
+            "Every selected product appears in past orders, so none can be deleted without breaking order history. Deactivate them instead.",
+        };
+      }
+      const res = await prisma.product.deleteMany({ where: { id: { in: deletable } } });
       done = res.count;
     } else {
       const data =
