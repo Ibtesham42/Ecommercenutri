@@ -83,6 +83,16 @@ export async function phoneOtpLoginAction(
     return { ok: false, error: "Enter the 6-digit code we sent you." };
   }
 
+  // Brute-force guard: wrong guesses don't consume the code, so cap verify
+  // attempts per phone AND per caller (5/min each; the code lives 5 minutes).
+  const [byPhone, byIp] = await Promise.all([
+    checkRateLimit(limiters.auth, `otp-verify:${parsed.data.phone}`),
+    checkRateLimit(limiters.auth, `otp-verify:${await clientIdentifier()}`),
+  ]);
+  if (!byPhone.success || !byIp.success) {
+    return { ok: false, error: "Too many attempts. Please wait a minute, then request a fresh code." };
+  }
+
   try {
     await signIn("phone-otp", {
       phone: parsed.data.phone,

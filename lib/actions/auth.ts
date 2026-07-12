@@ -115,7 +115,7 @@ export async function loginAction(
 }
 
 export async function googleSignInAction(callbackUrl?: string) {
-  await signIn("google", { redirectTo: callbackUrl || "/account" });
+  await signIn("google", { redirectTo: safeRedirectPath(callbackUrl, "/account") });
 }
 
 export async function logoutAction() {

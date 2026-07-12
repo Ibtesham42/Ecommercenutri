@@ -19,6 +19,9 @@ function revalidate() {
  * registry order so the layout is unchanged until edited.
  */
 export async function ensureHomeSections(): Promise<void> {
+  // Exported from a "use server" module = publicly invokable; guard even
+  // though the only caller is the (already-guarded) admin homepage editor.
+  await requirePermission("appearance");
   try {
     const existing = await prisma.homeSection.findMany({ select: { key: true } });
     const have = new Set(existing.map((r) => r.key));

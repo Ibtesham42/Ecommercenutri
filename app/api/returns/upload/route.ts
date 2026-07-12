@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { uploadImage, cloudinaryEnabled } from "@/lib/cloudinary";
+import { checkRateLimit, limiters } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -20,6 +21,16 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Uploads aren't configured — paste an image/video URL instead." },
       { status: 400 },
+    );
+  }
+
+  // These are 25 MB files relayed through serverless into Cloudinary quota —
+  // a return needs a handful of proofs, so 5/min per user is generous.
+  const rl = await checkRateLimit(limiters.auth, `returns-upload:${user.id}`);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "You're uploading too quickly — please wait a minute and try again." },
+      { status: 429 },
     );
   }
 
