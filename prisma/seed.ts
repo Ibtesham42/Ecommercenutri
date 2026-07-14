@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 const img = (name: string) =>
-  `https://placehold.co/800x800/e7f6ec/16803c?text=${encodeURIComponent(name)}`;
+  `https://placehold.co/800x800/e3f4ee/00835b?text=${encodeURIComponent(name)}`;
 
 const categories = [
   { name: "Makhana", slug: "makhana", description: "Roasted fox nuts — light, crunchy and protein-rich." },

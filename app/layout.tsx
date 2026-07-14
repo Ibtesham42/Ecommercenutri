@@ -119,7 +119,7 @@ export async function generateViewport(): Promise<Viewport> {
   return {
     themeColor: [
       { media: "(prefers-color-scheme: light)", color: seo.themeColor || "#ffffff" },
-      { media: "(prefers-color-scheme: dark)", color: "#0f1a14" },
+      { media: "(prefers-color-scheme: dark)", color: "#0d1a17" },
     ],
     width: "device-width",
     initialScale: 1,

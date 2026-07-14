@@ -85,8 +85,9 @@ lowercase with `[slug]`/`(group)` · server actions verb-first (`createOrder`).
 - Mobile-first (design at 360px), accessible (semantic HTML, labels, keyboard, focus,
   `aria-*` on icon buttons), theme tokens only (`bg-primary`, `text-muted-foreground`,
   `border`, `accent`) — never hard-code hex. Dark mode via `next-themes`.
-- Brand: calm green `--primary oklch(0.57 0.14 150)`; warm-gold accent (`bg-gold`/
-  `text-gold`) for premium highlights only. Full token sets in `app/globals.css`.
+- Brand: deep pine-teal `--primary oklch(0.55 0.15 168)` (matches the logomark, hue 176);
+  warm-gold accent (`bg-gold`/`text-gold`) for premium highlights only. Full token sets
+  in `app/globals.css`.
 - Premium language: `shadow-elev-1/2/3` (+`hover-lift`), `rounded-xl/2xl`, `animate-fade-up`,
   `Reveal` (`[data-reveal]` scroll-reveal), `.shimmer`, `BlurImage` (blur-up, no CLS),
   `EmptyState`, `skeletons.tsx` + route `loading.tsx`. **All motion is

@@ -54,91 +54,95 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Nutriyet brand palette — fresh nutrition green with warm earthy accents */
+/* Nutriyet brand palette — derived from the logomark's deep pine-teal green
+   (sampled oklch ≈ 0.32L / 0.06C / 176H) with warm gold + earthy accents.
+   Hue 176 (not a generic 150 "grass green") is the actual logo color — every
+   green token in the system shares this hue so the UI reads as one mark. */
 :root {
   /* Warm cream page background — premium grocery feel (~#faf8f4). */
   --background: oklch(0.982 0.007 92);
-  --foreground: oklch(0.18 0.02 150);
-  /* Deep forest-green chrome surface for header/footer/AI cards (~#16241b).
-     Its OWN token so the admin theme (which overrides --primary/--secondary)
-     never changes it — the premium dark chrome stays stable. */
-  --surface-deep: oklch(0.27 0.034 158);
+  --foreground: oklch(0.18 0.02 176);
+  /* Deep pine-teal chrome surface for header/footer/AI cards — matches the
+     logo circle almost exactly. Its OWN token so the admin theme (which
+     overrides --primary/--secondary) never changes it — the premium dark
+     chrome stays stable and always reads as "the logo color". */
+  --surface-deep: oklch(0.3 0.058 176);
   --surface-deep-foreground: oklch(0.95 0.016 120);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 150);
+  --card-foreground: oklch(0.18 0.02 176);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 150);
-  --primary: oklch(0.57 0.14 150);
-  --primary-foreground: oklch(0.985 0.01 150);
-  --secondary: oklch(0.96 0.02 150);
-  --secondary-foreground: oklch(0.3 0.06 150);
-  --muted: oklch(0.97 0.01 140);
-  --muted-foreground: oklch(0.5 0.03 150);
-  --accent: oklch(0.95 0.04 145);
-  --accent-foreground: oklch(0.32 0.08 150);
-  --brand: oklch(0.57 0.14 150);
-  --brand-foreground: oklch(0.985 0.01 150);
+  --popover-foreground: oklch(0.18 0.02 176);
+  --primary: oklch(0.55 0.15 168);
+  --primary-foreground: oklch(0.985 0.01 168);
+  --secondary: oklch(0.96 0.02 168);
+  --secondary-foreground: oklch(0.28 0.06 168);
+  --muted: oklch(0.97 0.01 165);
+  --muted-foreground: oklch(0.5 0.03 168);
+  --accent: oklch(0.94 0.045 165);
+  --accent-foreground: oklch(0.3 0.08 168);
+  --brand: oklch(0.55 0.15 168);
+  --brand-foreground: oklch(0.985 0.01 168);
   /* Premium warm-gold accent — for highlights only (badges, savings, sparkles) */
   --gold: oklch(0.81 0.13 82);
   --gold-foreground: oklch(0.28 0.06 70);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.91 0.01 150);
-  --input: oklch(0.91 0.01 150);
-  --ring: oklch(0.57 0.14 150);
-  --chart-1: oklch(0.65 0.15 145);
-  --chart-2: oklch(0.6 0.12 168);
+  --border: oklch(0.9 0.012 168);
+  --input: oklch(0.9 0.012 168);
+  --ring: oklch(0.55 0.15 168);
+  --chart-1: oklch(0.62 0.16 165);
+  --chart-2: oklch(0.56 0.13 185);
   --chart-3: oklch(0.72 0.14 95);
-  --chart-4: oklch(0.55 0.1 130);
-  --chart-5: oklch(0.5 0.09 195);
+  --chart-4: oklch(0.5 0.11 150);
+  --chart-5: oklch(0.48 0.09 200);
   --radius: 0.8rem;
-  --sidebar: oklch(0.985 0.008 150);
-  --sidebar-foreground: oklch(0.18 0.02 150);
-  --sidebar-primary: oklch(0.57 0.14 150);
-  --sidebar-primary-foreground: oklch(0.985 0.01 150);
-  --sidebar-accent: oklch(0.95 0.04 145);
-  --sidebar-accent-foreground: oklch(0.32 0.08 150);
-  --sidebar-border: oklch(0.91 0.01 150);
-  --sidebar-ring: oklch(0.57 0.14 150);
+  --sidebar: oklch(0.985 0.008 168);
+  --sidebar-foreground: oklch(0.18 0.02 176);
+  --sidebar-primary: oklch(0.55 0.15 168);
+  --sidebar-primary-foreground: oklch(0.985 0.01 168);
+  --sidebar-accent: oklch(0.94 0.045 165);
+  --sidebar-accent-foreground: oklch(0.3 0.08 168);
+  --sidebar-border: oklch(0.9 0.012 168);
+  --sidebar-ring: oklch(0.55 0.15 168);
 }
 
 .dark {
-  --background: oklch(0.16 0.015 155);
-  --foreground: oklch(0.97 0.01 150);
-  --surface-deep: oklch(0.23 0.03 158);
+  --background: oklch(0.16 0.015 176);
+  --foreground: oklch(0.97 0.01 168);
+  --surface-deep: oklch(0.25 0.05 176);
   --surface-deep-foreground: oklch(0.95 0.016 120);
-  --card: oklch(0.21 0.02 155);
-  --card-foreground: oklch(0.97 0.01 150);
-  --popover: oklch(0.21 0.02 155);
-  --popover-foreground: oklch(0.97 0.01 150);
-  --primary: oklch(0.72 0.15 150);
-  --primary-foreground: oklch(0.18 0.03 150);
-  --secondary: oklch(0.28 0.03 155);
-  --secondary-foreground: oklch(0.97 0.01 150);
-  --muted: oklch(0.28 0.03 155);
-  --muted-foreground: oklch(0.72 0.03 150);
-  --accent: oklch(0.32 0.05 150);
-  --accent-foreground: oklch(0.97 0.01 150);
-  --brand: oklch(0.72 0.15 150);
-  --brand-foreground: oklch(0.18 0.03 150);
+  --card: oklch(0.21 0.02 176);
+  --card-foreground: oklch(0.97 0.01 168);
+  --popover: oklch(0.21 0.02 176);
+  --popover-foreground: oklch(0.97 0.01 168);
+  --primary: oklch(0.72 0.15 168);
+  --primary-foreground: oklch(0.18 0.03 168);
+  --secondary: oklch(0.28 0.03 176);
+  --secondary-foreground: oklch(0.97 0.01 168);
+  --muted: oklch(0.28 0.03 176);
+  --muted-foreground: oklch(0.72 0.03 168);
+  --accent: oklch(0.32 0.05 168);
+  --accent-foreground: oklch(0.97 0.01 168);
+  --brand: oklch(0.72 0.15 168);
+  --brand-foreground: oklch(0.18 0.03 168);
   --gold: oklch(0.84 0.13 84);
   --gold-foreground: oklch(0.22 0.05 70);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.72 0.15 150);
-  --chart-1: oklch(0.7 0.15 145);
-  --chart-2: oklch(0.65 0.12 168);
+  --ring: oklch(0.72 0.15 168);
+  --chart-1: oklch(0.7 0.15 165);
+  --chart-2: oklch(0.65 0.12 185);
   --chart-3: oklch(0.75 0.14 95);
-  --chart-4: oklch(0.6 0.1 130);
-  --chart-5: oklch(0.6 0.09 195);
-  --sidebar: oklch(0.21 0.02 155);
-  --sidebar-foreground: oklch(0.97 0.01 150);
-  --sidebar-primary: oklch(0.72 0.15 150);
-  --sidebar-primary-foreground: oklch(0.18 0.03 150);
-  --sidebar-accent: oklch(0.32 0.05 150);
-  --sidebar-accent-foreground: oklch(0.97 0.01 150);
+  --chart-4: oklch(0.6 0.1 150);
+  --chart-5: oklch(0.6 0.09 200);
+  --sidebar: oklch(0.21 0.02 176);
+  --sidebar-foreground: oklch(0.97 0.01 168);
+  --sidebar-primary: oklch(0.72 0.15 168);
+  --sidebar-primary-foreground: oklch(0.18 0.03 168);
+  --sidebar-accent: oklch(0.32 0.05 168);
+  --sidebar-accent-foreground: oklch(0.97 0.01 168);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.72 0.15 150);
+  --sidebar-ring: oklch(0.72 0.15 168);
 }
 
 @layer base {
@@ -207,18 +211,18 @@
 /* Layered, soft elevation — premium depth instead of flat shadows. */
 .shadow-elev-1 {
   box-shadow:
-    0 1px 2px oklch(0.18 0.02 150 / 0.04),
-    0 1px 3px oklch(0.18 0.02 150 / 0.07);
+    0 1px 2px oklch(0.18 0.02 176 / 0.04),
+    0 1px 3px oklch(0.18 0.02 176 / 0.07);
 }
 .shadow-elev-2 {
   box-shadow:
-    0 2px 4px oklch(0.18 0.02 150 / 0.05),
-    0 8px 20px oklch(0.18 0.02 150 / 0.08);
+    0 2px 4px oklch(0.18 0.02 176 / 0.05),
+    0 8px 20px oklch(0.18 0.02 176 / 0.08);
 }
 .shadow-elev-3 {
   box-shadow:
-    0 4px 8px oklch(0.18 0.02 150 / 0.06),
-    0 16px 40px oklch(0.18 0.02 150 / 0.12);
+    0 4px 8px oklch(0.18 0.02 176 / 0.06),
+    0 16px 40px oklch(0.18 0.02 176 / 0.12);
 }
 .dark .shadow-elev-1 {
   box-shadow: 0 1px 3px oklch(0 0 0 / 0.4);
@@ -238,9 +242,9 @@
 .surface-rich {
   background-color: var(--surface-deep);
   background-image:
-    radial-gradient(120% 90% at 85% -20%, oklch(0.42 0.07 155 / 0.55), transparent 55%),
+    radial-gradient(120% 90% at 85% -20%, oklch(0.42 0.07 176 / 0.55), transparent 55%),
     radial-gradient(90% 70% at -10% 115%, oklch(0.72 0.13 85 / 0.1), transparent 60%),
-    linear-gradient(168deg, oklch(0.32 0.045 158) 0%, var(--surface-deep) 55%);
+    linear-gradient(168deg, oklch(0.32 0.05 176) 0%, var(--surface-deep) 55%);
 }
 
 /* Header chrome — light premium brand surface at EVERY breakpoint: warm cream
@@ -260,7 +264,7 @@
 .dark .header-chrome {
   background-image:
     radial-gradient(120% 100% at 100% 0%, oklch(0.72 0.13 85 / 0.05), transparent 55%),
-    linear-gradient(to bottom, oklch(0.3 0.03 155 / 0.5), transparent 75%);
+    linear-gradient(to bottom, oklch(0.3 0.03 176 / 0.5), transparent 75%);
 }
 
 /* Hover lift — pairs with an elevation utility on the element. */
@@ -524,7 +528,7 @@
     transform: translateY(-1px);
     filter: brightness(1.04);
     box-shadow:
-      0 2px 4px oklch(0.18 0.02 150 / 0.05),
+      0 2px 4px oklch(0.18 0.02 176 / 0.05),
       0 6px 20px color-mix(in oklab, var(--glow, var(--primary)) 35%, transparent);
   }
   .btn-rich:active {
@@ -584,7 +588,7 @@
    no reduced-motion gate. */
 .btn-solid {
   box-shadow:
-    0 1px 2px oklch(0.32 0.06 150 / 0.28),
+    0 1px 2px oklch(0.32 0.06 168 / 0.28),
     inset 0 1px 0 oklch(1 0 0 / 0.13);
   transition:
     box-shadow 0.2s ease,
@@ -593,7 +597,7 @@
 .btn-solid:hover {
   filter: brightness(1.06);
   box-shadow:
-    0 4px 14px -2px oklch(0.32 0.06 150 / 0.4),
+    0 4px 14px -2px oklch(0.32 0.06 168 / 0.4),
     inset 0 1px 0 oklch(1 0 0 / 0.16);
 }
 .dark .btn-solid {
@@ -609,8 +613,8 @@
 .cn-toast {
   border-radius: var(--radius-xl);
   box-shadow:
-    0 4px 8px oklch(0.18 0.02 150 / 0.06),
-    0 16px 40px oklch(0.18 0.02 150 / 0.14);
+    0 4px 8px oklch(0.18 0.02 176 / 0.06),
+    0 16px 40px oklch(0.18 0.02 176 / 0.14);
 }
 .dark .cn-toast {
   box-shadow: 0 16px 48px oklch(0 0 0 / 0.6);

@@ -13,20 +13,20 @@ function shell(opts: {
   const { heading, intro, ctaLabel, ctaUrl, outro } = opts;
   return `<!doctype html>
 <html>
-  <body style="margin:0;background:#f4f7f5;font-family:Arial,Helvetica,sans-serif;color:#1a2b22">
+  <body style="margin:0;background:#f4f7f6;font-family:Arial,Helvetica,sans-serif;color:#172b26">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 0">
       <tr><td align="center">
-        <table role="presentation" width="100%" style="max-width:480px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e3ece6">
-          <tr><td style="background:#16803c;padding:20px 28px">
+        <table role="presentation" width="100%" style="max-width:480px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2ece8">
+          <tr><td style="background:#00835b;padding:20px 28px">
             <!--NUTRIYET_BRAND-->
           </td></tr>
           <tr><td style="padding:28px">
-            <h1 style="margin:0 0 12px;font-size:20px;color:#13241c">${heading}</h1>
-            <p style="margin:0 0 20px;font-size:14px;line-height:22px;color:#48584f">${intro}</p>
-            <a href="${ctaUrl}" style="display:inline-block;background:#16803c;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:10px;font-size:14px;font-weight:600">${ctaLabel}</a>
-            <p style="margin:20px 0 0;font-size:12px;line-height:20px;color:#8a978f">${outro ?? "If the button doesn't work, copy and paste this link into your browser:"}<br><a href="${ctaUrl}" style="color:#16803c;word-break:break-all">${ctaUrl}</a></p>
+            <h1 style="margin:0 0 12px;font-size:20px;color:#10241f">${heading}</h1>
+            <p style="margin:0 0 20px;font-size:14px;line-height:22px;color:#475851">${intro}</p>
+            <a href="${ctaUrl}" style="display:inline-block;background:#00835b;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:10px;font-size:14px;font-weight:600">${ctaLabel}</a>
+            <p style="margin:20px 0 0;font-size:12px;line-height:20px;color:#899791">${outro ?? "If the button doesn't work, copy and paste this link into your browser:"}<br><a href="${ctaUrl}" style="color:#00835b;word-break:break-all">${ctaUrl}</a></p>
           </td></tr>
-          <tr><td style="padding:18px 28px;border-top:1px solid #eef3f0;font-size:12px;color:#9aa79f">
+          <tr><td style="padding:18px 28px;border-top:1px solid #eef3f1;font-size:12px;color:#99a7a1">
             © ${new Date().getFullYear()} ${siteConfig.name} · ${siteConfig.contact.email}
           </td></tr>
         </table>
@@ -94,25 +94,25 @@ export function b2bAdminAlertEmail(d: {
   const table = rows
     .map(
       ([k, v]) =>
-        `<tr><td style="padding:6px 12px;font-size:13px;color:#8a978f;width:130px">${k}</td>` +
-        `<td style="padding:6px 12px;font-size:13px;color:#1a2b22;font-weight:600">${esc(v)}</td></tr>`,
+        `<tr><td style="padding:6px 12px;font-size:13px;color:#899791;width:130px">${k}</td>` +
+        `<td style="padding:6px 12px;font-size:13px;color:#172b26;font-weight:600">${esc(v)}</td></tr>`,
     )
     .join("");
   return {
     subject: `New B2B inquiry — ${d.purpose} (${d.businessType})`,
-    html: `<!doctype html><html><body style="margin:0;background:#f4f7f5;font-family:Arial,Helvetica,sans-serif;color:#1a2b22">
+    html: `<!doctype html><html><body style="margin:0;background:#f4f7f6;font-family:Arial,Helvetica,sans-serif;color:#172b26">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 0"><tr><td align="center">
-        <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e3ece6">
-          <tr><td style="background:#16803c;padding:20px 28px"><!--NUTRIYET_BRAND--></td></tr>
+        <table role="presentation" width="100%" style="max-width:560px;background:#fff;border-radius:16px;overflow:hidden;border:1px solid #e2ece8">
+          <tr><td style="background:#00835b;padding:20px 28px"><!--NUTRIYET_BRAND--></td></tr>
           <tr><td style="padding:24px 28px">
-            <h1 style="margin:0 0 6px;font-size:18px;color:#13241c">New B2B business inquiry</h1>
-            <p style="margin:0 0 16px;font-size:13px;color:#48584f">A new wholesale/business inquiry was submitted.</p>
-            <table role="presentation" width="100%" style="border:1px solid #eef3f0;border-radius:10px;border-collapse:separate;overflow:hidden">${table}</table>
-            <p style="margin:16px 0 6px;font-size:13px;color:#8a978f">Message</p>
-            <p style="margin:0;font-size:13px;line-height:20px;color:#1a2b22;white-space:pre-wrap">${esc(d.message)}</p>
-            <p style="margin:18px 0 0;font-size:12px;color:#8a978f">Reply directly to this email to respond to ${esc(d.fullName)}.</p>
+            <h1 style="margin:0 0 6px;font-size:18px;color:#10241f">New B2B business inquiry</h1>
+            <p style="margin:0 0 16px;font-size:13px;color:#475851">A new wholesale/business inquiry was submitted.</p>
+            <table role="presentation" width="100%" style="border:1px solid #eef3f1;border-radius:10px;border-collapse:separate;overflow:hidden">${table}</table>
+            <p style="margin:16px 0 6px;font-size:13px;color:#899791">Message</p>
+            <p style="margin:0;font-size:13px;line-height:20px;color:#172b26;white-space:pre-wrap">${esc(d.message)}</p>
+            <p style="margin:18px 0 0;font-size:12px;color:#899791">Reply directly to this email to respond to ${esc(d.fullName)}.</p>
           </td></tr>
-          <tr><td style="padding:16px 28px;border-top:1px solid #eef3f0;font-size:12px;color:#9aa79f">© ${new Date().getFullYear()} ${siteConfig.name}</td></tr>
+          <tr><td style="padding:16px 28px;border-top:1px solid #eef3f1;font-size:12px;color:#99a7a1">© ${new Date().getFullYear()} ${siteConfig.name}</td></tr>
         </table>
       </td></tr></table></body></html>`,
     text:
@@ -191,26 +191,26 @@ export function orderConfirmationEmail(order: OrderEmailData): Email {
   const rows = order.items
     .map(
       (i) =>
-        `<tr><td style="padding:6px 0;font-size:13px;color:#48584f">${i.productName} <span style="color:#9aa79f">(${i.variantLabel}) × ${i.quantity}</span></td><td align="right" style="padding:6px 0;font-size:13px;color:#13241c;font-weight:600">${formatPrice(i.price * i.quantity)}</td></tr>`,
+        `<tr><td style="padding:6px 0;font-size:13px;color:#475851">${i.productName} <span style="color:#99a7a1">(${i.variantLabel}) × ${i.quantity}</span></td><td align="right" style="padding:6px 0;font-size:13px;color:#10241f;font-weight:600">${formatPrice(i.price * i.quantity)}</td></tr>`,
     )
     .join("");
   const summary = `
-    <table role="presentation" width="100%" style="margin:16px 0;border-top:1px solid #eef3f0;border-bottom:1px solid #eef3f0;padding:8px 0">
+    <table role="presentation" width="100%" style="margin:16px 0;border-top:1px solid #eef3f1;border-bottom:1px solid #eef3f1;padding:8px 0">
       ${rows}
     </table>
-    <table role="presentation" width="100%" style="font-size:13px;color:#48584f">
+    <table role="presentation" width="100%" style="font-size:13px;color:#475851">
       <tr><td>Subtotal</td><td align="right">${formatPrice(order.subtotal)}</td></tr>
-      ${order.discount > 0 ? `<tr><td>Discount</td><td align="right" style="color:#16803c">−${formatPrice(order.discount)}</td></tr>` : ""}
-      <tr><td>Delivery</td><td align="right"${order.shipping === 0 ? ' style="color:#16803c;font-weight:600"' : ""}>${order.shipping === 0 ? "Free Delivery" : formatPrice(order.shipping)}</td></tr>
-      ${order.shipping === 0 && order.shippingSaved > 0 ? `<tr><td colspan="2" align="right" style="font-size:11px;color:#16803c">You saved ${formatPrice(order.shippingSaved)} on shipping</td></tr>` : ""}
+      ${order.discount > 0 ? `<tr><td>Discount</td><td align="right" style="color:#00835b">−${formatPrice(order.discount)}</td></tr>` : ""}
+      <tr><td>Delivery</td><td align="right"${order.shipping === 0 ? ' style="color:#00835b;font-weight:600"' : ""}>${order.shipping === 0 ? "Free Delivery" : formatPrice(order.shipping)}</td></tr>
+      ${order.shipping === 0 && order.shippingSaved > 0 ? `<tr><td colspan="2" align="right" style="font-size:11px;color:#00835b">You saved ${formatPrice(order.shippingSaved)} on shipping</td></tr>` : ""}
       ${order.codFee > 0 ? `<tr><td>Cash on Delivery fee</td><td align="right">${formatPrice(order.codFee)}</td></tr>` : ""}
-      <tr><td style="padding-top:8px;font-weight:700;color:#13241c">Total</td><td align="right" style="padding-top:8px;font-weight:700;color:#13241c">${formatPrice(order.total)}</td></tr>
-      ${order.tax > 0 ? `<tr><td colspan="2" style="padding-top:4px;font-size:11px;color:#9aa79f">Inclusive of GST ${formatPrice(order.tax)}</td></tr>` : ""}
-      ${order.paymentMethod === "COD" ? `<tr><td colspan="2" style="padding-top:4px;font-size:11px;color:#9aa79f">Payment: Cash on Delivery — pay ${formatPrice(order.total)} at delivery</td></tr>` : ""}
+      <tr><td style="padding-top:8px;font-weight:700;color:#10241f">Total</td><td align="right" style="padding-top:8px;font-weight:700;color:#10241f">${formatPrice(order.total)}</td></tr>
+      ${order.tax > 0 ? `<tr><td colspan="2" style="padding-top:4px;font-size:11px;color:#99a7a1">Inclusive of GST ${formatPrice(order.tax)}</td></tr>` : ""}
+      ${order.paymentMethod === "COD" ? `<tr><td colspan="2" style="padding-top:4px;font-size:11px;color:#99a7a1">Payment: Cash on Delivery — pay ${formatPrice(order.total)} at delivery</td></tr>` : ""}
     </table>`;
 
   const invoiceNote = order.invoiceNumber
-    ? `<p style="margin:16px 0 0;font-size:12px;color:#8a978f">Tax invoice <strong>${order.invoiceNumber}</strong> is attached to this email. You can also download it from your order page.</p>`
+    ? `<p style="margin:16px 0 0;font-size:12px;color:#899791">Tax invoice <strong>${order.invoiceNumber}</strong> is attached to this email. You can also download it from your order page.</p>`
     : "";
 
   return {
@@ -504,14 +504,14 @@ export function marketingEmail(data: {
 }): Email {
   const bodyHtml = data.body
     .split(/\n{2,}/)
-    .map((p) => `<p style="margin:0 0 14px;font-size:15px;line-height:24px;color:#3a4a41">${escapeBasic(p).replace(/\n/g, "<br>")}</p>`)
+    .map((p) => `<p style="margin:0 0 14px;font-size:15px;line-height:24px;color:#394a43">${escapeBasic(p).replace(/\n/g, "<br>")}</p>`)
     .join("");
   const image = data.imageUrl
     ? `<tr><td><img src="${data.imageUrl}" alt="" width="480" style="display:block;width:100%;max-width:480px;height:auto"></td></tr>`
     : "";
   const cta =
     data.ctaText && data.ctaUrl
-      ? `<a href="${data.ctaUrl}" style="display:inline-block;margin-top:6px;background:#16803c;color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:10px;font-size:15px;font-weight:700">${escapeBasic(data.ctaText)}</a>`
+      ? `<a href="${data.ctaUrl}" style="display:inline-block;margin-top:6px;background:#00835b;color:#ffffff;text-decoration:none;padding:13px 26px;border-radius:10px;font-size:15px;font-weight:700">${escapeBasic(data.ctaText)}</a>`
       : "";
   const pixel = data.openUrl
     ? `<img src="${data.openUrl}" alt="" width="1" height="1" style="display:block;width:1px;height:1px;opacity:0">`
@@ -519,20 +519,20 @@ export function marketingEmail(data: {
 
   const html = `<!doctype html>
 <html>
-  <body style="margin:0;background:#f4f7f5;font-family:Arial,Helvetica,sans-serif;color:#1a2b22">
+  <body style="margin:0;background:#f4f7f6;font-family:Arial,Helvetica,sans-serif;color:#172b26">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 0">
       <tr><td align="center">
-        <table role="presentation" width="100%" style="max-width:480px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e3ece6">
-          <tr><td style="background:#16803c;padding:18px 28px">
+        <table role="presentation" width="100%" style="max-width:480px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2ece8">
+          <tr><td style="background:#00835b;padding:18px 28px">
             <!--NUTRIYET_BRAND-->
           </td></tr>
           ${image}
           <tr><td style="padding:28px">
-            <h1 style="margin:0 0 14px;font-size:22px;color:#13241c">${escapeBasic(data.title)}</h1>
+            <h1 style="margin:0 0 14px;font-size:22px;color:#10241f">${escapeBasic(data.title)}</h1>
             ${bodyHtml}
             ${cta}
           </td></tr>
-          <tr><td style="padding:18px 28px;border-top:1px solid #eef3f0;font-size:12px;color:#9aa79f">
+          <tr><td style="padding:18px 28px;border-top:1px solid #eef3f1;font-size:12px;color:#99a7a1">
             © ${new Date().getFullYear()} ${siteConfig.name} · ${siteConfig.contact.email}
           </td></tr>
         </table>

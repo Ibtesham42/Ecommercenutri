@@ -81,7 +81,7 @@ function toPreview(v: FormValues): ShowcaseDisplayItem {
     id: "preview",
     title: v.title || "Your product",
     tagline: v.tagline || null,
-    image: v.image || "https://placehold.co/900x900/16803c/ffffff?text=Product",
+    image: v.image || "https://placehold.co/900x900/00835b/ffffff?text=Product",
     imagePng: v.imagePng || null,
     href: "#",
     price: null,

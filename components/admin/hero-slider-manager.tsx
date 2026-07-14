@@ -142,7 +142,7 @@ function toPreview(v: FormValues): HeroSlideView {
     title: v.title || null,
     subtitle: v.subtitle || null,
     description: v.description || null,
-    desktopImage: v.desktopImage || "https://placehold.co/2000x900/16803c/ffffff?text=Slide",
+    desktopImage: v.desktopImage || "https://placehold.co/2000x900/00835b/ffffff?text=Slide",
     mobileImage: v.mobileImage || null,
     ctaText: v.ctaText || null,
     overlay: Number(v.overlay) || 0,
@@ -797,7 +797,7 @@ export function HeroSliderManager({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="hcolor">Button color</Label>
-                <Input id="hcolor" type="text" placeholder="#16803c" {...register("buttonColor")} />
+                <Input id="hcolor" type="text" placeholder="#00835b" {...register("buttonColor")} />
               </div>
             </div>
               </>

@@ -201,7 +201,7 @@ export function resolveSeo(
     language: s(blob.language) || "en",
     publisher: s(blob.publisher) || siteName,
     author: s(blob.author) || siteName,
-    themeColor: s(blob.themeColor) || "#16803c",
+    themeColor: s(blob.themeColor) || "#00835b",
     ogImage,
     twitterImage,
     shareImage,

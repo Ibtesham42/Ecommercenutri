@@ -151,7 +151,7 @@ function ColorInput({
       <div className="flex items-center gap-2">
         <input
           type="color"
-          value={value || "#16803c"}
+          value={value || "#00835b"}
           onChange={(e) => onChange(e.target.value)}
           className="h-9 w-12 shrink-0 rounded border"
           aria-label={`${label} color picker`}

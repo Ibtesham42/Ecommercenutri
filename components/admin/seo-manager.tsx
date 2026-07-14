@@ -188,8 +188,8 @@ export function SeoManager({
                 </Field>
                 <Field label="Theme color">
                   <div className="flex gap-2">
-                    <input type="color" value={form.themeColor || "#16803c"} onChange={(e) => set("themeColor", e.target.value)} className="h-9 w-12 rounded-md border bg-transparent" aria-label="Theme color" />
-                    <Input value={form.themeColor} onChange={(e) => set("themeColor", e.target.value)} placeholder="#16803c" />
+                    <input type="color" value={form.themeColor || "#00835b"} onChange={(e) => set("themeColor", e.target.value)} className="h-9 w-12 rounded-md border bg-transparent" aria-label="Theme color" />
+                    <Input value={form.themeColor} onChange={(e) => set("themeColor", e.target.value)} placeholder="#00835b" />
                   </div>
                 </Field>
               </Row>

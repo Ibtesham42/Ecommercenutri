@@ -230,8 +230,8 @@ export function AppearanceForm({
 
       <Section title="Theme colors" icon={Palette}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <ColorField control={control} name="primaryColor" label="Primary color" fallback="#16803c" />
-          <ColorField control={control} name="secondaryColor" label="Secondary color" fallback="#e7f6ec" />
+          <ColorField control={control} name="primaryColor" label="Primary color" fallback="#00835b" />
+          <ColorField control={control} name="secondaryColor" label="Secondary color" fallback="#e3f4ee" />
         </div>
         <p className="text-xs text-muted-foreground">
           Leave blank to use the default brand palette. Applies across the storefront.

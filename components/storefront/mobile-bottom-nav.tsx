@@ -60,7 +60,7 @@ export function MobileBottomNav() {
             href="/assistant"
             aria-label="Ask Nutriyet AI"
             aria-current={isActive("/assistant") ? "page" : undefined}
-            className="surface-rich -mt-7 grid size-14 place-items-center rounded-full border-4 border-background text-gold shadow-[0_6px_18px_-4px_oklch(0.27_0.034_158/0.45),0_2px_6px_oklch(0.72_0.13_85/0.2)] transition-transform active:scale-95"
+            className="surface-rich -mt-7 grid size-14 place-items-center rounded-full border-4 border-background text-gold shadow-[0_6px_18px_-4px_oklch(0.3_0.058_176/0.45),0_2px_6px_oklch(0.72_0.13_85/0.2)] transition-transform active:scale-95"
           >
             <Sparkles className="size-6" />
           </Link>

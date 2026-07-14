@@ -326,7 +326,7 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
           name: store.siteName || siteConfig.name,
           description: `Order ${orderNumber}`,
           ...(brandLogo ? { image: brandLogo } : {}),
-          themeColor: store.primaryColor || "#16803c",
+          themeColor: store.primaryColor || "#00835b",
           prefill: {
             name: address.fullName,
             email: user.email ?? "",

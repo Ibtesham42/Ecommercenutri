@@ -116,8 +116,8 @@ export const BACKGROUND_SCENE: Record<ShowcaseBackground, {
   backdropTop: string;
   backdropBottom: string;
 }> = {
-  aurora: { envIntensity: 1.0, exposure: 1.1, floorColor: "#1a1a1a", backdropTop: "#e7f6ec", backdropBottom: "#f4fbf6" },
-  mesh: { envIntensity: 1.0, exposure: 1.1, floorColor: "#1a1a1a", backdropTop: "#e9f5ec", backdropBottom: "#eef0fb" },
+  aurora: { envIntensity: 1.0, exposure: 1.1, floorColor: "#1a1a1a", backdropTop: "#e3f4ee", backdropBottom: "#f2faf7" },
+  mesh: { envIntensity: 1.0, exposure: 1.1, floorColor: "#1a1a1a", backdropTop: "#dff2ec", backdropBottom: "#eef0fb" },
   minimal: { envIntensity: 1.1, exposure: 1.15, floorColor: "#e6e6e6", backdropTop: "#f4f5f6", backdropBottom: "#e6e8ea" },
   studio: { envIntensity: 1.0, exposure: 1.05, floorColor: "#cfd0d3", backdropTop: "#ececed", backdropBottom: "#d4d5d8" },
   spotlight: { envIntensity: 0.7, exposure: 1.0, floorColor: "#0a0a0a", backdropTop: "#1f2937", backdropBottom: "#05080b" },

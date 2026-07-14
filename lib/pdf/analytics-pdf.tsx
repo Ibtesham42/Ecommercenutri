@@ -20,10 +20,10 @@ export type AnalyticsReportData = {
   recovery: { label: string; value: string }[];
 };
 
-const GREEN = "#16803c";
-const MUTED = "#6b7a72";
-const BORDER = "#e3ece6";
-const INK = "#13241c";
+const GREEN = "#00835b";
+const MUTED = "#6a7a73";
+const BORDER = "#e2ece8";
+const INK = "#10241f";
 
 const s = StyleSheet.create({
   page: { padding: 36, fontSize: 9, color: INK, fontFamily: "Helvetica" },
