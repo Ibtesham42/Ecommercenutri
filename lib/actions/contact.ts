@@ -36,6 +36,21 @@ export async function submitContactMessage(input: unknown): Promise<ContactResul
     return { ok: false, error: "Too many messages. Please try again in a minute." };
   }
 
+  // Duplicate guard — same email + message within 10 minutes is a re-submit.
+  try {
+    const dupe = await prisma.contactMessage.findFirst({
+      where: {
+        email: d.email,
+        message: d.message,
+        createdAt: { gt: new Date(Date.now() - 10 * 60 * 1000) },
+      },
+      select: { id: true },
+    });
+    if (dupe) return { ok: true };
+  } catch {
+    /* non-fatal — fall through to create */
+  }
+
   try {
     await prisma.contactMessage.create({
       data: { name: d.name, email: d.email, subject, message: d.message },
