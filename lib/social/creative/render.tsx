@@ -100,53 +100,56 @@ function editorial(input: CreativeInput) {
         width: size.width,
         height: size.height,
         display: "flex",
+        flexDirection: "column",
         background: palette.bg,
         padding: PAD,
         fontFamily: SANS,
       }}
     >
-      <div style={{ display: "flex", flexDirection: "column", width: "48%", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-          {content.categoryLabel && <Kicker text={content.categoryLabel} palette={palette} dark={dark} />}
-          <span
-            style={{
-              fontFamily: SERIF,
-              fontWeight: 700,
-              fontSize: 76,
-              lineHeight: 1.04,
-              color: dark ? "#FBF8F2" : palette.ink,
-              letterSpacing: -1,
-            }}
-          >
-            {content.headline}
-          </span>
-          {content.support && (
-            <span style={{ fontFamily: SANS, fontWeight: 500, fontSize: 30, color: withAlpha(palette.ink, 0.72) }}>
-              {content.support}
+      <div style={{ display: "flex", flex: 1, gap: 24 }}>
+        <div style={{ display: "flex", flexDirection: "column", width: "48%", justifyContent: "center", gap: 28 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+            {content.categoryLabel && <Kicker text={content.categoryLabel} palette={palette} dark={dark} />}
+            <span
+              style={{
+                fontFamily: SERIF,
+                fontWeight: 700,
+                fontSize: 76,
+                lineHeight: 1.04,
+                color: dark ? "#FBF8F2" : palette.ink,
+                letterSpacing: -1,
+              }}
+            >
+              {content.headline}
             </span>
-          )}
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <BenefitRow benefits={content.benefits} palette={palette} dark={dark} />
-          <div style={{ display: "flex" }}>
-            <CtaPill text={content.cta} palette={palette} />
+            {content.support && (
+              <span style={{ fontFamily: SANS, fontWeight: 500, fontSize: 30, color: withAlpha(palette.ink, 0.72) }}>
+                {content.support}
+              </span>
+            )}
           </div>
+          <BenefitRow benefits={content.benefits} palette={palette} dark={dark} />
+        </div>
+        <div style={{ display: "flex", width: "52%", alignItems: "center", justifyContent: "center", position: "relative" }}>
+          <div
+            style={{
+              position: "absolute",
+              width: "88%",
+              height: "78%",
+              borderRadius: 32,
+              background: withAlpha(palette.ink, 0.05),
+            }}
+          />
+          {img && <ProductImage src={img} maxWidth={size.width * 0.42} maxHeight={size.height * 0.62} />}
         </div>
       </div>
-      <div style={{ display: "flex", width: "52%", alignItems: "center", justifyContent: "center", position: "relative" }}>
-        <div
-          style={{
-            position: "absolute",
-            width: "88%",
-            height: "78%",
-            borderRadius: 32,
-            background: withAlpha(palette.ink, 0.05),
-          }}
-        />
-        {img && <ProductImage src={img} maxWidth={size.width * 0.42} maxHeight={size.height * 0.62} />}
-      </div>
-      <div style={{ display: "flex", position: "absolute", left: PAD, bottom: PAD }}>
+      {/* A dedicated footer row, not an absolutely-positioned overlay: with a
+          long headline + 5 benefit chips the left column can grow tall enough
+          to collide with an absolute watermark pinned to the corner (verified
+          — it did, illegibly, before this was a flex row). */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <Watermark palette={palette} dark={dark} handle={input.handle} />
+        <CtaPill text={content.cta} palette={palette} />
       </div>
     </div>
   );
@@ -238,8 +241,8 @@ function organicWellness(input: CreativeInput) {
         {img && <ProductImage src={img} maxWidth={size.width * 0.6} maxHeight={size.height * 0.44} />}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 22, zIndex: "1" }}>
-        <GlassCard palette={palette} style={{ padding: "28px 32px" }}>
-          <BenefitRow benefits={content.benefits} palette={palette} />
+        <GlassCard palette={palette} dark={dark} style={{ padding: "28px 32px" }}>
+          <BenefitRow benefits={content.benefits} palette={palette} dark={dark} />
         </GlassCard>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Watermark palette={palette} dark={dark} handle={input.handle} />
@@ -467,8 +470,8 @@ function healthFact(input: CreativeInput) {
           </div>
         )}
       </div>
-      <GlassCard palette={palette} style={{ padding: "30px 34px", gap: 4 }}>
-        <BenefitRow benefits={content.benefits} palette={palette} />
+      <GlassCard palette={palette} dark={dark} style={{ padding: "30px 34px", gap: 4 }}>
+        <BenefitRow benefits={content.benefits} palette={palette} dark={dark} />
       </GlassCard>
       <div style={{ display: "flex", marginTop: 24 }}>
         <CtaPill text={content.cta} palette={palette} />
