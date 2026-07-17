@@ -151,8 +151,12 @@ instead of Cloudinary URL chains:
   could silently stop every OTHER campaign due in the same cron tick.
 - `lib/social/publish.ts#publishDuePosts(now)` — claims `SCHEDULED → PUBLISHING`
   atomically (conditional `updateMany`, so a double-fired cron can't double-post),
-  publishes, records `externalId`/`permalink` or `error`. `publishPostNow(id)`
-  backs the admin "Publish now".
+  publishes, records `externalId`/`permalink` or `error`, auto-retries up to
+  `MAX_RETRIES` (3). When a post fails on its LAST automatic retry (no future
+  cron tick will touch it again), every admin gets an in-app notification
+  (`notifyAdmins`, link to the Failed tab) — before this, an exhausted post
+  just sat FAILED silently until someone happened to check the queue.
+  `publishPostNow(id)` backs the admin "Publish now".
 - `lib/social/instagram.ts#publishToInstagram()` — Meta Graph API: single image
   (`/{ig}/media` container → `/media_publish`) or carousel (N child containers →
   `CAROUSEL` parent → publish). Keyless → mock success. Caption/hashtag capped.
