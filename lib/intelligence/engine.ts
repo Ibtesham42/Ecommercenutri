@@ -341,12 +341,37 @@ export async function runIntelligenceCycle(
     }
   }
 
+  // Each step isolated: the AI calls behind these never throw (runModel
+  // catches and falls back to null), but the DB read/write around them can
+  // (a Neon cold-start P1001, a network blip) — without isolation, one failure
+  // here would abort the whole cycle and skip every step after it, same as
+  // the social planner bug this pattern was copied from fixing.
   const weekKey = istWeekKey(now);
   const monthKey = istMonthKey(now);
-  const weeklyTrends = await ensureTrendsReport(now, weekKey, `week ${weekKey}`, digest);
-  const monthlyTrends = await ensureTrendsReport(now, monthKey, monthLabel(now), digest);
-  const gaps = await ensureGapsReport(now, weekKey, `week ${weekKey}`, digest);
-  const ideas = await generateDailyIdeas(now);
+  let weeklyTrends = false;
+  let monthlyTrends = false;
+  let gaps = false;
+  let ideas = 0;
+  try {
+    weeklyTrends = await ensureTrendsReport(now, weekKey, `week ${weekKey}`, digest);
+  } catch (e) {
+    console.error("[intelligence] weekly trends failed:", e);
+  }
+  try {
+    monthlyTrends = await ensureTrendsReport(now, monthKey, monthLabel(now), digest);
+  } catch (e) {
+    console.error("[intelligence] monthly trends failed:", e);
+  }
+  try {
+    gaps = await ensureGapsReport(now, weekKey, `week ${weekKey}`, digest);
+  } catch (e) {
+    console.error("[intelligence] content gaps failed:", e);
+  }
+  try {
+    ideas = await generateDailyIdeas(now);
+  } catch (e) {
+    console.error("[intelligence] daily ideas failed:", e);
+  }
 
   return { seeded, profilesRefreshed, weeklyTrends, monthlyTrends, gaps, ideas };
 }
