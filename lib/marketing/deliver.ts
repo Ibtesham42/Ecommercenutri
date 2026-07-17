@@ -113,15 +113,22 @@ const ADAPTERS: Record<CampaignChannel, Adapter> = {
 export async function dispatchCampaign(
   campaignId: string,
 ): Promise<{ ok: boolean; sent: number; error?: string }> {
-  const c = await prisma.campaign.findUnique({ where: { id: campaignId } });
-  if (!c) return { ok: false, sent: 0, error: "Campaign not found." };
-  if (c.status === "SENT" || c.status === "SENDING") {
-    return { ok: false, sent: 0, error: "This campaign was already sent." };
-  }
-
-  await prisma.campaign.update({ where: { id: campaignId }, data: { status: "SENDING" } });
-
+  // The whole body is one try/catch (not just the send itself): the initial
+  // lookup + the SENDING status flip are real DB round-trips too (a Neon
+  // cold-start P1001, a network blip), and dispatchDueCampaigns's plain
+  // (non-recurring) branch calls this with no try/catch of its own — if this
+  // function ever threw, that would abort the ENTIRE due-campaigns loop and
+  // skip every other campaign due that tick (the same bug shape already
+  // fixed in the social planner and the intelligence engine this cycle).
   try {
+    const c = await prisma.campaign.findUnique({ where: { id: campaignId } });
+    if (!c) return { ok: false, sent: 0, error: "Campaign not found." };
+    if (c.status === "SENT" || c.status === "SENDING") {
+      return { ok: false, sent: 0, error: "This campaign was already sent." };
+    }
+
+    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "SENDING" } });
+
     const recipients = await resolveAudience(c.segmentType, (c.segmentConfig as SegmentConfig) ?? {});
     let sentCount = 0;
     let delivered = 0;
@@ -143,7 +150,12 @@ export async function dispatchCampaign(
     return { ok: true, sent: delivered };
   } catch (err) {
     console.error("[marketing] dispatch failed:", err);
-    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "FAILED" } });
+    // Best-effort — if the DB itself is what's down, this second call can
+    // fail too; swallow it rather than let a failure INSIDE error recovery
+    // escape and crash the caller's loop anyway.
+    await prisma.campaign
+      .update({ where: { id: campaignId }, data: { status: "FAILED" } })
+      .catch(() => undefined);
     return { ok: false, sent: 0, error: "Dispatch failed." };
   }
 }
