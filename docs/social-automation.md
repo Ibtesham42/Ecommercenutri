@@ -60,15 +60,29 @@ instead of Cloudinary URL chains:
 
 - **`looks.ts`** — the LOOK catalog (`EDITORIAL`, `LUXURY_MINIMAL`,
   `ORGANIC_WELLNESS`, `MODERN_D2C`, `APPLE_MINIMAL`, `RECIPE_EDU`,
-  `HEALTH_FACT`), rotated by `pickLook()` the same way `styles.ts` rotates
-  writing styles — independent of both the content pillar and the content
-  style, so three independent rotations keep the feed from ever repeating.
+  `HEALTH_FACT`, `INFOGRAPHIC`), rotated by `pickLook()` the same way
+  `styles.ts` rotates writing styles — independent of both the content pillar
+  and the content style, so three independent rotations keep the feed from
+  ever repeating. `RECIPE_EDU` is marked `sequential: true` and excluded from
+  the rotation unless the caller passes `sequentialContent: true` (only when
+  the post's content STYLE is `RECIPE`) — it numbers `benefits` as steps
+  ("1. ... 2. ..."), which only reads naturally for an actual serving idea.
+- **`icons.tsx`** — a small hand-drawn icon set (leaf, sparkles, droplet,
+  flame, shield-check, check), NOT lucide-react. lucide's icons rendered
+  completely blank inside satori — its components are `forwardRef`-wrapped
+  and call `useContext` (`LucideProvider`/`LucideContext`), which satori's
+  minimal JSX evaluator doesn't support the way a real DOM render does; it
+  fails silently (no crash, no icon) rather than throwing. Plain functions
+  returning raw `<svg>`/`<path>` elements — no `forwardRef`, no context, no
+  hooks — work natively. Any future icon needs to follow this same pattern,
+  not import from an icon library.
 - **`primitives.tsx`** — the shared design-system pieces every look composes
   differently: `GlassCard` (translucent fill + hairline border + shadow —
   resvg's blur/backdrop-filter support is inconsistent, so "glass" is faked
-  with layering, not real blur), `BenefitChip` (lucide icon + label pill),
-  `CtaPill`, `OrganicBlob` (radial-gradient soft shapes, not `filter:blur`, for
-  the same reason), `Watermark` (typographic wordmark lockup — not a fetched
+  with layering, not real blur), `BenefitChip` / `IconStatCard` (icon + label,
+  pill vs. grid-card treatments), `CtaPill`, `OrganicBlob` (radial-gradient
+  soft shapes, not `filter:blur`, for the same reason), `Watermark`
+  (typographic wordmark lockup + optional connected IG handle — not a fetched
   logo image, so it always renders and never clashes).
 - **`render.tsx`** — one JSX layout function per look, rendered to a PNG via
   `ImageResponse`. Real typography hierarchy (Fraunces/Hanken Grotesk — the

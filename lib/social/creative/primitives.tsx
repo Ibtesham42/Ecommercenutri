@@ -1,7 +1,7 @@
 import type { ReactNode, CSSProperties } from "react";
-import { Leaf, Flame, Droplet, ShieldCheck, Sparkles, Check } from "lucide-react";
 import type { Palette } from "@/lib/social/design";
 import { SERIF, SANS } from "@/lib/social/creative/fonts";
+import { ICONS } from "@/lib/social/creative/icons";
 
 /**
  * Shared layout building blocks for the satori/@vercel/og creative renderer
@@ -14,8 +14,6 @@ import { SERIF, SANS } from "@/lib/social/creative/fonts";
  * the element tree directly (no reconciler), so state/effects are unavailable
  * here — everything is pure props-in, JSX-out.
  */
-
-const ICONS = [Leaf, Sparkles, Droplet, Flame, ShieldCheck, Check];
 
 /** Deterministic icon-per-benefit so the same phrase always gets the same
  *  glyph across regenerations, without needing a lookup table to maintain. */
@@ -100,6 +98,64 @@ export function BenefitChip({
           fontSize: 26,
           color: fg,
           letterSpacing: -0.2,
+        }}
+      >
+        {text}
+      </span>
+    </div>
+  );
+}
+
+/** A grid cell for the INFOGRAPHIC look — a rectangular card (not a pill), icon
+ *  in its own circle above the label, so a 2x2 grid of these reads as a
+ *  reference sheet rather than a row of tags (that's BenefitChip's job). */
+export function IconStatCard({
+  text,
+  index,
+  palette,
+  dark = false,
+}: {
+  text: string;
+  index: number;
+  palette: Palette;
+  dark?: boolean;
+}) {
+  const Icon = iconFor(index, text);
+  const fg = dark ? "#FFFFFF" : palette.ink;
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 14,
+        padding: "26px 28px",
+        borderRadius: 22,
+        width: 420,
+        background: dark ? withAlpha("#FFFFFF", 0.1) : withAlpha("#FFFFFF", 0.68),
+        border: `1px solid ${dark ? withAlpha("#FFFFFF", 0.18) : withAlpha(palette.ink, 0.08)}`,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 52,
+          height: 52,
+          borderRadius: "50%",
+          background: withAlpha(palette.accent, dark ? 0.3 : 0.2),
+        }}
+      >
+        <Icon color={palette.accent} size={26} strokeWidth={2.25} />
+      </div>
+      <span
+        style={{
+          fontFamily: SANS,
+          fontWeight: 700,
+          fontSize: 27,
+          color: fg,
+          letterSpacing: -0.2,
+          lineHeight: 1.15,
         }}
       >
         {text}

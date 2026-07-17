@@ -1,5 +1,6 @@
 import "server-only";
 import https from "node:https";
+import { prisma } from "@/lib/prisma";
 import { cloudinary, cloudinaryEnabled, safeFolder } from "@/lib/cloudinary";
 import { stripTransforms, type Palette } from "@/lib/social/design";
 import { paletteForImage } from "@/lib/social/palette";
@@ -28,9 +29,20 @@ export type ComposeInput = {
   recentLookKeys: string[];
   platform?: PlatformKey;
   handle?: string | null;
+  /** True only when the post's content style is RECIPE — the one case the
+   *  numbered-step RECIPE_EDU look fits (see looks.ts#pickLook). */
+  sequentialContent?: boolean;
 };
 
 export type ComposeResult = { imageUrls: string[]; lookKey: string };
+
+/** The connected IG handle for the creative watermark — optional, so a
+ *  not-yet-connected install still designs posts, just without it. Shared by
+ *  the planner and the admin generate/regenerate actions. */
+export async function resolveSocialHandle(): Promise<string | null> {
+  const account = await prisma.socialAccount.findUnique({ where: { id: "singleton" } });
+  return account?.username ? `@${account.username.replace(/^@/, "")}` : null;
+}
 
 /** A trimmed, fit, rounded-corner cutout of the product photo. `f_png` keeps
  *  the rounded corners genuinely transparent so it sits naturally on whatever
@@ -81,7 +93,7 @@ async function uploadBuffer(buf: Buffer): Promise<string> {
 }
 
 export async function composeCreative(input: ComposeInput): Promise<ComposeResult> {
-  const look = pickLook(input.rotation, input.recentLookKeys);
+  const look = pickLook(input.rotation, input.recentLookKeys, input.sequentialContent);
   const { rawImages } = input;
 
   if (!rawImages.length) return { imageUrls: [], lookKey: look.key };

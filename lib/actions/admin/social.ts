@@ -14,7 +14,7 @@ import { slotForPillar, angleAt, weekOfMonth } from "@/lib/social/strategy";
 import { ensureBuiltInSocialTemplates, pickTemplateGuidance } from "@/lib/social/templates";
 import { pickStyle } from "@/lib/social/styles";
 import { COMPARE_WINDOW } from "@/lib/social/uniqueness";
-import { composeCreative } from "@/lib/social/creative/compose";
+import { composeCreative, resolveSocialHandle } from "@/lib/social/creative/compose";
 import {
   socialCampaignSchema,
   socialSettingsSchema,
@@ -219,6 +219,8 @@ export async function generateSocialDraft(
     },
     rotation: count,
     recentLookKeys: recentDesigns,
+    handle: await resolveSocialHandle(),
+    sequentialContent: style.key === "RECIPE",
   });
 
   try {
@@ -310,6 +312,8 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
     },
     rotation: count + 1,
     recentLookKeys: [post.designKey, ...recentDesigns].filter((k): k is string => Boolean(k)),
+    handle: await resolveSocialHandle(),
+    sequentialContent: style.key === "RECIPE",
   });
 
   try {

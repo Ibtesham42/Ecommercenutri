@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import { ImageResponse } from "next/og";
 import type { Palette } from "@/lib/social/design";
 import { withAlpha } from "@/lib/social/creative/primitives";
-import { GlassCard, BenefitChip, CtaPill, OrganicBlob, Watermark } from "@/lib/social/creative/primitives";
+import { GlassCard, BenefitChip, CtaPill, OrganicBlob, Watermark, IconStatCard } from "@/lib/social/creative/primitives";
 import { SERIF, SANS, loadCreativeFonts } from "@/lib/social/creative/fonts";
 import type { LookKey } from "@/lib/social/creative/looks";
 import type { PlatformSize } from "@/lib/social/creative/platforms";
@@ -477,6 +477,58 @@ function healthFact(input: CreativeInput) {
   );
 }
 
+function infographicGrid(input: CreativeInput) {
+  const { palette, content, size, productImageDataUri: img } = input;
+  const dark = palette.mood === "dark";
+  const stats = content.benefits.slice(0, 4);
+  return (
+    <div
+      style={{
+        width: size.width,
+        height: size.height,
+        display: "flex",
+        flexDirection: "column",
+        background: palette.bg,
+        padding: PAD,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 24 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: 1 }}>
+          {content.categoryLabel && <Kicker text={content.categoryLabel} palette={palette} dark={dark} />}
+          <span
+            style={{
+              fontFamily: SERIF,
+              fontWeight: 700,
+              fontSize: 58,
+              lineHeight: 1.08,
+              color: dark ? "#FBF8F2" : palette.ink,
+              maxWidth: size.width * 0.62,
+            }}
+          >
+            {content.headline}
+          </span>
+        </div>
+        {img && (
+          <div style={{ display: "flex", borderRadius: 24, overflow: "hidden" }}>
+            <ProductImage src={img} maxWidth={size.width * 0.26} maxHeight={size.width * 0.26} />
+          </div>
+        )}
+      </div>
+      <div style={{ display: "flex", flex: 1, alignItems: "center" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
+          {stats.map((s, i) => (
+            <IconStatCard key={s} text={s} index={i} palette={palette} dark={dark} />
+          ))}
+        </div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Watermark palette={palette} dark={dark} handle={input.handle} />
+        <CtaPill text={content.cta} palette={palette} />
+      </div>
+    </div>
+  );
+}
+
 const LAYOUTS: Record<LookKey, (input: CreativeInput) => ReactElement> = {
   EDITORIAL: editorial,
   LUXURY_MINIMAL: luxuryMinimal,
@@ -485,6 +537,7 @@ const LAYOUTS: Record<LookKey, (input: CreativeInput) => ReactElement> = {
   APPLE_MINIMAL: appleMinimal,
   RECIPE_EDU: recipeEdu,
   HEALTH_FACT: healthFact,
+  INFOGRAPHIC: infographicGrid,
 };
 
 /** Render one look to a PNG buffer at the given platform size. */

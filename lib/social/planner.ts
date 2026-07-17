@@ -12,7 +12,7 @@ import {
 import { pickTemplateGuidance } from "@/lib/social/templates";
 import { pickStyle } from "@/lib/social/styles";
 import { COMPARE_WINDOW, type RecentPost } from "@/lib/social/uniqueness";
-import { composeCreative } from "@/lib/social/creative/compose";
+import { composeCreative, resolveSocialHandle } from "@/lib/social/creative/compose";
 
 /**
  * The planner turns enabled SocialCampaigns into concrete SocialPost rows for
@@ -174,6 +174,8 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
   const settings = await getSocialSettings();
   if (!settings.enabled) return { planned: 0, skipped: 0, campaigns: 0 };
 
+  const handle = await resolveSocialHandle();
+
   const campaigns = await prisma.socialCampaign.findMany({ where: { enabled: true } });
   const ist = istParts(now);
   const { start, end } = istDayRange(now);
@@ -317,6 +319,8 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
         },
         rotation,
         recentLookKeys: recentDesigns,
+        handle,
+        sequentialContent: style.key === "RECIPE",
       });
       const status = STATUS_FOR_MODE[c.mode] ?? "PENDING_APPROVAL";
 
