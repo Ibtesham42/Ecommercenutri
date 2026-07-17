@@ -237,7 +237,12 @@ function organicWellness(input: CreativeInput) {
           {content.headline}
         </span>
       </div>
-      <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", zIndex: "1" }}>
+      {/* overflow:hidden — a flex:1 area can be squeezed shorter than the
+          image's own maxHeight budget on a short canvas (verified: without
+          this the product image bled down through the glass card below it
+          on a 1:1 SQUARE canvas). Clipping the image at its own box edge is
+          a far smaller defect than overlapping a sibling illegibly. */}
+      <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", overflow: "hidden", zIndex: "1" }}>
         {img && <ProductImage src={img} maxWidth={size.width * 0.6} maxHeight={size.height * 0.44} />}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 22, zIndex: "1" }}>
@@ -291,7 +296,7 @@ function modernD2c(input: CreativeInput) {
           </div>
         )}
       </div>
-      <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center" }}>
+      <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
         {img && <ProductImage src={img} maxWidth={size.width * 0.58} maxHeight={size.height * 0.42} />}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
@@ -465,7 +470,7 @@ function healthFact(input: CreativeInput) {
           )}
         </div>
         {img && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1, overflow: "hidden" }}>
             <ProductImage src={img} maxWidth={size.width * 0.4} maxHeight={size.height * 0.4} />
           </div>
         )}
