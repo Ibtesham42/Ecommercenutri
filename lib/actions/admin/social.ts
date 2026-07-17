@@ -14,12 +14,7 @@ import { slotForPillar, angleAt, weekOfMonth } from "@/lib/social/strategy";
 import { ensureBuiltInSocialTemplates, pickTemplateGuidance } from "@/lib/social/templates";
 import { pickStyle } from "@/lib/social/styles";
 import { COMPARE_WINDOW } from "@/lib/social/uniqueness";
-import {
-  pickDesign,
-  buildDesignedImageUrl,
-  buildCarouselFrameUrl,
-} from "@/lib/social/design";
-import { paletteForImage } from "@/lib/social/palette";
+import { composeCreative } from "@/lib/social/creative/compose";
 import {
   socialCampaignSchema,
   socialSettingsSchema,
@@ -144,33 +139,6 @@ function generationError(code: string): string {
   return code;
 }
 
-/** Design the cover image (colour-harmonised, rotating template). Shared by the
- *  manual generate + regenerate actions so they match what the planner ships. */
-async function designCover(
-  rawImages: string[],
-  headline: string,
-  support: string,
-  rotation: number,
-  recentDesigns: string[],
-): Promise<{ imageUrls: string[]; designKey: string }> {
-  const design = pickDesign(rotation, recentDesigns);
-  if (!rawImages.length) return { imageUrls: [], designKey: design.key };
-  const palette = await paletteForImage(rawImages[0]);
-  return {
-    imageUrls: [
-      buildDesignedImageUrl({
-        imageUrl: rawImages[0],
-        headline,
-        support,
-        template: design,
-        palette,
-      }),
-      ...rawImages.slice(1).map((u) => buildCarouselFrameUrl(u, palette)),
-    ],
-    designKey: design.key,
-  };
-}
-
 /** Generate a single draft on demand (manual "Generate a post"). */
 export async function generateSocialDraft(
   input: unknown,
@@ -238,13 +206,20 @@ export async function generateSocialDraft(
   );
   if (!gen.ok) return { ok: false, error: generationError(gen.error) };
 
-  const cover = await designCover(
-    materials?.imageUrls ?? [],
-    gen.data.headline,
-    gen.data.support,
-    count,
-    recentDesigns,
-  );
+  const cover = await composeCreative({
+    rawImages: materials?.imageUrls ?? [],
+    content: {
+      headline: gen.data.headline,
+      support: gen.data.support,
+      benefits: gen.data.benefits,
+      cta: gen.data.cta,
+      categoryLabel: materials?.ctx.categoryName ?? null,
+      priceLabel: materials?.ctx.priceLabel ?? null,
+      discountLabel: materials?.ctx.discountLabel ?? null,
+    },
+    rotation: count,
+    recentLookKeys: recentDesigns,
+  });
 
   try {
     const created = await prisma.socialPost.create({
@@ -265,7 +240,8 @@ export async function generateSocialDraft(
         contentHash: gen.data.contentHash,
         styleKey: style.key,
         headline: gen.data.headline,
-        designKey: cover.designKey,
+        benefits: gen.data.benefits,
+        designKey: cover.lookKey,
       },
     });
     revalidate();
@@ -321,13 +297,20 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
   );
   if (!gen.ok) return { ok: false, error: generationError(gen.error) };
 
-  const cover = await designCover(
-    materials?.imageUrls ?? post.imageUrls,
-    gen.data.headline,
-    gen.data.support,
-    count + 1,
-    [post.designKey, ...recentDesigns].filter((k): k is string => Boolean(k)),
-  );
+  const cover = await composeCreative({
+    rawImages: materials?.imageUrls ?? post.imageUrls,
+    content: {
+      headline: gen.data.headline,
+      support: gen.data.support,
+      benefits: gen.data.benefits,
+      cta: gen.data.cta,
+      categoryLabel: materials?.ctx.categoryName ?? null,
+      priceLabel: materials?.ctx.priceLabel ?? null,
+      discountLabel: materials?.ctx.discountLabel ?? null,
+    },
+    rotation: count + 1,
+    recentLookKeys: [post.designKey, ...recentDesigns].filter((k): k is string => Boolean(k)),
+  });
 
   try {
     await prisma.socialPost.update({
@@ -342,7 +325,8 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
         contentHash: gen.data.contentHash,
         styleKey: style.key,
         headline: gen.data.headline,
-        designKey: cover.designKey,
+        benefits: gen.data.benefits,
+        designKey: cover.lookKey,
         imageUrls: cover.imageUrls,
         error: null,
         retryCount: 0,

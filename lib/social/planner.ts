@@ -12,12 +12,7 @@ import {
 import { pickTemplateGuidance } from "@/lib/social/templates";
 import { pickStyle } from "@/lib/social/styles";
 import { COMPARE_WINDOW, type RecentPost } from "@/lib/social/uniqueness";
-import {
-  pickDesign,
-  buildDesignedImageUrl,
-  buildCarouselFrameUrl,
-} from "@/lib/social/design";
-import { paletteForImage } from "@/lib/social/palette";
+import { composeCreative } from "@/lib/social/creative/compose";
 
 /**
  * The planner turns enabled SocialCampaigns into concrete SocialPost rows for
@@ -304,27 +299,25 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
         continue;
       }
 
-      // Design the cover: colours derived from the product photo itself, and a
-      // template that isn't the one the last posts used. The remaining carousel
-      // frames stay as the plain product photos.
+      // Compose the cover: a premium look (typography, cards, badges) rendered
+      // from the product photo's own colours, rotating so it isn't the look
+      // the last posts used. Carousel frames share the cover's canvas —
+      // Instagram crops every item to the FIRST item's aspect.
       const rawImages = pickPostImages(product, settings.carouselEnabled);
-      const design = pickDesign(rotation, recentDesigns);
-      const palette = await paletteForImage(rawImages[0]);
-      const imageUrls = rawImages.length
-        ? [
-            buildDesignedImageUrl({
-              imageUrl: rawImages[0],
-              headline: gen.data.headline,
-              support: gen.data.support,
-              template: design,
-              palette,
-            }),
-            // Frames share the cover's square canvas — Instagram crops a
-            // carousel to the FIRST item's aspect, so a raw 3:4 photo here
-            // would be cropped into the product.
-            ...rawImages.slice(1).map((u) => buildCarouselFrameUrl(u, palette)),
-          ]
-        : [];
+      const { imageUrls, lookKey } = await composeCreative({
+        rawImages,
+        content: {
+          headline: gen.data.headline,
+          support: gen.data.support,
+          benefits: gen.data.benefits,
+          cta: gen.data.cta,
+          categoryLabel: ctx.categoryName,
+          priceLabel: ctx.priceLabel,
+          discountLabel: ctx.discountLabel,
+        },
+        rotation,
+        recentLookKeys: recentDesigns,
+      });
       const status = STATUS_FOR_MODE[c.mode] ?? "PENDING_APPROVAL";
 
       await prisma.socialPost.create({
@@ -346,7 +339,8 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
           contentHash: gen.data.contentHash,
           styleKey: style.key,
           headline: gen.data.headline,
-          designKey: design.key,
+          benefits: gen.data.benefits,
+          designKey: lookKey,
           // Always record the intended slot time so the per-slot idempotency
           // guard works for every mode (the publisher only acts on SCHEDULED).
           scheduledFor,
@@ -365,7 +359,7 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
       recentCtas.unshift(gen.data.cta);
       recentHashtags.unshift(...gen.data.hashtags);
       recentStyles.unshift(style.key);
-      recentDesigns.unshift(design.key);
+      recentDesigns.unshift(lookKey);
       planned++;
       createdThisRun++;
     }

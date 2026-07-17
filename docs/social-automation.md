@@ -50,6 +50,51 @@ call, defensive JSON parse (never `generateObject` — the Groq model has no
 **Uniqueness:** recent hooks + recently-used hashtags are injected into the prompt
 to avoid repetition; exact-duplicate content is rejected via `contentHash` (djb2).
 
+## Creative engine (`lib/social/creative/`)
+
+Post covers used to be a bare product photo with a Cloudinary URL-transform
+text layer on top ("a product photo with text added"). They're now a fully
+composed premium creative rendered with `next/og` (`ImageResponse`, i.e.
+satori + resvg — already a project dependency, used for the OG/favicon images)
+instead of Cloudinary URL chains:
+
+- **`looks.ts`** — the LOOK catalog (`EDITORIAL`, `LUXURY_MINIMAL`,
+  `ORGANIC_WELLNESS`, `MODERN_D2C`, `APPLE_MINIMAL`, `RECIPE_EDU`,
+  `HEALTH_FACT`), rotated by `pickLook()` the same way `styles.ts` rotates
+  writing styles — independent of both the content pillar and the content
+  style, so three independent rotations keep the feed from ever repeating.
+- **`primitives.tsx`** — the shared design-system pieces every look composes
+  differently: `GlassCard` (translucent fill + hairline border + shadow —
+  resvg's blur/backdrop-filter support is inconsistent, so "glass" is faked
+  with layering, not real blur), `BenefitChip` (lucide icon + label pill),
+  `CtaPill`, `OrganicBlob` (radial-gradient soft shapes, not `filter:blur`, for
+  the same reason), `Watermark` (typographic wordmark lockup — not a fetched
+  logo image, so it always renders and never clashes).
+- **`render.tsx`** — one JSX layout function per look, rendered to a PNG via
+  `ImageResponse`. Real typography hierarchy (Fraunces/Hanken Grotesk — the
+  SITE's actual brand fonts, loaded as static WOFF files in `lib/social/fonts/`
+  since satori needs non-variable font data; the old Cloudinary engine had to
+  substitute Playfair/Montserrat because Cloudinary doesn't support Fraunces —
+  that limitation no longer applies). Every satori `<div>` with more than one
+  child needs an explicit `display` (flex/none) or rendering throws.
+- **`platforms.ts`** — per-platform canvas sizes (Feed 1080×1350, Square,
+  Story 1080×1920, Facebook, LinkedIn, Pinterest); the planner/admin currently
+  always render at `FEED`.
+- **`compose.ts`** — the pipeline both the planner and admin actions call:
+  Cloudinary prepares a trimmed/rounded product cutout (`e_trim` + `c_fit` +
+  `r_24` + `f_png` for genuine transparent corners) → fetched server-side
+  (via the classic `https` module, not `fetch`/undici — deliberately, some
+  sandboxed environments have flaky undici connectivity) → embedded as a data
+  URI in the satori tree → rendered → uploaded to Cloudinary
+  (`nutriyet/social/generated`) so `imageUrls` stays a plain public URL like
+  every other post image. Degrades like every other social feature: no
+  Cloudinary configured → ships the plain product photo, exactly like before
+  this engine existed.
+- **On-image content**: the AI (`lib/social/ai.ts`) now also returns
+  `benefits: string[]` (3-5 short badge phrases, grounded in the real product
+  facts the same way `headline`/`support` are — never an invented claim), used
+  as the benefit-chip row / step list on the cover.
+
 ## Data model (`prisma/schema.prisma`)
 
 - **`SocialPost`** — one generated post through its lifecycle (`DRAFT →

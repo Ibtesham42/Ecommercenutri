@@ -41,6 +41,8 @@ export type GeneratedSocialPost = {
   headline: string;
   /** Optional supporting line under it (<= 40 chars). */
   support: string;
+  /** 3-5 short benefit phrases printed as badges on the image (<= 24 chars each). */
+  benefits: string[];
   hook: string;
   caption: string;
   captionLong: string;
@@ -221,6 +223,30 @@ function productFacts(p: SocialProductContext): string {
   return lines.join("\n");
 }
 
+const GENERIC_BENEFITS = ["Everyday Nutrition", "Thoughtfully Made", "Naturally Sourced", "Honest Ingredients"];
+
+/** Short benefit phrases for the on-image badges, from REAL product facts only
+ *  (never invented) — free-text `benefits`/`nutritionFacts` split into badge-
+ *  length phrases. Used for the keyless fallback and as the source the AI
+ *  prompt itself is grounded against. */
+function deriveBenefitPhrases(product: SocialProductContext | null): string[] {
+  const phrases: string[] = [];
+  if (product?.benefits) {
+    for (const raw of product.benefits.split(/[\n•;]+/)) {
+      const t = raw.replace(/^[-*\d.\s]+/, "").trim();
+      if (t && t.length <= 40) phrases.push(t.length > 24 ? t.slice(0, 24).replace(/\s+\S*$/, "") : t);
+    }
+  }
+  if (phrases.length < 3 && product?.nutritionFacts?.length) {
+    for (const f of product.nutritionFacts) {
+      phrases.push(`${f.value} ${f.label}`.slice(0, 24));
+      if (phrases.length >= 5) break;
+    }
+  }
+  if (phrases.length < 3) phrases.push(...GENERIC_BENEFITS);
+  return [...new Set(phrases)].slice(0, 5);
+}
+
 /** Deterministic, safe copy when AI is not configured. Varies the opening and
  *  CTA by a stable hash of the angle+name so keyless posts don't all read alike. */
 function fallbackPost(input: GenerateSocialInput): GeneratedSocialPost {
@@ -292,6 +318,7 @@ function fallbackPost(input: GenerateSocialInput): GeneratedSocialPost {
   return {
     headline,
     support,
+    benefits: deriveBenefitPhrases(product),
     hook,
     caption: stripBannedClaims(caption, input.bannedWords),
     captionLong: stripBannedClaims(captionLong, input.bannedWords),
@@ -318,6 +345,7 @@ function parsePost(text: string): Partial<GeneratedSocialPost> | null {
     return {
       headline: str(o.headline),
       support: str(o.support),
+      benefits: arr(o.benefits),
       hook: str(o.hook),
       caption: str(o.caption),
       captionLong: str(o.captionLong) || str(o.caption),
@@ -371,9 +399,10 @@ STRICT SAFETY:
 - Every post must be UNIQUE — a different opening pattern, angle and wording from every recent hook listed.
 
 Respond with ONLY a single minified JSON object, no markdown, using EXACTLY these keys:
-{"headline": string, "support": string, "hook": string, "caption": string, "captionLong": string, "cta": string, "hashtags": string[], "altText": string}
+{"headline": string, "support": string, "benefits": string[], "hook": string, "caption": string, "captionLong": string, "cta": string, "hashtags": string[], "altText": string}
 - headline: the words PRINTED ON THE IMAGE. <= 32 chars, title case, no hashtags, no emoji, no price, no full stop. It must fit this specific product and post — e.g. "Naturally Rich in Goodness", "Smart Snacking Starts Here", "Why Choose Makhana?", "Premium Bihar Mango". Never reuse a recent headline.
 - support: an optional second line printed under the headline, <= 40 chars (e.g. "Roasted, never fried"). Empty string if the headline says enough — do not pad.
+- benefits: 3-5 short badge phrases printed ON THE IMAGE, <= 24 chars each, title case, no punctuation. Each MUST be traceable to the product facts given (a real ingredient, a real nutrition number, a real category trait) — never an invented health claim. Examples: "12g Protein", "Roasted Not Fried", "No Added Sugar" (only if the facts say so), "Rich in Fibre" (only if given).
 - hook: the scroll-stopping first line, <= 80 chars, no hashtags, no label prefix.
 - caption: 3-6 short feed lines (the hook can be line 1); the last line is a real invitation to engage.
 - captionLong: a fuller 4-6 sentence version that tells a little more of the story.
@@ -424,9 +453,15 @@ Recent hashtags to avoid overusing: ${recentHashtags.length ? recentHashtags.joi
     const headline = (rawHeadline.length > 32
       ? rawHeadline.slice(0, 32).replace(/\s+\S*$/, "")
       : rawHeadline) || fb.headline;
+    const rawBenefits = (parsed.benefits ?? [])
+      .map((b) => stripBannedClaims(b, input.bannedWords).replace(/[."]+$/g, "").trim())
+      .filter(Boolean)
+      .map((b) => (b.length > 24 ? b.slice(0, 24).replace(/\s+\S*$/, "") : b));
+    const benefits = rawBenefits.length >= 3 ? rawBenefits.slice(0, 5) : deriveBenefitPhrases(product);
     const data: GeneratedSocialPost = {
       headline,
       support: stripBannedClaims(parsed.support || "", input.bannedWords).slice(0, 40),
+      benefits,
       hook: stripBannedClaims(parsed.hook || caption.split("\n")[0] || "", input.bannedWords).slice(0, 120),
       caption,
       captionLong: stripBannedClaims(parsed.captionLong || caption, input.bannedWords),

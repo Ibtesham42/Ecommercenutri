@@ -1,28 +1,18 @@
 /**
- * Instagram post image design: colour harmony + rotating premium templates.
+ * Colour harmony for social post creatives: deriving a palette from a product
+ * photo's own dominant colours, never a random or fixed one.
  *
- * Posts used to publish the bare product photo. This composes a designed 1080²
- * square entirely with Cloudinary URL transformations — no serverless image
- * processing, no new dependency, and the product bytes never move.
+ * The old Cloudinary URL-transform compositor (templates, text-layer chains)
+ * lived here too; it has been replaced end-to-end by the satori/@vercel/og
+ * renderer in lib/social/creative/. This module now holds only the colour
+ * maths that both the old and new engines share, plus `stripTransforms`,
+ * which lib/social/creative/compose.ts still uses to get back to a clean
+ * Cloudinary asset before applying its own (trim/fit/round) prep transform.
  *
- * Two rules drive everything:
- *  - Colour is DERIVED from the product photo's own dominant colours (never
- *    random): the canvas is a soft tint of the product's hue, the type is a deep
- *    or light tone of the same family, and contrast is checked, not assumed.
- *  - The product is never covered: every template pads the product into its own
- *    region and places type in the empty space around it.
- *
- * Pure and client-safe (no DB / no Cloudinary SDK) so the admin preview and the
- * publisher build the exact same URL. Dominant colours are fetched server-side
- * (lib/social/palette.ts) and passed in.
- *
- * NOTE: Cloudinary does NOT support our brand serif (Fraunces) — verified
- * against the account. Playfair Display is the closest supported substitute;
- * Montserrat is the supporting sans. Do not swap these without re-probing.
+ * Pure and client-safe (no DB / no Cloudinary SDK) so the admin preview and
+ * the composer can both call `derivePalette` with the same result. Dominant
+ * colours are fetched server-side (lib/social/palette.ts) and passed in.
  */
-
-export const SERIF = "Playfair Display";
-export const SANS = "Montserrat";
 
 export const CANVAS = 1080;
 
@@ -38,9 +28,12 @@ export function hexToRgb(hex: string): Rgb {
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
 }
 
+/** Always `#RRGGBB` — every consumer (CSS-in-JS for the creative renderer,
+ *  Cloudinary URL params) can strip the `#` itself, but only one of those two
+ *  needs to, so the canonical form includes it. */
 export function rgbToHex({ r, g, b }: Rgb): string {
   const c = (v: number) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0");
-  return `${c(r)}${c(g)}${c(b)}`.toUpperCase();
+  return `#${c(r)}${c(g)}${c(b)}`.toUpperCase();
 }
 
 export function rgbToHsl({ r, g, b }: Rgb): Hsl {
@@ -94,11 +87,11 @@ export function contrastRatio(aHex: string, bHex: string): number {
 // ── Palette ──────────────────────────────────────────────────────────────────
 
 export type Palette = {
-  /** Canvas background. */
+  /** Canvas background, `#RRGGBB`. */
   bg: string;
-  /** Headline colour. */
+  /** Headline colour, `#RRGGBB`. */
   ink: string;
-  /** Accent for the kicker / supporting line. */
+  /** Accent for the kicker / supporting line, `#RRGGBB`. */
   accent: string;
   /** How the product photo read: light, dark or colourful. */
   mood: "light" | "dark" | "vivid";
@@ -106,16 +99,16 @@ export type Palette = {
 
 /** Brand fallbacks — used when the photo has no usable colour (or keyless). */
 export const BRAND_PALETTE: Palette = {
-  bg: "F5EFE3", // warm cream
-  ink: "1F3A2E", // deep green
-  accent: "B08542", // gold
+  bg: "#F5EFE3", // warm cream
+  ink: "#1F3A2E", // deep green
+  accent: "#B08542", // gold
   mood: "light",
 };
 
-const GOLD = "B08542";
-const CREAM = "F5EFE3";
-const NEAR_WHITE = "FBF8F2";
-const DEEP_INK = "1B1B1A";
+const GOLD = "#B08542";
+const CREAM = "#F5EFE3";
+const NEAR_WHITE = "#FBF8F2";
+const DEEP_INK = "#1B1B1A";
 
 /**
  * Derive a harmonious palette from the product photo's dominant colours.
@@ -129,7 +122,7 @@ export function derivePalette(colors: [string, number][]): Palette {
 
   const parsed = colors.map(([hex, pct]) => {
     const rgb = hexToRgb(hex);
-    return { hex: hex.replace("#", ""), pct, hsl: rgbToHsl(rgb), lum: relativeLuminance(rgb) };
+    return { hex, pct, hsl: rgbToHsl(rgb), lum: relativeLuminance(rgb) };
   });
 
   // The photo's overall lightness, weighted by how much of the frame each colour
@@ -183,179 +176,13 @@ export function derivePalette(colors: [string, number][]): Palette {
   return { bg, ink, accent, mood: s > 0.5 ? "vivid" : "light" };
 }
 
-// ── Templates ────────────────────────────────────────────────────────────────
-
-export type DesignTemplate = {
-  key: string;
-  label: string;
-  /** Product box (px, within the 1080² canvas) and where it sits. */
-  product: { w: number; h: number; gravity: string; y: number };
-  headline: {
-    font: string;
-    size: number;
-    weight: "bold" | "normal";
-    style?: "italic";
-    gravity: string;
-    x: number;
-    y: number;
-    width: number;
-    align: "left" | "center";
-    uppercase?: boolean;
-    letterSpacing?: number;
-  };
-  /** Optional supporting line (kicker or subtext). */
-  support?: {
-    font: string;
-    size: number;
-    gravity: string;
-    x: number;
-    y: number;
-    width: number;
-    align: "left" | "center";
-    uppercase?: boolean;
-    letterSpacing?: number;
-    useAccent?: boolean;
-  };
-};
-
-/**
- * Layouts differ in product placement, type position, face, scale and casing —
- * so consecutive posts look genuinely different. None of them puts type over the
- * product: the product owns its box, the type owns the space around it.
- */
-export const DESIGN_TEMPLATES: DesignTemplate[] = [
-  {
-    key: "MINIMAL",
-    label: "Minimal",
-    product: { w: 720, h: 640, gravity: "south", y: 90 },
-    headline: {
-      font: SERIF, size: 62, weight: "bold", gravity: "north", x: 0, y: 96,
-      width: 840, align: "center",
-    },
-  },
-  {
-    key: "EDITORIAL",
-    label: "Editorial",
-    product: { w: 620, h: 620, gravity: "south_east", y: 60 },
-    headline: {
-      font: SERIF, size: 58, weight: "bold", gravity: "north_west", x: 80, y: 130,
-      width: 620, align: "left",
-    },
-    support: {
-      font: SANS, size: 26, gravity: "north_west", x: 84, y: 84,
-      width: 600, align: "left", uppercase: true, letterSpacing: 4, useAccent: true,
-    },
-  },
-  {
-    key: "FACT_CARD",
-    label: "Health Fact Card",
-    product: { w: 660, h: 560, gravity: "south", y: 64 },
-    headline: {
-      font: SANS, size: 54, weight: "bold", gravity: "north", x: 0, y: 96,
-      width: 860, align: "center", uppercase: true, letterSpacing: 1,
-    },
-    support: {
-      font: SANS, size: 30, gravity: "north", x: 0, y: 250,
-      width: 760, align: "center", useAccent: true,
-    },
-  },
-  {
-    key: "PRODUCT_FOCUS",
-    label: "Premium Product Focus",
-    product: { w: 860, h: 700, gravity: "center", y: -40 },
-    headline: {
-      font: SANS, size: 40, weight: "bold", gravity: "south", x: 0, y: 90,
-      width: 900, align: "center", uppercase: true, letterSpacing: 6,
-    },
-  },
-  {
-    key: "QUOTE",
-    label: "Quote",
-    product: { w: 420, h: 420, gravity: "south_east", y: 60 },
-    headline: {
-      font: SERIF, size: 64, weight: "normal", style: "italic",
-      gravity: "north_west", x: 80, y: 140, width: 660, align: "left",
-    },
-  },
-  {
-    key: "CLEAN_LIFESTYLE",
-    label: "Clean Lifestyle",
-    product: { w: 560, h: 700, gravity: "west", y: 0 },
-    headline: {
-      font: SERIF, size: 56, weight: "bold", gravity: "east", x: 70, y: -40,
-      width: 420, align: "left",
-    },
-    support: {
-      font: SANS, size: 26, gravity: "east", x: 74, y: 130,
-      width: 400, align: "left", useAccent: true,
-    },
-  },
-];
-
-export const DESIGN_LABEL: Record<string, string> = Object.fromEntries(
-  DESIGN_TEMPLATES.map((t) => [t.key, t.label]),
-);
-
-/** Rotate templates deterministically; never repeat the previous layout. */
-export function pickDesign(rotation: number, recentDesignKeys: string[]): DesignTemplate {
-  const avoid = new Set(recentDesignKeys.slice(0, Math.min(2, DESIGN_TEMPLATES.length - 1)));
-  const start = ((rotation % DESIGN_TEMPLATES.length) + DESIGN_TEMPLATES.length) % DESIGN_TEMPLATES.length;
-  for (let i = 0; i < DESIGN_TEMPLATES.length; i++) {
-    const cand = DESIGN_TEMPLATES[(start + i) % DESIGN_TEMPLATES.length];
-    if (!avoid.has(cand.key)) return cand;
-  }
-  return DESIGN_TEMPLATES[start];
-}
-
-// ── URL composition ──────────────────────────────────────────────────────────
-
-/**
- * Cloudinary text layers are a URL path segment, so any character that is
- * structural in a URL (or in Cloudinary's own transformation grammar) has to go.
- * Commas and slashes break the transformation; % breaks the escape. Double-encode
- * per Cloudinary's rules for text overlays.
- */
-export function encodeOverlayText(text: string): string {
-  const cleaned = text
-    .replace(/[\/,%]/g, " ") // structural in Cloudinary's grammar
-    .replace(/["“”]/g, "") // smart quotes render as boxes in some faces
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 70);
-  return encodeURIComponent(encodeURIComponent(cleaned));
-}
-
-function textLayer(
-  text: string,
-  cfg: {
-    font: string; size: number; weight?: string; style?: string; color: string;
-    gravity: string; x: number; y: number; width: number; align: string;
-    letterSpacing?: number;
-  },
-): string {
-  const font = cfg.font.replace(/\s+/g, "%20");
-  const parts = [font, String(cfg.size)];
-  if (cfg.weight === "bold") parts.push("bold");
-  if (cfg.style === "italic") parts.push("italic");
-  // Letter spacing is part of the FONT SPEC, not a standalone transformation
-  // parameter — `ls_6` is rejected by Cloudinary as an invalid parameter.
-  if (cfg.letterSpacing) parts.push(`letter_spacing_${cfg.letterSpacing}`);
-  const spec = parts.join("_");
-  return [
-    `l_text:${spec}:${encodeOverlayText(text)}`,
-    `co_rgb:${cfg.color}`,
-    `c_fit,w_${cfg.width}`,
-    `g_${cfg.gravity}`,
-    `x_${cfg.x}`,
-    `y_${cfg.y}`,
-  ].join(",");
-}
+// ── Cloudinary URL helpers ───────────────────────────────────────────────────
 
 /**
  * Reduce any Cloudinary delivery URL back to the untransformed asset, so
- * designing is idempotent (a post can be regenerated any number of times without
- * accumulating overlays). Keeps the version + public_id, drops every
- * transformation segment.
+ * preparing a product cutout is idempotent (a post can be regenerated any
+ * number of times without stacking transforms). Keeps the version + public_id,
+ * drops every transformation segment.
  */
 export function stripTransforms(url: string): string {
   const [prefix, rest] = url.split("/upload/");
@@ -371,113 +198,4 @@ export function stripTransforms(url: string): string {
     segments.shift();
   }
   return `${prefix}/upload/${segments.join("/")}`;
-}
-
-export type DesignInput = {
-  imageUrl: string;
-  headline: string;
-  support?: string | null;
-  template: DesignTemplate;
-  palette: Palette;
-};
-
-/**
- * Compose the designed post image as a Cloudinary URL.
- *
- * The chain: trim the product's own border → fit it into the template's box
- * (c_fit never crops or upscales the product) → pad onto the palette canvas →
- * lay the type into the empty space. Non-Cloudinary URLs are returned unchanged,
- * so a pasted external image still publishes (undesigned) rather than breaking.
- */
-export function buildDesignedImageUrl(input: DesignInput): string {
-  const { headline, support, template: t, palette } = input;
-  if (!input.imageUrl.includes("res.cloudinary.com") || !input.imageUrl.includes("/upload/")) {
-    return input.imageUrl;
-  }
-  // Design from the ORIGINAL asset. Regenerating a post feeds back a URL that is
-  // already designed; without this we would stack a second headline on top of
-  // the first. Stripping makes the operation idempotent.
-  const imageUrl = stripTransforms(input.imageUrl);
-
-  const chain: string[] = [
-    // Product: trimmed, fitted into its box, softly rounded, then padded onto
-    // the canvas.
-    //
-    // c_lpad, NOT c_pad — c_pad resizes-then-pads, which scales the fitted
-    // product back UP to fill the canvas and shoves it under the headline.
-    // c_lpad pads without ever enlarging, so the product keeps its box and the
-    // type keeps its empty space.
-    //
-    // r_24 turns the photo's own (usually white) background into a deliberate
-    // rounded card instead of a stray rectangle on the tinted canvas. We do NOT
-    // use e_make_transparent to knock the white out: it works on clean cut-outs
-    // but shreds lifestyle photography (verified — it punched holes straight
-    // through the makhana scene and its pale fox nuts).
-    `e_trim:10`,
-    `c_fit,w_${t.product.w},h_${t.product.h}`,
-    `r_24`,
-    `c_lpad,w_${CANVAS},h_${CANVAS},b_rgb:${palette.bg},g_${t.product.gravity},y_${t.product.y}`,
-  ];
-
-  const head = t.headline.uppercase ? headline.toUpperCase() : headline;
-  chain.push(
-    textLayer(head, {
-      font: t.headline.font,
-      size: t.headline.size,
-      weight: t.headline.weight,
-      style: t.headline.style,
-      color: palette.ink,
-      gravity: t.headline.gravity,
-      x: t.headline.x,
-      y: t.headline.y,
-      width: t.headline.width,
-      align: t.headline.align,
-      letterSpacing: t.headline.letterSpacing,
-    }),
-  );
-
-  if (support && t.support) {
-    const sup = t.support.uppercase ? support.toUpperCase() : support;
-    chain.push(
-      textLayer(sup, {
-        font: t.support.font,
-        size: t.support.size,
-        color: t.support.useAccent ? palette.accent : palette.ink,
-        gravity: t.support.gravity,
-        x: t.support.x,
-        y: t.support.y,
-        width: t.support.width,
-        align: t.support.align,
-        letterSpacing: t.support.letterSpacing,
-      }),
-    );
-  }
-
-  chain.push("f_auto,q_auto");
-  return imageUrl.replace("/upload/", `/upload/${chain.join("/")}/`);
-}
-
-/**
- * A carousel frame that MATCHES the designed cover's canvas.
- *
- * Instagram crops every item in a carousel to the aspect ratio of the FIRST
- * item. Our cover is 1:1, so a raw 3:4 product photo in slot 2 would be
- * centre-cropped by Meta — cutting into the product. Padding each frame onto the
- * same square canvas (never cropping, never upscaling) keeps the whole product
- * visible and makes the carousel look like one set instead of a designed cover
- * followed by loose photos. No type on these — the cover carries the message.
- */
-export function buildCarouselFrameUrl(imageUrl: string, palette: Palette): string {
-  if (!imageUrl.includes("res.cloudinary.com") || !imageUrl.includes("/upload/")) {
-    return imageUrl;
-  }
-  const url = stripTransforms(imageUrl);
-  const chain = [
-    "e_trim:10",
-    "c_fit,w_880,h_880",
-    "r_24",
-    `c_lpad,w_${CANVAS},h_${CANVAS},b_rgb:${palette.bg},g_center`,
-    "f_auto,q_auto",
-  ];
-  return url.replace("/upload/", `/upload/${chain.join("/")}/`);
 }
