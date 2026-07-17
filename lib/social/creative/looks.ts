@@ -79,6 +79,14 @@ export const LOOK_LABEL: Record<LookKey, string> = Object.fromEntries(
   LOOKS.map((l) => [l.key, l.label]),
 ) as Record<LookKey, string>;
 
+/** Look up a look by its stored key — used when re-composing a post after an
+ *  on-image text edit, where the visual style must stay the SAME one already
+ *  shown to the admin, not rotate to something new. Falls back to the first
+ *  look if the stored key is unrecognized (e.g. from a pre-catalog post). */
+export function getLookByKey(key: string | null | undefined): Look {
+  return LOOKS.find((l) => l.key === key) ?? LOOKS[0];
+}
+
 /**
  * Rotate looks deterministically; never repeat either of the last two.
  *

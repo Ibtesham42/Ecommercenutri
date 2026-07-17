@@ -250,122 +250,138 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
       // consecutive posts from reading alike. Never repeats the previous style.
       const style = pickStyle(rotation, recentStyles, true);
 
-      const templateGuidance = await pickTemplateGuidance(slot.pillar, rotation);
-      const gen = await generateUniqueSocialPost(
-        {
-          product: ctx,
-          pillar: slot.pillar,
-          daypart,
-          angle,
-          brandVoice: settings.brandVoice,
-          defaultHashtags: settings.defaultHashtags,
-          bannedWords: settings.bannedWords,
-          recentHooks,
-          recentHashtags,
-          recentCtas,
-          templateGuidance,
-          styleLabel: style.label,
-          styleBrief: style.brief,
-          rotation,
-        },
-        recentPosts,
-      );
-      if (!gen.ok) {
-        // AI_RATE_LIMITED means the model is configured but out of budget. The
-        // slot is deliberately left unplanned: the cron fires every 30 minutes,
-        // so a later pass will fill it with a REAL post rather than persisting
-        // the flat keyless fallback and publishing it as if it were genuine.
-        if (gen.error === "AI_RATE_LIMITED") {
+      // Isolated per-slot: an unexpected failure anywhere in generate/compose/
+      // save (a DB hiccup on create, a Groq outage generateSocialPost didn't
+      // already turn into a friendly result, etc.) used to throw out of the
+      // ENTIRE planDuePosts() call — silently skipping every OTHER campaign
+      // due in the same cron tick, not just this one slot. Now it's confined
+      // to this slot: log with full context, count it as skipped, and let the
+      // loop keep going. The cron retries every 30 min, so the slot recovers
+      // on its own; only the surrounding campaigns should never be blocked by it.
+      try {
+        const templateGuidance = await pickTemplateGuidance(slot.pillar, rotation);
+        const gen = await generateUniqueSocialPost(
+          {
+            product: ctx,
+            pillar: slot.pillar,
+            daypart,
+            angle,
+            brandVoice: settings.brandVoice,
+            defaultHashtags: settings.defaultHashtags,
+            bannedWords: settings.bannedWords,
+            recentHooks,
+            recentHashtags,
+            recentCtas,
+            templateGuidance,
+            styleLabel: style.label,
+            styleBrief: style.brief,
+            rotation,
+          },
+          recentPosts,
+        );
+        if (!gen.ok) {
+          // AI_RATE_LIMITED means the model is configured but out of budget. The
+          // slot is deliberately left unplanned: the cron fires every 30 minutes,
+          // so a later pass will fill it with a REAL post rather than persisting
+          // the flat keyless fallback and publishing it as if it were genuine.
+          if (gen.error === "AI_RATE_LIMITED") {
+            console.warn(
+              `[social] campaign ${c.id} ${daypart}: AI rate-limited — leaving the slot for the next run`,
+            );
+          }
+          skipped++;
+          continue;
+        }
+        if (gen.forced) {
+          // Every retry still clashed. We ship the best candidate rather than
+          // leave the slot empty (the old behaviour), but it's worth knowing.
           console.warn(
-            `[social] campaign ${c.id} ${daypart}: AI rate-limited — leaving the slot for the next run`,
+            `[social] campaign ${c.id} ${daypart}: shipped a post that still echoes a recent ${gen.forced}`,
           );
         }
-        skipped++;
-        continue;
-      }
-      if (gen.forced) {
-        // Every retry still clashed. We ship the best candidate rather than
-        // leave the slot empty (the old behaviour), but it's worth knowing.
-        console.warn(
-          `[social] campaign ${c.id} ${daypart}: shipped a post that still echoes a recent ${gen.forced}`,
-        );
-      }
 
-      // Belt-and-braces: never write a byte-identical caption.
-      const dup = await prisma.socialPost.findFirst({
-        where: { contentHash: gen.data.contentHash },
-        select: { id: true },
-      });
-      if (dup) {
-        skipped++;
-        continue;
-      }
+        // Belt-and-braces: never write a byte-identical caption.
+        const dup = await prisma.socialPost.findFirst({
+          where: { contentHash: gen.data.contentHash },
+          select: { id: true },
+        });
+        if (dup) {
+          skipped++;
+          continue;
+        }
 
-      // Compose the cover: a premium look (typography, cards, badges) rendered
-      // from the product photo's own colours, rotating so it isn't the look
-      // the last posts used. Carousel frames share the cover's canvas —
-      // Instagram crops every item to the FIRST item's aspect.
-      const rawImages = pickPostImages(product, settings.carouselEnabled);
-      const { imageUrls, lookKey } = await composeCreative({
-        rawImages,
-        content: {
-          headline: gen.data.headline,
-          support: gen.data.support,
-          benefits: gen.data.benefits,
-          cta: gen.data.cta,
-          categoryLabel: ctx.categoryName,
-          priceLabel: ctx.priceLabel,
-          discountLabel: ctx.discountLabel,
-        },
-        rotation,
-        recentLookKeys: recentDesigns,
-        handle,
-        sequentialContent: style.key === "RECIPE",
-      });
-      const status = STATUS_FOR_MODE[c.mode] ?? "PENDING_APPROVAL";
+        // Compose the cover: a premium look (typography, cards, badges) rendered
+        // from the product photo's own colours, rotating so it isn't the look
+        // the last posts used. Carousel frames share the cover's canvas —
+        // Instagram crops every item to the FIRST item's aspect. composeCreative
+        // itself never throws (it falls back to the plain photo internally),
+        // but the try/catch here is the backstop for everything else in the slot.
+        const rawImages = pickPostImages(product, settings.carouselEnabled);
+        const { imageUrls, lookKey } = await composeCreative({
+          rawImages,
+          content: {
+            headline: gen.data.headline,
+            support: gen.data.support,
+            benefits: gen.data.benefits,
+            cta: gen.data.cta,
+            categoryLabel: ctx.categoryName,
+            priceLabel: ctx.priceLabel,
+            discountLabel: ctx.discountLabel,
+          },
+          rotation,
+          recentLookKeys: recentDesigns,
+          handle,
+          sequentialContent: style.key === "RECIPE",
+        });
+        const status = STATUS_FOR_MODE[c.mode] ?? "PENDING_APPROVAL";
 
-      await prisma.socialPost.create({
-        data: {
-          platform: c.platforms[0] ?? "INSTAGRAM",
-          status,
-          pillar: slot.pillar,
-          daypart,
-          weekOfMonth: week,
-          productId: product.id,
-          campaignId: c.id,
+        await prisma.socialPost.create({
+          data: {
+            platform: c.platforms[0] ?? "INSTAGRAM",
+            status,
+            pillar: slot.pillar,
+            daypart,
+            weekOfMonth: week,
+            productId: product.id,
+            campaignId: c.id,
+            hook: gen.data.hook,
+            caption: gen.data.caption,
+            captionLong: gen.data.captionLong,
+            cta: gen.data.cta,
+            hashtags: gen.data.hashtags,
+            altText: gen.data.altText,
+            imageUrls,
+            contentHash: gen.data.contentHash,
+            styleKey: style.key,
+            headline: gen.data.headline,
+            support: gen.data.support,
+            benefits: gen.data.benefits,
+            designKey: lookKey,
+            // Always record the intended slot time so the per-slot idempotency
+            // guard works for every mode (the publisher only acts on SCHEDULED).
+            scheduledFor,
+          },
+        });
+
+        // Feed this post back into the in-run corpus so the SECOND slot of the
+        // same run is checked against the first (previously it was not).
+        recentPosts.unshift({
           hook: gen.data.hook,
           caption: gen.data.caption,
-          captionLong: gen.data.captionLong,
           cta: gen.data.cta,
           hashtags: gen.data.hashtags,
-          altText: gen.data.altText,
-          imageUrls,
-          contentHash: gen.data.contentHash,
-          styleKey: style.key,
-          headline: gen.data.headline,
-          benefits: gen.data.benefits,
-          designKey: lookKey,
-          // Always record the intended slot time so the per-slot idempotency
-          // guard works for every mode (the publisher only acts on SCHEDULED).
-          scheduledFor,
-        },
-      });
-
-      // Feed this post back into the in-run corpus so the SECOND slot of the
-      // same run is checked against the first (previously it was not).
-      recentPosts.unshift({
-        hook: gen.data.hook,
-        caption: gen.data.caption,
-        cta: gen.data.cta,
-        hashtags: gen.data.hashtags,
-      });
-      recentHooks.unshift(gen.data.hook);
-      recentCtas.unshift(gen.data.cta);
-      recentHashtags.unshift(...gen.data.hashtags);
-      recentStyles.unshift(style.key);
-      recentDesigns.unshift(lookKey);
-      planned++;
-      createdThisRun++;
+        });
+        recentHooks.unshift(gen.data.hook);
+        recentCtas.unshift(gen.data.cta);
+        recentHashtags.unshift(...gen.data.hashtags);
+        recentStyles.unshift(style.key);
+        recentDesigns.unshift(lookKey);
+        planned++;
+        createdThisRun++;
+      } catch (err) {
+        console.error(`[social] campaign ${c.id} ${daypart} (product ${product.id}) failed to plan:`, err);
+        skipped++;
+      }
     }
 
     await prisma.socialCampaign.update({

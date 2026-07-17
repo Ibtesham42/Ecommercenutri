@@ -76,6 +76,14 @@ export const socialPostEditSchema = z.object({
   hashtags: z.array(z.string().trim()).max(30).default([]),
   altText: z.string().trim().max(200).default(""),
   imageUrls: z.array(z.string().url()).max(10).default([]),
+  // On-image text — printed INTO the creative by lib/social/creative, not a
+  // plain DB field like caption. Changing these re-renders the cover so the
+  // image always matches what's stored (see updateSocialPost).
+  headline: z.string().trim().max(32).optional().default(""),
+  support: z.string().trim().max(40).optional().default(""),
+  // Publish schedule. Nullable: clearing it un-schedules a SCHEDULED post back
+  // to a draft-like state without a fixed time (the approve flow will re-set it).
+  scheduledFor: z.coerce.date().optional().nullable(),
 });
 export type SocialPostEditInput = z.infer<typeof socialPostEditSchema>;
 

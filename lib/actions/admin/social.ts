@@ -242,6 +242,7 @@ export async function generateSocialDraft(
         contentHash: gen.data.contentHash,
         styleKey: style.key,
         headline: gen.data.headline,
+        support: gen.data.support,
         benefits: gen.data.benefits,
         designKey: cover.lookKey,
       },
@@ -329,6 +330,7 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
         contentHash: gen.data.contentHash,
         styleKey: style.key,
         headline: gen.data.headline,
+        support: gen.data.support,
         benefits: gen.data.benefits,
         designKey: cover.lookKey,
         imageUrls: cover.imageUrls,
@@ -352,6 +354,60 @@ export async function updateSocialPost(input: unknown): Promise<AdminResult> {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid post." };
   }
   const d = parsed.data;
+
+  const post = await prisma.socialPost.findUnique({ where: { id: d.id } });
+  if (!post) return { ok: false, error: "Post not found." };
+  if (post.status === "PUBLISHED") return { ok: false, error: "A published post can't be changed." };
+
+  // headline/support are printed INTO the image by lib/social/creative, not a
+  // plain caption field — saving new text without re-rendering would leave
+  // the image showing the OLD words. Recompose in the SAME look the admin is
+  // already looking at (forceLookKey) so only the text changes, not the style.
+  // Default to the OLD text/image — only advance to the new text once a
+  // re-render actually succeeds, so the DB never claims a headline the image
+  // doesn't show.
+  let imageUrls = d.imageUrls;
+  let designKey = post.designKey;
+  let headline = post.headline ?? "";
+  let support = post.support ?? "";
+  const wantedHeadline = d.headline || post.headline || "";
+  const wantedSupport = d.support || post.support || "";
+  const textChanged = wantedHeadline !== (post.headline ?? "") || wantedSupport !== (post.support ?? "");
+  if (textChanged && post.productId) {
+    try {
+      const settings = await getSocialSettings();
+      const materials = await buildSocialMaterials(post.productId, settings.carouselEnabled);
+      if (materials?.imageUrls.length) {
+        const cover = await composeCreative({
+          rawImages: materials.imageUrls,
+          content: {
+            headline: wantedHeadline,
+            support: wantedSupport,
+            benefits: post.benefits,
+            cta: d.cta,
+            categoryLabel: materials.ctx.categoryName,
+            priceLabel: materials.ctx.priceLabel,
+            discountLabel: materials.ctx.discountLabel,
+          },
+          rotation: 0,
+          recentLookKeys: [],
+          forceLookKey: post.designKey ?? undefined,
+          handle: await resolveSocialHandle(),
+        });
+        imageUrls = cover.imageUrls;
+        designKey = cover.lookKey;
+        headline = wantedHeadline;
+        support = wantedSupport;
+      }
+    } catch (e) {
+      // Re-render failed (Cloudinary hiccup, etc.) — the catch above already
+      // defaulted headline/support/imageUrls back to the OLD values, so the
+      // caption/hashtag changes below still save without creating a
+      // text-vs-image mismatch.
+      console.error(`[social] updateSocialPost: re-render failed for ${d.id}, keeping existing image:`, e);
+    }
+  }
+
   try {
     await prisma.socialPost.update({
       where: { id: d.id },
@@ -362,13 +418,65 @@ export async function updateSocialPost(input: unknown): Promise<AdminResult> {
         cta: d.cta,
         hashtags: d.hashtags,
         altText: d.altText,
-        imageUrls: d.imageUrls,
+        imageUrls,
+        headline,
+        support,
+        designKey,
+        ...(d.scheduledFor !== undefined ? { scheduledFor: d.scheduledFor } : {}),
       },
     });
     revalidate();
     return { ok: true };
   } catch {
     return { ok: false, error: "Couldn't save the post." };
+  }
+}
+
+/** Regenerate ONLY the cover's visual design — a new look, same words. For
+ *  when the admin likes the copy but wants a different creative treatment. */
+export async function regenerateSocialImage(id: string): Promise<AdminResult> {
+  await requirePermission("social");
+  const post = await prisma.socialPost.findUnique({ where: { id } });
+  if (!post) return { ok: false, error: "Post not found." };
+  if (post.status === "PUBLISHED") return { ok: false, error: "A published post can't be changed." };
+  if (!post.productId) return { ok: false, error: "This post has no product to source a new image from." };
+
+  const settings = await getSocialSettings();
+  const materials = await buildSocialMaterials(post.productId, settings.carouselEnabled);
+  if (!materials?.imageUrls.length) {
+    return { ok: false, error: "That product has no photo to design from." };
+  }
+
+  const { recentDesigns } = await recentCorpus(id);
+  const count = await prisma.socialPost.count();
+
+  try {
+    const cover = await composeCreative({
+      rawImages: materials.imageUrls,
+      content: {
+        headline: post.headline ?? "",
+        support: post.support ?? "",
+        benefits: post.benefits,
+        cta: post.cta,
+        categoryLabel: materials.ctx.categoryName,
+        priceLabel: materials.ctx.priceLabel,
+        discountLabel: materials.ctx.discountLabel,
+      },
+      rotation: count + 1,
+      // Never re-roll the SAME look the post already has.
+      recentLookKeys: [post.designKey, ...recentDesigns].filter((k): k is string => Boolean(k)),
+      handle: await resolveSocialHandle(),
+      sequentialContent: post.styleKey === "RECIPE",
+    });
+    await prisma.socialPost.update({
+      where: { id },
+      data: { imageUrls: cover.imageUrls, designKey: cover.lookKey },
+    });
+    revalidate();
+    return { ok: true };
+  } catch (e) {
+    console.error(`[social] regenerateSocialImage failed for ${id}:`, e);
+    return { ok: false, error: "Couldn't generate a new image right now — please try again shortly." };
   }
 }
 

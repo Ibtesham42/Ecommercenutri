@@ -1512,6 +1512,7 @@ model SocialPost {
   contentHash String // dedup / uniqueness guard
   styleKey    String? // content style (lib/social/styles.ts) — drives no-repeat rotation
   headline    String? // on-image headline (lib/social/creative)
+  support     String? // on-image subhead, printed under the headline (lib/social/creative)
   designKey   String? // creative look used (lib/social/creative/looks.ts)
   benefits    String[]            @default([]) // on-image benefit badges (lib/social/creative)
   // Scheduling + publish results

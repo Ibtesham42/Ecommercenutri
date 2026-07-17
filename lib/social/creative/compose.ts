@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { cloudinary, cloudinaryEnabled, safeFolder } from "@/lib/cloudinary";
 import { stripTransforms, type Palette } from "@/lib/social/design";
 import { paletteForImage } from "@/lib/social/palette";
-import { pickLook, type LookKey } from "@/lib/social/creative/looks";
+import { pickLook, getLookByKey, type LookKey } from "@/lib/social/creative/looks";
 import { PLATFORM_SIZES, DEFAULT_PLATFORM, type PlatformKey } from "@/lib/social/creative/platforms";
 import { renderCreative, renderCarouselFrame, type CreativeContent } from "@/lib/social/creative/render";
 
@@ -32,6 +32,11 @@ export type ComposeInput = {
   /** True only when the post's content style is RECIPE — the one case the
    *  numbered-step RECIPE_EDU look fits (see looks.ts#pickLook). */
   sequentialContent?: boolean;
+  /** Re-render in this EXACT look instead of rotating to a new one — used when
+   *  an admin edits the on-image text (headline/support/benefits) on an
+   *  existing post: the words change, but the visual style the admin already
+   *  saw shouldn't jump to something else. */
+  forceLookKey?: string;
 };
 
 export type ComposeResult = { imageUrls: string[]; lookKey: string };
@@ -93,7 +98,9 @@ async function uploadBuffer(buf: Buffer): Promise<string> {
 }
 
 export async function composeCreative(input: ComposeInput): Promise<ComposeResult> {
-  const look = pickLook(input.rotation, input.recentLookKeys, input.sequentialContent);
+  const look = input.forceLookKey
+    ? getLookByKey(input.forceLookKey)
+    : pickLook(input.rotation, input.recentLookKeys, input.sequentialContent);
   const { rawImages } = input;
 
   if (!rawImages.length) return { imageUrls: [], lookKey: look.key };
@@ -105,24 +112,47 @@ export async function composeCreative(input: ComposeInput): Promise<ComposeResul
   }
 
   const size = PLATFORM_SIZES[input.platform ?? DEFAULT_PLATFORM];
-  const palette: Palette = await paletteForImage(rawImages[0]);
 
-  const coverCutout = await toDataUri(cutoutUrl(rawImages[0], Math.round(size.width * 0.72), Math.round(size.height * 0.6)));
-  const coverBuf = await renderCreative(look.key as LookKey, {
-    productImageDataUri: coverCutout,
-    palette,
-    content: input.content,
-    size,
-    handle: input.handle,
-  });
-  const imageUrls = [await uploadBuffer(coverBuf)];
+  // The cover is the one image every post needs. Any failure anywhere in this
+  // chain (palette lookup, satori rendering, the Cloudinary upload itself —
+  // all real, observed failure modes: a Cloudinary outage, a network blip, a
+  // malformed source image) used to throw all the way out of this function,
+  // which meant a single bad product photo could abort an entire planner run
+  // (every OTHER campaign due in that cron tick silently never got planned)
+  // or surface as a raw unhandled error in the admin "Generate" action. Now it
+  // degrades to the plain product photo(s) — exactly the keyless fallback
+  // above — so a transient failure costs a nicer cover, never the post.
+  try {
+    const palette: Palette = await paletteForImage(rawImages[0]);
+    const coverCutout = await toDataUri(cutoutUrl(rawImages[0], Math.round(size.width * 0.72), Math.round(size.height * 0.6)));
+    const coverBuf = await renderCreative(look.key as LookKey, {
+      productImageDataUri: coverCutout,
+      palette,
+      content: input.content,
+      size,
+      handle: input.handle,
+    });
+    const imageUrls = [await uploadBuffer(coverBuf)];
 
-  for (const raw of rawImages.slice(1)) {
-    const frameCutout = await toDataUri(cutoutUrl(raw, Math.round(size.width * 0.8), Math.round(size.height * 0.8)));
-    if (!frameCutout) continue; // fetch failed — drop the frame rather than fail the whole post
-    const frameBuf = await renderCarouselFrame(frameCutout, palette, size, input.handle);
-    imageUrls.push(await uploadBuffer(frameBuf));
+    for (const raw of rawImages.slice(1)) {
+      // A single carousel frame failing (fetch/render/upload) shouldn't lose
+      // the cover we already have — skip just that frame.
+      try {
+        const frameCutout = await toDataUri(cutoutUrl(raw, Math.round(size.width * 0.8), Math.round(size.height * 0.8)));
+        if (!frameCutout) continue; // fetch failed — drop the frame rather than fail the whole post
+        const frameBuf = await renderCarouselFrame(frameCutout, palette, size, input.handle);
+        imageUrls.push(await uploadBuffer(frameBuf));
+      } catch (err) {
+        console.error(`[social] carousel frame compose failed, skipping frame ${raw}:`, err);
+      }
+    }
+
+    return { imageUrls, lookKey: look.key };
+  } catch (err) {
+    console.error(
+      `[social] creative compose failed (look=${look.key}, cover=${rawImages[0]}) — shipping the plain product photo instead:`,
+      err,
+    );
+    return { imageUrls: rawImages, lookKey: look.key };
   }
-
-  return { imageUrls, lookKey: look.key };
 }

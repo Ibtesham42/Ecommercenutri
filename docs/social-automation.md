@@ -103,11 +103,22 @@ instead of Cloudinary URL chains:
   (`nutriyet/social/generated`) so `imageUrls` stays a plain public URL like
   every other post image. Degrades like every other social feature: no
   Cloudinary configured → ships the plain product photo, exactly like before
-  this engine existed.
+  this engine existed. **Any failure anywhere in the render/upload chain
+  (Cloudinary outage, network blip, malformed source image) is caught inside
+  `composeCreative` itself** and degrades to the same plain-photo fallback
+  rather than throwing — a transient failure costs a nicer cover, never the
+  post. A single carousel frame failing doesn't lose the cover already built.
+  `forceLookKey` re-renders in an EXACT stored look instead of rotating — used
+  when an admin edits the on-image text on an existing post, so only the
+  words change, not the visual style.
 - **On-image content**: the AI (`lib/social/ai.ts`) now also returns
   `benefits: string[]` (3-5 short badge phrases, grounded in the real product
   facts the same way `headline`/`support` are — never an invented claim), used
-  as the benefit-chip row / step list on the cover.
+  as the benefit-chip row / step list on the cover. `headline` and `support`
+  are persisted on `SocialPost` (not just rendered into the pixels) so an
+  editor can see and change them later — editing either re-renders the cover
+  via `forceLookKey` rather than leaving the stored text out of sync with
+  what the image actually shows.
 
 ## Data model (`prisma/schema.prisma`)
 
@@ -133,7 +144,11 @@ instead of Cloudinary URL chains:
   and today's weekday, fills the morning/evening slots (up to `maxPerDay`). IST-
   aware scheduling, product + angle rotation, recent-content injection. Idempotent:
   never a second post per campaign+daypart+IST-day; skips duplicate `contentHash`.
-  Status derives from the campaign `mode`.
+  Status derives from the campaign `mode`. **Each slot's generate→compose→save
+  is wrapped in its own try/catch** — an unexpected failure for one campaign
+  (a Cloudinary hiccup, a DB blip) is logged with context and counted as
+  `skipped`, but never aborts the rest of the run; before this, one bad slot
+  could silently stop every OTHER campaign due in the same cron tick.
 - `lib/social/publish.ts#publishDuePosts(now)` — claims `SCHEDULED → PUBLISHING`
   atomically (conditional `updateMany`, so a double-fired cron can't double-post),
   publishes, records `externalId`/`permalink` or `error`. `publishPostNow(id)`
@@ -162,6 +177,17 @@ publish/reject/delete + bulk), **Scheduled**, **Published**, **Failed**,
 **Campaigns**, **Analytics** (published-by-pillar, best time, top products,
 engagement), **Templates**, **Settings**. Actions in `lib/actions/admin/social.ts`
 return `AdminResult` and start with `requirePermission("social")`.
+
+**Preview & Edit** (`PostEditDialog`, any non-published post): shows the
+current cover image + carousel-frame count, and edits hook/caption/long
+caption/CTA/hashtags/alt text, the **on-image headline and subhead** (edited
+text triggers a same-look re-render, not just a DB write — the image and the
+stored text can never drift apart), and the **publish date/time**. Two
+distinct regenerate actions: **Regenerate copy** (new AI copy AND a newly
+rotated look) vs. **Regenerate image** (same copy, a fresh visual look only —
+`regenerateSocialImage` in `lib/actions/admin/social.ts`). Not yet built:
+image crop/resize/typography/color controls, per-post platform reassignment,
+and version history/auto-save (each save simply overwrites the row).
 
 ## Setup (real publishing)
 

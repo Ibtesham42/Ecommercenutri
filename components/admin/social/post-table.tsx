@@ -9,6 +9,7 @@ import {
   Check,
   X,
   RefreshCw,
+  Image as ImageIcon,
   Pencil,
   Send,
   Trash2,
@@ -35,6 +36,7 @@ import {
   rejectSocialPost,
   deleteSocialPost,
   regenerateSocialPost,
+  regenerateSocialImage,
   publishSocialPostNow,
   bulkSocialPostAction,
 } from "@/lib/actions/admin/social";
@@ -208,6 +210,11 @@ export function PostTable({
                 {context !== "published" && (
                   <DropdownMenuItem onClick={() => run(() => regenerateSocialPost(p.id), "Regenerated.")}>
                     <RefreshCw className="mr-2 size-4" /> Regenerate copy
+                  </DropdownMenuItem>
+                )}
+                {context !== "published" && (
+                  <DropdownMenuItem onClick={() => run(() => regenerateSocialImage(p.id), "New image generated.")}>
+                    <ImageIcon className="mr-2 size-4" /> Regenerate image
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
