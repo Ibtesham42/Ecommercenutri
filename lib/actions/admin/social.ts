@@ -317,6 +317,18 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
     sequentialContent: style.key === "RECIPE",
   });
 
+  // composeCreative never throws — a Cloudinary/render hiccup returns the
+  // plain, undesigned photo as a normal result, not an error. headline,
+  // support and benefits are all printed INTO the image, so if the render
+  // didn't actually happen, saving the NEW versions of those fields next to
+  // the OLD (or plain, textless) image would desync the stored text from
+  // what the cover shows — the fresh COPY (hook/caption/hashtags/CTA) is
+  // still real and worth keeping either way, so this degrades to a partial
+  // save rather than losing a genuine AI generation over an unrelated hiccup.
+  if (!cover.designed) {
+    console.warn(`[social] regenerateSocialPost ${id}: render failed, keeping the existing cover`);
+  }
+
   try {
     await prisma.socialPost.update({
       where: { id },
@@ -329,11 +341,15 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
         altText: gen.data.altText,
         contentHash: gen.data.contentHash,
         styleKey: style.key,
-        headline: gen.data.headline,
-        support: gen.data.support,
-        benefits: gen.data.benefits,
-        designKey: cover.lookKey,
-        imageUrls: cover.imageUrls,
+        ...(cover.designed
+          ? {
+              headline: gen.data.headline,
+              support: gen.data.support,
+              benefits: gen.data.benefits,
+              designKey: cover.lookKey,
+              imageUrls: cover.imageUrls,
+            }
+          : {}),
         error: null,
         retryCount: 0,
       },
