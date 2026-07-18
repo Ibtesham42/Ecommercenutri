@@ -347,7 +347,7 @@ export async function regenerateSocialPost(id: string): Promise<AdminResult> {
 
 // ── Post lifecycle ───────────────────────────────────────────────────────────
 
-export async function updateSocialPost(input: unknown): Promise<AdminResult> {
+export async function updateSocialPost(input: unknown): Promise<AdminResult<{ textApplied: boolean }>> {
   await requirePermission("social");
   const parsed = socialPostEditSchema.safeParse(input);
   if (!parsed.success) {
@@ -373,6 +373,14 @@ export async function updateSocialPost(input: unknown): Promise<AdminResult> {
   const wantedHeadline = d.headline || post.headline || "";
   const wantedSupport = d.support || post.support || "";
   const textChanged = wantedHeadline !== (post.headline ?? "") || wantedSupport !== (post.support ?? "");
+  // Tracks whether the requested text change actually made it into the
+  // image. Started false; only set true on a successful recompose. The
+  // caller (PostEditDialog) uses this — NOT its own guess of "did I type a
+  // different headline" — to tell the admin the truth: if this stays false
+  // while textChanged is true, the caption/hashtag edits below still saved,
+  // but the on-image text did not, and silently claiming otherwise would be
+  // exactly the kind of misleading success the admin has no way to catch.
+  let textApplied = false;
   if (textChanged && post.productId) {
     try {
       const settings = await getSocialSettings();
@@ -394,16 +402,27 @@ export async function updateSocialPost(input: unknown): Promise<AdminResult> {
           forceLookKey: post.designKey ?? undefined,
           handle: await resolveSocialHandle(),
         });
-        imageUrls = cover.imageUrls;
-        designKey = cover.lookKey;
-        headline = wantedHeadline;
-        support = wantedSupport;
+        // composeCreative never throws — on a Cloudinary/render failure it
+        // returns the PLAIN product photo as a non-error result (deliberate,
+        // for the planner/cron's sake). That photo has no text on it at all,
+        // so `designed` is the only reliable signal that the new headline
+        // actually made it into the image; without checking it we'd silently
+        // save the NEW headline text next to an image that shows no headline.
+        if (cover.designed) {
+          imageUrls = cover.imageUrls;
+          designKey = cover.lookKey;
+          headline = wantedHeadline;
+          support = wantedSupport;
+          textApplied = true;
+        }
       }
+      // No materials (product deleted/photo removed) or a non-`designed`
+      // result — textApplied stays false; fall through and save the rest of
+      // the edit with the OLD on-image text, same as the catch below.
     } catch (e) {
-      // Re-render failed (Cloudinary hiccup, etc.) — the catch above already
-      // defaulted headline/support/imageUrls back to the OLD values, so the
-      // caption/hashtag changes below still save without creating a
-      // text-vs-image mismatch.
+      // Re-render failed (Cloudinary hiccup, etc.) — headline/support/
+      // imageUrls above are already the OLD values, so the caption/hashtag
+      // changes below still save without creating a text-vs-image mismatch.
       console.error(`[social] updateSocialPost: re-render failed for ${d.id}, keeping existing image:`, e);
     }
   }
@@ -426,7 +445,7 @@ export async function updateSocialPost(input: unknown): Promise<AdminResult> {
       },
     });
     revalidate();
-    return { ok: true };
+    return { ok: true, data: { textApplied } };
   } catch {
     return { ok: false, error: "Couldn't save the post." };
   }

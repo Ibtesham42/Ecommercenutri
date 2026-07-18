@@ -39,7 +39,21 @@ export type ComposeInput = {
   forceLookKey?: string;
 };
 
-export type ComposeResult = { imageUrls: string[]; lookKey: string };
+export type ComposeResult = {
+  imageUrls: string[];
+  lookKey: string;
+  /** True only when `imageUrls` is an actual satori-rendered composition —
+   *  false for every fallback path (no image, keyless, or a caught render/
+   *  upload failure), where `imageUrls` is just the plain, undesigned
+   *  photo(s) passed through unchanged. Callers that need the image to
+   *  actually REFLECT `content` (e.g. an admin editing on-image text) must
+   *  check this — a non-throwing return is NOT the same guarantee as a
+   *  successful render, and conflating the two would silently let stored
+   *  text drift from what the image shows, exactly backwards from the whole
+   *  point of forceLookKey. Callers that just want a post to ship with
+   *  SOMETHING (the planner, "Generate a post") can ignore it. */
+  designed: boolean;
+};
 
 /** The connected IG handle for the creative watermark — optional, so a
  *  not-yet-connected install still designs posts, just without it. Shared by
@@ -103,12 +117,12 @@ export async function composeCreative(input: ComposeInput): Promise<ComposeResul
     : pickLook(input.rotation, input.recentLookKeys, input.sequentialContent);
   const { rawImages } = input;
 
-  if (!rawImages.length) return { imageUrls: [], lookKey: look.key };
+  if (!rawImages.length) return { imageUrls: [], lookKey: look.key, designed: false };
 
   // Keyless / no Cloudinary: ship the plain product photo(s), same as before
   // this engine existed, rather than fail the post over a missing dependency.
   if (!cloudinaryEnabled || !rawImages[0].includes("res.cloudinary.com")) {
-    return { imageUrls: rawImages, lookKey: look.key };
+    return { imageUrls: rawImages, lookKey: look.key, designed: false };
   }
 
   const size = PLATFORM_SIZES[input.platform ?? DEFAULT_PLATFORM];
@@ -147,12 +161,12 @@ export async function composeCreative(input: ComposeInput): Promise<ComposeResul
       }
     }
 
-    return { imageUrls, lookKey: look.key };
+    return { imageUrls, lookKey: look.key, designed: true };
   } catch (err) {
     console.error(
       `[social] creative compose failed (look=${look.key}, cover=${rawImages[0]}) — shipping the plain product photo instead:`,
       err,
     );
-    return { imageUrls: rawImages, lookKey: look.key };
+    return { imageUrls: rawImages, lookKey: look.key, designed: false };
   }
 }

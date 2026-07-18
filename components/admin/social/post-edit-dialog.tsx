@@ -85,7 +85,15 @@ export function PostEditDialog({
         scheduledFor: scheduledFor ? new Date(scheduledFor) : null,
       });
       if (res.ok) {
-        toast.success(textChanged ? "Post updated — cover re-rendered with the new text." : "Post updated.");
+        // Trust the SERVER's report of whether the on-image text actually
+        // changed, not our own guess — a re-render can be skipped (no product
+        // photo to recompose from) or fail (Cloudinary hiccup), in which case
+        // everything else still saved but the image itself did not change.
+        if (textChanged && !res.data?.textApplied) {
+          toast.warning("Post updated, but the on-image text couldn't be re-rendered — the cover still shows the old headline. Try again shortly.");
+        } else {
+          toast.success(textChanged ? "Post updated — cover re-rendered with the new text." : "Post updated.");
+        }
         onClose();
         router.refresh();
       } else {
