@@ -487,6 +487,14 @@ export async function regenerateSocialImage(id: string): Promise<AdminResult> {
       handle: await resolveSocialHandle(),
       sequentialContent: post.styleKey === "RECIPE",
     });
+    // Same guard as updateSocialPost: composeCreative never throws, so a
+    // Cloudinary/render hiccup returns the plain, undesigned photo as a
+    // normal (non-error) result. Applying that here would silently downgrade
+    // an already-designed post to a bare photo while telling the admin it
+    // worked — reject instead, so they see a real error and can just retry.
+    if (!cover.designed) {
+      return { ok: false, error: "Couldn't generate a new image right now — please try again shortly." };
+    }
     await prisma.socialPost.update({
       where: { id },
       data: { imageUrls: cover.imageUrls, designKey: cover.lookKey },
