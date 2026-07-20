@@ -19,6 +19,7 @@ export const ADMIN_PERMISSIONS = [
   "social",
   "ai",
   "appearance",
+  "jnv",
 ] as const;
 
 export type Permission = (typeof ADMIN_PERMISSIONS)[number];
@@ -37,6 +38,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   social: "AI Marketing",
   ai: "AI settings",
   appearance: "Appearance & CMS",
+  jnv: "JNV Smart Class",
 };
 
 /** Sensible default when creating a new sub-admin. */

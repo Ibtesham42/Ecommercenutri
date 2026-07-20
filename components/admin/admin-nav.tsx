@@ -36,6 +36,7 @@ import {
   Rocket,
   Settings,
   Menu,
+  GraduationCap,
 } from "lucide-react";
 import {
   Sheet,
@@ -89,6 +90,7 @@ const nav: NavItem[] = [
   { href: "/admin/notifications", label: "Notifications", icon: Bell, permission: "customers" },
   { href: "/admin/insights", label: "AI Insights", icon: LineChart, permission: "ai" },
   { href: "/admin/ai-settings", label: "AI Settings", icon: Sparkles, permission: "ai" },
+  { href: "/admin/jnv", label: "JNV Smart Class", icon: GraduationCap, permission: "jnv" },
   { href: "/admin/admins", label: "Admins", icon: ShieldCheck, superOnly: true },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

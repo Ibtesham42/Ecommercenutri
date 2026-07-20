@@ -88,6 +88,19 @@ export function isVideoUrl(url: string): boolean {
   return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url);
 }
 
+/**
+ * Force a Cloudinary delivery URL to download as an attachment (rather than
+ * open inline) via the `fl_attachment` flag — used by the JNV resource viewer's
+ * Download button for non-image files (PDFs, docs, zips) where the browser
+ * would otherwise navigate to/preview the raw asset. No-op for non-Cloudinary
+ * URLs (returned unchanged).
+ */
+export function cldForceDownload(url: string | null | undefined): string {
+  if (!url) return "";
+  if (!url.includes("res.cloudinary.com") || !url.includes("/upload/")) return url;
+  return url.replace("/upload/", "/upload/fl_attachment/");
+}
+
 // NOTE: video delivery moved to `lib/video.ts` (`cldVideoVariant` — adaptive,
 // profile-driven, never upscales). `cldVideoPoster` below remains for legacy
 // list thumbnails; richer frame/poster helpers live in `lib/video.ts` too.
