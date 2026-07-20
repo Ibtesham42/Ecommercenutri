@@ -3,6 +3,34 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [JNV Smart Class Portal] — 2026-07-20
+
+A fully isolated education mini-platform living inside the same app, unrelated
+to commerce. See `docs/jnv-smart-class.md` for the module reference.
+
+### Added
+- **Schema** (migration `jnv_smart_class`, additive): `JnvFolder` (self-
+  relation, unlimited nesting, `classLevel` denormalized onto every node),
+  `JnvResource` (notes/slides/PDFs/images/audio/video/zip, `isAssignment` +
+  `dueAt` instead of a separate model), `JnvAnnouncement` (class-scoped or
+  school-wide, pinnable).
+- **Admin** (`jnv` RBAC key, `/admin/jnv`): dashboard (counts, storage used,
+  recent uploads, per-class summary), class/folder browser with create/
+  rename/delete folders and an upload dialog (reuses the existing signed
+  direct-to-Cloudinary pipeline), announcements manager.
+- **Public student portal** (`/jnv`, no nav/footer/sitemap/robots entry,
+  `noindex,nofollow`, own blue/emerald layout — zero Nutriyet branding):
+  class picker → nested folder browser → resource viewer with embedded
+  PDF/Office/image/video/audio previews, download (Cloudinary
+  `fl_attachment`, count tracked + rate-limited), open/fullscreen/print/
+  share, global search (class/subject/filename/keyword/teacher), and
+  localStorage-based Favorites + Continue Learning (no student login).
+- Verified: typecheck/lint/build green (shared First-Load JS unchanged,
+  103 kB); DB round-trip smoke passed; dev-server route + branding-isolation
+  smoke passed. Fixed a same-segment metadata quirk where `/jnv`'s own
+  `page.tsx` fell through to the root layout's "| Nutriyet" title/OG
+  template.
+
 ## [Competitor Intelligence fixes] — 2026-07-12
 
 ### Fixed

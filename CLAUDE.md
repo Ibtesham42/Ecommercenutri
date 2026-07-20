@@ -178,6 +178,7 @@ workflow changes. Don't update files unnecessarily; never duplicate content acro
 | `docs/growth.md` | Conversion features (quiz/popup/bar/trust/coupon) + bilingual consumer survey |
 | `docs/social-automation.md` | AI Marketing Automation Hub: 4-week content strategy, AI generation + claim-safety, planner/publisher, Instagram Graph API, GitHub Actions cron, `/admin/social` |
 | `docs/seo-pwa.md` | SEO manager, favicon system, service worker/PWA, Cloudinary upload + delivery |
+| `docs/jnv-smart-class.md` | JNV Smart Class Portal: isolated education module (`/admin/jnv` RBAC-gated admin, unlisted `/jnv` no-login student portal) — schema, isolation model, routes |
 | `docs/guides/marketing-hub.md` | Non-technical admin user guide for the Marketing Hub |
 | `docs/guides/push-notifications.md` | Web Push (VAPID) setup & operations |
 | `DEPLOYMENT.md` | Vercel deploy, env vars, Razorpay webhook, migrate deploy |

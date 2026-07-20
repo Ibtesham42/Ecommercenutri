@@ -1,8 +1,20 @@
 # Nutriyet — Progress Tracker
 
-_Last updated: 2026-07-10 · Auto-maintained. Update at the end of every milestone._
+_Last updated: 2026-07-20 · Auto-maintained. Update at the end of every milestone._
 
-## Latest: Competitor Intelligence (2026-07-10, in progress)
+## Latest: JNV Smart Class Portal (2026-07-20, in progress — /loop refinement)
+
+Isolated education mini-platform, unrelated to commerce: `/admin/jnv` (RBAC
+key `jnv`) for teachers/admins, `/jnv` (unlisted, no login) for students —
+Classes 6–10, nested subject folders, notes/slides/PDFs/images/audio/video/
+assignments, announcements, search, favorites + continue-learning. Schema,
+actions, admin UI and student portal all shipped and verified (typecheck/
+lint/build/DB round-trip/route smoke green); commit `f54d806`. Remaining
+polish tracked in the active `/loop`: folder drag-reorder/move UI (backend
+actions already exist), a live authenticated upload-dialog smoke test, and a
+second look at dark-mode contrast across the student portal.
+
+## Previous: Competitor Intelligence (2026-07-10)
 
 Market-research module inside the AI Marketing hub (`/admin/social/intelligence`,
 `social` RBAC key): learn from the market — trends, gaps, original ideas — never copy.
