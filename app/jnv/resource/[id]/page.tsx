@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getJnvResourceById, getJnvBreadcrumbs, getJnvResourcesInFolder } from "@/lib/queries/jnv";
 import { JnvBreadcrumbs } from "@/components/jnv/jnv-breadcrumbs";
 import { ResourceViewer } from "@/components/jnv/resource-viewer";
+import { isJnvDeliveryBlocked } from "@/lib/jnv/check-delivery";
 
 export const dynamic = "force-dynamic";
 
@@ -21,9 +22,10 @@ export default async function JnvResourcePage({ params }: { params: Promise<{ id
   const resource = await getJnvResourceById(id);
   if (!resource) notFound();
 
-  const [breadcrumbs, folderResources] = await Promise.all([
+  const [breadcrumbs, folderResources, deliveryBlocked] = await Promise.all([
     getJnvBreadcrumbs(resource.folderId),
     getJnvResourcesInFolder(resource.folderId),
+    isJnvDeliveryBlocked(resource.fileUrl),
   ]);
   const siblings = folderResources.map((r) => ({ id: r.id, title: r.title }));
 
@@ -36,6 +38,7 @@ export default async function JnvResourcePage({ params }: { params: Promise<{ id
         />
         <ResourceViewer
           siblings={siblings}
+          deliveryBlocked={deliveryBlocked}
           resource={{
             id: resource.id,
             title: resource.title,

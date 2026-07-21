@@ -4,7 +4,7 @@ import { FolderX } from "lucide-react";
 export default function JnvNotFound() {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 text-center">
-      <span className="grid size-16 place-items-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800">
+      <span className="grid size-16 place-items-center rounded-2xl bg-slate-100 text-slate-500 dark:bg-slate-800">
         <FolderX className="size-8" />
       </span>
       <h1 className="mt-4 text-xl font-bold">Not found</h1>

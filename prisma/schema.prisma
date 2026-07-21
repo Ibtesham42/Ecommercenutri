@@ -1814,6 +1814,10 @@ model JnvResource {
   @@index([classLevel, fileKind])
   @@index([isAssignment])
   @@index([createdAt])
+  // Powers the class page's "Recently added" / "Most downloaded" rails
+  // (getJnvClassHighlights) — classLevel filter + sort, in one index each.
+  @@index([classLevel, createdAt])
+  @@index([classLevel, downloadCount])
 }
 
 // classLevel = null means "all classes" (school-wide announcement).

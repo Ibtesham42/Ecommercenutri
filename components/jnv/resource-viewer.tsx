@@ -21,8 +21,10 @@ import {
   Bot,
   ChevronLeft,
   ChevronRight,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { cldUrl, cldForceDownload, isVideoUrl } from "@/lib/cld";
 import { addRecent, isFavorite, toggleFavorite } from "@/lib/jnv/local-store";
@@ -58,11 +60,16 @@ const BYTE_QUICK_ACTIONS = [
 export function ResourceViewer({
   resource,
   siblings = [],
+  deliveryBlocked = false,
 }: {
   resource: ResourceViewerData;
   /** Other resources in the same folder, in browse order — powers Next/Prev
    *  and "Jump to" chapter navigation (handy for live teaching). */
   siblings?: { id: string; title: string }[];
+  /** The file host refused to serve this file (checked server-side before
+   *  render) — show a clear explanation instead of a silently broken
+   *  preview/download. */
+  deliveryBlocked?: boolean;
 }) {
   const [fav, setFav] = useState(false);
   const [downloadCount, setDownloadCount] = useState(resource.downloadCount);
@@ -227,7 +234,7 @@ export function ResourceViewer({
           size="icon"
           onClick={handleFavorite}
           aria-label={fav ? "Remove from favorites" : "Add to favorites"}
-          className={fav ? "border-amber-400 text-amber-500" : ""}
+          className={cn("size-11", fav && "border-amber-400 text-amber-500")}
         >
           <Star className={fav ? "size-4 fill-amber-400" : "size-4"} />
         </Button>
@@ -239,30 +246,54 @@ export function ResourceViewer({
         </p>
       )}
 
+      {deliveryBlocked && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+          <AlertTriangle className="mt-0.5 size-5 shrink-0" />
+          <div>
+            <p className="font-medium">This file can&apos;t be previewed or downloaded right now</p>
+            <p className="mt-1 text-amber-700 dark:text-amber-400">
+              The file storage service is blocking this file type. This isn&apos;t something you can
+              fix — please let your teacher or admin know.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div
         ref={containerRef}
         className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
       >
-        <ResourcePreview resource={resource} iframeRef={iframeRef} />
+        {deliveryBlocked ? (
+          <div className="flex flex-col items-center justify-center gap-2 p-16 text-center text-slate-500">
+            <AlertTriangle className="size-8" />
+            <p className="text-sm">Preview unavailable</p>
+          </div>
+        ) : (
+          <ResourcePreview resource={resource} iframeRef={iframeRef} />
+        )}
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <Button onClick={handleDownload} className="gap-1.5 bg-blue-600 hover:bg-blue-700">
+        <Button
+          onClick={handleDownload}
+          disabled={deliveryBlocked}
+          className="gap-1.5 bg-blue-600 hover:bg-blue-700"
+        >
           <Download className="size-4" /> Download
         </Button>
-        <Button variant="outline" onClick={handleOpen} className="gap-1.5">
+        <Button variant="outline" onClick={handleOpen} disabled={deliveryBlocked} className="gap-1.5">
           <ExternalLink className="size-4" /> Open
         </Button>
         <Button variant="outline" onClick={handleFullscreen} className="gap-1.5">
           <Maximize className="size-4" /> Fullscreen
         </Button>
-        <Button variant="outline" onClick={handlePrint} className="gap-1.5">
+        <Button variant="outline" onClick={handlePrint} disabled={deliveryBlocked} className="gap-1.5">
           <Printer className="size-4" /> Print
         </Button>
         <Button variant="outline" onClick={handleShare} className="gap-1.5">
           <Share2 className="size-4" /> Share
         </Button>
-        <span className="ml-auto self-center text-xs text-slate-400">
+        <span className="ml-auto self-center text-xs text-slate-500">
           {downloadCount} download{downloadCount === 1 ? "" : "s"}
         </span>
       </div>
@@ -343,7 +374,7 @@ function ResourcePreview({
   const Icon = fileKind === "ZIP" ? Archive : fileKind === "OTHER" ? FileIcon : FileText;
   return (
     <div className="flex flex-col items-center justify-center gap-3 p-16 text-center">
-      <span className="grid size-16 place-items-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800">
+      <span className="grid size-16 place-items-center rounded-2xl bg-slate-100 text-slate-500 dark:bg-slate-800">
         <Icon className="size-8" />
       </span>
       <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -422,7 +453,7 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
           onClick={zoomOut}
           disabled={zoom <= ZOOM_MIN}
           aria-label="Zoom out"
-          className="grid size-9 place-items-center rounded-full text-slate-600 transition-colors hover:bg-blue-600/10 hover:text-blue-700 disabled:opacity-30 dark:text-slate-300"
+          className="grid size-11 place-items-center rounded-full text-slate-600 transition-colors hover:bg-blue-600/10 hover:text-blue-700 disabled:opacity-30 dark:text-slate-300"
         >
           <ZoomOut className="size-4" />
         </button>
@@ -434,7 +465,7 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
           onClick={zoomIn}
           disabled={zoom >= ZOOM_MAX}
           aria-label="Zoom in"
-          className="grid size-9 place-items-center rounded-full text-slate-600 transition-colors hover:bg-blue-600/10 hover:text-blue-700 disabled:opacity-30 dark:text-slate-300"
+          className="grid size-11 place-items-center rounded-full text-slate-600 transition-colors hover:bg-blue-600/10 hover:text-blue-700 disabled:opacity-30 dark:text-slate-300"
         >
           <ZoomIn className="size-4" />
         </button>
@@ -443,7 +474,7 @@ function ImagePreview({ src, alt }: { src: string; alt: string }) {
             type="button"
             onClick={resetZoom}
             aria-label="Reset zoom"
-            className="grid size-9 place-items-center rounded-full text-slate-600 transition-colors hover:bg-blue-600/10 hover:text-blue-700 dark:text-slate-300"
+            className="grid size-11 place-items-center rounded-full text-slate-600 transition-colors hover:bg-blue-600/10 hover:text-blue-700 dark:text-slate-300"
           >
             <RotateCcw className="size-4" />
           </button>

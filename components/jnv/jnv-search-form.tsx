@@ -39,6 +39,7 @@ export function JnvSearchForm({
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Search by title, subject, teacher, keyword…"
+        aria-label="Search resources"
         className="h-11"
       />
       <Select value={classLevel} onValueChange={setClassLevel}>

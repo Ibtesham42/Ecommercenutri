@@ -63,7 +63,7 @@ export function ResourceCard({
         <span className="mt-1 block truncate text-xs text-slate-500 dark:text-slate-400">
           {[subject, teacherName].filter(Boolean).join(" · ") || JNV_FILE_KIND_LABELS[fileKind as JnvFileKind]}
         </span>
-        <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400 dark:text-slate-500">
+        <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-500">
           <span>{JNV_FILE_KIND_LABELS[fileKind as JnvFileKind] ?? fileKind}</span>
           <span>{formatBytes(fileSize)}</span>
           <span className="flex items-center gap-1">

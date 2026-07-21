@@ -196,6 +196,46 @@ export async function getJnvClassSummaries(
   });
 }
 
+export type JnvClassHighlights = {
+  mostDownloaded: JnvResourceRow[];
+  recentlyAdded: JnvResourceRow[];
+  subjects: { subject: string; count: number }[];
+};
+
+/** Powers the "Most Downloaded" / "Recently Added" rails and subject-wise
+ *  navigation chips on the class page — one combined query per class. */
+export async function getJnvClassHighlights(classLevel: number): Promise<JnvClassHighlights> {
+  return withRetry(async () => {
+    const [mostDownloaded, recentlyAdded, subjectGroups] = await Promise.all([
+      prisma.jnvResource.findMany({
+        where: { classLevel, downloadCount: { gt: 0 } },
+        orderBy: { downloadCount: "desc" },
+        take: 6,
+        select: resourceSelect,
+      }),
+      prisma.jnvResource.findMany({
+        where: { classLevel },
+        orderBy: { createdAt: "desc" },
+        take: 6,
+        select: resourceSelect,
+      }),
+      prisma.jnvResource.groupBy({
+        by: ["subject"],
+        where: { classLevel, subject: { not: null } },
+        _count: { _all: true },
+        orderBy: { _count: { subject: "desc" } },
+      }),
+    ]);
+    return {
+      mostDownloaded: mostDownloaded.map(toResourceRow),
+      recentlyAdded: recentlyAdded.map(toResourceRow),
+      subjects: subjectGroups
+        .filter((g) => g.subject)
+        .map((g) => ({ subject: g.subject as string, count: g._count._all })),
+    };
+  });
+}
+
 export type JnvSearchFilters = {
   query?: string;
   classLevel?: JnvClassLevel;

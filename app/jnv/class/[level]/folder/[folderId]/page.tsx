@@ -46,7 +46,7 @@ export default async function JnvFolderPage({
         {children.length === 0 && resources.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700">
             <p className="font-medium text-slate-600 dark:text-slate-300">This folder is empty</p>
-            <p className="mt-1 text-sm text-slate-400">Check back later — your teacher may add resources soon.</p>
+            <p className="mt-1 text-sm text-slate-500">Check back later — your teacher may add resources soon.</p>
           </div>
         ) : (
           <>

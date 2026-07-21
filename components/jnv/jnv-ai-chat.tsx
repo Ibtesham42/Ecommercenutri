@@ -276,7 +276,7 @@ export function JnvAiChat({
                 {m.content && (
                   <span
                     className={cn(
-                      "mt-0.5 flex items-center gap-1 px-1 text-[10px] text-slate-400 dark:text-slate-500",
+                      "mt-0.5 flex items-center gap-1 px-1 text-[10px] text-slate-500 dark:text-slate-500",
                     )}
                   >
                     {formatTime(m.time)}
@@ -310,7 +310,7 @@ export function JnvAiChat({
       )}
 
       {streaming && (
-        <p className="border-t border-slate-200 bg-white px-4 pt-2 text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-500">
+        <p className="border-t border-slate-200 bg-white px-4 pt-2 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-500">
           Byte is typing…
         </p>
       )}

@@ -32,7 +32,7 @@ export function FolderCard({
           {childCount > 0 ? `${childCount} folders, ` : ""}
           {resourceCount} file{resourceCount === 1 ? "" : "s"}
         </span>
-        <span className="mt-1 block text-xs text-slate-400 dark:text-slate-500">
+        <span className="mt-1 block text-xs text-slate-500 dark:text-slate-500">
           Updated {formatDate(updatedAt)}
         </span>
       </span>

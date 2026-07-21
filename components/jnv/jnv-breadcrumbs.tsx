@@ -13,6 +13,7 @@ export function JnvBreadcrumbs({
     <nav aria-label="Breadcrumb" className="mb-4 flex flex-wrap items-center gap-1 text-sm">
       <Link
         href="/jnv"
+        aria-label="Home"
         className="flex items-center gap-1 rounded px-1.5 py-0.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
       >
         <Home className="size-3.5" />
@@ -20,6 +21,7 @@ export function JnvBreadcrumbs({
       <ChevronRight className="size-3.5 text-slate-300 dark:text-slate-600" />
       <Link
         href={`/jnv/class/${classLevel}`}
+        aria-current={trail.length === 0 ? "page" : undefined}
         className="rounded px-1.5 py-0.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
       >
         {jnvClassLabel(classLevel)}
@@ -28,7 +30,12 @@ export function JnvBreadcrumbs({
         <span key={f.id} className="flex items-center gap-1">
           <ChevronRight className="size-3.5 text-slate-300 dark:text-slate-600" />
           {i === trail.length - 1 ? (
-            <span className="rounded px-1.5 py-0.5 font-medium text-slate-900 dark:text-slate-100">{f.name}</span>
+            <span
+              aria-current="page"
+              className="rounded px-1.5 py-0.5 font-medium text-slate-900 dark:text-slate-100"
+            >
+              {f.name}
+            </span>
           ) : (
             <Link
               href={`/jnv/class/${classLevel}/folder/${f.id}`}

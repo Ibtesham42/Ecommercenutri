@@ -11,17 +11,23 @@ export const metadata: Metadata = { title: "Search" };
 export default async function JnvSearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; class?: string; kind?: string }>;
+  searchParams: Promise<{ q?: string; class?: string; kind?: string; subject?: string }>;
 }) {
   const sp = await searchParams;
   const q = sp.q ?? "";
   const classNum = Number(sp.class);
   const classLevel = isJnvClassLevel(classNum) ? classNum : undefined;
   const kind = sp.kind ?? "";
-  const hasQuery = Boolean(q || classLevel || kind);
+  const subject = sp.subject ?? "";
+  const hasQuery = Boolean(q || classLevel || kind || subject);
 
   const results = hasQuery
-    ? await searchJnvResources({ query: q || undefined, classLevel, fileKind: kind || undefined })
+    ? await searchJnvResources({
+        query: q || undefined,
+        classLevel,
+        fileKind: kind || undefined,
+        subject: subject || undefined,
+      })
     : [];
 
   return (
@@ -32,15 +38,16 @@ export default async function JnvSearchPage({
 
         <div className="mt-8">
           {!hasQuery ? (
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-500">
               Search by class, subject, filename, keyword or teacher.
             </p>
           ) : results.length === 0 ? (
-            <p className="text-sm text-slate-400">No resources matched your search.</p>
+            <p className="text-sm text-slate-500">No resources matched your search.</p>
           ) : (
             <>
               <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
                 {results.length} result{results.length === 1 ? "" : "s"}
+                {subject ? ` in ${subject}` : ""}
               </p>
               <div className={JNV_CARD_GRID}>
                 {results.map((r) => (

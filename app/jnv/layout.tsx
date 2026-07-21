@@ -85,7 +85,7 @@ export default function JnvLayout({ children }: { children: React.ReactNode }) {
 
         <main className="jnv-main flex-1">{children}</main>
 
-        <footer className="jnv-chrome border-t border-slate-200 py-6 text-center text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500 print:hidden">
+        <footer className="jnv-chrome border-t border-slate-200 py-6 text-center text-xs text-slate-500 dark:border-slate-800 dark:text-slate-500 print:hidden">
           JNV Smart Class Portal — for classroom &amp; smart board use, Classes 6–10.
         </footer>
       </div>

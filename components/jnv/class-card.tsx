@@ -43,7 +43,7 @@ export function ClassCard({
           <FileStack className="size-4" /> {resourceCount}
         </span>
       </div>
-      <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+      <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
         {lastUpdated ? `Updated ${formatDate(lastUpdated)}` : "No resources yet"}
       </p>
       <span className="mt-4 flex items-center gap-1 text-sm font-semibold text-blue-700 motion-safe:transition-transform motion-safe:group-hover:translate-x-1 dark:text-blue-400">
