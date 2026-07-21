@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { searchJnvResources } from "@/lib/queries/jnv";
-import { isJnvClassLevel } from "@/lib/jnv/catalog";
+import { isJnvClassLevel, JNV_FILE_KINDS } from "@/lib/jnv/catalog";
 import { JnvSearchForm } from "@/components/jnv/jnv-search-form";
 import { ResourceCard } from "@/components/jnv/resource-card";
 import { JNV_CONTAINER_NARROW, JNV_CARD_GRID } from "@/lib/jnv/ui";
@@ -17,7 +17,11 @@ export default async function JnvSearchPage({
   const q = sp.q ?? "";
   const classNum = Number(sp.class);
   const classLevel = isJnvClassLevel(classNum) ? classNum : undefined;
-  const kind = sp.kind ?? "";
+  // A hand-edited/bookmarked URL could carry any string here — only forward
+  // it to the DB query if it's a real file kind, or Prisma throws an
+  // uncaught enum-validation error (this had no error boundary to catch it).
+  const kindParam = sp.kind ?? "";
+  const kind = (JNV_FILE_KINDS as readonly string[]).includes(kindParam) ? kindParam : "";
   const subject = sp.subject ?? "";
   const hasQuery = Boolean(q || classLevel || kind || subject);
 

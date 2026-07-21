@@ -1,18 +1,29 @@
 # Nutriyet — Progress Tracker
 
-_Last updated: 2026-07-20 · Auto-maintained. Update at the end of every milestone._
+_Last updated: 2026-07-21 · Auto-maintained. Update at the end of every milestone._
 
-## Latest: JNV Smart Class Portal (2026-07-20, in progress — /loop refinement)
+## Latest: JNV Smart Classroom Platform (2026-07-21, in progress — /loop refinement)
 
 Isolated education mini-platform, unrelated to commerce: `/admin/jnv` (RBAC
 key `jnv`) for teachers/admins, `/jnv` (unlisted, no login) for students —
 Classes 6–10, nested subject folders, notes/slides/PDFs/images/audio/video/
-assignments, announcements, search, favorites + continue-learning. Schema,
-actions, admin UI and student portal all shipped and verified (typecheck/
-lint/build/DB round-trip/route smoke green); commit `f54d806`. Remaining
-polish tracked in the active `/loop`: folder drag-reorder/move UI (backend
-actions already exist), a live authenticated upload-dialog smoke test, and a
-second look at dark-mode contrast across the student portal.
+assignments, announcements, search, favorites + continue-learning. Base
+module shipped 2026-07-20 (commit `f54d806`); since then an active `/loop`
+has transformed it into a premium smart-classroom experience: wide-screen
+layout for smart boards, Classroom Presentation Mode (laser pointer, dark
+stage, keyboard shortcuts, chapter nav), a dedicated resource-aware CS
+teaching AI ("Byte", isolated from the storefront assistant) with a Teacher
+AI Toolkit for generating lesson plans/quizzes/worksheets, Most Downloaded/
+Recently Added rails, an accessibility pass (fixed a systemic light-mode
+contrast issue), an SSRF fix for the new AI resource-context fetches, and a
+module-wide error boundary. See `docs/jnv-smart-class.md` and
+`CHANGELOG.md` for the full breakdown. Remaining, tracked in the active
+`/loop`: folder drag-reorder/move UI (backend actions already exist), a
+live authenticated upload-dialog smoke test, wiring the Teacher AI
+Toolkit's resource-picker (backend already supports generating from an
+existing resource), and — not fixable from the app — a Cloudinary account
+security setting currently blocking all PDF delivery in production
+(confirmed empirically; needs the account owner to change it).
 
 ## Previous: Competitor Intelligence (2026-07-10)
 

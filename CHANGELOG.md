@@ -3,6 +3,52 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [JNV Smart Classroom Platform] — 2026-07-21
+
+Transformed the JNV portal from a plain file-management UI into a premium
+smart-classroom experience, without a from-scratch redesign. See
+`docs/jnv-smart-class.md` for the full module reference.
+
+### Added
+- **Wide-screen layout**: shared container/grid primitives (`lib/jnv/ui.ts`)
+  and a new `3xl` (1920px) breakpoint so class/folder/resource grids use
+  real width on smart boards/4K panels instead of capping at `max-w-7xl`.
+- **Classroom Presentation Mode**: hide-chrome + full-width + root-font-size
+  scaling toggle, laser pointer, projector-friendly Dark Stage, F/Esc
+  keyboard shortcuts, Next/Prev/Jump-to-chapter resource navigation.
+- **Premium resource viewer**: video theatre mode + resume-from-last-
+  position, image zoom/pan, PDF/PPT embed tuning, a graceful fallback
+  banner when a file host blocks delivery instead of a silently broken
+  preview.
+- **Byte**: a dedicated Computer Science teaching AI for Classes 6–10,
+  fully isolated from the storefront's Nutri assistant — resource-aware
+  (real extracted PDF text server-side, Redis-cached), styled and behaving
+  like a real messaging app (non-blocking input, queued sends, bubbles with
+  ticks/timestamps).
+- **Teacher AI Toolkit** (`/admin/jnv/ai-toolkit`): generate 18 content
+  types (lesson plans, question papers, worksheets, Bloom's-taxonomy
+  questions, ...) from a topic, editable before copy/.txt/PDF export.
+- **Student experience**: "Most downloaded"/"Recently added" rails,
+  subject-wise navigation, route-specific loading skeletons, a module-wide
+  `error.tsx` boundary (previously any unhandled error had no branded
+  fallback anywhere in the app).
+- **Accessibility**: fixed a systemic light-mode text-contrast issue below
+  WCAG AA across the module, added missing accessible names, 44px touch
+  targets on key controls.
+- **Security**: closed an SSRF gap — two new server-side fetches of
+  admin-supplied `fileUrl` (PDF extraction, delivery health check) now
+  verify the URL is actually on our Cloudinary account
+  (`lib/cloudinary.ts#isTrustedCloudinaryUrl`) before fetching, enforced
+  both at the DB boundary and at each call site.
+- Two new indexes (`classLevel, createdAt` / `classLevel, downloadCount`)
+  for the new highlights query.
+
+### Found, not fixed in code
+- All PDF resources currently 401 on delivery — confirmed empirically to be
+  a Cloudinary account security setting ("Restricted media types"), not
+  fixable from the application; the app degrades gracefully in the
+  meantime. See `docs/jnv-smart-class.md`.
+
 ## [JNV Smart Class Portal] — 2026-07-20
 
 A fully isolated education mini-platform living inside the same app, unrelated

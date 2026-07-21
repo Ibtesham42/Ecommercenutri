@@ -1,4 +1,5 @@
 import { cached } from "@/lib/redis";
+import { isTrustedCloudinaryUrl } from "@/lib/cloudinary";
 
 /**
  * Best-effort check that a resource's file URL is actually deliverable —
@@ -17,6 +18,10 @@ export async function isJnvDeliveryBlocked(url: string): Promise<boolean> {
 }
 
 async function checkDelivery(url: string): Promise<boolean> {
+  // Same belt-and-suspenders reasoning as extract-pdf-text.ts — never fetch
+  // a URL that isn't our own Cloudinary account, regardless of what the DB
+  // says, since this fires on every public student page view.
+  if (!isTrustedCloudinaryUrl(url)) return false;
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 5000);

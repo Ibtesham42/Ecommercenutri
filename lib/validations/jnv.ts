@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isJnvClassLevel, JNV_FILE_KINDS } from "@/lib/jnv/catalog";
 import { JNV_TEACHER_CONTENT_TYPES } from "@/lib/jnv/teacher-content-types";
+import { isTrustedCloudinaryUrl } from "@/lib/cloudinary";
 
 const classLevelSchema = z
   .number()
@@ -32,7 +33,13 @@ export const jnvResourceCreateSchema = z.object({
   title: z.string().trim().min(1, "Enter a title").max(160),
   description: z.string().trim().max(2000).nullable().optional(),
   teacherName: z.string().trim().max(80).nullable().optional(),
-  fileUrl: z.string().url("Upload a file first"),
+  // Must be OUR Cloudinary account's URL (not just "a URL") — this is the
+  // ingestion boundary that keeps every later server-side fetch of a
+  // resource's file (PDF text extraction, delivery health checks) from
+  // being an SSRF vector. See lib/cloudinary.ts#isTrustedCloudinaryUrl.
+  fileUrl: z.string().url("Upload a file first").refine(isTrustedCloudinaryUrl, {
+    message: "The file must be uploaded through the file picker.",
+  }),
   fileKind: z.enum(JNV_FILE_KINDS),
   mimeType: z.string().max(120).nullable().optional(),
   fileSize: z.number().int().min(0).max(500 * 1024 * 1024),

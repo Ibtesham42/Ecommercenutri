@@ -81,6 +81,30 @@ export async function deleteImage(publicId: string): Promise<void> {
 }
 
 /**
+ * True only for a same-account Cloudinary delivery URL (https, host
+ * `res.cloudinary.com`, our cloud name). Any server-side code that `fetch()`es
+ * an admin-supplied `fileUrl` (PDF text extraction, delivery health checks)
+ * MUST check this first — `fileUrl` is Zod-validated only as "a URL" at the
+ * DB boundary (`lib/validations/jnv.ts`), so without this guard a malicious
+ * or compromised admin account could point the server at an arbitrary
+ * internal address (SSRF) that then fires on every public, unauthenticated
+ * student page view.
+ */
+export function isTrustedCloudinaryUrl(url: string): boolean {
+  if (!cloudinaryEnabled) return false;
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === "https:" &&
+      parsed.hostname === "res.cloudinary.com" &&
+      parsed.pathname.startsWith(`/${env.cloudinaryCloudName}/`)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Extract the public_id from any of OUR Cloudinary delivery URLs (raw upload
  * URLs and transformed ones like `/upload/so_0,f_jpg/v123/nutriyet/hero/x.jpg`).
  * Returns null for non-Cloudinary URLs, other clouds, or anything outside the

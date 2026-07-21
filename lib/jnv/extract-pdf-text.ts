@@ -5,6 +5,7 @@
  * throws, never blocks a chat turn for long, nothing is persisted (extracted
  * fresh per request, matching the module's "no shared writes" isolation).
  */
+import { isTrustedCloudinaryUrl } from "@/lib/cloudinary";
 
 const MAX_PAGES = 20;
 const MAX_CHARS = 12000;
@@ -13,6 +14,11 @@ const FETCH_TIMEOUT_MS = 8000;
 export type PdfExtractResult = { text: string; truncated: boolean; pageCount: number };
 
 export async function extractPdfText(fileUrl: string): Promise<PdfExtractResult | null> {
+  // Belt-and-suspenders: fileUrl is already constrained at the DB boundary
+  // (lib/validations/jnv.ts), but this is a server-side fetch of
+  // admin-supplied input firing on every public student page view — never
+  // let it become an SSRF primitive even if that boundary is ever bypassed.
+  if (!isTrustedCloudinaryUrl(fileUrl)) return null;
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
