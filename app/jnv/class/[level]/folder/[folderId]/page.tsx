@@ -5,6 +5,7 @@ import { getJnvFolderById, getJnvBreadcrumbs, getJnvFolders, getJnvResourcesInFo
 import { FolderCard } from "@/components/jnv/folder-card";
 import { ResourceCard } from "@/components/jnv/resource-card";
 import { JnvBreadcrumbs } from "@/components/jnv/jnv-breadcrumbs";
+import { JNV_CONTAINER, JNV_CARD_GRID } from "@/lib/jnv/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -37,10 +38,10 @@ export default async function JnvFolderPage({
   ]);
 
   return (
-    <div className="py-8 sm:py-10">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="py-8 sm:py-10 2xl:py-14">
+      <div className={JNV_CONTAINER}>
         <JnvBreadcrumbs classLevel={classLevel} trail={breadcrumbs.slice(0, -1).map((f) => ({ id: f.id, name: f.name }))} />
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{folder.name}</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl 3xl:text-4xl">{folder.name}</h1>
 
         {children.length === 0 && resources.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700">
@@ -50,7 +51,7 @@ export default async function JnvFolderPage({
         ) : (
           <>
             {children.length > 0 && (
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className={`mt-6 ${JNV_CARD_GRID}`}>
                 {children.map((f) => (
                   <FolderCard
                     key={f.id}
@@ -66,8 +67,8 @@ export default async function JnvFolderPage({
             )}
             {resources.length > 0 && (
               <div className="mt-8">
-                <h2 className="mb-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Resources</h2>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <h2 className="mb-3 text-sm font-semibold text-slate-600 dark:text-slate-300 3xl:text-base">Resources</h2>
+                <div className={JNV_CARD_GRID}>
                   {resources.map((r) => (
                     <ResourceCard
                       key={r.id}

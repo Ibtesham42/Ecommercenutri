@@ -1,0 +1,32 @@
+/**
+ * Classroom Presentation Mode — scoped to the JNV module only. Toggled by
+ * adding `jnv-presentation` to <html> (components/jnv/presentation-provider.tsx).
+ * Scales via root font-size so every rem-based Tailwind utility (spacing,
+ * icon `size-*`, text-*) grows together — distraction-free chrome removal +
+ * back-of-classroom readability without touching every component.
+ */
+html.jnv-presentation {
+  font-size: 120%;
+}
+
+@media (min-width: 1920px) {
+  html.jnv-presentation {
+    font-size: 138%;
+  }
+}
+
+/* Nav, footer and other non-teaching chrome — anything opted in via the
+   `jnv-chrome` class (see app/jnv/layout.tsx). */
+html.jnv-presentation .jnv-chrome {
+  display: none !important;
+}
+
+/* Content wrappers opted in via `jnv-container` (lib/jnv/ui.ts) expand edge
+   to edge instead of capping at max-w-7xl. */
+html.jnv-presentation .jnv-container {
+  max-width: 100% !important;
+}
+
+html.jnv-presentation .jnv-main {
+  padding-top: 0.5rem;
+}

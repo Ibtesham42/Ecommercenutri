@@ -12,6 +12,11 @@ import {
   Archive,
   File as FileIcon,
   ClipboardCheck,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Clapperboard,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -193,9 +198,9 @@ function ResourcePreview({
     return (
       <iframe
         ref={iframeRef}
-        src={fileUrl}
+        src={`${fileUrl}#toolbar=1&navpanes=0&view=FitH`}
         title={title}
-        className="h-[75vh] w-full"
+        className="h-[75vh] w-full [.jnv-presentation_&]:h-[calc(100dvh-9rem)]"
       />
     );
   }
@@ -205,28 +210,17 @@ function ResourcePreview({
       <iframe
         src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`}
         title={title}
-        className="h-[75vh] w-full"
+        className="h-[75vh] w-full [.jnv-presentation_&]:h-[calc(100dvh-9rem)]"
       />
     );
   }
 
   if (fileKind === "IMAGE") {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element -- arbitrary external/Cloudinary URLs, not a static import
-      <img
-        src={cldUrl(fileUrl, { w: 1600 })}
-        alt={title}
-        className="max-h-[80vh] w-full object-contain"
-      />
-    );
+    return <ImagePreview src={cldUrl(fileUrl, { w: 1920 })} alt={title} />;
   }
 
   if (fileKind === "VIDEO" || isVideoUrl(fileUrl)) {
-    return (
-      <video controls className="max-h-[80vh] w-full bg-black">
-        <source src={fileUrl} />
-      </video>
-    );
+    return <VideoPreview resourceId={resource.id} src={fileUrl} />;
   }
 
   if (fileKind === "AUDIO") {
@@ -248,6 +242,178 @@ function ResourcePreview({
       <p className="text-sm text-slate-500 dark:text-slate-400">
         No inline preview for this file type — use Download or Open to view it.
       </p>
+    </div>
+  );
+}
+
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 4;
+const ZOOM_STEP = 0.5;
+
+/** Gallery-style image preview: zoom in/out and pan when zoomed in. */
+function ImagePreview({ src, alt }: { src: string; alt: string }) {
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const dragRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+
+  function clampZoom(z: number) {
+    return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
+  }
+
+  function zoomIn() {
+    setZoom((z) => clampZoom(z + ZOOM_STEP));
+  }
+  function zoomOut() {
+    setZoom((z) => {
+      const next = clampZoom(z - ZOOM_STEP);
+      if (next === ZOOM_MIN) setPan({ x: 0, y: 0 });
+      return next;
+    });
+  }
+  function resetZoom() {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }
+
+  function onPointerDown(e: React.PointerEvent) {
+    if (zoom === ZOOM_MIN) return;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    dragRef.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
+  }
+  function onPointerMove(e: React.PointerEvent) {
+    if (!dragRef.current) return;
+    const dx = e.clientX - dragRef.current.x;
+    const dy = e.clientY - dragRef.current.y;
+    setPan({ x: dragRef.current.panX + dx, y: dragRef.current.panY + dy });
+  }
+  function onPointerUp() {
+    dragRef.current = null;
+  }
+
+  return (
+    <div className="relative bg-slate-100 dark:bg-slate-950">
+      <div
+        className="flex h-[70vh] w-full items-center justify-center overflow-hidden [.jnv-presentation_&]:h-[calc(100dvh-11rem)]"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerLeave={onPointerUp}
+        style={{ cursor: zoom > 1 ? "grab" : "default", touchAction: zoom > 1 ? "none" : "auto" }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary external/Cloudinary URLs, not a static import */}
+        <img
+          src={src}
+          alt={alt}
+          draggable={false}
+          className="max-h-full max-w-full select-none object-contain transition-transform duration-150"
+          style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
+        />
+      </div>
+      <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border border-slate-200 bg-white/95 p-1 shadow-elev-1 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+        <button
+          type="button"
+          onClick={zoomOut}
+          disabled={zoom <= ZOOM_MIN}
+          aria-label="Zoom out"
+          className="grid size-9 place-items-center rounded-full text-slate-600 transition-colors hover:bg-blue-600/10 hover:text-blue-700 disabled:opacity-30 dark:text-slate-300"
+        >
+          <ZoomOut className="size-4" />
+        </button>
+        <span className="min-w-10 text-center text-xs font-medium text-slate-500 dark:text-slate-400">
+          {Math.round(zoom * 100)}%
+        </span>
+        <button
+          type="button"
+          onClick={zoomIn}
+          disabled={zoom >= ZOOM_MAX}
+          aria-label="Zoom in"
+          className="grid size-9 place-items-center rounded-full text-slate-600 transition-colors hover:bg-blue-600/10 hover:text-blue-700 disabled:opacity-30 dark:text-slate-300"
+        >
+          <ZoomIn className="size-4" />
+        </button>
+        {zoom > 1 && (
+          <button
+            type="button"
+            onClick={resetZoom}
+            aria-label="Reset zoom"
+            className="grid size-9 place-items-center rounded-full text-slate-600 transition-colors hover:bg-blue-600/10 hover:text-blue-700 dark:text-slate-300"
+          >
+            <RotateCcw className="size-4" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const RESUME_THRESHOLD_SECONDS = 10;
+
+/** Video preview with Theatre Mode and resume-from-last-position (per device). */
+function VideoPreview({ resourceId, src }: { resourceId: string; src: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [theatre, setTheatre] = useState(false);
+  const lastSaveRef = useRef(0);
+  const resumeKey = `jnv_resume_${resourceId}`;
+
+  function handleLoadedMetadata() {
+    const video = videoRef.current;
+    if (!video) return;
+    const saved = Number(window.localStorage.getItem(resumeKey) ?? "0");
+    if (saved > RESUME_THRESHOLD_SECONDS && saved < video.duration - RESUME_THRESHOLD_SECONDS) {
+      video.currentTime = saved;
+    }
+  }
+
+  function handleTimeUpdate() {
+    const video = videoRef.current;
+    if (!video) return;
+    const now = Date.now();
+    if (now - lastSaveRef.current < 5000) return;
+    lastSaveRef.current = now;
+    window.localStorage.setItem(resumeKey, String(Math.floor(video.currentTime)));
+  }
+
+  function handleEnded() {
+    window.localStorage.removeItem(resumeKey);
+  }
+
+  return (
+    <div
+      className={
+        theatre
+          ? "fixed inset-0 z-50 flex flex-col items-center justify-center bg-black p-4"
+          : "relative bg-black"
+      }
+    >
+      {theatre && (
+        <button
+          type="button"
+          onClick={() => setTheatre(false)}
+          aria-label="Exit theatre mode"
+          className="absolute right-4 top-4 grid size-10 place-items-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+        >
+          <X className="size-5" />
+        </button>
+      )}
+      <video
+        ref={videoRef}
+        controls
+        onLoadedMetadata={handleLoadedMetadata}
+        onTimeUpdate={handleTimeUpdate}
+        onEnded={handleEnded}
+        className={theatre ? "max-h-full max-w-full" : "max-h-[80vh] w-full [.jnv-presentation_&]:max-h-[calc(100dvh-11rem)]"}
+      >
+        <source src={src} />
+      </video>
+      {!theatre && (
+        <button
+          type="button"
+          onClick={() => setTheatre(true)}
+          className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1.5 text-xs font-medium text-white backdrop-blur transition-colors hover:bg-black/80"
+        >
+          <Clapperboard className="size-3.5" /> Theatre mode
+        </button>
+      )}
     </div>
   );
 }

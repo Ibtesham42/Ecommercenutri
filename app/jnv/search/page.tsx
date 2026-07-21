@@ -3,6 +3,7 @@ import { searchJnvResources } from "@/lib/queries/jnv";
 import { isJnvClassLevel } from "@/lib/jnv/catalog";
 import { JnvSearchForm } from "@/components/jnv/jnv-search-form";
 import { ResourceCard } from "@/components/jnv/resource-card";
+import { JNV_CONTAINER_NARROW, JNV_CARD_GRID } from "@/lib/jnv/ui";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Search" };
@@ -24,9 +25,9 @@ export default async function JnvSearchPage({
     : [];
 
   return (
-    <div className="py-8 sm:py-10">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <h1 className="mb-4 text-2xl font-bold tracking-tight sm:text-3xl">Search resources</h1>
+    <div className="py-8 sm:py-10 2xl:py-14">
+      <div className={JNV_CONTAINER_NARROW}>
+        <h1 className="mb-4 text-2xl font-bold tracking-tight sm:text-3xl 3xl:text-4xl">Search resources</h1>
         <JnvSearchForm initial={{ q, classLevel: classLevel ? String(classLevel) : "", kind }} />
 
         <div className="mt-8">
@@ -41,7 +42,7 @@ export default async function JnvSearchPage({
               <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
                 {results.length} result{results.length === 1 ? "" : "s"}
               </p>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className={JNV_CARD_GRID}>
                 {results.map((r) => (
                   <ResourceCard
                     key={r.id}

@@ -5,6 +5,7 @@ import { getJnvFolders, getJnvAnnouncements } from "@/lib/queries/jnv";
 import { FolderCard } from "@/components/jnv/folder-card";
 import { AnnouncementBanner } from "@/components/jnv/announcement-banner";
 import { JnvBreadcrumbs } from "@/components/jnv/jnv-breadcrumbs";
+import { JNV_CONTAINER, JNV_CARD_GRID } from "@/lib/jnv/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -30,11 +31,11 @@ export default async function JnvClassPage({ params }: { params: Promise<{ level
   const pinned = announcements.filter((a) => a.pinned);
 
   return (
-    <div className="py-8 sm:py-10">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="py-8 sm:py-10 2xl:py-14">
+      <div className={JNV_CONTAINER}>
         <JnvBreadcrumbs classLevel={classLevel} trail={[]} />
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{jnvClassLabel(classLevel)}</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl 3xl:text-4xl">{jnvClassLabel(classLevel)}</h1>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 3xl:text-base">
           Choose a subject folder to view notes, slides, PDFs, videos and assignments.
         </p>
       </div>
@@ -43,7 +44,7 @@ export default async function JnvClassPage({ params }: { params: Promise<{ level
         <AnnouncementBanner announcements={pinned} />
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className={JNV_CONTAINER}>
         {folders.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center dark:border-slate-700">
             <p className="font-medium text-slate-600 dark:text-slate-300">
@@ -54,7 +55,7 @@ export default async function JnvClassPage({ params }: { params: Promise<{ level
             </p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className={JNV_CARD_GRID}>
             {folders.map((f) => (
               <FolderCard
                 key={f.id}

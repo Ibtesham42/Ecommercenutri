@@ -5,6 +5,10 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Extra breakpoint above Tailwind's default 2xl (1536px) for smart boards,
+     interactive panels and 4K displays — the JNV classroom module is the
+     primary consumer, but any surface can opt in. */
+  --breakpoint-3xl: 1920px;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);

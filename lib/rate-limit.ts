@@ -27,6 +27,7 @@ function makeLimiter(tokens: number, window: Window, prefix: string) {
 export const limiters = {
   auth: makeLimiter(5, "1 m", "rl:auth"),
   ai: makeLimiter(20, "1 m", "rl:ai"),
+  jnvAi: makeLimiter(20, "1 m", "rl:jnv-ai"),
   checkout: makeLimiter(10, "1 m", "rl:checkout"),
   api: makeLimiter(60, "1 m", "rl:api"),
 };

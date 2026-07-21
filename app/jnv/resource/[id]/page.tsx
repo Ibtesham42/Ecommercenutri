@@ -24,8 +24,8 @@ export default async function JnvResourcePage({ params }: { params: Promise<{ id
   const breadcrumbs = await getJnvBreadcrumbs(resource.folderId);
 
   return (
-    <div className="py-8 sm:py-10">
-      <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+    <div className="py-8 sm:py-10 2xl:py-14">
+      <div className="jnv-container mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 2xl:max-w-[1500px] 2xl:px-12">
         <JnvBreadcrumbs
           classLevel={resource.classLevel}
           trail={breadcrumbs.map((f) => ({ id: f.id, name: f.name }))}
