@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getJnvResourceById, getJnvBreadcrumbs } from "@/lib/queries/jnv";
+import { getJnvResourceById, getJnvBreadcrumbs, getJnvResourcesInFolder } from "@/lib/queries/jnv";
 import { JnvBreadcrumbs } from "@/components/jnv/jnv-breadcrumbs";
 import { ResourceViewer } from "@/components/jnv/resource-viewer";
 
@@ -21,7 +21,11 @@ export default async function JnvResourcePage({ params }: { params: Promise<{ id
   const resource = await getJnvResourceById(id);
   if (!resource) notFound();
 
-  const breadcrumbs = await getJnvBreadcrumbs(resource.folderId);
+  const [breadcrumbs, folderResources] = await Promise.all([
+    getJnvBreadcrumbs(resource.folderId),
+    getJnvResourcesInFolder(resource.folderId),
+  ]);
+  const siblings = folderResources.map((r) => ({ id: r.id, title: r.title }));
 
   return (
     <div className="py-8 sm:py-10 2xl:py-14">
@@ -31,6 +35,7 @@ export default async function JnvResourcePage({ params }: { params: Promise<{ id
           trail={breadcrumbs.map((f) => ({ id: f.id, name: f.name }))}
         />
         <ResourceViewer
+          siblings={siblings}
           resource={{
             id: resource.id,
             title: resource.title,

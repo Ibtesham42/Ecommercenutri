@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ExternalLink,
   Maximize,
@@ -17,6 +18,9 @@ import {
   RotateCcw,
   Clapperboard,
   X,
+  Bot,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -25,6 +29,8 @@ import { addRecent, isFavorite, toggleFavorite } from "@/lib/jnv/local-store";
 import { recordJnvDownload } from "@/lib/actions/jnv-public";
 import { JNV_FILE_KIND_LABELS, formatBytes, type JnvFileKind } from "@/lib/jnv/catalog";
 import { formatDate } from "@/lib/format";
+import { useJnvAiContext } from "@/components/jnv/ai-context-provider";
+import { isTypingTarget } from "@/components/jnv/presentation-provider";
 
 export type ResourceViewerData = {
   id: string;
@@ -42,11 +48,55 @@ export type ResourceViewerData = {
   createdAt: string;
 };
 
-export function ResourceViewer({ resource }: { resource: ResourceViewerData }) {
+const BYTE_QUICK_ACTIONS = [
+  { label: "Summarize", question: "Summarize this in simple terms." },
+  { label: "Generate MCQs", question: "Generate 5 MCQs from this." },
+  { label: "Revision notes", question: "Create revision notes from this." },
+  { label: "Create homework", question: "Create homework from this." },
+];
+
+export function ResourceViewer({
+  resource,
+  siblings = [],
+}: {
+  resource: ResourceViewerData;
+  /** Other resources in the same folder, in browse order — powers Next/Prev
+   *  and "Jump to" chapter navigation (handy for live teaching). */
+  siblings?: { id: string; title: string }[];
+}) {
   const [fav, setFav] = useState(false);
   const [downloadCount, setDownloadCount] = useState(resource.downloadCount);
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const { askAboutResource } = useJnvAiContext();
+  const router = useRouter();
+
+  const currentIndex = siblings.findIndex((s) => s.id === resource.id);
+  const prevResource = currentIndex > 0 ? siblings[currentIndex - 1] : null;
+  const nextResource =
+    currentIndex >= 0 && currentIndex < siblings.length - 1 ? siblings[currentIndex + 1] : null;
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(document.activeElement)) return;
+      if (e.key === "ArrowRight" && nextResource) {
+        router.push(`/jnv/resource/${nextResource.id}`);
+      } else if (e.key === "ArrowLeft" && prevResource) {
+        router.push(`/jnv/resource/${prevResource.id}`);
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [nextResource, prevResource, router]);
+
+  function askByte(question?: string) {
+    askAboutResource({
+      resourceId: resource.id,
+      title: resource.title,
+      classLevel: resource.classLevel,
+      initialQuestion: question,
+    });
+  }
 
   useEffect(() => {
     setFav(isFavorite(resource.id));
@@ -121,6 +171,41 @@ export function ResourceViewer({ resource }: { resource: ResourceViewerData }) {
 
   return (
     <div>
+      {siblings.length > 1 && (
+        <div className="mb-3 flex items-center gap-2">
+          <button
+            type="button"
+            disabled={!prevResource}
+            onClick={() => prevResource && router.push(`/jnv/resource/${prevResource.id}`)}
+            aria-label="Previous resource"
+            className="flex h-9 items-center gap-1 rounded-lg border border-slate-200 px-2.5 text-sm font-medium text-slate-600 transition-colors hover:border-blue-300 hover:text-blue-700 disabled:pointer-events-none disabled:opacity-30 dark:border-slate-700 dark:text-slate-300"
+          >
+            <ChevronLeft className="size-4" /> <span className="hidden sm:inline">Prev</span>
+          </button>
+          <select
+            value={resource.id}
+            onChange={(e) => router.push(`/jnv/resource/${e.target.value}`)}
+            aria-label="Jump to a resource in this folder"
+            className="h-9 min-w-0 flex-1 truncate rounded-lg border border-slate-200 bg-transparent px-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700"
+          >
+            {siblings.map((s, i) => (
+              <option key={s.id} value={s.id}>
+                {i + 1}. {s.title}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            disabled={!nextResource}
+            onClick={() => nextResource && router.push(`/jnv/resource/${nextResource.id}`)}
+            aria-label="Next resource"
+            className="flex h-9 items-center gap-1 rounded-lg border border-slate-200 px-2.5 text-sm font-medium text-slate-600 transition-colors hover:border-blue-300 hover:text-blue-700 disabled:pointer-events-none disabled:opacity-30 dark:border-slate-700 dark:text-slate-300"
+          >
+            <span className="hidden sm:inline">Next</span> <ChevronRight className="size-4" />
+          </button>
+        </div>
+      )}
+
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{resource.title}</h1>
@@ -180,6 +265,28 @@ export function ResourceViewer({ resource }: { resource: ResourceViewerData }) {
         <span className="ml-auto self-center text-xs text-slate-400">
           {downloadCount} download{downloadCount === 1 ? "" : "s"}
         </span>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50/60 p-3 dark:border-blue-900 dark:bg-blue-950/30">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => askByte()}
+            className="flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
+          >
+            <Bot className="size-3.5" /> Ask Byte about this
+          </button>
+          {BYTE_QUICK_ACTIONS.map((a) => (
+            <button
+              key={a.label}
+              type="button"
+              onClick={() => askByte(a.question)}
+              className="rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:border-blue-400 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-400"
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

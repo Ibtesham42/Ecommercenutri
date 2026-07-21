@@ -8,6 +8,7 @@ const tabs = [
   { href: "/admin/jnv", label: "Dashboard", exact: true },
   { href: "/admin/jnv/browse", label: "Classes & Resources" },
   { href: "/admin/jnv/announcements", label: "Announcements" },
+  { href: "/admin/jnv/ai-toolkit", label: "AI Toolkit" },
 ];
 
 export function JnvTabs() {

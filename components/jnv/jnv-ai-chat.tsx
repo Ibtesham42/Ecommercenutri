@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { nanoid } from "nanoid";
-import { Bot, Send, Loader2, User } from "lucide-react";
+import { Bot, Send, Loader2, User, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { JNV_CLASS_LEVELS } from "@/lib/jnv/catalog";
 
@@ -17,22 +17,53 @@ const SUGGESTIONS = [
   "What are the do's and don'ts of Cyber Security?",
 ];
 
+const RESOURCE_SUGGESTIONS = [
+  "Summarize this in simple terms",
+  "Generate 5 MCQs from this",
+  "Create revision notes from this",
+  "Create homework from this",
+  "Explain this like I'm in Class 6",
+];
+
+export type JnvAiResourceContext = { resourceId: string; title: string; classLevel: number };
+
 /**
  * Byte — the JNV Computer Science teaching assistant chat. Entirely separate
  * component/route/persona from the storefront's `AiChat` (Nutri) — no shared
  * history, no product recommendations, own styling to match the JNV
- * blue/emerald identity.
+ * blue/emerald identity. When `resourceContext` is set, every turn is scoped
+ * to that resource (title/description/extracted PDF text resolved
+ * server-side, never sent from the client — see app/api/jnv/ai/chat/route.ts).
  */
-export function JnvAiChat({ className }: { className?: string }) {
-  const [classLevel, setClassLevel] = useState<string>("");
+export function JnvAiChat({
+  className,
+  resourceContext,
+  initialQuestion,
+}: {
+  className?: string;
+  resourceContext?: JnvAiResourceContext | null;
+  initialQuestion?: string;
+}) {
+  const [classLevel, setClassLevel] = useState<string>(
+    resourceContext ? String(resourceContext.classLevel) : "",
+  );
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const sentInitial = useRef(false);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (initialQuestion && !sentInitial.current) {
+      sentInitial.current = true;
+      void send(initialQuestion);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuestion]);
 
   async function send(text: string) {
     const content = text.trim();
@@ -53,6 +84,7 @@ export function JnvAiChat({ className }: { className?: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           classLevel: classLevel ? Number(classLevel) : null,
+          resourceId: resourceContext?.resourceId ?? null,
           messages: history.map((m) => ({ role: m.role, content: m.content })),
         }),
       });
@@ -113,7 +145,8 @@ export function JnvAiChat({ className }: { className?: string }) {
           id="jnv-ai-class"
           value={classLevel}
           onChange={(e) => setClassLevel(e.target.value)}
-          className="h-8 rounded-lg border border-slate-200 bg-transparent px-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/30 dark:border-slate-700"
+          disabled={Boolean(resourceContext)}
+          className="h-8 rounded-lg border border-slate-200 bg-transparent px-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/30 disabled:opacity-70 dark:border-slate-700"
         >
           <option value="">All classes</option>
           {JNV_CLASS_LEVELS.map((lvl) => (
@@ -122,6 +155,12 @@ export function JnvAiChat({ className }: { className?: string }) {
             </option>
           ))}
         </select>
+        {resourceContext && (
+          <span className="ml-auto flex min-w-0 items-center gap-1.5 rounded-full bg-blue-600/10 px-2.5 py-1 text-xs font-medium text-blue-700 dark:text-blue-400">
+            <FileText className="size-3.5 shrink-0" />
+            <span className="truncate">{resourceContext.title}</span>
+          </span>
+        )}
       </div>
 
       <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-4" aria-live="polite">
@@ -131,8 +170,9 @@ export function JnvAiChat({ className }: { className?: string }) {
               <Bot className="size-6" />
             </span>
             <p className="mt-3 max-w-sm text-sm text-slate-500 dark:text-slate-400">
-              Hi, I&apos;m Byte — your Computer Science teaching assistant. Ask me to explain a
-              topic, or generate quizzes, worksheets, lesson plans and more.
+              {resourceContext
+                ? `Hi, I'm Byte. I can see "${resourceContext.title}" — ask me to summarize it, explain a part, or generate a quiz or notes from it.`
+                : "Hi, I'm Byte — your Computer Science teaching assistant. Ask me to explain a topic, or generate quizzes, worksheets, lesson plans and more."}
             </p>
           </div>
         )}
@@ -172,7 +212,7 @@ export function JnvAiChat({ className }: { className?: string }) {
 
       {empty && (
         <div className="flex flex-wrap gap-2 border-t border-slate-200 p-3 dark:border-slate-800">
-          {SUGGESTIONS.map((s) => (
+          {(resourceContext ? RESOURCE_SUGGESTIONS : SUGGESTIONS).map((s) => (
             <button
               key={s}
               type="button"

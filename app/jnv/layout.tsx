@@ -4,6 +4,7 @@ import Link from "next/link";
 import "./presentation.css";
 import { JnvPresentationProvider } from "@/components/jnv/presentation-provider";
 import { JnvPresentationControls } from "@/components/jnv/presentation-controls";
+import { JnvAiContextProvider } from "@/components/jnv/ai-context-provider";
 import { JnvAiLauncher } from "@/components/jnv/jnv-ai-launcher";
 
 // Isolated academic identity — a blue/emerald favicon so the browser tab never
@@ -58,6 +59,7 @@ export const metadata: Metadata = {
 export default function JnvLayout({ children }: { children: React.ReactNode }) {
   return (
     <JnvPresentationProvider>
+    <JnvAiContextProvider>
       <div className="flex min-h-dvh flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
         <header className="jnv-chrome sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90 print:hidden">
           <div className="jnv-container mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8 2xl:max-w-[1760px] 2xl:px-12">
@@ -90,6 +92,7 @@ export default function JnvLayout({ children }: { children: React.ReactNode }) {
 
       <JnvPresentationControls />
       <JnvAiLauncher />
+    </JnvAiContextProvider>
     </JnvPresentationProvider>
   );
 }

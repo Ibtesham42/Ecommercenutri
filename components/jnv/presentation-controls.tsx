@@ -1,16 +1,26 @@
 "use client";
 
-import { Maximize, Minimize, MonitorPlay, X } from "lucide-react";
+import { Maximize, Minimize, Moon, MonitorPlay, MousePointer2, Sun, X } from "lucide-react";
 import { useJnvPresentation } from "@/components/jnv/presentation-provider";
 import { cn } from "@/lib/utils";
 
 /**
  * Always mounted (not `jnv-chrome`) so a teacher can enter/exit Presentation
  * Mode and toggle fullscreen from any student-portal page, including while
- * every other nav element is hidden.
+ * every other nav element is hidden. Keyboard shortcuts (F = fullscreen,
+ * Esc = exit presentation) live in JnvPresentationProvider.
  */
 export function JnvPresentationControls() {
-  const { active, toggle, enterFullscreen, fullscreen } = useJnvPresentation();
+  const {
+    active,
+    toggle,
+    enterFullscreen,
+    fullscreen,
+    darkStage,
+    toggleDarkStage,
+    laserPointer,
+    toggleLaserPointer,
+  } = useJnvPresentation();
 
   if (!active) {
     return (
@@ -31,6 +41,27 @@ export function JnvPresentationControls() {
         "fixed right-4 top-4 z-50 flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/95 p-1.5 shadow-elev-2 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95 print:hidden",
       )}
     >
+      <button
+        type="button"
+        onClick={toggleLaserPointer}
+        aria-label={laserPointer ? "Turn off laser pointer" : "Turn on laser pointer"}
+        aria-pressed={laserPointer}
+        className={cn(
+          "grid size-11 place-items-center rounded-full transition-colors hover:bg-blue-600/10 hover:text-blue-700 dark:hover:text-blue-300",
+          laserPointer ? "bg-red-500/10 text-red-600" : "text-slate-600 dark:text-slate-300",
+        )}
+      >
+        <MousePointer2 className="size-5" />
+      </button>
+      <button
+        type="button"
+        onClick={toggleDarkStage}
+        aria-label={darkStage ? "Switch to light stage" : "Switch to dark stage (projector-friendly)"}
+        aria-pressed={darkStage}
+        className="grid size-11 place-items-center rounded-full text-slate-600 transition-colors hover:bg-blue-600/10 hover:text-blue-700 dark:text-slate-300 dark:hover:text-blue-300"
+      >
+        {darkStage ? <Sun className="size-5" /> : <Moon className="size-5" />}
+      </button>
       <button
         type="button"
         onClick={enterFullscreen}

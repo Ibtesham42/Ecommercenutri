@@ -1,26 +1,28 @@
 "use client";
 
-import { useState } from "react";
 import { Bot } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useJnvPresentation } from "@/components/jnv/presentation-provider";
+import { useJnvAiContext } from "@/components/jnv/ai-context-provider";
 import { JnvAiChat } from "@/components/jnv/jnv-ai-chat";
 
 /**
  * Global floating launcher for Byte, mounted once in app/jnv/layout.tsx so
  * it's reachable from every student-portal page, including inside
  * Presentation Mode (a teacher may want to pull up a quiz mid-lesson).
- * Deliberately NOT marked `jnv-chrome` for that reason.
+ * Deliberately NOT marked `jnv-chrome` for that reason. Open state and any
+ * resource context come from `JnvAiContextProvider`, so `ResourceViewer` can
+ * trigger "Ask Byte about this" without prop-drilling.
  */
 export function JnvAiLauncher() {
   const { active: presentation } = useJnvPresentation();
-  const [open, setOpen] = useState(false);
+  const { open, setOpen, payload, openGeneral } = useJnvAiContext();
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openGeneral}
         className="fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-full bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-elev-2 transition-transform hover:bg-blue-700 active:scale-95 print:hidden"
       >
         <Bot className="size-5" />
@@ -37,7 +39,12 @@ export function JnvAiLauncher() {
             </SheetTitle>
             <SheetDescription>For Classes 6–10 · explanations, quizzes, worksheets and more</SheetDescription>
           </SheetHeader>
-          <JnvAiChat className="flex-1" />
+          <JnvAiChat
+            key={payload?.resourceId ?? "general"}
+            className="flex-1"
+            resourceContext={payload}
+            initialQuestion={payload?.initialQuestion}
+          />
         </SheetContent>
       </Sheet>
     </>

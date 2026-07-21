@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isJnvClassLevel, JNV_FILE_KINDS } from "@/lib/jnv/catalog";
+import { JNV_TEACHER_CONTENT_TYPES } from "@/lib/jnv/teacher-content-types";
 
 const classLevelSchema = z
   .number()
@@ -49,6 +50,18 @@ export const jnvResourceUpdateSchema = z.object({
   teacherName: z.string().trim().max(80).nullable().optional(),
   isAssignment: z.boolean().default(false),
   dueAt: z.coerce.date().nullable().optional(),
+});
+
+const teacherContentKeys = JNV_TEACHER_CONTENT_TYPES.map((t) => t.key) as [string, ...string[]];
+
+export const jnvTeacherContentSchema = z.object({
+  contentType: z.enum(teacherContentKeys),
+  classLevel: classLevelSchema,
+  subject: z.string().trim().min(1).max(60).default("Computer Science"),
+  topic: z.string().trim().min(1, "Enter a topic").max(200),
+  count: z.number().int().min(1).max(30).nullish(),
+  extraInstructions: z.string().trim().max(1000).nullish(),
+  resourceId: z.string().min(1).max(60).nullish(),
 });
 
 export const jnvAnnouncementSchema = z.object({

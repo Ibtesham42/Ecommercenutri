@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { runJnvAssistantStream } from "@/lib/jnv/ai-chat";
+import { buildJnvResourceContext } from "@/lib/jnv/ai-context";
 import { checkRateLimit, limiters } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 45;
 
 const bodySchema = z.object({
   classLevel: z.number().int().min(6).max(10).nullish(),
+  /** When set, resolved server-side into title/description/extracted-text
+   *  context — the client only ever sends the id, never raw file content. */
+  resourceId: z.string().max(60).nullish(),
   contextTitle: z.string().max(200).nullish(),
   contextText: z.string().max(8000).nullish(),
   messages: z
@@ -51,11 +55,23 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
-  const { messages, classLevel, contextTitle, contextText } = parsed.data;
+  const { messages, resourceId } = parsed.data;
+  let classLevel = parsed.data.classLevel;
+  let contextTitle = parsed.data.contextTitle;
+  let contextText = parsed.data.contextText;
 
   const rl = await checkRateLimit(limiters.jnvAi, clientId(req));
   if (!rl.success) {
     return fallbackResponse(FALLBACK.rate_limited, 429);
+  }
+
+  if (resourceId) {
+    const resourceContext = await buildJnvResourceContext(resourceId);
+    if (resourceContext) {
+      contextTitle = resourceContext.title;
+      contextText = resourceContext.text;
+      classLevel = classLevel ?? resourceContext.classLevel;
+    }
   }
 
   const stream = await runJnvAssistantStream({ messages, classLevel, contextTitle, contextText });
