@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { JnvClassLevel } from "@/lib/jnv/catalog";
+import { JNV_CLASS_LEVELS, type JnvClassLevel } from "@/lib/jnv/catalog";
 import { cached, cacheDel } from "@/lib/redis";
 
 /** One-shot retry: Neon scales to zero and the first query after idle can throw
@@ -27,6 +27,8 @@ const folderListKey = (classLevel: number, parentId: string | null) =>
   `jnv:folders:${classLevel}:${parentId ?? "root"}`;
 const resourceKey = (id: string) => `jnv:resource:${id}`;
 const resourcesInFolderKey = (folderId: string) => `jnv:resources-in-folder:${folderId}`;
+const classSummariesKey = "jnv:class-summaries";
+const classHighlightsKey = (classLevel: number) => `jnv:class-highlights:${classLevel}`;
 
 function reviveFolder<T extends { updatedAt: Date | string } | null>(f: T): T {
   if (!f) return f;
@@ -59,16 +61,22 @@ export function invalidateJnvFolder(
   classLevel?: number,
   parentId?: string | null,
 ): Promise<void> {
-  const keys = [folderKey(id)];
+  const keys = [folderKey(id), classSummariesKey];
   if (classLevel !== undefined) keys.push(folderListKey(classLevel, parentId ?? null));
   return cacheDel(...keys);
 }
 
 /** Invalidate a resource's own cache entry and (when known) the folder
- *  listing it belongs to. Call after any resource create/update/delete. */
-export function invalidateJnvResource(id: string, folderId?: string): Promise<void> {
-  const keys = [resourceKey(id)];
+ *  listing / class dashboard aggregates it feeds into. Call after any
+ *  resource create/update/delete. */
+export function invalidateJnvResource(
+  id: string,
+  folderId?: string,
+  classLevel?: number,
+): Promise<void> {
+  const keys = [resourceKey(id), classSummariesKey];
   if (folderId) keys.push(resourcesInFolderKey(folderId));
+  if (classLevel !== undefined) keys.push(classHighlightsKey(classLevel));
   return cacheDel(...keys);
 }
 
@@ -249,21 +257,33 @@ export type JnvClassSummary = {
 export async function getJnvClassSummaries(
   classLevels: readonly number[],
 ): Promise<JnvClassSummary[]> {
-  return withRetry(async () => {
-    const [folderCounts, resourceCounts, lastUploads] = await Promise.all([
-      prisma.jnvFolder.groupBy({ by: ["classLevel"], _count: { _all: true } }),
-      prisma.jnvResource.groupBy({ by: ["classLevel"], _count: { _all: true } }),
-      prisma.jnvResource.groupBy({ by: ["classLevel"], _max: { createdAt: true } }),
-    ]);
-    const folderMap = new Map(folderCounts.map((f) => [f.classLevel, f._count._all]));
-    const resourceMap = new Map(resourceCounts.map((r) => [r.classLevel, r._count._all]));
-    const lastMap = new Map(lastUploads.map((l) => [l.classLevel, l._max.createdAt]));
-    return classLevels.map((classLevel) => ({
+  const summaries = await cached(classSummariesKey, 90, () =>
+    withRetry(async () => {
+      const [folderCounts, resourceCounts, lastUploads] = await Promise.all([
+        prisma.jnvFolder.groupBy({ by: ["classLevel"], _count: { _all: true } }),
+        prisma.jnvResource.groupBy({ by: ["classLevel"], _count: { _all: true } }),
+        prisma.jnvResource.groupBy({ by: ["classLevel"], _max: { createdAt: true } }),
+      ]);
+      const folderMap = new Map(folderCounts.map((f) => [f.classLevel, f._count._all]));
+      const resourceMap = new Map(resourceCounts.map((r) => [r.classLevel, r._count._all]));
+      const lastMap = new Map(lastUploads.map((l) => [l.classLevel, l._max.createdAt]));
+      return JNV_CLASS_LEVELS.map((classLevel) => ({
+        classLevel,
+        folderCount: folderMap.get(classLevel) ?? 0,
+        resourceCount: resourceMap.get(classLevel) ?? 0,
+        lastUpdated: lastMap.get(classLevel) ?? null,
+      }));
+    }),
+  );
+  const byLevel = new Map<number, JnvClassSummary>(summaries.map((s) => [s.classLevel, s]));
+  return classLevels.map((classLevel) => {
+    const s = byLevel.get(classLevel);
+    return {
       classLevel,
-      folderCount: folderMap.get(classLevel) ?? 0,
-      resourceCount: resourceMap.get(classLevel) ?? 0,
-      lastUpdated: lastMap.get(classLevel) ?? null,
-    }));
+      folderCount: s?.folderCount ?? 0,
+      resourceCount: s?.resourceCount ?? 0,
+      lastUpdated: s?.lastUpdated ? new Date(s.lastUpdated) : null,
+    };
   });
 }
 
@@ -276,35 +296,42 @@ export type JnvClassHighlights = {
 /** Powers the "Most Downloaded" / "Recently Added" rails and subject-wise
  *  navigation chips on the class page — one combined query per class. */
 export async function getJnvClassHighlights(classLevel: number): Promise<JnvClassHighlights> {
-  return withRetry(async () => {
-    const [mostDownloaded, recentlyAdded, subjectGroups] = await Promise.all([
-      prisma.jnvResource.findMany({
-        where: { classLevel, downloadCount: { gt: 0 } },
-        orderBy: { downloadCount: "desc" },
-        take: 6,
-        select: resourceSelect,
-      }),
-      prisma.jnvResource.findMany({
-        where: { classLevel },
-        orderBy: { createdAt: "desc" },
-        take: 6,
-        select: resourceSelect,
-      }),
-      prisma.jnvResource.groupBy({
-        by: ["subject"],
-        where: { classLevel, subject: { not: null } },
-        _count: { _all: true },
-        orderBy: { _count: { subject: "desc" } },
-      }),
-    ]);
-    return {
-      mostDownloaded: mostDownloaded.map(toResourceRow),
-      recentlyAdded: recentlyAdded.map(toResourceRow),
-      subjects: subjectGroups
-        .filter((g) => g.subject)
-        .map((g) => ({ subject: g.subject as string, count: g._count._all })),
-    };
-  });
+  const highlights = await cached(classHighlightsKey(classLevel), 90, () =>
+    withRetry(async () => {
+      const [mostDownloaded, recentlyAdded, subjectGroups] = await Promise.all([
+        prisma.jnvResource.findMany({
+          where: { classLevel, downloadCount: { gt: 0 } },
+          orderBy: { downloadCount: "desc" },
+          take: 6,
+          select: resourceSelect,
+        }),
+        prisma.jnvResource.findMany({
+          where: { classLevel },
+          orderBy: { createdAt: "desc" },
+          take: 6,
+          select: resourceSelect,
+        }),
+        prisma.jnvResource.groupBy({
+          by: ["subject"],
+          where: { classLevel, subject: { not: null } },
+          _count: { _all: true },
+          orderBy: { _count: { subject: "desc" } },
+        }),
+      ]);
+      return {
+        mostDownloaded: mostDownloaded.map(toResourceRow),
+        recentlyAdded: recentlyAdded.map(toResourceRow),
+        subjects: subjectGroups
+          .filter((g) => g.subject)
+          .map((g) => ({ subject: g.subject as string, count: g._count._all })),
+      };
+    }),
+  );
+  return {
+    ...highlights,
+    mostDownloaded: reviveResourceList(highlights.mostDownloaded),
+    recentlyAdded: reviveResourceList(highlights.recentlyAdded),
+  };
 }
 
 export type JnvSearchFilters = {

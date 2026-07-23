@@ -70,10 +70,20 @@ export function JnvAiChat({
   const messagesRef = useRef<Msg[]>([]);
   const queueRef = useRef<{ id: string; content: string }[]>([]);
   const processingRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  // The chat unmounts whenever the launcher Sheet closes or its `key` swaps
+  // to a different resource context (see JnvAiLauncher) — without this, an
+  // in-flight streaming reply keeps reading/patching state into a component
+  // that's already gone, wasting network/CPU for however long Byte takes to
+  // finish generating.
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   useEffect(() => {
     if (initialQuestion && !sentInitial.current) {
@@ -139,6 +149,9 @@ export function JnvAiChat({
       );
     }
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
       const res = await fetch("/api/jnv/ai/chat", {
         method: "POST",
@@ -148,6 +161,7 @@ export function JnvAiChat({
           resourceId: resourceContext?.resourceId ?? null,
           messages: history,
         }),
+        signal: controller.signal,
       });
 
       if (!res.ok || res.headers.get("X-AI-Fallback") === "1") {
@@ -183,7 +197,11 @@ export function JnvAiChat({
         );
       }
       finishUserStatus();
-    } catch {
+    } catch (err) {
+      // Aborted because the component unmounted (Sheet closed / resource
+      // context swapped) — the message list is being torn down, so patching
+      // it further is pointless busywork, not a real error to show.
+      if (err instanceof DOMException && err.name === "AbortError") return;
       patchMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantId
@@ -349,9 +367,9 @@ export function JnvAiChat({
 function TypingDots() {
   return (
     <span className="inline-flex items-center gap-1 py-0.5">
-      <span className="size-1.5 animate-bounce rounded-full bg-slate-400/60 [animation-delay:-0.3s]" />
-      <span className="size-1.5 animate-bounce rounded-full bg-slate-400/60 [animation-delay:-0.15s]" />
-      <span className="size-1.5 animate-bounce rounded-full bg-slate-400/60" />
+      <span className="size-1.5 animate-bounce rounded-full bg-slate-400/60 motion-reduce:animate-none [animation-delay:-0.3s]" />
+      <span className="size-1.5 animate-bounce rounded-full bg-slate-400/60 motion-reduce:animate-none [animation-delay:-0.15s]" />
+      <span className="size-1.5 animate-bounce rounded-full bg-slate-400/60 motion-reduce:animate-none" />
     </span>
   );
 }

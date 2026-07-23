@@ -179,6 +179,7 @@ export async function deleteJnvFolder(id: string): Promise<AdminResult> {
   }
   await invalidateJnvFolder(id, folder.classLevel, folder.parentId);
   await cacheDel(
+    `jnv:class-highlights:${folder.classLevel}`,
     ...allIds.map((fid) => `jnv:folder:${fid}`),
     ...allIds.map((fid) => `jnv:resources-in-folder:${fid}`),
     ...resources.map((r) => `jnv:resource:${r.id}`),
@@ -222,7 +223,7 @@ export async function createJnvResource(input: unknown): Promise<AdminResult<{ i
     },
     select: { id: true },
   });
-  await invalidateJnvResource(resource.id, d.folderId);
+  await invalidateJnvResource(resource.id, d.folderId, folder.classLevel);
   revalidate();
   return { ok: true, data: { id: resource.id } };
 }
@@ -237,7 +238,7 @@ export async function updateJnvResource(input: unknown): Promise<AdminResult> {
 
   const existing = await prisma.jnvResource.findUnique({
     where: { id: d.id },
-    select: { folderId: true },
+    select: { folderId: true, classLevel: true },
   });
   if (!existing) return { ok: false, error: "Resource not found." };
 
@@ -263,9 +264,9 @@ export async function updateJnvResource(input: unknown): Promise<AdminResult> {
       dueAt: d.dueAt ?? null,
     },
   });
-  await invalidateJnvResource(d.id, existing.folderId);
+  await invalidateJnvResource(d.id, existing.folderId, classLevel ?? existing.classLevel);
   if (d.folderId && d.folderId !== existing.folderId) {
-    await invalidateJnvResource(d.id, d.folderId);
+    await invalidateJnvResource(d.id, d.folderId, classLevel ?? existing.classLevel);
   }
   revalidate();
   return { ok: true };
@@ -275,13 +276,13 @@ export async function deleteJnvResource(id: string): Promise<AdminResult> {
   await requirePermission("jnv");
   const resource = await prisma.jnvResource.findUnique({
     where: { id },
-    select: { folderId: true, fileUrl: true, thumbnailUrl: true },
+    select: { folderId: true, classLevel: true, fileUrl: true, thumbnailUrl: true },
   });
   if (!resource) return { ok: false, error: "Resource not found." };
   await prisma.jnvResource.delete({ where: { id } });
   await destroyAssetByUrl(resource.fileUrl);
   if (resource.thumbnailUrl) await destroyAssetByUrl(resource.thumbnailUrl);
-  await invalidateJnvResource(id, resource.folderId);
+  await invalidateJnvResource(id, resource.folderId, resource.classLevel);
   revalidate();
   return { ok: true };
 }
@@ -299,7 +300,7 @@ export async function bulkJnvResourceAction(
 
   const doomed = await prisma.jnvResource.findMany({
     where: { id: { in: ids } },
-    select: { folderId: true, fileUrl: true, thumbnailUrl: true },
+    select: { folderId: true, classLevel: true, fileUrl: true, thumbnailUrl: true },
   });
   const res = await prisma.jnvResource.deleteMany({ where: { id: { in: ids } } });
   for (const r of doomed) {
@@ -307,8 +308,10 @@ export async function bulkJnvResourceAction(
     if (r.thumbnailUrl) await destroyAssetByUrl(r.thumbnailUrl);
   }
   await cacheDel(
+    "jnv:class-summaries",
     ...ids.map((id) => `jnv:resource:${id}`),
     ...[...new Set(doomed.map((r) => r.folderId))].map((fid) => `jnv:resources-in-folder:${fid}`),
+    ...[...new Set(doomed.map((r) => r.classLevel))].map((cl) => `jnv:class-highlights:${cl}`),
   );
   revalidate();
   return { ok: true, data: { done: res.count, skipped: ids.length - res.count } };
