@@ -89,6 +89,31 @@ export function isVideoUrl(url: string): boolean {
 }
 
 /**
+ * Best-effort first-page/first-slide thumbnail for a Cloudinary-hosted
+ * document (PDF/PPT/DOC/XLS). Office files upload as `resource_type: raw`
+ * (see `uploadToCloudinary`'s `/auto/upload` endpoint), so the delivery URL's
+ * resource-type segment is rewritten from `raw`/`video` to `image` — the
+ * delivery type Cloudinary's on-the-fly Office/PDF-to-image conversion runs
+ * through (`pg_1,f_jpg`). Used to paint something useful behind the JNV
+ * resource viewer's loading skeleton while the much heavier Office Online /
+ * PDF iframe converts and loads. Returns null for non-Cloudinary URLs, or if
+ * the account doesn't support document conversion / restricts this delivery
+ * type — callers MUST treat this as best-effort and hide it on `onError`
+ * (same reasoning as the PDF delivery-blocked banner in `check-delivery.ts`).
+ */
+export function cldDocPreviewImage(
+  url: string | null | undefined,
+  opts: { w?: number } = {},
+): string | null {
+  if (!url) return null;
+  const m = url.match(/^(https:\/\/res\.cloudinary\.com\/[^/]+\/)(image|raw|video)(\/upload\/)(.+)$/);
+  if (!m) return null;
+  const [, base, , uploadSeg, rest] = m;
+  const w = opts.w ?? 900;
+  return `${base}image${uploadSeg}f_jpg,pg_1,q_auto,c_fit,w_${w}/${rest}`;
+}
+
+/**
  * Force a Cloudinary delivery URL to download as an attachment (rather than
  * open inline) via the `fl_attachment` flag — used by the JNV resource viewer's
  * Download button for non-image files (PDFs, docs, zips) where the browser

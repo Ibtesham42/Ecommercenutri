@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import type { JnvClassLevel } from "@/lib/jnv/catalog";
+import { cached, cacheDel } from "@/lib/redis";
 
 /** One-shot retry: Neon scales to zero and the first query after idle can throw
  *  P1001 — retrying once warms the connection back up. */
@@ -11,6 +12,64 @@ async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
     await new Promise((r) => setTimeout(r, 400));
     return fn();
   }
+}
+
+// Short-TTL Redis cache for hot reads (folder listings, resource metadata) —
+// classroom navigation re-requests the same folder/resource repeatedly
+// (teacher flipping back and forth during a lesson). Redis round-trips
+// through JSON, which turns Date fields into strings on a cache hit, so
+// every cached read is revived back into real Date objects below —
+// otherwise `.toISOString()` calls downstream (e.g. the resource page) would
+// throw on a cache hit. TTLs are short enough that a missed invalidation
+// self-heals quickly rather than needing to be perfectly exhaustive.
+const folderKey = (id: string) => `jnv:folder:${id}`;
+const folderListKey = (classLevel: number, parentId: string | null) =>
+  `jnv:folders:${classLevel}:${parentId ?? "root"}`;
+const resourceKey = (id: string) => `jnv:resource:${id}`;
+const resourcesInFolderKey = (folderId: string) => `jnv:resources-in-folder:${folderId}`;
+
+function reviveFolder<T extends { updatedAt: Date | string } | null>(f: T): T {
+  if (!f) return f;
+  return { ...f, updatedAt: new Date(f.updatedAt) };
+}
+function reviveFolderList<T extends { updatedAt: Date | string }>(list: T[]): T[] {
+  return list.map((f) => ({ ...f, updatedAt: new Date(f.updatedAt) }));
+}
+function reviveResource<
+  T extends { createdAt: Date | string; updatedAt: Date | string; dueAt: Date | string | null },
+>(r: T): T {
+  return {
+    ...r,
+    createdAt: new Date(r.createdAt),
+    updatedAt: new Date(r.updatedAt),
+    dueAt: r.dueAt ? new Date(r.dueAt) : null,
+  };
+}
+function reviveResourceList<
+  T extends { createdAt: Date | string; updatedAt: Date | string; dueAt: Date | string | null },
+>(list: T[]): T[] {
+  return list.map(reviveResource);
+}
+
+/** Invalidate a folder's own cache entry and (when known) the listing it
+ *  appears in. Call after any write that changes a folder's name/icon/order
+ *  or its parent/class. */
+export function invalidateJnvFolder(
+  id: string,
+  classLevel?: number,
+  parentId?: string | null,
+): Promise<void> {
+  const keys = [folderKey(id)];
+  if (classLevel !== undefined) keys.push(folderListKey(classLevel, parentId ?? null));
+  return cacheDel(...keys);
+}
+
+/** Invalidate a resource's own cache entry and (when known) the folder
+ *  listing it belongs to. Call after any resource create/update/delete. */
+export function invalidateJnvResource(id: string, folderId?: string): Promise<void> {
+  const keys = [resourceKey(id)];
+  if (folderId) keys.push(resourcesInFolderKey(folderId));
+  return cacheDel(...keys);
 }
 
 export type JnvFolderNode = {
@@ -95,45 +154,51 @@ export async function getJnvFolders(
   classLevel: number,
   parentId: string | null,
 ): Promise<JnvFolderNode[]> {
-  return withRetry(async () => {
-    const folders = await prisma.jnvFolder.findMany({
-      where: { classLevel, parentId },
-      orderBy: { order: "asc" },
-      include: { _count: { select: { children: true, resources: true } } },
-    });
-    return folders.map((f) => ({
-      id: f.id,
-      classLevel: f.classLevel,
-      name: f.name,
-      icon: f.icon,
-      parentId: f.parentId,
-      order: f.order,
-      childCount: f._count.children,
-      resourceCount: f._count.resources,
-      updatedAt: f.updatedAt,
-    }));
-  });
+  const list = await cached(folderListKey(classLevel, parentId), 60, () =>
+    withRetry(async () => {
+      const folders = await prisma.jnvFolder.findMany({
+        where: { classLevel, parentId },
+        orderBy: { order: "asc" },
+        include: { _count: { select: { children: true, resources: true } } },
+      });
+      return folders.map((f) => ({
+        id: f.id,
+        classLevel: f.classLevel,
+        name: f.name,
+        icon: f.icon,
+        parentId: f.parentId,
+        order: f.order,
+        childCount: f._count.children,
+        resourceCount: f._count.resources,
+        updatedAt: f.updatedAt,
+      }));
+    }),
+  );
+  return reviveFolderList(list);
 }
 
 export async function getJnvFolderById(id: string): Promise<JnvFolderNode | null> {
-  return withRetry(async () => {
-    const f = await prisma.jnvFolder.findUnique({
-      where: { id },
-      include: { _count: { select: { children: true, resources: true } } },
-    });
-    if (!f) return null;
-    return {
-      id: f.id,
-      classLevel: f.classLevel,
-      name: f.name,
-      icon: f.icon,
-      parentId: f.parentId,
-      order: f.order,
-      childCount: f._count.children,
-      resourceCount: f._count.resources,
-      updatedAt: f.updatedAt,
-    };
-  });
+  const f = await cached(folderKey(id), 300, () =>
+    withRetry(async () => {
+      const f = await prisma.jnvFolder.findUnique({
+        where: { id },
+        include: { _count: { select: { children: true, resources: true } } },
+      });
+      if (!f) return null;
+      return {
+        id: f.id,
+        classLevel: f.classLevel,
+        name: f.name,
+        icon: f.icon,
+        parentId: f.parentId,
+        order: f.order,
+        childCount: f._count.children,
+        resourceCount: f._count.resources,
+        updatedAt: f.updatedAt,
+      };
+    }),
+  );
+  return reviveFolder(f);
 }
 
 /** Ancestor chain root → this folder, for breadcrumbs. */
@@ -150,21 +215,27 @@ export async function getJnvBreadcrumbs(folderId: string): Promise<JnvFolderNode
 }
 
 export async function getJnvResourcesInFolder(folderId: string): Promise<JnvResourceRow[]> {
-  return withRetry(async () => {
-    const rows = await prisma.jnvResource.findMany({
-      where: { folderId },
-      orderBy: { createdAt: "desc" },
-      select: resourceSelect,
-    });
-    return rows.map(toResourceRow);
-  });
+  const rows = await cached(resourcesInFolderKey(folderId), 60, () =>
+    withRetry(async () => {
+      const rows = await prisma.jnvResource.findMany({
+        where: { folderId },
+        orderBy: { createdAt: "desc" },
+        select: resourceSelect,
+      });
+      return rows.map(toResourceRow);
+    }),
+  );
+  return reviveResourceList(rows);
 }
 
 export async function getJnvResourceById(id: string): Promise<JnvResourceRow | null> {
-  return withRetry(async () => {
-    const r = await prisma.jnvResource.findUnique({ where: { id }, select: resourceSelect });
-    return r ? toResourceRow(r) : null;
-  });
+  const r = await cached(resourceKey(id), 120, () =>
+    withRetry(async () => {
+      const r = await prisma.jnvResource.findUnique({ where: { id }, select: resourceSelect });
+      return r ? toResourceRow(r) : null;
+    }),
+  );
+  return r ? reviveResource(r) : null;
 }
 
 export type JnvClassSummary = {

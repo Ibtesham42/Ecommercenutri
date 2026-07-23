@@ -26,7 +26,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { cldUrl, cldForceDownload, isVideoUrl } from "@/lib/cld";
+import { cldUrl, cldForceDownload, cldDocPreviewImage, isVideoUrl } from "@/lib/cld";
 import { addRecent, isFavorite, toggleFavorite } from "@/lib/jnv/local-store";
 import { recordJnvDownload } from "@/lib/actions/jnv-public";
 import { JNV_FILE_KIND_LABELS, formatBytes, type JnvFileKind } from "@/lib/jnv/catalog";
@@ -330,25 +330,31 @@ function ResourcePreview({
   resource: ResourceViewerData;
   iframeRef: React.RefObject<HTMLIFrameElement | null>;
 }) {
-  const { fileKind, fileUrl, title } = resource;
+  const { fileKind, fileUrl, fileSize, title } = resource;
 
   if (fileKind === "PDF") {
     return (
-      <iframe
-        ref={iframeRef}
+      <DocumentFramePreview
+        iframeRef={iframeRef}
         src={`${fileUrl}#toolbar=1&navpanes=0&view=FitH`}
+        openHref={fileUrl}
         title={title}
-        className="h-[75vh] w-full [.jnv-presentation_&]:h-[calc(100dvh-9rem)]"
+        fileSize={fileSize}
+        fileLabel="PDF"
+        previewImage={cldDocPreviewImage(fileUrl)}
       />
     );
   }
 
   if (fileKind === "PPT" || fileKind === "DOC" || fileKind === "XLS") {
     return (
-      <iframe
+      <DocumentFramePreview
         src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`}
+        openHref={fileUrl}
         title={title}
-        className="h-[75vh] w-full [.jnv-presentation_&]:h-[calc(100dvh-9rem)]"
+        fileSize={fileSize}
+        fileLabel={fileKind === "PPT" ? "presentation" : fileKind === "DOC" ? "document" : "spreadsheet"}
+        previewImage={cldDocPreviewImage(fileUrl)}
       />
     );
   }
@@ -380,6 +386,111 @@ function ResourcePreview({
       <p className="text-sm text-slate-500 dark:text-slate-400">
         No inline preview for this file type — use Download or Open to view it.
       </p>
+    </div>
+  );
+}
+
+const DOC_SLOW_MS = 15000;
+const DOC_LARGE_BYTES = 15 * 1024 * 1024;
+
+/**
+ * Wraps the heavy PDF/Office-embed iframes with an instant thumbnail +
+ * loading skeleton (instead of a blank frame while Microsoft/the browser
+ * converts and renders the document) and a "taking longer than usual"
+ * fallback with a direct-open link so a slow/huge file never leaves the
+ * student staring at nothing. The iframe itself is mounted from the start —
+ * only its visibility is gated — so it keeps loading in the background even
+ * while the skeleton is shown.
+ */
+function DocumentFramePreview({
+  src,
+  openHref,
+  title,
+  fileSize,
+  fileLabel,
+  previewImage,
+  iframeRef,
+}: {
+  src: string;
+  openHref: string;
+  title: string;
+  fileSize: number;
+  fileLabel: string;
+  previewImage: string | null;
+  iframeRef?: React.RefObject<HTMLIFrameElement | null>;
+}) {
+  const [loaded, setLoaded] = useState(false);
+  const [slow, setSlow] = useState(false);
+  const [thumbFailed, setThumbFailed] = useState(false);
+  const fallbackRef = useRef<HTMLIFrameElement>(null);
+  const ref = iframeRef ?? fallbackRef;
+  const isLarge = fileSize > DOC_LARGE_BYTES;
+
+  useEffect(() => {
+    setLoaded(false);
+    setSlow(false);
+    setThumbFailed(false);
+    const timer = setTimeout(() => setSlow(true), DOC_SLOW_MS);
+    return () => clearTimeout(timer);
+  }, [src]);
+
+  return (
+    <div className="relative h-[75vh] w-full [.jnv-presentation_&]:h-[calc(100dvh-9rem)]">
+      <link rel="preconnect" href="https://view.officeapps.live.com" />
+      <link rel="preconnect" href="https://res.cloudinary.com" />
+      <iframe
+        ref={ref}
+        src={src}
+        title={title}
+        onLoad={() => setLoaded(true)}
+        className={cn(
+          "h-full w-full transition-opacity duration-300 motion-reduce:transition-none",
+          loaded ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+      />
+      {!loaded && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 overflow-hidden bg-slate-100 dark:bg-slate-900">
+          {previewImage && !thumbFailed && (
+            // eslint-disable-next-line @next/next/no-img-element -- Cloudinary-derived URL, not a static import
+            <img
+              src={previewImage}
+              alt=""
+              aria-hidden="true"
+              onError={() => setThumbFailed(true)}
+              className="absolute inset-0 h-full w-full object-contain opacity-40 blur-[1px]"
+            />
+          )}
+          <div className="relative flex max-w-xs flex-col items-center gap-2 rounded-xl bg-white/95 px-5 py-4 text-center shadow-elev-1 backdrop-blur dark:bg-slate-950/95">
+            <span
+              aria-hidden="true"
+              className="size-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent motion-reduce:animate-none"
+            />
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+              Loading {fileLabel} preview…
+            </p>
+            {isLarge && !slow && (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Large file ({formatBytes(fileSize)}) — this may take a moment.
+              </p>
+            )}
+            {slow && (
+              <>
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Taking longer than usual to load.
+                </p>
+                <a
+                  href={openHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blue-700"
+                >
+                  Open in new tab instead
+                </a>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
