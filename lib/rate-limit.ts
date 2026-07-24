@@ -28,6 +28,7 @@ export const limiters = {
   auth: makeLimiter(5, "1 m", "rl:auth"),
   ai: makeLimiter(20, "1 m", "rl:ai"),
   jnvAi: makeLimiter(20, "1 m", "rl:jnv-ai"),
+  jnvCodeMentor: makeLimiter(20, "1 m", "rl:jnv-code-mentor"),
   checkout: makeLimiter(10, "1 m", "rl:checkout"),
   api: makeLimiter(60, "1 m", "rl:api"),
 };

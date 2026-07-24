@@ -1,8 +1,25 @@
 # Nutriyet — Progress Tracker
 
-_Last updated: 2026-07-21 · Auto-maintained. Update at the end of every milestone._
+_Last updated: 2026-07-24 · Auto-maintained. Update at the end of every milestone._
 
-## Latest: JNV Smart Classroom Platform (2026-07-21, in progress — /loop refinement)
+## Latest: JNV Code Studio (2026-07-24, in progress — /loop build)
+
+New learning module at `/jnv/code-studio`, additive alongside the Notes
+Portal (untouched, still works exactly as before). Students write and run
+HTML/CSS/JavaScript (live iframe preview) and Python (Pyodide, console
+output) entirely in the browser, with syntax highlighting/autocomplete
+(CodeMirror 6), 13 starter projects + a Blank option per language, and a
+session-only AI Coding Mentor (own persona, distinct from Nutri and Byte).
+**Zero server-side project storage by design** — no new Prisma models, no
+upload endpoint; all code drafts and preferences live in the student's own
+`localStorage` only. See `docs/jnv-smart-class.md` and `CHANGELOG.md`.
+Verified via typecheck/lint/build, curl smoke tests, and a live end-to-end
+Mentor response against the dev Groq key — **not yet browser-click-through
+tested** (CodeMirror mount, preview iframe, Pyodide execution, localStorage
+persistence across reload). Remaining in the active `/loop`: that browser
+pass, plus a bug/perf/a11y/security sweep of the new module.
+
+## Previous: JNV Smart Classroom Platform (2026-07-21)
 
 Isolated education mini-platform, unrelated to commerce: `/admin/jnv` (RBAC
 key `jnv`) for teachers/admins, `/jnv` (unlisted, no login) for students —

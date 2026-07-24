@@ -148,6 +148,68 @@ resource instead of a free-text topic (reuses the same
 UI**, so that code path is currently unreachable from the UI. A resource
 picker in `jnv-ai-toolkit-manager.tsx` would close this gap.
 
+## Code Studio
+
+A second, independent learning module at `/jnv/code-studio` — sits alongside
+the Notes Portal without touching any of its upload/browse/viewer code. Lets
+students write and run HTML, CSS, JavaScript and Python entirely in the
+browser, with an AI coding mentor.
+
+**No server storage, by design**: student code is never sent to or stored on
+any database, server, or cloud storage — the module has zero Prisma models
+and zero upload endpoints. Everything lives in `window.localStorage` on the
+student's own device (`lib/jnv/code-studio/local-store.ts`): per-project code
+drafts (keyed by project id, capped at 40, oldest evicted first), editor
+preferences (theme/font size), and the last-opened project id for a
+"Continue where you left off" card on the hub. Clearing browser storage or
+switching devices loses everything — that's intentional, not a bug to fix.
+
+**Architecture**: `lib/jnv/code-studio/languages.ts` defines the 4 initial
+languages, each tagged with a `runtime` — HTML/CSS/JS share one `"web"`
+runtime (a real page mixes all three, so every web project ships all 3 files
+and a live preview), Python is its own `"python"` runtime (console output
+only, no live page preview). Adding a 5th language later means: one entry in
+`languages.ts`, a starter project set in `lib/jnv/code-studio/projects.ts`,
+and — only if it needs a genuinely new execution model — a new runner
+alongside `use-python-runtime.ts`.
+
+- **Editor**: CodeMirror 6 via `@uiw/react-codemirror`
+  (`components/jnv/code-studio/code-editor-pane.tsx`) — syntax highlighting,
+  autocomplete, bracket matching, light/dark theme, adjustable font size. Each
+  file tab remounts the CodeMirror instance on switch (`key={fileType}`)
+  deliberately, so undo history can't bleed from one file into another.
+- **Live preview** (`components/jnv/code-studio/live-preview.tsx` +
+  `lib/jnv/code-studio/build-preview-doc.ts`): combines the HTML/CSS/JS panes
+  into one `srcDoc` document (replacing the `style.css`/`script.js`
+  references the starter templates use, since there's no real file to fetch)
+  and renders it in an iframe sandboxed WITHOUT `allow-same-origin` — an
+  opaque origin that can't reach cookies, localStorage, or anything else in
+  the app no matter what a student's script does. A small injected console
+  bridge forwards `console.log`/`warn`/`error` and uncaught errors to the
+  parent via `postMessage` for the Console panel.
+- **Python execution**: Pyodide (CPython-to-WebAssembly), loaded lazily from
+  the jsdelivr CDN only when a student first hits Run
+  (`components/jnv/code-studio/use-python-runtime.ts`) — never bundled,
+  never executed server-side. This is the only safe way to run arbitrary
+  student Python without ever `eval`-ing untrusted code on a server.
+- **Projects**: `lib/jnv/code-studio/projects.ts` — 13 starter projects
+  across the 4 languages (3 HTML, 3 CSS, 5 JavaScript, 5 Python), each a
+  small but genuinely working skeleton with `TODO` comments, plus a "Blank
+  Project" option per language.
+- **AI Coding Mentor**: a third distinct AI persona alongside Nutri
+  (storefront) and Byte (Notes Portal CS assistant) — own system prompt
+  (`lib/jnv/code-studio/ai-prompts.ts`), own orchestration
+  (`lib/jnv/code-studio/ai-chat.ts`), own route
+  (`app/api/jnv/code-studio/ai/chat/route.ts`) and rate limiter
+  (`limiters.jnvCodeMentor`). Reuses only the Groq provider seam, same
+  precedent as Byte. **Session-only by design**: the current code + last
+  console output are sent fresh on every request as context and used only to
+  build that one response — nothing is ever written server-side, and the
+  chat UI (`components/jnv/code-studio/mentor-chat.tsx`) keeps the whole
+  conversation in React state only, so closing the panel or the tab loses it
+  permanently. Styled as the same messaging-app pattern as Byte (never locks
+  the input, queues sends, bubbles/ticks/timestamps).
+
 ## Known follow-ups
 
 - `moveJnvFolder` / `reorderJnvFolders` actions exist but aren't wired to a
@@ -170,3 +232,12 @@ picker in `jnv-ai-toolkit-manager.tsx` would close this gap.
   Mode/viewer/chat interactions added across this module's redesign
   (typecheck/lint/build/curl-smoke only) — the `claude-in-chrome` extension
   was declined in the session that built these features.
+- **Code Studio has not had a live browser click-through either** — verified
+  via typecheck/lint/build, curl smoke tests, and a real end-to-end request
+  against the dev-configured Groq key (confirmed the AI Coding Mentor answers
+  correctly). NOT yet verified in a real browser: CodeMirror actually
+  mounting/typing, the live preview iframe rendering, Pyodide loading from
+  the CDN and executing Python, and localStorage draft persistence across a
+  reload. These are exactly the class of bug curl can't catch — worth a real
+  click-through pass (or ask the user to try it live) before calling this
+  production-ready.

@@ -4,6 +4,7 @@ import { getJnvClassSummaries, getJnvAnnouncements } from "@/lib/queries/jnv";
 import { ClassCard } from "@/components/jnv/class-card";
 import { AnnouncementBanner } from "@/components/jnv/announcement-banner";
 import { JnvLocalWidgets } from "@/components/jnv/local-widgets";
+import { CodeStudioPromo } from "@/components/jnv/code-studio-promo";
 import { JNV_CONTAINER, JNV_CLASS_GRID } from "@/lib/jnv/ui";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +37,9 @@ export default async function JnvHomePage() {
       <AnnouncementBanner announcements={schoolWide} />
 
       <div className={JNV_CONTAINER}>
+        <div className="mb-6 sm:mb-8">
+          <CodeStudioPromo />
+        </div>
         <div className={JNV_CLASS_GRID}>
           {summaries.map((s, i) => (
             <ClassCard

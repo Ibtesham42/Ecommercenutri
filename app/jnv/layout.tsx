@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, Code2 } from "lucide-react";
 import Link from "next/link";
 import "./presentation.css";
 import { JnvPresentationProvider } from "@/components/jnv/presentation-provider";
@@ -74,12 +74,21 @@ export default function JnvLayout({ children }: { children: React.ReactNode }) {
                 </span>
               </span>
             </Link>
-            <Link
-              href="/jnv/search"
-              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-blue-300 hover:text-blue-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-blue-700 dark:hover:text-blue-300"
-            >
-              Search
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/jnv/code-studio"
+                className="flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-950/70"
+              >
+                <Code2 className="size-4" />
+                <span className="hidden sm:inline">Code Studio</span>
+              </Link>
+              <Link
+                href="/jnv/search"
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-blue-300 hover:text-blue-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-blue-700 dark:hover:text-blue-300"
+              >
+                Search
+              </Link>
+            </div>
           </div>
         </header>
 

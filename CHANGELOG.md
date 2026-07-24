@@ -3,6 +3,44 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [JNV Code Studio] — 2026-07-24
+
+A brand-new learning module at `/jnv/code-studio`, additive alongside the
+Notes Portal (untouched). Students write and run HTML, CSS, JavaScript and
+Python entirely in the browser — no server-side project storage at all. See
+`docs/jnv-smart-class.md` for the full reference.
+
+### Added
+- **In-browser editor**: CodeMirror 6, syntax highlighting/autocomplete/
+  bracket-matching, light/dark theme, adjustable font size, per-file undo
+  history (each file tab remounts the editor on switch so undo can't bleed
+  across files).
+- **Live preview**: HTML/CSS/JS combine into one sandboxed iframe (no
+  `allow-same-origin` — fully isolated origin) with a console bridge
+  forwarding `console.log`/errors to an in-studio Console panel.
+- **Python execution**: Pyodide (WebAssembly CPython) loaded lazily from a
+  CDN only on first Run — never bundled, never executed server-side.
+- **13 starter projects** across the 4 languages (Portfolio/Resume/School
+  Website, Cards/Responsive Layout/Animations, Calculator/Todo/Quiz/
+  Stopwatch/Weather, and 5 Python projects), plus a Blank Project option per
+  language.
+- **AI Coding Mentor**: a third distinct AI persona (alongside Nutri and
+  Byte) — explains code, gives hints, finds bugs, suggests next steps.
+  Session-only by design: code/console context is sent fresh per request and
+  never persisted server-side; the chat itself lives in React state only, so
+  it's gone when the tab closes.
+- **Zero server storage, by design**: all project drafts, editor
+  preferences, and the last-opened project live in `localStorage` only —
+  no new Prisma models, no upload endpoint. Clearing browser storage or
+  switching devices starts fresh, intentionally.
+
+### Not yet verified
+- No live browser click-through — verified via typecheck/lint/build, curl
+  smoke tests, and a real streamed response from the AI Mentor against a
+  live Groq key. CodeMirror mounting, the preview iframe, Pyodide execution,
+  and localStorage persistence across a reload still need a real
+  click-through pass. See `docs/jnv-smart-class.md`.
+
 ## [JNV Smart Classroom Platform] — 2026-07-21
 
 Transformed the JNV portal from a plain file-management UI into a premium
