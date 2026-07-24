@@ -16,7 +16,10 @@ function nextEntryId(): string {
  * `allow-same-origin` — combined with `srcDoc` (never a real URL) this keeps
  * the previewed page in a fully opaque, isolated origin that cannot read
  * cookies/localStorage or reach anything else in the app, no matter what a
- * student's script does.
+ * student's script does. `allow-popups-to-escape-sandbox` pairs with the
+ * link-click interception in `build-preview-doc.ts`'s bridge script — links
+ * open in a real, unsandboxed new tab instead of navigating the iframe
+ * itself (which most real sites refuse to render via X-Frame-Options/CSP).
  */
 export function LivePreview({
   html,
@@ -49,7 +52,7 @@ export function LivePreview({
       ref={iframeRef}
       title="Live preview"
       srcDoc={doc}
-      sandbox="allow-scripts allow-modals allow-forms allow-popups"
+      sandbox="allow-scripts allow-modals allow-forms allow-popups allow-popups-to-escape-sandbox"
       className="size-full rounded-lg border-0 bg-white"
     />
   );

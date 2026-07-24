@@ -3,12 +3,12 @@
  * reason about/extend. Combines the student's separate HTML/CSS/JS panes
  * into one document the way a real static site would load them, since the
  * iframe has no actual "style.css"/"script.js" files to fetch (everything is
- * `srcDoc`, never written anywhere). Also injects a small console bridge so
- * `console.log`/errors inside the sandboxed iframe can be shown in the
- * studio's own Console panel via `postMessage`.
+ * `srcDoc`, never written anywhere). Also injects a small bridge script that
+ * (1) forwards `console.log`/errors to the studio's own Console panel via
+ * `postMessage`, and (2) intercepts link clicks — see PREVIEW_BRIDGE below.
  */
 
-const CONSOLE_BRIDGE = `<script>
+const PREVIEW_BRIDGE = `<script>
 (function () {
   function stringifyArg(a) {
     if (a instanceof Error) return a.message;
@@ -32,6 +32,23 @@ const CONSOLE_BRIDGE = `<script>
     var reason = e.reason && e.reason.message ? e.reason.message : e.reason;
     send("error", ["Unhandled promise rejection: " + reason]);
   });
+
+  // A plain <a href="https://..."> with no target would otherwise navigate
+  // the PREVIEW IFRAME ITSELF to that URL — which most real sites refuse to
+  // render inside a frame (X-Frame-Options/CSP), so the click looks like it
+  // "does nothing". Force any link that isn't an in-page anchor/javascript:
+  // link to open in a real, non-sandboxed browser tab instead (the iframe's
+  // sandbox includes allow-popups + allow-popups-to-escape-sandbox for
+  // exactly this).
+  document.addEventListener("click", function (e) {
+    var a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+    if (!a) return;
+    var href = a.getAttribute("href") || "";
+    if (!href || href.charAt(0) === "#" || href.indexOf("javascript:") === 0) return;
+    if (a.getAttribute("target") === "_blank") return;
+    e.preventDefault();
+    window.open(a.href, "_blank", "noopener,noreferrer");
+  }, true);
 })();
 </script>`;
 
@@ -53,11 +70,11 @@ export function buildPreviewDocument(html: string, css: string, js: string): str
     doc = styleTag + doc;
   }
 
-  // Console bridge goes right after <head> so it's active before any inline script runs.
+  // Bridge script goes right after <head> so it's active before any inline script runs.
   if (/<head[^>]*>/i.test(doc)) {
-    doc = doc.replace(/(<head[^>]*>)/i, `$1${CONSOLE_BRIDGE}`);
+    doc = doc.replace(/(<head[^>]*>)/i, `$1${PREVIEW_BRIDGE}`);
   } else {
-    doc = CONSOLE_BRIDGE + doc;
+    doc = PREVIEW_BRIDGE + doc;
   }
 
   // Inline the JS wherever a <script src="script.js"> would have gone.
