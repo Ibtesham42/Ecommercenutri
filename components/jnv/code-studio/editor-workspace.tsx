@@ -171,7 +171,7 @@ export function EditorWorkspace({ project, onExit }: { project: CodeStudioProjec
           <ArrowLeft className="size-4" /> Studio
         </Button>
         <span className="hidden h-5 w-px bg-slate-200 sm:block dark:bg-slate-700" />
-        <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{project.title}</span>
+        <h1 className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{project.title}</h1>
 
         <div className="ml-auto flex flex-wrap items-center gap-1.5">
           {!isWeb && (

@@ -38,6 +38,17 @@ export function ProjectPicker({ onOpenProject }: { onOpenProject: (projectId: st
 
   return (
     <div className="space-y-8">
+      <div className="mb-2 text-center">
+        <span className="mx-auto mb-3 grid size-12 place-items-center rounded-2xl bg-indigo-600 text-white shadow-elev-1">
+          <Code2 className="size-6" />
+        </span>
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">Code Studio</h1>
+        <p className="mx-auto mt-3 max-w-xl text-base text-slate-500 dark:text-slate-400">
+          Write HTML, CSS, JavaScript and Python right in your browser — with live preview, console output and an AI
+          mentor to help you along the way.
+        </p>
+      </div>
+
       {lastProject && (
         <button
           type="button"

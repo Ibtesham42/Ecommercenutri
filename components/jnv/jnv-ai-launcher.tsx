@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { Bot } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useJnvPresentation } from "@/components/jnv/presentation-provider";
@@ -13,10 +14,18 @@ import { JnvAiChat } from "@/components/jnv/jnv-ai-chat";
  * Deliberately NOT marked `jnv-chrome` for that reason. Open state and any
  * resource context come from `JnvAiContextProvider`, so `ResourceViewer` can
  * trigger "Ask Byte about this" without prop-drilling.
+ *
+ * Hidden under `/jnv/code-studio`: that module has its own dedicated Code
+ * Mentor (a toolbar button, not a floating one) — two competing floating "Ask
+ * an AI" buttons on the same small screen is confusing, and confirmed
+ * visually cramped on mobile via a real screenshot.
  */
 export function JnvAiLauncher() {
+  const pathname = usePathname();
   const { active: presentation } = useJnvPresentation();
   const { open, setOpen, payload, openGeneral } = useJnvAiContext();
+
+  if (pathname?.startsWith("/jnv/code-studio")) return null;
 
   return (
     <>

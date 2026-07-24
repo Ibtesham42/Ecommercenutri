@@ -93,12 +93,20 @@ export function JnvAiChat({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuestion]);
 
+  // Computes the next array from the ref (the single source of truth) and
+  // passes the concrete value to setMessages — NOT a function updater. Using
+  // an updater here would make `messagesRef.current` depend on exactly when
+  // React chooses to invoke it, an internal timing detail rather than a
+  // guarantee: it's only synchronous while React's "eager state" bailout
+  // check happens to apply, and `requestReply` reading the ref immediately
+  // after can otherwise see a stale, pre-update array — confirmed
+  // empirically as a real bug in this same pattern used by the Code
+  // Studio's Mentor chat (a live browser test sent an empty `messages: []`
+  // to the API on the very first send).
   function patchMessages(updater: (prev: Msg[]) => Msg[]) {
-    setMessages((prev) => {
-      const next = updater(prev);
-      messagesRef.current = next;
-      return next;
-    });
+    const next = updater(messagesRef.current);
+    messagesRef.current = next;
+    setMessages(next);
   }
 
   /** Adds the bubble immediately (like a real chat app) and queues the actual

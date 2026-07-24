@@ -66,12 +66,20 @@ export function MentorChat({
     return () => abortRef.current?.abort();
   }, []);
 
+  // Computes the next array from the ref (the single source of truth) and
+  // passes the concrete value to setMessages — NOT a function updater. Using
+  // an updater here would make `messagesRef.current` depend on exactly when
+  // React chooses to invoke it, which is an internal timing detail, not a
+  // guarantee: it's only synchronous while React's "eager state" bailout
+  // check happens to apply, and reading the ref immediately after (as
+  // `requestReply` does, to build the request's message history) can
+  // otherwise see a stale, pre-update array — confirmed empirically as a real
+  // bug (a live browser test sent an empty `messages: []` to the API on the
+  // very first send).
   function patchMessages(updater: (prev: Msg[]) => Msg[]) {
-    setMessages((prev) => {
-      const next = updater(prev);
-      messagesRef.current = next;
-      return next;
-    });
+    const next = updater(messagesRef.current);
+    messagesRef.current = next;
+    setMessages(next);
   }
 
   function submit(text: string) {
