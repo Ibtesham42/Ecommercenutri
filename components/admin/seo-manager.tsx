@@ -165,7 +165,7 @@ export function SeoManager({
               <Field label="Meta title" counter={`${form.metaTitle.length}/60`} hint="Blank = “Name — tagline”.">
                 <Input value={form.metaTitle} onChange={(e) => set("metaTitle", e.target.value)} placeholder={fallback.title} />
               </Field>
-              <Field label="Meta description" counter={`${form.metaDescription.length}/160`}>
+              <Field label="Meta description" counter={`${form.metaDescription.length}/160`} hint="Also shown as the brand description in the site footer.">
                 <Textarea rows={2} value={form.metaDescription} onChange={(e) => set("metaDescription", e.target.value)} placeholder={fallback.description} />
               </Field>
               <Field label="Meta keywords" hint="Comma-separated.">

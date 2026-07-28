@@ -355,6 +355,9 @@ export function AppearanceForm({
         <div className="space-y-1.5">
           <Label htmlFor="metaDescription">Default meta description</Label>
           <Textarea id="metaDescription" rows={2} {...register("metaDescription")} />
+          <p className="text-[11px] text-muted-foreground">
+            Also shown as the brand description in the site footer.
+          </p>
         </div>
         {imageField("ogImage", "Default social share image (OG)", "seo")}
       </Section>

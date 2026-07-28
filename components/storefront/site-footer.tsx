@@ -95,7 +95,7 @@ export async function SiteFooter() {
             onDark
           />
           <p className="max-w-xs text-sm text-surface-deep-foreground/70">
-            {siteConfig.description}
+            {store.metaDescription || siteConfig.description}
           </p>
           {(store.businessHours || store.address) && (
             <div className="space-y-1 text-sm text-surface-deep-foreground/70">
