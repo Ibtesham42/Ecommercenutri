@@ -3,7 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Heart, Menu, User } from "lucide-react";
+import {
+  Heart,
+  Menu,
+  User,
+  Home,
+  ShoppingBag,
+  LayoutGrid,
+  Star,
+  Sparkles,
+  Building2,
+  Info,
+  Phone,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +35,20 @@ import { MobileSearchTrigger } from "@/components/storefront/mobile-search-trigg
 import { DeliverTo } from "@/components/storefront/deliver-to";
 import { NotificationBell, type BellNotification } from "@/components/account/notification-bell";
 import { SigninSpotlight } from "@/components/storefront/onboarding/signin-spotlight";
+
+/** Icon per drawer nav item, keyed by href (drawer-only — the shared
+ *  `siteConfig.mainNav` stays a plain title/href list for the desktop nav,
+ *  department chips and footer). */
+const NAV_ICONS: Record<string, LucideIcon> = {
+  "/": Home,
+  "/products": ShoppingBag,
+  "/categories": LayoutGrid,
+  "/products?sort=best-sellers": Star,
+  "/assistant": Sparkles,
+  "/b2b": Building2,
+  "/about": Info,
+  "/contact": Phone,
+};
 
 export function SiteHeader({
   logoUrl,
@@ -76,27 +103,41 @@ export function SiteHeader({
             </Button>
           </SheetTrigger>
           {/* The drawer keeps the light surface for legibility. */}
-          <SheetContent side="left" className="w-72 p-0">
-            <SheetHeader className="border-b p-4">
+          <SheetContent side="left" className="w-72 gap-0 p-0">
+            <SheetHeader className="border-b bg-accent/40 p-4">
               <SheetTitle asChild>
-                <Logo logoUrl={logoUrl} name={siteName} {...logoSize} />
+                <Logo logoUrl={logoUrl} name={siteName} className="min-w-0" {...logoSize} />
               </SheetTitle>
             </SheetHeader>
             <nav className="flex flex-col gap-1 p-3">
-              {siteConfig.mainNav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  aria-current={isActiveNav(item.href) ? "page" : undefined}
-                  className={cn(
-                    "rounded-md px-3 py-2.5 text-sm font-medium transition-colors hover:bg-accent",
-                    isActiveNav(item.href) && "bg-accent text-foreground",
-                  )}
-                >
-                  {item.title}
-                </Link>
-              ))}
+              {siteConfig.mainNav.map((item) => {
+                const Icon = NAV_ICONS[item.href] ?? Home;
+                const active = isActiveNav(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition-colors",
+                      active
+                        ? "bg-primary/10 text-primary"
+                        : "text-foreground/80 hover:bg-accent hover:text-foreground",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "grid size-9 shrink-0 place-items-center rounded-lg bg-accent/70",
+                        active && "bg-primary/15 text-primary",
+                      )}
+                    >
+                      <Icon className="size-[18px]" />
+                    </span>
+                    <span className={cn(active && "font-semibold")}>{item.title}</span>
+                  </Link>
+                );
+              })}
             </nav>
           </SheetContent>
         </Sheet>
