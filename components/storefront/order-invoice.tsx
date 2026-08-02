@@ -124,33 +124,35 @@ export function OrderInvoice({ data }: { data: InvoiceData }) {
         )}
 
         {/* Items */}
-        <table className="w-full border-collapse py-2 text-sm">
-          <thead>
-            <tr className="border-b text-left text-xs uppercase text-muted-foreground">
-              <th className="py-2 font-semibold">Item</th>
-              <th className="py-2 text-center font-semibold">Qty</th>
-              <th className="py-2 text-right font-semibold">Price</th>
-              <th className="py-2 text-right font-semibold">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.items.map((item, i) => (
-              <tr key={i} className="border-b last:border-0">
-                <td className="py-2.5">
-                  {item.productName}
-                  <span className="block text-xs text-muted-foreground">
-                    {item.variantLabel}
-                  </span>
-                </td>
-                <td className="py-2.5 text-center">{item.quantity}</td>
-                <td className="py-2.5 text-right">{formatPrice(item.price)}</td>
-                <td className="py-2.5 text-right font-medium">
-                  {formatPrice(item.price * item.quantity)}
-                </td>
+        <div className="overflow-x-auto print:overflow-visible">
+          <table className="w-full min-w-[420px] border-collapse py-2 text-sm">
+            <thead>
+              <tr className="border-b text-left text-xs uppercase text-muted-foreground">
+                <th className="py-2 font-semibold">Item</th>
+                <th className="py-2 text-center font-semibold">Qty</th>
+                <th className="py-2 text-right font-semibold">Price</th>
+                <th className="py-2 text-right font-semibold">Amount</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data.items.map((item, i) => (
+                <tr key={i} className="border-b last:border-0">
+                  <td className="py-2.5">
+                    {item.productName}
+                    <span className="block text-xs text-muted-foreground">
+                      {item.variantLabel}
+                    </span>
+                  </td>
+                  <td className="py-2.5 text-center">{item.quantity}</td>
+                  <td className="py-2.5 text-right">{formatPrice(item.price)}</td>
+                  <td className="py-2.5 text-right font-medium">
+                    {formatPrice(item.price * item.quantity)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         {/* Summary */}
         <div className="ml-auto mt-4 max-w-xs space-y-1.5 text-sm">

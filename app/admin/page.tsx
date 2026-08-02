@@ -226,7 +226,10 @@ export default async function AdminDashboardPage() {
 
           {/* Side widgets (products / inventory) */}
           {showProducts && (
-            <div className={showOrders ? "space-y-6" : "space-y-6 lg:col-span-3"}>
+            // min-w-0: grid items default to min-width:auto, so without it this
+            // column refuses to shrink below its (long product name) content
+            // width and overflows the 1-col mobile track.
+            <div className={showOrders ? "min-w-0 space-y-6" : "min-w-0 space-y-6 lg:col-span-3"}>
               <div className="rounded-xl border bg-background">
                 <div className="flex items-center justify-between border-b p-4">
                   <span className="flex items-center gap-2 font-semibold">
@@ -252,7 +255,7 @@ export default async function AdminDashboardPage() {
                           href="/admin/inventory"
                           className="flex items-center justify-between gap-2 p-3 text-sm transition hover:bg-muted/40"
                         >
-                          <span className="truncate">
+                          <span className="min-w-0 truncate">
                             {v.product.name}{" "}
                             <span className="text-muted-foreground">({v.weightLabel})</span>
                           </span>
@@ -277,7 +280,7 @@ export default async function AdminDashboardPage() {
                         key={p.name}
                         className="flex items-center justify-between gap-2 p-3 text-sm"
                       >
-                        <span className="truncate">{p.name}</span>
+                        <span className="min-w-0 truncate">{p.name}</span>
                         <span className="shrink-0 text-muted-foreground">
                           {p.unitsSold} sold
                         </span>
