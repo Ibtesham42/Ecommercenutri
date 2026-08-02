@@ -61,9 +61,9 @@ export function AiChat({
 }) {
   const page = variant === "page";
   const [sessionId] = useState(() => nanoid());
-  const [tagline] = useState(
-    () => TAGLINES[Math.floor(Math.random() * TAGLINES.length)],
-  );
+  // Fixed on first paint so server and client markup match; randomized only
+  // after mount (client-only) to avoid a hydration mismatch.
+  const [tagline, setTagline] = useState(TAGLINES[0]);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -73,6 +73,10 @@ export function AiChat({
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    setTagline(TAGLINES[Math.floor(Math.random() * TAGLINES.length)]);
+  }, []);
 
   async function send(text: string) {
     const content = text.trim();

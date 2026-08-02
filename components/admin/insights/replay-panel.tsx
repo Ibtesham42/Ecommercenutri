@@ -8,15 +8,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { getReplayDetail } from "@/lib/actions/admin/insights";
 import type { ReplayDetail, ReplaySummary, ReplayPage } from "@/lib/queries/engagement";
 import { cn } from "@/lib/utils";
+import { formatDateTime } from "@/lib/format";
 
 function fmtClock(ms: number): string {
   const s = Math.max(0, Math.round(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-function fmtWhen(iso: string): string {
-  return new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
-}
+// `formatDateTime` (Intl.DateTimeFormat with explicit fields) instead of
+// `toLocaleString({ dateStyle, timeStyle })`: the "medium"/"short" style
+// presets resolve differently between Node's and Chromium's ICU data,
+// causing a real hydration mismatch on this client component.
+const fmtWhen = formatDateTime;
 
 const DEVICE_ICON = { mobile: Smartphone, tablet: Tablet, desktop: Monitor } as const;
 

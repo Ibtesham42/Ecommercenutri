@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Sparkles, Copy, Check, RotateCcw, ArrowRight, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScoreGauge } from "@/components/storefront/quiz/score-gauge";
+import { formatDate } from "@/lib/format";
 import type { MyHealthScore } from "@/lib/queries/quiz";
 
 /** "My Health Score" dashboard card — the full unlocked report + welcome coupon. */
@@ -85,7 +86,7 @@ export function MyHealthScoreCard({ data }: { data: MyHealthScore }) {
       )}
 
       <div className="flex items-center justify-between gap-3 border-t bg-muted/30 px-5 py-3 sm:px-6">
-        <span className="text-xs text-muted-foreground">Taken {new Date(data.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}</span>
+        <span className="text-xs text-muted-foreground">Taken {formatDate(data.createdAt)}</span>
         <Button asChild variant="ghost" size="sm" className="gap-1.5">
           <Link href="/quiz"><RotateCcw className="size-3.5" /> Retake</Link>
         </Button>

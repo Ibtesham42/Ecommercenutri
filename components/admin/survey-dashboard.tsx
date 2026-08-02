@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { SURVEY_QUESTIONS, surveyQuestion } from "@/lib/survey";
 import type { SurveyStats } from "@/lib/queries/survey";
 import { cn } from "@/lib/utils";
+import { formatDateTime } from "@/lib/format";
 
 export type SurveyRow = {
   id: string;
@@ -221,10 +222,7 @@ export function SurveyDashboard({
                 <details className="group py-2.5">
                   <summary className="flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1 text-sm marker:content-none">
                     <span className="tabular-nums text-xs text-muted-foreground">
-                      {new Date(r.createdAt).toLocaleString("en-IN", {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      })}
+                      {formatDateTime(r.createdAt)}
                     </span>
                     <span>{enLabel("ageGroup", r.ageGroup)}</span>
                     <span className="text-muted-foreground">{enLabel("gender", r.gender)}</span>

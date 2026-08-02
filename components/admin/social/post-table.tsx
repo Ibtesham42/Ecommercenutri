@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import { PostEditDialog } from "@/components/admin/social/post-edit-dialog";
+import { formatDateTime } from "@/lib/format";
 import {
   approveSocialPost,
   rejectSocialPost,
@@ -43,10 +44,12 @@ import {
 
 type Context = "queue" | "scheduled" | "published" | "failed";
 
+// `formatDateTime` (explicit Intl fields) instead of `toLocaleString({
+// dateStyle, timeStyle })`: the style presets resolve differently between
+// Node's and Chromium's ICU data and can cause a hydration mismatch.
 function fmt(d: Date | string | null): string {
   if (!d) return "—";
-  const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+  return formatDateTime(d);
 }
 
 export function PostTable({
