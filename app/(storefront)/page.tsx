@@ -75,6 +75,13 @@ export default async function HomePage() {
     getHeroRevealSettings(),
   ]);
 
+  // LCP hint: eagerly load the first couple of card images in whichever
+  // product section actually renders first in the admin-configured order
+  // (varies — hence computed from `sectionOrder`, not hardcoded).
+  const firstProductSectionKey = sectionOrder.find(
+    (s) => s.enabled && (s.key === "featured" || s.key === "bestSellers"),
+  )?.key;
+
   // Trending excludes what's already shown in featured/best-sellers above.
   const shownIds = new Set([...featured, ...bestSellers].map((p) => p.id));
   const trendingFresh = trendingProducts.filter((p) => !shownIds.has(p.id));
@@ -184,7 +191,11 @@ export default async function HomePage() {
             ctaHref={content.featured.ctaHref}
           />
           <Reveal>
-            <ProductGrid products={featured} wishlistedIds={wishlistIds} />
+            <ProductGrid
+              products={featured}
+              wishlistedIds={wishlistIds}
+              priorityCount={firstProductSectionKey === "featured" ? 2 : 0}
+            />
           </Reveal>
           <PromoStrip />
         </section>
@@ -201,7 +212,11 @@ export default async function HomePage() {
               ctaHref={content.bestSellers.ctaHref}
             />
             <Reveal>
-              <ProductRail products={bestSellers} wishlistedIds={wishlistIds} />
+              <ProductRail
+                products={bestSellers}
+                wishlistedIds={wishlistIds}
+                priorityCount={firstProductSectionKey === "bestSellers" ? 2 : 0}
+              />
             </Reveal>
           </div>
         </section>

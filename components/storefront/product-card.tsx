@@ -13,9 +13,12 @@ import { minVariantPrice, type ProductCardData } from "@/lib/queries/products";
 export function ProductCard({
   product,
   wishlisted,
+  priority,
 }: {
   product: ProductCardData;
   wishlisted?: boolean;
+  /** LCP hint for cards likely visible above the fold (first homepage section only). */
+  priority?: boolean;
 }) {
   const image = product.images[0];
   const defaultVariant =
@@ -67,6 +70,7 @@ export function ProductCard({
               alt={image.alt ?? product.name}
               fill
               sizes="(max-width: 768px) 50vw, 25vw"
+              priority={priority}
               className="object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.04]"
             />
           ) : null}
@@ -123,11 +127,14 @@ export function ProductGrid({
   products,
   wishlistedIds,
   className,
+  priorityCount = 0,
 }: {
   products: ProductCardData[];
   wishlistedIds?: Set<string>;
   /** Override the responsive grid classes when a section needs a different density. */
   className?: string;
+  /** LCP hint: eagerly load the first N card images (pass only for the section actually rendered first on the page). */
+  priorityCount?: number;
 }) {
   return (
     <div
@@ -141,7 +148,7 @@ export function ProductGrid({
         // premium cascade). Reveal is reduced-motion gated + passes RSC children
         // straight through, so the server-rendered card is untouched.
         <Reveal key={p.id} className="h-full" delay={(i % 5) * 40}>
-          <ProductCard product={p} wishlisted={wishlistedIds?.has(p.id)} />
+          <ProductCard product={p} wishlisted={wishlistedIds?.has(p.id)} priority={i < priorityCount} />
         </Reveal>
       ))}
     </div>
@@ -156,9 +163,12 @@ export function ProductGrid({
 export function ProductRail({
   products,
   wishlistedIds,
+  priorityCount = 0,
 }: {
   products: ProductCardData[];
   wishlistedIds?: Set<string>;
+  /** LCP hint: eagerly load the first N card images (pass only for the section actually rendered first on the page). */
+  priorityCount?: number;
 }) {
   return (
     <>
@@ -167,7 +177,7 @@ export function ProductRail({
         {products.map((p, i) => (
           <div key={p.id} className="w-[44vw] max-w-[210px] shrink-0">
             <Reveal className="h-full" delay={(i % 4) * 50}>
-              <ProductCard product={p} wishlisted={wishlistedIds?.has(p.id)} />
+              <ProductCard product={p} wishlisted={wishlistedIds?.has(p.id)} priority={i < priorityCount} />
             </Reveal>
           </div>
         ))}
@@ -176,7 +186,7 @@ export function ProductRail({
       <div className="hidden gap-4 md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {products.map((p, i) => (
           <Reveal key={p.id} className="h-full" delay={(i % 5) * 40}>
-            <ProductCard product={p} wishlisted={wishlistedIds?.has(p.id)} />
+            <ProductCard product={p} wishlisted={wishlistedIds?.has(p.id)} priority={i < priorityCount} />
           </Reveal>
         ))}
       </div>
