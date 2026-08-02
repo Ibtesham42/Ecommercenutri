@@ -167,7 +167,7 @@ export function SurveyDashboard({
                 {q.options.map((o) => (
                   <div key={o.key}>
                     <div className="mb-0.5 flex items-center justify-between text-xs">
-                      <span className="truncate">{enLabel(q.id, o.key)}</span>
+                      <span className="min-w-0 truncate">{enLabel(q.id, o.key)}</span>
                       <span className="ml-2 shrink-0 tabular-nums text-muted-foreground">
                         {o.count} · {o.pct}%
                       </span>

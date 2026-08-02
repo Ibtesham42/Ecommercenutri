@@ -127,7 +127,10 @@ export function PostTable({
         {posts.map((p) => (
           <div
             key={p.id}
-            className="flex items-start gap-3 rounded-xl border p-3 shadow-elev-1"
+            // min-w-0: this row is a grid item of the `grid gap-2` list below,
+            // which defaults to min-width:auto — without it the row refuses to
+            // shrink to the track width and overflows on long captions/hashtags.
+            className="min-w-0 flex items-start gap-3 rounded-xl border p-3 shadow-elev-1"
           >
             {showBulk && (
               <Checkbox

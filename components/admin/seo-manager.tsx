@@ -129,7 +129,10 @@ export function SeoManager({
   }, [form, fallback]);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
+    // grid-cols-1 below lg: `grid` alone leaves grid-template-columns:none,
+    // so the single implicit track auto-sizes to its widest content (the tab
+    // row) instead of the container width, overflowing the page on mobile.
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_400px]">
       {/* ---- Editor ---- */}
       <div className="min-w-0 space-y-4">
         <div className="flex flex-wrap gap-1.5">
@@ -331,7 +334,7 @@ export function SeoManager({
       </div>
 
       {/* ---- Sticky save bar ---- */}
-      <div className="sticky bottom-0 z-10 -mx-1 flex items-center justify-between gap-3 rounded-t-xl border bg-background/95 p-3 shadow-elev-2 backdrop-blur lg:col-span-2">
+      <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-3 rounded-t-xl border bg-background/95 p-3 shadow-elev-2 backdrop-blur lg:col-span-2">
         <div className="flex items-center gap-2 text-sm">
           {dirty ? (
             <Badge variant="secondary" className="gap-1.5">
@@ -343,7 +346,7 @@ export function SeoManager({
             </Badge>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button type="button" variant="ghost" onClick={resetToDefaults} className="gap-1.5">
             <RotateCcw className="size-4" /> Reset to defaults
           </Button>
@@ -363,7 +366,9 @@ export function SeoManager({
 }
 
 function Row({ children }: { children: React.ReactNode }) {
-  return <div className="grid gap-3 sm:grid-cols-2">{children}</div>;
+  // grid-cols-1 below sm: same reasoning as the editor/preview grid above —
+  // without it the implicit track auto-sizes to content and overflows.
+  return <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>;
 }
 
 function Field({

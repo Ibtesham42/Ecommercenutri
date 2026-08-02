@@ -104,9 +104,9 @@ export default async function SocialAnalyticsPage() {
           ) : (
             <div className="space-y-2">
               {a.topProducts.map((p) => (
-                <div key={p.productId} className="flex items-center justify-between text-sm">
-                  <span className="truncate">{p.name}</span>
-                  <span className="text-xs text-muted-foreground">{p.count} post(s)</span>
+                <div key={p.productId} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="min-w-0 truncate">{p.name}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{p.count} post(s)</span>
                 </div>
               ))}
             </div>

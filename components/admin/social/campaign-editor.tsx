@@ -298,7 +298,7 @@ export function CampaignEditor({
                         checked={form.productIds.includes(p.id)}
                         onCheckedChange={() => set("productIds", toggleInArray(form.productIds, p.id))}
                       />
-                      <span className="truncate">{p.name}</span>
+                      <span className="min-w-0 truncate">{p.name}</span>
                     </label>
                   ))}
                   {filtered.length === 0 && <p className="text-xs text-muted-foreground">No products match.</p>}

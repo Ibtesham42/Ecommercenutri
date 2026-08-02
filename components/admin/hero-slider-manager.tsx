@@ -387,7 +387,7 @@ export function HeroSliderManager({
               onDragStart={() => setDragId(s.id)}
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => onDrop(s.id)}
-              className={`flex items-center gap-3 rounded-xl border bg-background p-3 transition ${
+              className={`flex flex-wrap items-center gap-3 rounded-xl border bg-background p-3 transition ${
                 dragId === s.id ? "opacity-50" : ""
               }`}
             >
@@ -417,7 +417,7 @@ export function HeroSliderManager({
                   </span>
                 )}
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-32 flex-1 basis-32">
                 <p className="truncate font-medium">
                   {s.title || (s.mediaType === "VIDEO" ? "Video slide" : "Untitled slide")}
                 </p>
@@ -448,37 +448,39 @@ export function HeroSliderManager({
                   );
                 })()}
               </div>
-              <Badge variant={s.isActive ? "default" : "secondary"}>
-                {s.isActive ? "Live" : "Draft"}
-              </Badge>
-              <Switch
-                checked={s.isActive}
-                onCheckedChange={(v) => act(toggleHeroSlide(s.id, v), v ? "Published" : "Unpublished")}
-                aria-label="Toggle published"
-              />
-              <div className="flex gap-1">
-                <Button size="icon" variant="ghost" onClick={() => openEdit(s)} aria-label="Edit">
-                  <Pencil className="size-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => act(duplicateHeroSlide(s.id), "Slide duplicated")}
-                  aria-label="Duplicate"
-                >
-                  <Copy className="size-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="text-muted-foreground hover:text-destructive"
-                  onClick={() => {
-                    if (confirm("Delete this slide?")) act(deleteHeroSlide(s.id), "Slide deleted");
-                  }}
-                  aria-label="Delete"
-                >
-                  <Trash2 className="size-4" />
-                </Button>
+              <div className="ml-auto flex shrink-0 items-center gap-3">
+                <Badge variant={s.isActive ? "default" : "secondary"}>
+                  {s.isActive ? "Live" : "Draft"}
+                </Badge>
+                <Switch
+                  checked={s.isActive}
+                  onCheckedChange={(v) => act(toggleHeroSlide(s.id, v), v ? "Published" : "Unpublished")}
+                  aria-label="Toggle published"
+                />
+                <div className="flex gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => openEdit(s)} aria-label="Edit">
+                    <Pencil className="size-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => act(duplicateHeroSlide(s.id), "Slide duplicated")}
+                    aria-label="Duplicate"
+                  >
+                    <Copy className="size-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={() => {
+                      if (confirm("Delete this slide?")) act(deleteHeroSlide(s.id), "Slide deleted");
+                    }}
+                    aria-label="Delete"
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
               </div>
             </li>
           ))}
