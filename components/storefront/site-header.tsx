@@ -146,6 +146,7 @@ export function SiteHeader({
           logoUrl={logoUrl}
           name={siteName}
           className="min-w-0 shrink"
+          wordmarkClassName="hidden sm:inline"
           {...logoSize}
         />
 

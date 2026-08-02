@@ -16,6 +16,7 @@ export function Logo({
   maxWidth,
   accentClassName = "text-primary",
   onDark = false,
+  wordmarkClassName,
 }: {
   className?: string;
   logoUrl?: string | null;
@@ -29,6 +30,10 @@ export function Logo({
    *  on dark (footer); `"lg"` = dark only from lg up (the header is light cream
    *  below lg and deep green above it). */
   onDark?: boolean | "lg";
+  /** Extra classes for the uploaded-logo wordmark span — used by the main
+   *  header to hide it below `sm` instead of collapsing to a single
+   *  illegible truncated letter when the icon row eats the available width. */
+  wordmarkClassName?: string;
 }) {
   const h = height ?? 32;
   const mh = mobileHeight ?? h;
@@ -67,7 +72,7 @@ export function Logo({
               alone reads as a bare icon (no brand name) in tight spots like
               the mobile nav drawer. Truncates under pressure alongside the
               image (parent gets `min-w-0 shrink` where space is contested). */}
-          <span className="truncate">{name}</span>
+          <span className={cn("truncate", wordmarkClassName)}>{name}</span>
         </>
       ) : (
         <>
