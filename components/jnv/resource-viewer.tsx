@@ -354,7 +354,10 @@ function ResourcePreview({
         title={title}
         fileSize={fileSize}
         fileLabel={fileKind === "PPT" ? "presentation" : fileKind === "DOC" ? "document" : "spreadsheet"}
-        previewImage={cldDocPreviewImage(fileUrl)}
+        // Cloudinary's pg_1 page-image conversion only works for PDFs on this
+        // account (raw Office Open XML uploads reliably 404 — confirmed live),
+        // so skip the doomed request instead of firing-and-catching every load.
+        previewImage={null}
       />
     );
   }

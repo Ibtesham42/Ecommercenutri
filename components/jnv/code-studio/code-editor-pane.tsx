@@ -12,7 +12,10 @@ import { EditorView } from "@codemirror/view";
 export type CodeEditorFileType = "html" | "css" | "js" | "py";
 
 const LANGUAGE_EXTENSIONS: Record<CodeEditorFileType, Extension> = {
-  html: html(),
+  // autoCloseTags off: it doesn't type-over a manually-typed closing tag, so
+  // a student typing `<h1>Hello</h1>` by hand ends up with a duplicated
+  // `</h1></h1>` after the auto-inserted one.
+  html: html({ autoCloseTags: false }),
   css: css(),
   js: javascript(),
   py: python(),

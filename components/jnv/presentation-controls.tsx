@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { Maximize, Minimize, Moon, MonitorPlay, MousePointer2, Sun, X } from "lucide-react";
 import { useJnvPresentation } from "@/components/jnv/presentation-provider";
 import { cn } from "@/lib/utils";
@@ -8,9 +9,11 @@ import { cn } from "@/lib/utils";
  * Always mounted (not `jnv-chrome`) so a teacher can enter/exit Presentation
  * Mode and toggle fullscreen from any student-portal page, including while
  * every other nav element is hidden. Keyboard shortcuts (F = fullscreen,
- * Esc = exit presentation) live in JnvPresentationProvider.
+ * Esc = exit presentation) live in JnvPresentationProvider, so they keep
+ * working even on the pages below where this toggle is hidden.
  */
 export function JnvPresentationControls() {
+  const pathname = usePathname();
   const {
     active,
     toggle,
@@ -21,6 +24,14 @@ export function JnvPresentationControls() {
     laserPointer,
     toggleLaserPointer,
   } = useJnvPresentation();
+
+  // Hidden entry toggle under /jnv/code-studio: there's nothing to "present"
+  // there (no chapters/laser pointer use case) and the fixed bottom-right
+  // button overlaps the Live Preview panel on mobile — confirmed via a real
+  // 390px screenshot. Same reasoning as JnvAiLauncher's code-studio guard.
+  // Still render the active-mode toolbar (Exit/laser/dark-stage) so a
+  // teacher who entered presentation mode elsewhere isn't stranded.
+  if (!active && pathname?.startsWith("/jnv/code-studio")) return null;
 
   if (!active) {
     return (
