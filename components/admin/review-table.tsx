@@ -21,6 +21,7 @@ import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import { toastBulk } from "@/lib/admin/run-bulk";
 import { downloadCsv } from "@/lib/admin/csv-export";
 import { bulkReviewAction, setReviewApproved, deleteReview } from "@/lib/actions/admin/reviews";
+import { ReviewPhotoPreview } from "@/components/admin/review-photo-preview";
 import { formatDate } from "@/lib/format";
 
 export type ReviewRow = {
@@ -31,6 +32,7 @@ export type ReviewRow = {
   rating: number;
   title: string | null;
   comment: string | null;
+  images: string[];
   isApproved: boolean;
   createdAt: string;
 };
@@ -169,6 +171,7 @@ export function ReviewTable({ reviews }: { reviews: ReviewRow[] }) {
                   <Stars n={r.rating} />
                   {r.title && <p className="truncate text-sm font-medium">{r.title}</p>}
                   {r.comment && <p className="line-clamp-2 text-xs text-muted-foreground">{r.comment}</p>}
+                  <ReviewPhotoPreview images={r.images} customer={r.customer} />
                 </TableCell>
                 <TableCell className="max-w-[140px] truncate text-muted-foreground">{r.customer}</TableCell>
                 <TableCell className="text-muted-foreground">{formatDate(r.createdAt)}</TableCell>

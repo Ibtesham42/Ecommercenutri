@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { checkRateLimit, limiters } from "@/lib/rate-limit";
 import { reviewSchema } from "@/lib/validations/review";
+import { isTrustedCloudinaryUrl } from "@/lib/cloudinary";
 
 export type ReviewState = { error?: string; success?: string } | undefined;
 
@@ -35,12 +36,16 @@ export async function submitReview(
     rating: formData.get("rating"),
     title: formData.get("title") || undefined,
     comment: formData.get("comment") || undefined,
+    images: formData.getAll("images"),
   });
   if (!parsed.success) {
     return { error: reviewError(parsed.error.issues[0]?.path[0]?.toString()) };
   }
 
   const { productId, slug, rating, title, comment } = parsed.data;
+  // Only trust URLs that are really our own Cloudinary assets — a tampered
+  // client request could otherwise inject arbitrary/hotlinked image URLs.
+  const images = parsed.data.images.filter(isTrustedCloudinaryUrl);
 
   // Reviews publish immediately, so throttle the write path.
   const rl = await checkRateLimit(limiters.api, `review:${user.id}`);
@@ -57,8 +62,8 @@ export async function submitReview(
 
   await prisma.review.upsert({
     where: { productId_userId: { productId, userId: user.id } },
-    update: { rating, title, comment, isApproved: true },
-    create: { productId, userId: user.id, rating, title, comment, isApproved: true },
+    update: { rating, title, comment, images, isApproved: true },
+    create: { productId, userId: user.id, rating, title, comment, images, isApproved: true },
   });
 
   // Recompute the product's rating aggregate from approved reviews.

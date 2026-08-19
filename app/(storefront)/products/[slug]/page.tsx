@@ -9,6 +9,7 @@ import { getWishlistProductIds } from "@/lib/queries/wishlist";
 import { getPricingSettings } from "@/lib/queries/settings";
 import { effectivePrice } from "@/lib/format";
 import { env } from "@/lib/env";
+import { cloudinaryEnabled } from "@/lib/cloudinary";
 import {
   similarProducts,
   frequentlyBoughtTogether,
@@ -317,7 +318,9 @@ export default async function ProductPage({
           createdAt: r.createdAt.toISOString(),
           userName: r.user.name,
           userImage: r.user.image,
+          images: r.images,
         }))}
+        cloudinaryReady={cloudinaryEnabled}
       />
 
       {/* Frequently bought together — interactive one-tap bundle (AOV). Falls

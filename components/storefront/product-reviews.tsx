@@ -3,6 +3,7 @@ import { BadgeCheck, MessageSquare } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { StarRating } from "@/components/storefront/star-rating";
 import { ReviewForm } from "@/components/storefront/review-form";
+import { ReviewPhotoGallery } from "@/components/storefront/review-photo-gallery";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDate } from "@/lib/format";
 
@@ -14,6 +15,7 @@ type ReviewVM = {
   createdAt: string;
   userName: string | null;
   userImage: string | null;
+  images: string[];
 };
 
 function initials(name: string | null) {
@@ -32,12 +34,14 @@ export async function ProductReviews({
   ratingAvg,
   ratingCount,
   reviews,
+  cloudinaryReady,
 }: {
   productId: string;
   slug: string;
   ratingAvg: number;
   ratingCount: number;
   reviews: ReviewVM[];
+  cloudinaryReady: boolean;
 }) {
   const user = await getCurrentUser();
 
@@ -89,7 +93,7 @@ export async function ProductReviews({
           </div>
 
           {user ? (
-            <ReviewForm productId={productId} slug={slug} />
+            <ReviewForm productId={productId} slug={slug} cloudinaryReady={cloudinaryReady} />
           ) : (
             <div className="rounded-2xl border p-4 text-center text-sm text-muted-foreground">
               <Link
@@ -142,6 +146,7 @@ export async function ProductReviews({
                     {r.comment}
                   </p>
                 )}
+                <ReviewPhotoGallery images={r.images} reviewerName={r.userName ?? "Nutriyet customer"} />
               </div>
             ))
           )}

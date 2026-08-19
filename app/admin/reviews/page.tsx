@@ -48,6 +48,7 @@ export default async function AdminReviewsPage({
       rating: true,
       title: true,
       comment: true,
+      images: true,
       isApproved: true,
       createdAt: true,
       product: { select: { name: true, slug: true } },
@@ -63,6 +64,7 @@ export default async function AdminReviewsPage({
     rating: r.rating,
     title: r.title,
     comment: r.comment,
+    images: r.images,
     isApproved: r.isApproved,
     createdAt: r.createdAt.toISOString(),
   }));

@@ -31,6 +31,7 @@ export const limiters = {
   jnvCodeMentor: makeLimiter(20, "1 m", "rl:jnv-code-mentor"),
   checkout: makeLimiter(10, "1 m", "rl:checkout"),
   api: makeLimiter(60, "1 m", "rl:api"),
+  reviewUpload: makeLimiter(20, "1 m", "rl:review-upload"),
 };
 
 export async function checkRateLimit(
