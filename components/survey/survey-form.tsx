@@ -77,9 +77,12 @@ export function SurveyForm() {
         makhanaBarrierOther: others.makhanaBarrierOther ?? "",
         flavourOther: others.flavourOther ?? "",
         city,
-        contactName: contact.name,
-        contactMobile: contact.mobile,
-        contactEmail: contact.email,
+        // Only send contact details when opted in — otherwise a stale value
+        // left over from a "Yes" → "No" toggle would trip the server's
+        // opted-in-only check and fail the whole submission.
+        contactName: singles.wantsUpdates === "yes" ? contact.name : "",
+        contactMobile: singles.wantsUpdates === "yes" ? contact.mobile : "",
+        contactEmail: singles.wantsUpdates === "yes" ? contact.email : "",
       });
       if (res.ok) {
         try {
