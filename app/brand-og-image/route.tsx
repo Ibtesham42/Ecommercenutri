@@ -1,12 +1,14 @@
 import { ImageResponse } from "next/og";
 import { siteConfig } from "@/config/site";
 
-export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
-export const alt = `${siteConfig.name} — ${siteConfig.tagline}`;
-
-/** Default social share image for the site. */
-export default function OpengraphImage() {
+// Brand-default Open Graph image, served as a normal route (like brand-icon/
+// brand-apple-icon) so `generateMetadata`'s `openGraph.images` stays
+// authoritative and an admin-uploaded SEO/share image can override it. A file
+// at the Next.js convention path `app/opengraph-image.tsx` would instead be
+// auto-injected by Next's metadata resolution and silently win over any
+// dynamic `openGraph.images` for every route under this segment — which is
+// exactly what happened here (see CLAUDE.md invariant on favicon/OG images).
+export function GET() {
   return new ImageResponse(
     (
       <div
@@ -56,6 +58,6 @@ export default function OpengraphImage() {
         </div>
       </div>
     ),
-    size,
+    { width: 1200, height: 630 },
   );
 }

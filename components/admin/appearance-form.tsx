@@ -360,6 +360,13 @@ export function AppearanceForm({
           </p>
         </div>
         {imageField("ogImage", "Default social share image (OG)", "seo")}
+        <p className="text-[11px] text-muted-foreground">
+          Used as the fallback share image. If a &ldquo;Share image (OG)&rdquo; is set under{" "}
+          <a href="/admin/seo" className="underline underline-offset-2 hover:text-foreground">
+            SEO &amp; Social Share → Social tab
+          </a>
+          , that image is shown instead on WhatsApp, Facebook, LinkedIn and other social previews.
+        </p>
       </Section>
 
       <div className="sticky bottom-4 flex justify-end">

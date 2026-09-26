@@ -56,7 +56,7 @@ you go to switch each feature from fallback to live.
 
 ## 5. Verify production
 - `https://<domain>/` loads; `/sitemap.xml`, `/robots.txt`, `/manifest.webmanifest`
-  return 200; `/opengraph-image`, `/icon`, `/apple-icon` render.
+  return 200; `/brand-og-image`, `/brand-icon`, `/brand-apple-icon` render.
 - Place a test order (Razorpay test mode) → order appears in `/admin/orders`; the
   webhook marks it paid.
 - `/assistant` answers (Groq) or shows the friendly fallback.

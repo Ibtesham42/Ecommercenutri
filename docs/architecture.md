@@ -45,7 +45,7 @@ app/
     cron/marketing     Scheduled campaign dispatch (CRON_SECRET)
   sitemap.ts / robots.ts          SEO (dynamic, DB-driven sitemap)
   manifest.ts                     PWA web manifest (dynamic, admin favicon)
-  opengraph-image.tsx             Generated OG image (next/og)
+  brand-og-image/                 Brand-default OG image (next/og route — NOT opengraph-image.tsx)
   brand-icon/ brand-apple-icon/   Brand-default favicons (next/og routes)
   offline/             PWA offline fallback page (service worker in public/sw.js)
 components/

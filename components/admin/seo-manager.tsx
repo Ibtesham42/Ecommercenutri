@@ -97,20 +97,49 @@ export function SeoManager({
     setForm(saved);
   }
 
+  // Which field is actually supplying the share image right now, mirroring the
+  // EXACT precedence the live site uses (lib/seo-settings.ts#resolveSeo):
+  // Twitter cards → twitterImage → shareImage → ogImage → site default;
+  // every other platform (WhatsApp/Facebook/LinkedIn/Telegram/…) → shareImage
+  // → ogImage → site default. `ogImage` ("Default OG image", editable here AND
+  // on the Appearance page) is silently ignored by every social platform the
+  // instant `shareImage` ("Share image (OG)") is ever set — that field, not
+  // ogImage, drives the real <meta property="og:image">. Surfacing the winning
+  // field (and which one it is) is what actually fixes "I uploaded a new image
+  // but the preview/og:image never changes": the upload was saved correctly,
+  // it's just aimed at a field a stale override was already shadowing.
+  type ImageSource = "twitterImage" | "shareImage" | "ogImage" | "fallback";
+  const imageSourceLabel: Record<ImageSource, string> = {
+    twitterImage: "Twitter/X image",
+    shareImage: "Share image (OG)",
+    ogImage: "Default OG image",
+    fallback: "site default (nothing uploaded yet)",
+  };
+
+  const { image: effImage, source: effSource } = useMemo((): {
+    image: string;
+    source: ImageSource;
+  } => {
+    if (platform === "twitter" && form.twitterImage) return { image: form.twitterImage, source: "twitterImage" };
+    if (form.shareImage) return { image: form.shareImage, source: "shareImage" };
+    if (form.ogImage) return { image: form.ogImage, source: "ogImage" };
+    return { image: fallback.shareImage, source: "fallback" };
+  }, [platform, form.twitterImage, form.shareImage, form.ogImage, fallback.shareImage]);
+
   // Effective preview data (form value → fallback).
   const eff: PreviewData = useMemo(() => {
     const domain = form.siteUrl ? hostOf(form.siteUrl, fallback.domain) : fallback.domain;
     return {
       title: form.shareTitle || form.metaTitle || fallback.title,
       description: form.shareDescription || form.metaDescription || fallback.description,
-      image: form.shareImage || form.ogImage || fallback.shareImage,
+      image: effImage,
       siteName: form.siteName || fallback.siteName,
       domain,
       url: form.siteUrl || siteUrl,
       favicon: form.favicon ? cldUrl(form.favicon, { w: 64, h: 64 }) : fallback.favicon,
       twitterCard: form.twitterCardType,
     };
-  }, [form, fallback, siteUrl]);
+  }, [form, fallback, siteUrl, effImage]);
 
   // Validation warnings (soft — never block saving).
   const warnings = useMemo(() => {
@@ -207,6 +236,16 @@ export function SeoManager({
               <Row>
                 <Field label="Default OG image">
                   <ImageUploadField value={form.ogImage} onChange={(v) => set("ogImage", v)} cloudinaryReady={cloudinaryReady} folder="seo" />
+                  {form.shareImage && (
+                    <p className="flex flex-wrap items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400">
+                      <AlertTriangle className="size-3 shrink-0" />
+                      Currently overridden by the Share image on the Social tab — that&apos;s
+                      the one social platforms actually use.
+                      <button type="button" className="font-medium underline underline-offset-2" onClick={() => setTab("social")}>
+                        Go to Social tab
+                      </button>
+                    </p>
+                  )}
                 </Field>
                 <Field label="Favicon">
                   <ImageUploadField value={form.favicon} onChange={(v) => set("favicon", v)} cloudinaryReady={cloudinaryReady} folder="branding" accept="image/png,image/svg+xml,image/x-icon,.png,.svg,.ico" />
@@ -234,11 +273,35 @@ export function SeoManager({
                 <Textarea rows={2} value={form.shareDescription} onChange={(e) => set("shareDescription", e.target.value)} placeholder={fallback.description} />
               </Field>
               <Row>
-                <Field label="Share image (OG)" hint="1200×630 recommended.">
+                <Field
+                  label="Share image (OG)"
+                  hint="1200×630 recommended. This is the image WhatsApp, Facebook, LinkedIn, Telegram etc. actually show — it overrides the Default OG image on the Global tab whenever it's set."
+                >
                   <ImageUploadField value={form.shareImage} onChange={(v) => set("shareImage", v)} cloudinaryReady={cloudinaryReady} folder="seo" />
+                  {form.shareImage && (
+                    <button
+                      type="button"
+                      className="text-[11px] font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                      onClick={() => set("shareImage", "")}
+                    >
+                      Clear override (use Default OG image instead)
+                    </button>
+                  )}
                 </Field>
-                <Field label="Twitter/X image" hint="Blank = share image.">
+                <Field
+                  label="Twitter/X image"
+                  hint={form.twitterImage ? "Used only for the X (Twitter) card." : "Optional — blank reuses the Share image above for Twitter cards too."}
+                >
                   <ImageUploadField value={form.twitterImage} onChange={(v) => set("twitterImage", v)} cloudinaryReady={cloudinaryReady} folder="seo" />
+                  {form.twitterImage && (
+                    <button
+                      type="button"
+                      className="text-[11px] font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                      onClick={() => set("twitterImage", "")}
+                    >
+                      Clear override (reuse Share image)
+                    </button>
+                  )}
                 </Field>
               </Row>
               <Row>
@@ -322,6 +385,14 @@ export function SeoManager({
         <div className="grid place-items-center rounded-xl border bg-muted/30 p-4">
           <PlatformPreview platform={platform} data={eff} />
         </div>
+        {platform !== "google" && (
+          <p className="text-[11px] text-muted-foreground">
+            Image source: <span className="font-medium text-foreground">{imageSourceLabel[effSource]}</span>
+            {effSource === "ogImage" && form.shareImage === "" && (
+              <> — set a Share image on the Social tab to control this per-platform.</>
+            )}
+          </p>
+        )}
         {warnings.length > 0 && (
           <div className="space-y-1.5 rounded-lg border border-amber-300/50 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-300">
             {warnings.map((w) => (

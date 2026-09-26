@@ -125,8 +125,14 @@ lowercase with `[slug]`/`(group)` · server actions verb-first (`createOrder`).
 1. **Service worker `isCacheable`:** only cache/serve clean same-origin 200s; pass
    redirects through; bump `VERSION` on SW changes. A violation once blanked
    `www.nutriyet.in`. (`docs/seo-pwa.md`)
-2. **Favicon is metadata-driven:** never re-add `app/favicon.ico`/`app/icon.*` — they
-   override the admin-uploaded favicon. `/favicon.ico` is served by rewrite → route.
+2. **Favicon and OG image are metadata-driven:** never re-add `app/favicon.ico`/
+   `app/icon.*`/`app/opengraph-image.*`/`app/twitter-image.*` — any file at those
+   Next.js metadata-convention paths is auto-injected and silently overrides the
+   dynamic `metadata.icons`/`openGraph.images` from `generateMetadata()`, no matter
+   what's saved in the DB. Brand defaults live at ordinary routes instead
+   (`app/brand-icon/`, `app/brand-apple-icon/`, `app/brand-og-image/`) that
+   `generateMetadata()` falls back to only when nothing's uploaded. `/favicon.ico` is
+   served by rewrite → route.
 3. **Groq `llama-3.3-70b-versatile` doesn't support `json_schema`** — use `generateText`
    + defensive JSON parse, never `generateObject`. Chat streams plain text
    (`toTextStreamResponse`), fallbacks carry `X-AI-Fallback: 1`.
