@@ -52,23 +52,30 @@ export type SignedUpload = {
  * Build a signed payload for a direct browser→Cloudinary upload. The file bytes
  * go straight from the client to Cloudinary and never pass through our serverless
  * function, so large media (hero/banner videos) isn't capped by Vercel's ~4.5 MB
- * request-body limit or the function execution timeout. The signature covers only
- * the folder + timestamp; the endpoint that calls this is admin-gated.
+ * request-body limit or the function execution timeout. The signature covers the
+ * folder + timestamp (+ any `extra` params, e.g. `allowed_formats` for a public,
+ * unauthenticated upload endpoint) — those extra params must be resent verbatim
+ * as form fields, since Cloudinary re-derives the signature from exactly what it
+ * receives. The endpoint that calls this is normally admin-gated; where it isn't
+ * (e.g. the B2B card upload), pass `allowed_formats` so Cloudinary itself rejects
+ * disallowed file types before accepting bytes.
  */
-export function signUpload(folder: string): SignedUpload | null {
+export function signUpload<T extends Record<string, string> = Record<string, never>>(
+  folder: string,
+  extra?: T,
+): (SignedUpload & T) | null {
   if (!cloudinaryEnabled) return null;
   const timestamp = Math.round(Date.now() / 1000);
-  const signature = cloudinary.utils.api_sign_request(
-    { folder, timestamp },
-    env.cloudinaryApiSecret,
-  );
+  const params = { folder, timestamp, ...extra };
+  const signature = cloudinary.utils.api_sign_request(params, env.cloudinaryApiSecret);
   return {
     cloudName: env.cloudinaryCloudName,
     apiKey: env.cloudinaryApiKey,
     timestamp,
     signature,
     folder,
-  };
+    ...extra,
+  } as SignedUpload & T;
 }
 
 export async function deleteImage(publicId: string): Promise<void> {

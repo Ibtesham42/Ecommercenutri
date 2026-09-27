@@ -13,6 +13,8 @@ import {
   Building2,
   MapPin,
   Inbox,
+  Paperclip,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,7 @@ import {
   BUSINESS_TYPES,
 } from "@/lib/b2b";
 import { formatDateTime } from "@/lib/format";
+import { cldUrl } from "@/lib/cld";
 import { cn } from "@/lib/utils";
 import type { B2BStatus } from "@prisma/client";
 import {
@@ -55,9 +58,14 @@ export type B2BRow = {
   country: string | null;
   purpose: string;
   message: string;
+  businessCardUrl: string | null;
   status: B2BStatus;
   createdAt: string;
 };
+
+function isPdfUrl(url: string) {
+  return /\.pdf(\?|$)/i.test(url);
+}
 
 const BULK_ACTIONS: BulkAction[] = [
   {
@@ -142,7 +150,7 @@ export function B2BManager({ inquiries }: { inquiries: B2BRow[] }) {
   function exportCsv() {
     downloadCsv(
       "b2b-inquiries",
-      ["Inquiry ID", "Date", "Name", "Company", "Business Type", "Phone", "Email", "City", "State", "Country", "Purpose", "Message", "Status"],
+      ["Inquiry ID", "Date", "Name", "Company", "Business Type", "Phone", "Email", "City", "State", "Country", "Purpose", "Message", "Business Card", "Status"],
       filtered.map((r) => [
         r.id,
         new Date(r.createdAt).toLocaleString(),
@@ -156,6 +164,7 @@ export function B2BManager({ inquiries }: { inquiries: B2BRow[] }) {
         r.country ?? "",
         r.purpose,
         r.message,
+        r.businessCardUrl ?? "",
         B2B_STATUS_LABELS[r.status],
       ]),
     );
@@ -247,6 +256,17 @@ export function B2BManager({ inquiries }: { inquiries: B2BRow[] }) {
                     <span className="rounded-full border bg-accent/40 px-2 py-0.5 text-[11px] font-medium">
                       {r.businessType}
                     </span>
+                    {r.businessCardUrl && (
+                      <a
+                        href={r.businessCardUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Paperclip className="size-3" /> Card
+                      </a>
+                    )}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {r.purpose}
@@ -395,6 +415,37 @@ export function B2BManager({ inquiries }: { inquiries: B2BRow[] }) {
                   <p className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Message</p>
                   <p className="whitespace-pre-wrap rounded-lg border bg-muted/30 p-3">{view.message}</p>
                 </div>
+                {view.businessCardUrl && (
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
+                      Visiting / Business Card
+                    </p>
+                    {isPdfUrl(view.businessCardUrl) ? (
+                      <a
+                        href={view.businessCardUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm font-medium hover:bg-accent"
+                      >
+                        <FileText className="size-5 text-muted-foreground" /> View / download PDF
+                      </a>
+                    ) : (
+                      <a
+                        href={view.businessCardUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block overflow-hidden rounded-lg border"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={cldUrl(view.businessCardUrl, { w: 500 })}
+                          alt={`Business card from ${view.fullName}`}
+                          className="max-h-64 w-full object-contain"
+                        />
+                      </a>
+                    )}
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2 pt-1">
                   <Button asChild size="sm" className="gap-1.5">
                     <a href={`mailto:${view.email}?subject=${encodeURIComponent("Re: Your Nutriyet business inquiry")}`}>

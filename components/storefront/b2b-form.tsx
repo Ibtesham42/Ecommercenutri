@@ -12,13 +12,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { submitB2BInquiry } from "@/lib/actions/b2b";
 import { b2bInquirySchema, type B2BInquiryInput } from "@/lib/validations/b2b";
 import { BUSINESS_TYPES, B2B_PURPOSES } from "@/lib/b2b";
+import { B2BCardUpload } from "@/components/storefront/b2b-card-upload";
 
 const selectClass =
   "h-10 w-full rounded-md border bg-transparent px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/30";
 
-export function B2BForm() {
+export function B2BForm({ cloudinaryReady }: { cloudinaryReady: boolean }) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [businessCardUrl, setBusinessCardUrl] = useState("");
 
   const {
     register,
@@ -44,11 +46,12 @@ export function B2BForm() {
 
   async function onSubmit(values: B2BInquiryInput) {
     setSending(true);
-    const res = await submitB2BInquiry(values);
+    const res = await submitB2BInquiry({ ...values, businessCardUrl });
     setSending(false);
     if (res.ok) {
       setSent(true);
       reset();
+      setBusinessCardUrl("");
     } else {
       toast.error(res.error);
     }
@@ -139,6 +142,14 @@ export function B2BForm() {
           rows={5}
           placeholder="Tell us about your requirement — products, quantities, timeline…"
           {...register("message")}
+        />
+      </Field>
+
+      <Field label="Visiting / Business Card">
+        <B2BCardUpload
+          value={businessCardUrl}
+          onChange={setBusinessCardUrl}
+          cloudinaryReady={cloudinaryReady}
         />
       </Field>
 

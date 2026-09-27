@@ -25,6 +25,7 @@ export default async function AdminB2BPage() {
     country: r.country,
     purpose: r.purpose,
     message: r.message,
+    businessCardUrl: r.businessCardUrl,
     status: r.status,
     createdAt: r.createdAt.toISOString(),
   }));

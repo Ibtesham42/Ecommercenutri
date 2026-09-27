@@ -13,6 +13,7 @@ import {
 import { B2BForm } from "@/components/storefront/b2b-form";
 import { Reveal } from "@/components/storefront/reveal";
 import { buildMetadata } from "@/lib/seo";
+import { isConfigured } from "@/lib/env";
 
 export const metadata: Metadata = buildMetadata({
   title: "B2B & Wholesale — Partner with Nutriyet",
@@ -178,7 +179,7 @@ export default function B2BPage() {
               </li>
             </ul>
           </div>
-          <B2BForm />
+          <B2BForm cloudinaryReady={isConfigured.cloudinary()} />
         </div>
       </section>
     </div>

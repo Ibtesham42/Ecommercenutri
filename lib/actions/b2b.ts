@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { b2bInquirySchema } from "@/lib/validations/b2b";
 import { checkRateLimit, limiters } from "@/lib/rate-limit";
+import { isTrustedCloudinaryUrl } from "@/lib/cloudinary";
 import { sendEmail } from "@/lib/email";
 import { getStoreSettings } from "@/lib/queries/settings";
 import { b2bConfirmationEmail, b2bAdminAlertEmail } from "@/lib/emails";
@@ -51,6 +52,11 @@ export async function submitB2BInquiry(input: unknown): Promise<B2BResult> {
     /* non-fatal — fall through to create */
   }
 
+  // Only ever persist a URL we recognize as our own Cloudinary delivery — the
+  // client can send anything here, so a plain Zod `.url()` isn't enough.
+  const businessCardUrl =
+    d.businessCardUrl && isTrustedCloudinaryUrl(d.businessCardUrl) ? d.businessCardUrl : null;
+
   try {
     await prisma.b2BInquiry.create({
       data: {
@@ -64,6 +70,7 @@ export async function submitB2BInquiry(input: unknown): Promise<B2BResult> {
         country: d.country || null,
         purpose: d.purpose,
         message: d.message,
+        businessCardUrl,
       },
     });
   } catch (err) {
@@ -83,7 +90,7 @@ export async function submitB2BInquiry(input: unknown): Promise<B2BResult> {
   // Admin alert — email + in-app notification.
   try {
     const store = await getStoreSettings();
-    const alert = b2bAdminAlertEmail(d);
+    const alert = b2bAdminAlertEmail({ ...d, businessCardUrl });
     await sendEmail({ to: store.supportEmail, ...alert, replyTo: d.email });
     await notifyAdmins({
       title: "New B2B inquiry",

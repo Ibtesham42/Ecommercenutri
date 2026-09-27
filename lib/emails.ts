@@ -80,6 +80,7 @@ export function b2bAdminAlertEmail(d: {
   country?: string | null;
   purpose: string;
   message: string;
+  businessCardUrl?: string | null;
 }): Email {
   const location = [d.city, d.state, d.country].filter(Boolean).join(", ") || "—";
   const rows: [string, string][] = [
@@ -110,6 +111,11 @@ export function b2bAdminAlertEmail(d: {
             <table role="presentation" width="100%" style="border:1px solid #eef3f1;border-radius:10px;border-collapse:separate;overflow:hidden">${table}</table>
             <p style="margin:16px 0 6px;font-size:13px;color:#899791">Message</p>
             <p style="margin:0;font-size:13px;line-height:20px;color:#172b26;white-space:pre-wrap">${esc(d.message)}</p>
+            ${
+              d.businessCardUrl
+                ? `<p style="margin:14px 0 0;font-size:13px"><a href="${esc(d.businessCardUrl)}" style="color:#00835b;font-weight:600">View visiting / business card →</a></p>`
+                : ""
+            }
             <p style="margin:18px 0 0;font-size:12px;color:#899791">Reply directly to this email to respond to ${esc(d.fullName)}.</p>
           </td></tr>
           <tr><td style="padding:16px 28px;border-top:1px solid #eef3f1;font-size:12px;color:#99a7a1">© ${new Date().getFullYear()} ${siteConfig.name}</td></tr>
@@ -118,7 +124,8 @@ export function b2bAdminAlertEmail(d: {
     text:
       `New B2B inquiry\n` +
       rows.map(([k, v]) => `${k}: ${v}`).join("\n") +
-      `\n\nMessage:\n${d.message}`,
+      `\n\nMessage:\n${d.message}` +
+      (d.businessCardUrl ? `\n\nBusiness card: ${d.businessCardUrl}` : ""),
   };
 }
 
