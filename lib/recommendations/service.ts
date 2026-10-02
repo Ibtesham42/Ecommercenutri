@@ -343,43 +343,21 @@ export type ProductCombo = {
   products: ProductCardData[];
 };
 
-/** Curated, goal-based bundles assembled from the live catalog by category
- *  keyword. Empty combos are dropped so the homepage degrades gracefully. */
-const COMBO_DEFS: { key: string; title: string; description: string; match: string[] }[] = [
-  {
-    key: "breakfast",
-    title: "Healthy Breakfast Combo",
-    description: "Start the day right",
-    match: ["makhana", "seed", "oat", "dry", "nut", "granola", "muesli"],
-  },
-  {
-    key: "weight-loss",
-    title: "Weight Loss Combo",
-    description: "Light, filling & nutritious",
-    match: ["seed", "makhana", "flax", "chia"],
-  },
-  {
-    key: "protein",
-    title: "High Protein Combo",
-    description: "Fuel your muscles",
-    match: ["protein", "seed", "peanut", "nut", "chana", "soy"],
-  },
-  {
-    key: "immunity",
-    title: "Immunity Combo",
-    description: "Stay strong year-round",
-    match: ["nut", "seed", "berry", "amla", "dry"],
-  },
-];
+export type ComboDef = { key: string; title: string; description: string; match: string[] };
 
-export async function productCombos(perCombo = 4): Promise<ProductCombo[]> {
+/** Curated, goal-based bundles assembled from the live catalog by category
+ *  keyword. Empty combos are dropped so the homepage degrades gracefully.
+ *  `defs` is the admin-configurable goal list (`HomeContentMap.combos.items`,
+ *  `lib/home-content.ts`) — callers pass the resolved content, not a default
+ *  here, so this stays a pure catalog-matching function. */
+export async function productCombos(defs: ComboDef[], perCombo = 4): Promise<ProductCombo[]> {
   const categories = await prisma.category.findMany({
     where: { isActive: true },
     select: { id: true, slug: true, name: true },
   });
 
   const out: ProductCombo[] = [];
-  for (const def of COMBO_DEFS) {
+  for (const def of defs) {
     const catIds = categories
       .filter((c) =>
         def.match.some(

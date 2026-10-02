@@ -100,9 +100,13 @@ export async function getHomeSectionOrder(): Promise<HomeSectionOrderItem[]> {
       ordered.push({ key: r.key, enabled: r.enabled });
     }
   }
-  // Append any newly-added registry sections not yet persisted.
+  // Append any newly-added registry sections not yet persisted. "hero" (the
+  // static headline block) defaults off when unconfigured, since it would
+  // otherwise render stacked directly under "heroSlider" — redundant, not a
+  // deliberate two-hero layout. An admin who explicitly enables it via the
+  // Section Builder is saved in `rows` above and always wins over this default.
   for (const key of HOME_SECTION_KEYS) {
-    if (!seen.has(key)) ordered.push({ key, enabled: true });
+    if (!seen.has(key)) ordered.push({ key, enabled: key !== "hero" });
   }
   return ordered;
 }

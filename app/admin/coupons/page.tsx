@@ -24,6 +24,7 @@ export default async function AdminCouponsPage() {
     startsAt: c.startsAt?.toISOString() ?? null,
     expiresAt: c.expiresAt?.toISOString() ?? null,
     isActive: c.isActive,
+    isPublic: c.isPublic,
   }));
 
   return (

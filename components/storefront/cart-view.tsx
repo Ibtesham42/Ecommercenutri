@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Minus, Plus, Trash2, ShoppingBag, Truck, ShieldCheck, ArrowLeft, ArrowRight } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag, Truck, ShieldCheck, ArrowLeft, ArrowRight, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/storefront/empty-state";
 import { useCart } from "@/lib/store/cart";
@@ -16,7 +16,15 @@ import {
 } from "@/lib/pricing";
 import { previewOrderPricing } from "@/lib/actions/checkout";
 
-export function CartView({ settings = PRICING_DEFAULTS }: { settings?: PricingSettings }) {
+type PublicCoupon = { code: string; type: "PERCENT" | "FIXED"; value: number };
+
+export function CartView({
+  settings = PRICING_DEFAULTS,
+  publicCoupons = [],
+}: {
+  settings?: PricingSettings;
+  publicCoupons?: PublicCoupon[];
+}) {
   const items = useCart((s) => s.items);
   const updateQty = useCart((s) => s.updateQty);
   const removeItem = useCart((s) => s.removeItem);
@@ -191,6 +199,26 @@ export function CartView({ settings = PRICING_DEFAULTS }: { settings?: PricingSe
 
       <aside className="h-fit space-y-4 rounded-2xl border bg-card p-5 shadow-elev-1 lg:sticky lg:top-24">
         <h2 className="font-heading text-lg font-semibold">Order summary</h2>
+
+        {publicCoupons.length > 0 && (
+          <div className="space-y-1.5 rounded-xl border border-dashed border-primary/30 bg-primary/5 p-3 text-xs">
+            <p className="flex items-center gap-1.5 font-semibold text-primary">
+              <Gift className="size-3.5" /> Coupons you can use
+            </p>
+            {publicCoupons.map((c) => (
+              <p key={c.code} className="flex items-center justify-between gap-2">
+                <span className="font-mono font-semibold">{c.code}</span>
+                <span className="text-muted-foreground">
+                  {c.type === "PERCENT" ? `${c.value}% off` : `${formatPrice(c.value)} off`}
+                </span>
+              </p>
+            ))}
+            <Link href="/offers" className="font-medium text-primary hover:underline">
+              View all offers →
+            </Link>
+          </div>
+        )}
+
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Subtotal</span>

@@ -32,6 +32,7 @@ export const siteConfig = {
     { title: "Shop", href: "/products" },
     { title: "Categories", href: "/categories" },
     { title: "Best Sellers", href: "/products?sort=best-sellers" },
+    { title: "Offers", href: "/offers" },
     { title: "AI Assistant", href: "/assistant" },
     { title: "B2B", href: "/b2b" },
     { title: "About", href: "/about" },

@@ -66,6 +66,7 @@ export type CouponRow = {
   startsAt: string | null; // ISO
   expiresAt: string | null; // ISO
   isActive: boolean;
+  isPublic: boolean;
 };
 
 type FormValues = {
@@ -81,6 +82,7 @@ type FormValues = {
   startsAt?: string;
   expiresAt?: string;
   isActive: boolean;
+  isPublic: boolean;
 };
 
 const dateInput = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
@@ -111,7 +113,7 @@ export function CouponManager({ coupons }: { coupons: CouponRow[] }) {
 
   function openAdd() {
     setEditing(null);
-    reset({ code: "", type: "PERCENT", value: 10, isActive: true });
+    reset({ code: "", type: "PERCENT", value: 10, isActive: true, isPublic: false });
     setOpen(true);
   }
   function openEdit(c: CouponRow) {
@@ -129,6 +131,7 @@ export function CouponManager({ coupons }: { coupons: CouponRow[] }) {
       startsAt: dateInput(c.startsAt),
       expiresAt: dateInput(c.expiresAt),
       isActive: c.isActive,
+      isPublic: c.isPublic,
     });
     setOpen(true);
   }
@@ -148,6 +151,7 @@ export function CouponManager({ coupons }: { coupons: CouponRow[] }) {
       startsAt: v.startsAt || null,
       expiresAt: v.expiresAt || null,
       isActive: v.isActive,
+      isPublic: v.isPublic,
     });
     setSaving(false);
     if (res.ok) {
@@ -220,7 +224,14 @@ export function CouponManager({ coupons }: { coupons: CouponRow[] }) {
                       onCheckedChange={() => sel.toggle(c.id)}
                     />
                   </TableCell>
-                  <TableCell className="font-mono font-medium">{c.code}</TableCell>
+                  <TableCell className="font-mono font-medium">
+                    {c.code}
+                    {c.isPublic && (
+                      <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-sans font-semibold text-primary">
+                        Public
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     {c.type === "PERCENT" ? `${c.value}%` : formatPrice(c.value)}
                   </TableCell>
@@ -335,6 +346,21 @@ export function CouponManager({ coupons }: { coupons: CouponRow[] }) {
               render={({ field }) => (
                 <label className="flex items-center justify-between text-sm">
                   Active
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                </label>
+              )}
+            />
+            <Controller
+              control={control}
+              name="isPublic"
+              render={({ field }) => (
+                <label className="flex items-center justify-between text-sm">
+                  <span>
+                    Show on Offers page
+                    <span className="block text-xs text-muted-foreground">
+                      Public codes appear at /offers for any shopper to copy.
+                    </span>
+                  </span>
                   <Switch checked={field.value} onCheckedChange={field.onChange} />
                 </label>
               )}

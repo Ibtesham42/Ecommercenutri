@@ -15,6 +15,7 @@ import {
   Building2,
   Info,
   Phone,
+  Gift,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,6 +45,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "/products": ShoppingBag,
   "/categories": LayoutGrid,
   "/products?sort=best-sellers": Star,
+  "/offers": Gift,
   "/assistant": Sparkles,
   "/b2b": Building2,
   "/about": Info,

@@ -69,7 +69,7 @@ export default async function HomePage() {
     getWishlistProductIds(),
     getCurrentUser(),
     trending({ windowDays: 7, limit: content.trending.limit ?? 8 }),
-    productCombos(content.combos.limit ?? 4),
+    productCombos(content.combos.items, content.combos.limit ?? 4),
     getActiveShowcase(),
     getGrowthSettings(),
     getHeroRevealSettings(),
@@ -296,8 +296,17 @@ export default async function HomePage() {
     <Showcase3D items={showcase.items} />
   ) : null;
 
+  // The static "hero" block normally carries the page's one <h1>; heroSlider's
+  // per-slide heading is deliberately an <h2> (every slide renders in the DOM
+  // for the carousel track, so an <h1> there would duplicate per slide). When
+  // "hero" is off (the default now, to avoid the stacked-hero redundancy) this
+  // keeps exactly one real <h1> on the page for SEO/a11y without an extra
+  // visible heading.
+  const needsFallbackH1 = !visible.some((s) => s.key === "hero");
+
   return (
     <>
+      {needsFallbackH1 && <h1 className="sr-only">Nutriyet — Eat clean. Live strong.</h1>}
       {/* When stories are hidden, the showcase + banner sit at the top. */}
       {!hasStories && (
         <>

@@ -30,6 +30,7 @@ import type {
   HeadingContent,
   WhyChooseUsContent,
   TestimonialsContent,
+  CombosContent,
   HomeContentKey,
 } from "@/lib/validations/admin";
 
@@ -38,7 +39,8 @@ export type EditTarget =
   | { kind: "aiBanner"; key: "aiBanner"; label: string; value: AiBannerContent }
   | { kind: "heading"; key: HomeContentKey; label: string; value: HeadingContent }
   | { kind: "whyChooseUs"; key: "whyChooseUs"; label: string; value: WhyChooseUsContent }
-  | { kind: "testimonials"; key: "testimonials"; label: string; value: TestimonialsContent };
+  | { kind: "testimonials"; key: "testimonials"; label: string; value: TestimonialsContent }
+  | { kind: "combos"; key: "combos"; label: string; value: CombosContent };
 
 export function HomeSectionEditDialog({
   target,
@@ -123,6 +125,8 @@ function EditorBody({ target, onClose }: { target: EditTarget; onClose: () => vo
       return <WhyChooseUsForm initial={target.value} onSave={save} saving={saving} footer={footer} />;
     case "testimonials":
       return <TestimonialsForm initial={target.value} onSave={save} saving={saving} footer={footer} />;
+    case "combos":
+      return <CombosForm initial={target.value} onSave={save} saving={saving} footer={footer} />;
   }
 }
 
@@ -437,6 +441,105 @@ function TestimonialsForm({
         {d.items.length < 12 && (
           <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setD((p) => ({ ...p, items: [...p.items, { name: "", text: "", rating: 5 }] }))}>
             <Plus className="size-4" /> Add testimonial
+          </Button>
+        )}
+      </div>
+      <SaveBar saving={saving} onSave={() => onSave(d)} footer={footer} />
+    </div>
+  );
+}
+
+function slugifyKey(s: string): string {
+  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "goal";
+}
+
+function CombosForm({
+  initial,
+  onSave,
+  saving,
+  footer,
+}: {
+  initial: CombosContent;
+  onSave: (d: CombosContent) => void;
+  saving: boolean;
+  footer: React.ReactNode;
+}) {
+  const [d, setD] = useState<CombosContent>(initial);
+  const set = (patch: Partial<CombosContent>) => setD((p) => ({ ...p, ...patch }));
+  const setItem = (i: number, patch: Partial<CombosContent["items"][number]>) =>
+    setD((p) => ({ ...p, items: p.items.map((it, j) => (j === i ? { ...it, ...patch } : it)) }));
+
+  return (
+    <div className="space-y-4">
+      <Field label="Title"><Input value={d.title} onChange={(e) => set({ title: e.target.value })} /></Field>
+      <Field label="Subtitle"><Input value={d.subtitle} onChange={(e) => set({ subtitle: e.target.value })} /></Field>
+      <div className="space-y-3">
+        <Label>
+          Goals
+          <span className="ml-2 font-normal text-muted-foreground">
+            Each goal pulls products from categories whose name/slug contains any of its match keywords.
+          </span>
+        </Label>
+        {d.items.map((it, i) => (
+          <div key={i} className="space-y-2 rounded-lg border p-3">
+            <div className="flex gap-2">
+              <Input
+                value={it.title}
+                placeholder="Goal title, e.g. Weight Loss Combo"
+                onChange={(e) =>
+                  setItem(i, {
+                    title: e.target.value,
+                    // Keep key in sync with title unless the admin already
+                    // customized it away from the title-derived slug.
+                    key: it.key === slugifyKey(it.title) || !it.key ? slugifyKey(e.target.value) : it.key,
+                  })
+                }
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setD((p) => ({ ...p, items: p.items.filter((_, j) => j !== i) }))}
+                aria-label="Remove goal"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+            <Input
+              value={it.description}
+              placeholder="Short description, e.g. Light, filling & nutritious"
+              onChange={(e) => setItem(i, { description: e.target.value })}
+            />
+            <Field label="Match keywords (comma-separated category name/slug fragments)">
+              <Input
+                value={it.match.join(", ")}
+                placeholder="seed, makhana, flax, chia"
+                onChange={(e) =>
+                  setItem(i, {
+                    match: e.target.value
+                      .split(",")
+                      .map((s) => s.trim().toLowerCase())
+                      .filter(Boolean),
+                  })
+                }
+              />
+            </Field>
+          </div>
+        ))}
+        {d.items.length < 8 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() =>
+              setD((p) => ({
+                ...p,
+                items: [...p.items, { key: "new-goal", title: "", description: "", match: [] }],
+              }))
+            }
+          >
+            <Plus className="size-4" /> Add goal
           </Button>
         )}
       </div>

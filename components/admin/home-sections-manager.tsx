@@ -48,7 +48,10 @@ export function HomeSectionsManager({
       case "featured":
       case "bestSellers":
       case "recommended":
+      case "trending":
         return { kind: "heading", key: row.key, label, value: content[row.key] };
+      case "combos":
+        return { kind: "combos", key: "combos", label, value: content.combos };
       case "whyChooseUs":
         return { kind: "whyChooseUs", key: "whyChooseUs", label, value: content.whyChooseUs };
       case "testimonials":

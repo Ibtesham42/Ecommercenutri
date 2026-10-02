@@ -420,6 +420,23 @@ export const headingContentSchema = z.object({
   limit: z.number().int().min(1).max(24).optional().default(8),
 });
 
+const comboItemSchema = z.object({
+  key: z.string().max(40).regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers and hyphens"),
+  title: z.string().max(60),
+  description: z.string().max(120),
+  // Category slug/name keywords this goal matches against (substring, case-insensitive).
+  match: z.array(z.string().max(30)).min(1).max(10),
+});
+
+export const combosContentSchema = z.object({
+  title: z.string().max(80),
+  subtitle: z.string().max(200),
+  ctaLabel: z.string().max(40).optional().default(""),
+  ctaHref: linkHref.optional().default(""),
+  limit: z.number().int().min(1).max(24).optional().default(8),
+  items: z.array(comboItemSchema).min(1).max(8),
+});
+
 export const whyChooseUsContentSchema = z.object({
   title: z.string().max(80),
   subtitle: z.string().max(200),
@@ -441,7 +458,7 @@ export const homeContentSchemas = {
   bestSellers: headingContentSchema,
   recommended: headingContentSchema,
   trending: headingContentSchema,
-  combos: headingContentSchema,
+  combos: combosContentSchema,
   whyChooseUs: whyChooseUsContentSchema,
   testimonials: testimonialsContentSchema,
 } as const;
@@ -453,6 +470,8 @@ export type AiBannerContent = z.infer<typeof aiBannerContentSchema>;
 export type HeadingContent = z.infer<typeof headingContentSchema>;
 export type WhyChooseUsContent = z.infer<typeof whyChooseUsContentSchema>;
 export type TestimonialsContent = z.infer<typeof testimonialsContentSchema>;
+export type CombosContent = z.infer<typeof combosContentSchema>;
+export type ComboItem = z.infer<typeof comboItemSchema>;
 export type ValuePropItem = z.infer<typeof valuePropSchema>;
 export type TestimonialItem = z.infer<typeof testimonialItemSchema>;
 export type StatItem = z.infer<typeof statItemSchema>;
@@ -590,6 +609,7 @@ export const couponInputSchema = z
     startsAt: z.coerce.date().nullable().optional(),
     expiresAt: z.coerce.date().nullable().optional(),
     isActive: z.boolean().default(true),
+    isPublic: z.boolean().default(false),
   })
   .refine((c) => c.type !== "PERCENT" || (c.value >= 1 && c.value <= 100), {
     message: "Percentage must be between 1 and 100",

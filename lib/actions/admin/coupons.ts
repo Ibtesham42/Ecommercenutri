@@ -34,6 +34,7 @@ export async function saveCoupon(input: unknown): Promise<AdminResult> {
     startsAt: d.startsAt ?? null,
     expiresAt: d.expiresAt ?? null,
     isActive: d.isActive,
+    isPublic: d.isPublic,
   };
 
   if (d.id) {

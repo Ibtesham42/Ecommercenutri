@@ -4,6 +4,7 @@ import type {
   HeadingContent,
   WhyChooseUsContent,
   TestimonialsContent,
+  CombosContent,
   HomeContentKey,
 } from "@/lib/validations/admin";
 import type { HomeSectionKey } from "@/lib/home-sections";
@@ -22,7 +23,7 @@ export type HomeContentMap = {
   bestSellers: HeadingContent;
   recommended: HeadingContent;
   trending: HeadingContent;
-  combos: HeadingContent;
+  combos: CombosContent;
   whyChooseUs: WhyChooseUsContent;
   testimonials: TestimonialsContent;
 };
@@ -97,6 +98,32 @@ export const HOME_CONTENT_DEFAULTS: HomeContentMap = {
     ctaLabel: "",
     ctaHref: "",
     limit: 4,
+    items: [
+      {
+        key: "breakfast",
+        title: "Healthy Breakfast Combo",
+        description: "Start the day right",
+        match: ["makhana", "seed", "oat", "dry", "nut", "granola", "muesli"],
+      },
+      {
+        key: "weight-loss",
+        title: "Weight Loss Combo",
+        description: "Light, filling & nutritious",
+        match: ["seed", "makhana", "flax", "chia"],
+      },
+      {
+        key: "protein",
+        title: "High Protein Combo",
+        description: "Fuel your muscles",
+        match: ["protein", "seed", "peanut", "nut", "chana", "soy"],
+      },
+      {
+        key: "immunity",
+        title: "Immunity Combo",
+        description: "Stay strong year-round",
+        match: ["nut", "seed", "berry", "amla", "dry"],
+      },
+    ],
   },
   whyChooseUs: {
     title: "Why choose Nutriyet",
@@ -125,6 +152,7 @@ export type SectionEditorKind =
   | "heading"
   | "whyChooseUs"
   | "testimonials"
+  | "combos"
   | "none";
 
 /** Which editor form (if any) a section uses. `none` = managed elsewhere. */
@@ -137,7 +165,7 @@ export const HOME_SECTION_EDITOR: Record<HomeSectionKey, SectionEditorKind> = {
   bestSellers: "heading",
   recommended: "heading",
   trending: "heading",
-  combos: "heading",
+  combos: "combos",
   whyChooseUs: "whyChooseUs",
   testimonials: "testimonials",
   aiBanner: "aiBanner",

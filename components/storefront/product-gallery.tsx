@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Expand, ZoomIn } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { BlurImage } from "@/components/storefront/blur-image";
@@ -8,6 +8,55 @@ import { useVariantSelection } from "@/components/storefront/variant-selection";
 import { cn } from "@/lib/utils";
 
 type GalleryImage = { url: string; alt: string | null };
+
+/** Horizontal swipe-to-navigate for touch devices — a vertical gesture (page
+ *  scroll) is left alone; only a clearly-horizontal drag past the threshold
+ *  triggers prev/next. Shared by the inline gallery and the lightbox. */
+function useSwipeNav(go: (dir: 1 | -1) => void) {
+  const start = useRef<{ x: number; y: number } | null>(null);
+  return {
+    onTouchStart: (e: React.TouchEvent) => {
+      const t = e.touches[0];
+      start.current = { x: t.clientX, y: t.clientY };
+    },
+    onTouchEnd: (e: React.TouchEvent) => {
+      if (!start.current) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - start.current.x;
+      const dy = t.clientY - start.current.y;
+      start.current = null;
+      if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        go(dx < 0 ? 1 : -1);
+      }
+    },
+  };
+}
+
+/** Cursor-following magnify on the main image — desktop/mouse only (gated on
+ *  hover+fine-pointer capability and prefers-reduced-motion), restrained to a
+ *  single smooth transform, not a gimmicky separate loupe panel. */
+function useHoverZoom() {
+  const capable = useRef(false);
+  useEffect(() => {
+    capable.current =
+      window.matchMedia("(hover: hover) and (pointer: fine)").matches &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }, []);
+  const [origin, setOrigin] = useState<{ x: number; y: number } | null>(null);
+  return {
+    zoomed: origin !== null,
+    origin,
+    onMouseMove: (e: React.MouseEvent<HTMLElement>) => {
+      if (!capable.current) return;
+      const rect = e.currentTarget.getBoundingClientRect();
+      setOrigin({
+        x: ((e.clientX - rect.left) / rect.width) * 100,
+        y: ((e.clientY - rect.top) / rect.height) * 100,
+      });
+    },
+    onMouseLeave: () => setOrigin(null),
+  };
+}
 
 export function ProductGallery({
   images,
@@ -42,15 +91,23 @@ export function ProductGallery({
     (dir: 1 | -1) => setActive((i) => (i + dir + count) % count),
     [count],
   );
+  const swipe = useSwipeNav(go);
+  const hoverZoom = useHoverZoom();
 
   return (
     <div className="space-y-3">
-      {/* Main image — click to open the full-screen lightbox. */}
+      {/* Main image — click to open the full-screen lightbox; swipe on touch;
+          cursor-follow magnify on hover-capable pointers. */}
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          if (!hoverZoom.zoomed) setOpen(true);
+        }}
         aria-label="Open image gallery"
         className="group relative block aspect-square w-full cursor-zoom-in overflow-hidden rounded-2xl border bg-accent/20 shadow-elev-1"
+        {...swipe}
+        onMouseMove={hoverZoom.onMouseMove}
+        onMouseLeave={hoverZoom.onMouseLeave}
       >
         {main && (
           <BlurImage
@@ -63,7 +120,11 @@ export function ProductGallery({
             alt={main.alt ?? name}
             fill
             sizes="(max-width: 1024px) 100vw, 45vw"
-            className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+            className={cn(
+              "object-cover transition-transform duration-200 ease-out",
+              hoverZoom.zoomed ? "scale-[2]" : "group-hover:scale-105 duration-500",
+            )}
+            style={hoverZoom.origin ? { transformOrigin: `${hoverZoom.origin.x}% ${hoverZoom.origin.y}%` } : undefined}
             priority
           />
         )}
@@ -128,6 +189,7 @@ function Lightbox({
 }) {
   const [zoomed, setZoomed] = useState(false);
   const current = images[active] ?? images[0];
+  const swipe = useSwipeNav(go);
 
   // Reset zoom whenever the active image or open state changes.
   useEffect(() => setZoomed(false), [active, open]);
@@ -158,6 +220,7 @@ function Lightbox({
               onClick={() => setZoomed((z) => !z)}
               className={cn("relative size-full", zoomed ? "cursor-zoom-out overflow-auto" : "cursor-zoom-in")}
               aria-label={zoomed ? "Zoom out" : "Zoom in"}
+              {...(!zoomed ? swipe : {})}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
