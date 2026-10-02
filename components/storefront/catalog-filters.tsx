@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type CategoryOption = {
@@ -18,9 +19,13 @@ const priceRanges = [
 ];
 
 export function CatalogFilters({
-  categories,
+  categories = [],
+  hideCategoryList = false,
 }: {
-  categories: CategoryOption[];
+  categories?: CategoryOption[];
+  /** Skip the "Category" section — used on an already category-scoped page
+   *  (`/categories/[slug]`), where that list would conflict with the route. */
+  hideCategoryList?: boolean;
 }) {
   const sp = useSearchParams();
   const pathname = usePathname();
@@ -39,7 +44,12 @@ export function CatalogFilters({
   const activeCategory = sp.get("category") ?? "";
   const activeMin = sp.get("minPrice") ?? "";
   const activeMax = sp.get("maxPrice") ?? "";
-  const hasFilters = Boolean(activeCategory || activeMin || activeMax || sp.get("q"));
+  const activeOnSale = sp.get("onSale") === "1";
+  const activeInStock = sp.get("inStock") === "1";
+  const activeRating = sp.get("minRating") ?? "";
+  const hasFilters = Boolean(
+    activeCategory || activeMin || activeMax || activeOnSale || activeInStock || activeRating || sp.get("q"),
+  );
 
   return (
     <div className="space-y-6">
@@ -55,6 +65,7 @@ export function CatalogFilters({
         )}
       </div>
 
+      {!hideCategoryList && (
       <div>
         <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Category
@@ -99,6 +110,7 @@ export function CatalogFilters({
           })}
         </ul>
       </div>
+      )}
 
       <div>
         <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -125,6 +137,60 @@ export function CatalogFilters({
               </Link>
             );
           })}
+        </div>
+      </div>
+
+      <div>
+        <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Availability
+        </h4>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={buildHref({ onSale: activeOnSale ? undefined : "1" })}
+            className={cn(
+              "rounded-xl border px-3 py-2 text-xs font-medium transition-colors",
+              activeOnSale
+                ? "border-primary bg-primary/5 text-primary"
+                : "hover:border-primary/40 hover:bg-accent",
+            )}
+          >
+            On sale
+          </Link>
+          <Link
+            href={buildHref({ inStock: activeInStock ? undefined : "1" })}
+            className={cn(
+              "rounded-xl border px-3 py-2 text-xs font-medium transition-colors",
+              activeInStock
+                ? "border-primary bg-primary/5 text-primary"
+                : "hover:border-primary/40 hover:bg-accent",
+            )}
+          >
+            In stock only
+          </Link>
+        </div>
+      </div>
+
+      <div>
+        <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Rating
+        </h4>
+        <div className="flex flex-wrap gap-2">
+          {[4, 3].map((r) => (
+            <Link
+              key={r}
+              href={buildHref({ minRating: activeRating === String(r) ? undefined : String(r) })}
+              className={cn(
+                "flex items-center gap-1 rounded-xl border px-3 py-2 text-xs font-medium transition-colors",
+                activeRating === String(r)
+                  ? "border-primary bg-primary/5 text-primary"
+                  : "hover:border-primary/40 hover:bg-accent",
+              )}
+            >
+              {r}
+              <Star className="size-3 fill-current" />
+              & up
+            </Link>
+          ))}
         </div>
       </div>
     </div>

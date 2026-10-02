@@ -33,9 +33,12 @@ export default async function ProductsPage({
   const sort = (get("sort") ?? "newest") as ProductSort;
   const minPrice = get("minPrice") ? Number(get("minPrice")) : undefined;
   const maxPrice = get("maxPrice") ? Number(get("maxPrice")) : undefined;
+  const onSale = get("onSale") === "1";
+  const inStock = get("inStock") === "1";
+  const minRating = get("minRating") ? Number(get("minRating")) : undefined;
 
   const [result, categories, wishlistIds] = await Promise.all([
-    getProducts({ category, q, sort, minPrice, maxPrice, page }),
+    getProducts({ category, q, sort, minPrice, maxPrice, onSale, inStock, minRating, page }),
     getCategories(),
     getWishlistProductIds(),
   ]);

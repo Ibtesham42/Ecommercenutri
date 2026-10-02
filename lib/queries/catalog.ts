@@ -19,7 +19,12 @@ export async function getCategories() {
 }
 
 export async function getCategoryBySlug(slug: string) {
-  return prisma.category.findUnique({ where: { slug } });
+  return prisma.category.findUnique({
+    where: { slug },
+    include: {
+      children: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
+    },
+  });
 }
 
 export async function getPublishedStories() {

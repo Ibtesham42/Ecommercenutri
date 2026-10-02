@@ -18,7 +18,13 @@ type CategoryOption = {
   _count: { products: number };
 };
 
-export function MobileFilters({ categories }: { categories: CategoryOption[] }) {
+export function MobileFilters({
+  categories,
+  hideCategoryList,
+}: {
+  categories?: CategoryOption[];
+  hideCategoryList?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -36,7 +42,7 @@ export function MobileFilters({ categories }: { categories: CategoryOption[] }) 
           className="flex-1 overflow-y-auto px-5 py-5"
           onClick={() => setOpen(false)}
         >
-          <CatalogFilters categories={categories} />
+          <CatalogFilters categories={categories} hideCategoryList={hideCategoryList} />
         </div>
         <div className="border-t p-4">
           <Button className="h-11 w-full" onClick={() => setOpen(false)}>

@@ -124,6 +124,9 @@ export type GetProductsParams = {
   sort?: ProductSort;
   minPrice?: number; // rupees
   maxPrice?: number; // rupees
+  onSale?: boolean;
+  inStock?: boolean;
+  minRating?: number;
   page?: number;
   perPage?: number;
 };
@@ -145,6 +148,9 @@ export async function getProducts(
     sort = "newest",
     minPrice,
     maxPrice,
+    onSale,
+    inStock,
+    minRating,
     page = 1,
     perPage = 12,
   } = params;
@@ -170,6 +176,12 @@ export async function getProducts(
     ...(hasPriceFilter
       ? { variants: { some: { isActive: true, price: priceFilter } } }
       : {}),
+    // discountPrice > 0 is the same "really on sale" signal effectivePrice()/
+    // discountPercent() already trust elsewhere — the admin form only lets a
+    // discount price through when it's below MRP.
+    ...(onSale ? { variants: { some: { isActive: true, discountPrice: { gt: 0 } } } } : {}),
+    ...(inStock ? { variants: { some: { isActive: true, stock: { gt: 0 } } } } : {}),
+    ...(typeof minRating === "number" ? { ratingAvg: { gte: minRating } } : {}),
   };
 
   const total = await prisma.product.count({ where });

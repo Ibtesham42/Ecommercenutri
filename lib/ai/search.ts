@@ -6,10 +6,56 @@ import { getAISettings, recordAIUsage } from "@/lib/ai/settings";
 import {
   getProducts,
   searchProducts,
+  minVariantPrice,
   type ProductSort,
   type ProductCardData,
 } from "@/lib/queries/products";
 import { expandSearchTerms } from "@/lib/recommendations/intent";
+
+/** Filter/sort/pagination refinements a shopper applies on the /search results
+ *  page — same shape as the /products searchParams, applied uniformly over
+ *  whichever tier (AI-interpreted, progressive-keyword, or keyless) produced
+ *  the candidate pool, so /search behaves like /products once refined. */
+export type SearchRefinements = {
+  sort?: ProductSort;
+  onSale?: boolean;
+  inStock?: boolean;
+  minRating?: number;
+  page?: number;
+  perPage?: number;
+};
+
+function applyRefinements(
+  products: ProductCardData[],
+  refinements: SearchRefinements,
+): { products: ProductCardData[]; total: number; page: number; pageCount: number } {
+  const { sort, onSale, inStock, minRating, page = 1, perPage = 12 } = refinements;
+
+  let filtered = products;
+  if (onSale) filtered = filtered.filter((p) => p.variants.some((v) => (v.discountPrice ?? 0) > 0));
+  if (inStock) filtered = filtered.filter((p) => p.variants.some((v) => v.stock > 0));
+  if (typeof minRating === "number") filtered = filtered.filter((p) => p.ratingAvg >= minRating);
+
+  const sorted = [...filtered];
+  if (sort === "best-sellers") {
+    sorted.sort((a, b) => Number(b.isBestSeller) - Number(a.isBestSeller) || b.ratingCount - a.ratingCount);
+  } else if (sort === "rating") {
+    sorted.sort((a, b) => b.ratingAvg - a.ratingAvg || b.ratingCount - a.ratingCount);
+  } else if (sort === "price-low" || sort === "price-high") {
+    sorted.sort((a, b) => {
+      const pa = minVariantPrice(a.variants) ?? Number.MAX_SAFE_INTEGER;
+      const pb = minVariantPrice(b.variants) ?? Number.MAX_SAFE_INTEGER;
+      return sort === "price-low" ? pa - pb : pb - pa;
+    });
+  }
+  // "newest"/relevance: keep the search tier's own relevance order.
+
+  const total = sorted.length;
+  const pageCount = Math.max(1, Math.ceil(total / perPage));
+  const safePage = Math.min(Math.max(1, page), pageCount);
+  const start = (safePage - 1) * perPage;
+  return { products: sorted.slice(start, start + perPage), total, page: safePage, pageCount };
+}
 
 /**
  * Keyword search that also understands wellness intent — so "weight loss" surfaces
@@ -18,7 +64,7 @@ import { expandSearchTerms } from "@/lib/recommendations/intent";
  */
 export async function smartKeywordSearch(
   query: string,
-  limit = 24,
+  limit = 48,
 ): Promise<ProductCardData[]> {
   const seen = new Set<string>();
   const out: ProductCardData[] = [];
@@ -65,6 +111,9 @@ export type AISearchResult = {
   products: ProductCardData[];
   interpreted: string | null; // model's restatement, when AI was used
   usedAI: boolean;
+  total: number;
+  page: number;
+  pageCount: number;
 };
 
 const STOP_WORDS = new Set([
@@ -90,7 +139,7 @@ async function runProgressiveSearch(opts: {
 }): Promise<ProductCardData[]> {
   const { query, keywords, category, minPrice, maxPrice, sort } = opts;
   const run = async (params: Parameters<typeof getProducts>[0]) =>
-    (await getProducts({ ...params, perPage: 24 })).products;
+    (await getProducts({ ...params, perPage: 48 })).products;
 
   // 1) Category (+ price) — strongest signal when a category was identified.
   if (category) {
@@ -153,16 +202,21 @@ function parseIntent(text: string): Intent | null {
  * query; otherwise it cleanly falls back to keyword search. Business logic lives
  * here; the page only renders the result.
  */
-export async function aiProductSearch(rawQuery: string): Promise<AISearchResult> {
+export async function aiProductSearch(
+  rawQuery: string,
+  refinements: SearchRefinements = {},
+): Promise<AISearchResult> {
   const query = rawQuery.trim();
-  if (!query) return { products: [], interpreted: null, usedAI: false };
+  const empty = { products: [], interpreted: null, usedAI: false, total: 0, page: 1, pageCount: 1 };
+  if (!query) return empty;
 
   const settings = await getAISettings();
   const model =
     settings.enabled && settings.searchEnabled ? getModel(settings.model) : null;
 
   if (!model) {
-    return { products: await smartKeywordSearch(query), interpreted: null, usedAI: false };
+    const products = await smartKeywordSearch(query);
+    return { ...applyRefinements(products, refinements), interpreted: null, usedAI: false };
   }
 
   try {
@@ -186,12 +240,14 @@ Use null where a field is not implied. "keywords" are short product terms. "summ
 
     const intent = parseIntent(text);
     if (!intent) {
-      return { products: await smartKeywordSearch(query), interpreted: null, usedAI: false };
+      const products = await smartKeywordSearch(query);
+      return { ...applyRefinements(products, refinements), interpreted: null, usedAI: false };
     }
 
     const validCategory = categories.find((c) => c.slug === intent.category)?.slug;
     const sort: ProductSort = intent.sort === "relevance" ? "rating" : intent.sort;
-    const baseSort: ProductSort = intent.bestSellerOnly ? "best-sellers" : sort;
+    // The shopper's own sort choice (once they refine) wins over the AI's guess.
+    const baseSort: ProductSort = refinements.sort ?? (intent.bestSellerOnly ? "best-sellers" : sort);
     const minPrice = intent.minPrice ?? undefined;
     const maxPrice = intent.maxPrice ?? undefined;
     const interpreted = intent.summary || null;
@@ -207,9 +263,10 @@ Use null where a field is not implied. "keywords" are short product terms. "summ
     // Last resort: intent-expanded keyword search (handles goal-style queries).
     if (products.length === 0) products = await smartKeywordSearch(query);
 
-    return { products, interpreted, usedAI: true };
+    return { ...applyRefinements(products, refinements), interpreted, usedAI: true };
   } catch (err) {
     console.error("[ai] search failed:", err);
-    return { products: await smartKeywordSearch(query), interpreted: null, usedAI: false };
+    const products = await smartKeywordSearch(query);
+    return { ...applyRefinements(products, refinements), interpreted: null, usedAI: false };
   }
 }
