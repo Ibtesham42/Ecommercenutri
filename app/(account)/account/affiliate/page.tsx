@@ -151,7 +151,7 @@ export default async function AffiliatePage() {
         <p className="mt-2 text-center text-xs text-muted-foreground">Commission earned per month</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
         {/* Recent referred orders */}
         <div className="rounded-2xl border p-5">
           <h2 className="mb-3 font-semibold">Recent referred orders</h2>

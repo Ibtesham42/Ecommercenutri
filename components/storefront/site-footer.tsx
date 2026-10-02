@@ -83,7 +83,7 @@ export async function SiteFooter() {
         </div>
       </div>
 
-      <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 md:grid-cols-[1.5fr_repeat(3,1fr)]">
+      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-10 px-4 py-12 md:grid-cols-[1.5fr_repeat(3,1fr)]">
         <div className="space-y-4">
           <Logo
             logoUrl={store.logo}

@@ -79,7 +79,7 @@ export function CartView({ settings = PRICING_DEFAULTS }: { settings?: PricingSe
       : null;
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
       <div className="space-y-4">
         {/* Free-delivery progress nudge */}
         {freeShippingProgress !== null && shipping > 0 && (

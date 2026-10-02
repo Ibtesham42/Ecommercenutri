@@ -89,7 +89,7 @@ export default async function OrderDetailPage({
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_300px]">
         <OrderSummaryCard order={order} />
         <aside className="h-fit rounded-2xl border p-5">
           <h2 className="mb-4 font-semibold">Order status</h2>

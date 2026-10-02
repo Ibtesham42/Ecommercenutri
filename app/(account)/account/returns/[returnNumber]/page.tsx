@@ -70,7 +70,7 @@ export default async function ReturnDetailPage({
         </Badge>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
         <div className="space-y-5">
           {/* Items */}
           <div className="rounded-2xl border p-5">
