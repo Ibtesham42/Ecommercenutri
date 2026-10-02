@@ -52,7 +52,7 @@ export function NewsletterForm({ source = "footer" }: { source?: string }) {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="Your email address"
-        className="h-12 flex-1 rounded-xl border border-white/15 bg-white/5 px-4 text-sm text-surface-deep-foreground placeholder:text-surface-deep-foreground/50 outline-none transition focus:border-gold/60 focus:ring-2 focus:ring-gold/30"
+        className="h-12 min-w-0 flex-1 rounded-xl border border-white/15 bg-white/5 px-4 text-sm text-surface-deep-foreground placeholder:text-surface-deep-foreground/50 outline-none transition focus:border-gold/60 focus:ring-2 focus:ring-gold/30"
       />
       <button
         type="submit"
