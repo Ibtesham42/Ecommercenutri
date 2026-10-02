@@ -60,10 +60,31 @@ export async function submitReview(
   });
   if (!product) return { error: "That product is no longer available." };
 
+  // "Verified Purchase" = the reviewer has an order for this product that was
+  // actually confirmed (excludes PENDING carts that never got approved, and
+  // CANCELLED/REFUNDED ones) — re-checked on every submit/edit.
+  const purchase = await prisma.orderItem.findFirst({
+    where: {
+      productId,
+      order: { userId: user.id, status: { notIn: ["PENDING", "CANCELLED", "REFUNDED"] } },
+    },
+    select: { id: true },
+  });
+  const verifiedPurchase = Boolean(purchase);
+
   await prisma.review.upsert({
     where: { productId_userId: { productId, userId: user.id } },
-    update: { rating, title, comment, images, isApproved: true },
-    create: { productId, userId: user.id, rating, title, comment, images, isApproved: true },
+    update: { rating, title, comment, images, isApproved: true, verifiedPurchase },
+    create: {
+      productId,
+      userId: user.id,
+      rating,
+      title,
+      comment,
+      images,
+      isApproved: true,
+      verifiedPurchase,
+    },
   });
 
   // Recompute the product's rating aggregate from approved reviews.

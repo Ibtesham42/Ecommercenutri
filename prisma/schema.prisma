@@ -212,15 +212,18 @@ model ProductImage {
 }
 
 model Review {
-  id         String   @id @default(cuid())
-  productId  String
-  userId     String
-  rating     Int
-  title      String?
-  comment    String?
-  images     String[] @default([])
-  isApproved Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id                String   @id @default(cuid())
+  productId         String
+  userId            String
+  rating            Int
+  title             String?
+  comment           String?
+  images            String[] @default([])
+  isApproved        Boolean  @default(false)
+  // True when the reviewer has a non-pending, non-cancelled/refunded order
+  // containing this product at the time the review was (last) submitted.
+  verifiedPurchase  Boolean  @default(false)
+  createdAt         DateTime @default(now())
   updatedAt  DateTime @updatedAt
   product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)

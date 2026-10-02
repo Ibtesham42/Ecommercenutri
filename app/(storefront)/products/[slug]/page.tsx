@@ -320,6 +320,7 @@ export default async function ProductPage({
           userName: r.user.name,
           userImage: r.user.image,
           images: r.images,
+          verifiedPurchase: r.verifiedPurchase,
         }))}
         cloudinaryReady={cloudinaryEnabled}
       />

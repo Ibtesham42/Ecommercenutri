@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, Package, MapPin, Heart, MessageSquare, RotateCcw, Megaphone, LogOut } from "lucide-react";
+import { LayoutGrid, User, Package, MapPin, Heart, MessageSquare, RotateCcw, Megaphone, LogOut } from "lucide-react";
 import { logoutAction } from "@/lib/actions/auth";
 import { cn } from "@/lib/utils";
 
 const nav = [
-  { href: "/account", label: "Profile", icon: User },
+  { href: "/account", label: "Dashboard", icon: LayoutGrid },
+  { href: "/account/profile", label: "Profile", icon: User },
   { href: "/account/orders", label: "Orders", icon: Package },
   { href: "/account/returns", label: "Returns", icon: RotateCcw },
   { href: "/account/affiliate", label: "Affiliate", icon: Megaphone },
