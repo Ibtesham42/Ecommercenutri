@@ -142,14 +142,14 @@ function Result({ order }: { order: TrackedOrder }) {
                 />
               )}
             </div>
-            <div className="flex flex-1 items-center justify-between">
-              <div className="text-sm">
-                <p className="font-medium">{item.name}</p>
+            <div className="flex flex-1 items-center justify-between gap-2">
+              <div className="min-w-0 text-sm">
+                <p className="truncate font-medium">{item.name}</p>
                 <p className="text-xs text-muted-foreground">
                   {item.variantLabel} · Qty {item.quantity}
                 </p>
               </div>
-              <span className="text-sm font-semibold">{formatPrice(item.price * item.quantity)}</span>
+              <span className="shrink-0 text-sm font-semibold">{formatPrice(item.price * item.quantity)}</span>
             </div>
           </li>
         ))}

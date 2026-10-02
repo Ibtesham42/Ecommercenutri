@@ -48,14 +48,14 @@ export function OrderSummaryCard({ order }: { order: OrderWithItems }) {
                 />
               )}
             </div>
-            <div className="flex flex-1 items-center justify-between">
-              <div className="text-sm">
-                <p className="font-medium">{item.productName}</p>
+            <div className="flex flex-1 items-center justify-between gap-2">
+              <div className="min-w-0 text-sm">
+                <p className="truncate font-medium">{item.productName}</p>
                 <p className="text-xs text-muted-foreground">
                   {item.variantLabel} · Qty {item.quantity}
                 </p>
               </div>
-              <span className="text-sm font-semibold">
+              <span className="shrink-0 text-sm font-semibold">
                 {formatPrice(item.price * item.quantity)}
               </span>
             </div>
