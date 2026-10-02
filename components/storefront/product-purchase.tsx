@@ -250,6 +250,65 @@ export function ProductPurchase({
         </div>
       </div>
 
+      {/* Key information — delivery/shipping + trust signals, surfaced before
+          the CTA so shoppers see them ahead of committing to add to cart. */}
+      <div className="space-y-2.5 rounded-xl border bg-muted/30 p-4 text-sm">
+        <div className="flex items-start gap-3">
+          <Truck className="mt-0.5 size-4 shrink-0 text-primary" />
+          <p>
+            <span className="font-medium">Get it {deliveryFrom} – {deliveryTo}</span>
+            <span className="block text-xs text-muted-foreground">
+              Usually delivered in 3–5 business days across India.
+            </span>
+          </p>
+        </div>
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
+          <p>
+            {freeShipping || effectiveDelivery === 0 ? (
+              <>
+                <span className="font-medium text-primary">
+                  {effectiveDelivery === 0 && !freeShipping
+                    ? "Free Delivery on this product."
+                    : "Free Delivery on this order."}
+                </span>
+                {freeShipping && effectiveDelivery > 0 && (
+                  <span className="block text-xs font-medium text-primary">
+                    You save {formatPrice(effectiveDelivery)} on shipping.
+                  </span>
+                )}
+              </>
+            ) : settings.freeShippingEnabled && settings.freeShippingThreshold > 0 ? (
+              <>
+                <span className="font-medium">
+                  Delivery {formatPrice(effectiveDelivery)} · free over{" "}
+                  {formatPrice(settings.freeShippingThreshold)}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  Add {formatPrice(settings.freeShippingThreshold - lineTotal)} more to
+                  qualify for Free Delivery.
+                </span>
+              </>
+            ) : (
+              <span className="font-medium">
+                Delivery {formatPrice(effectiveDelivery)}
+              </span>
+            )}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 border-t pt-5 sm:grid-cols-4">
+        {trustBadges.map((b) => (
+          <div key={b.label} className="flex flex-col items-center gap-1.5 text-center">
+            <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary">
+              <b.icon className="size-5" />
+            </span>
+            <span className="text-xs font-medium text-muted-foreground">{b.label}</span>
+          </div>
+        ))}
+      </div>
+
       {/* Quantity */}
       <div className="flex items-center gap-4">
         <span className="text-sm font-semibold">Quantity</span>
@@ -309,65 +368,6 @@ export function ProductPurchase({
           Buy now
           <ArrowRight className="size-5 transition-transform duration-200 group-hover/button:translate-x-0.5" />
         </Button>
-      </div>
-
-      {/* Delivery & shipping */}
-      <div className="space-y-2.5 rounded-xl border bg-muted/30 p-4 text-sm">
-        <div className="flex items-start gap-3">
-          <Truck className="mt-0.5 size-4 shrink-0 text-primary" />
-          <p>
-            <span className="font-medium">Get it {deliveryFrom} – {deliveryTo}</span>
-            <span className="block text-xs text-muted-foreground">
-              Usually delivered in 3–5 business days across India.
-            </span>
-          </p>
-        </div>
-        <div className="flex items-start gap-3">
-          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
-          <p>
-            {freeShipping || effectiveDelivery === 0 ? (
-              <>
-                <span className="font-medium text-primary">
-                  {effectiveDelivery === 0 && !freeShipping
-                    ? "Free Delivery on this product."
-                    : "Free Delivery on this order."}
-                </span>
-                {freeShipping && effectiveDelivery > 0 && (
-                  <span className="block text-xs font-medium text-primary">
-                    You save {formatPrice(effectiveDelivery)} on shipping.
-                  </span>
-                )}
-              </>
-            ) : settings.freeShippingEnabled && settings.freeShippingThreshold > 0 ? (
-              <>
-                <span className="font-medium">
-                  Delivery {formatPrice(effectiveDelivery)} · free over{" "}
-                  {formatPrice(settings.freeShippingThreshold)}
-                </span>
-                <span className="block text-xs text-muted-foreground">
-                  Add {formatPrice(settings.freeShippingThreshold - lineTotal)} more to
-                  qualify for Free Delivery.
-                </span>
-              </>
-            ) : (
-              <span className="font-medium">
-                Delivery {formatPrice(effectiveDelivery)}
-              </span>
-            )}
-          </p>
-        </div>
-      </div>
-
-      {/* Trust badges */}
-      <div className="grid grid-cols-2 gap-3 border-t pt-5 sm:grid-cols-4">
-        {trustBadges.map((b) => (
-          <div key={b.label} className="flex flex-col items-center gap-1.5 text-center">
-            <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary">
-              <b.icon className="size-5" />
-            </span>
-            <span className="text-xs font-medium text-muted-foreground">{b.label}</span>
-          </div>
-        ))}
       </div>
 
       {/* Sticky mobile add-to-cart bar */}

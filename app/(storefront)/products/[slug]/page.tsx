@@ -191,14 +191,14 @@ export default async function ProductPage({
           (product.variants.find((v) => v.stock > 0) ?? product.variants[0])?.id ?? null
         }
       >
-      <div className="grid gap-10 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
         <ProductGallery
           images={product.images.map((i) => ({ url: i.url, alt: i.alt }))}
           name={product.name}
           variantMedia={product.variants.map((v) => ({ id: v.id, images: v.images }))}
         />
 
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           {product.brand && (
             <p className="text-sm font-medium text-muted-foreground">
               {product.brand.name}
@@ -251,8 +251,9 @@ export default async function ProductPage({
         </div>
       </div>
 
-      {/* Details tabs */}
-      <div className="mt-12 grid gap-6 lg:grid-cols-3 lg:gap-10">
+      {/* Details: description/benefits/ingredients + nutrition flow together
+          as one continuous read on mobile; desktop keeps the 2/3–1/3 split. */}
+      <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-10">
         <div className="rounded-2xl border bg-card p-5 shadow-elev-1 sm:p-6 lg:col-span-2">
           <Tabs defaultValue="description">
             <TabsList>
@@ -291,7 +292,7 @@ export default async function ProductPage({
             )}
           </Tabs>
         </div>
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {facts.length > 0 && <NutritionFacts facts={facts} />}
           <VariantNutritionImage
             variants={product.variants.map((v) => ({

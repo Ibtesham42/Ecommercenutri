@@ -55,7 +55,7 @@ export async function ProductReviews({
   return (
     <section id="reviews" className="mt-14 scroll-mt-20">
       <h2 className="mb-6 text-xl font-bold sm:text-2xl">Customer reviews</h2>
-      <div className="grid gap-8 lg:grid-cols-[320px_1fr]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[320px_1fr]">
         <div className="space-y-4">
           <div className="rounded-2xl border p-5">
             <div className="flex items-center gap-4">
