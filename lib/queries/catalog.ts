@@ -18,6 +18,26 @@ export async function getCategories() {
   });
 }
 
+/** Top-level categories + their subcategories, for the header's category
+ *  mega-menu / drawer accordion. Minimal `select` keeps this a plain,
+ *  client-serializable shape (no Decimal/Date fields). */
+export async function getCategoryTree() {
+  return prisma.category.findMany({
+    where: { isActive: true, parentId: null },
+    orderBy: { sortOrder: "asc" },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      children: {
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+        select: { id: true, name: true, slug: true },
+      },
+    },
+  });
+}
+
 export async function getCategoryBySlug(slug: string) {
   return prisma.category.findUnique({
     where: { slug },

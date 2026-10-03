@@ -11,6 +11,7 @@ import { PwaInstallPrompt } from "@/components/storefront/pwa-install-prompt";
 import { OfferBar } from "@/components/storefront/growth/offer-bar";
 import { WelcomePopup } from "@/components/storefront/growth/welcome-popup";
 import { getStoreSettings } from "@/lib/queries/settings";
+import { getCategoryTree } from "@/lib/queries/catalog";
 import { getPwaSettings } from "@/lib/pwa-settings";
 import { getGrowthSettings } from "@/lib/growth-settings";
 import { env, isConfigured } from "@/lib/env";
@@ -23,9 +24,12 @@ export default async function StorefrontLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const settings = await getStoreSettings();
-  const pwa = await getPwaSettings();
-  const growth = await getGrowthSettings();
+  const [settings, pwa, growth, categoryTree] = await Promise.all([
+    getStoreSettings(),
+    getPwaSettings(),
+    getGrowthSettings(),
+    getCategoryTree(),
+  ]);
 
   // Notification bell (signed-in users). Best-effort — never blocks the layout.
   const user = await getCurrentUser();
@@ -75,6 +79,7 @@ export default async function StorefrontLayout({
         notifications={notifications}
         unreadCount={unreadCount}
         isLoggedIn={!!user}
+        categories={categoryTree}
       />
       {/* Bottom padding on mobile clears the fixed bottom tab bar (its 4rem
           height + the iPhone safe-area inset). Removed on md+ (no bottom bar). */}

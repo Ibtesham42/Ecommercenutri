@@ -16,6 +16,7 @@ import {
   Info,
   Phone,
   Gift,
+  Package,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,7 +28,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { siteConfig } from "@/config/site";
+import { CategoryMegaMenu, type CategoryNavNode } from "@/components/storefront/category-mega-menu";
 import { Logo } from "@/components/storefront/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CartIcon } from "@/components/storefront/cart-icon";
@@ -61,6 +69,7 @@ export function SiteHeader({
   notifications,
   unreadCount = 0,
   isLoggedIn = false,
+  categories = [],
 }: {
   logoUrl?: string | null;
   siteName?: string;
@@ -70,6 +79,7 @@ export function SiteHeader({
   notifications?: BellNotification[];
   unreadCount?: number;
   isLoggedIn?: boolean;
+  categories?: CategoryNavNode[];
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -115,6 +125,75 @@ export function SiteHeader({
               {siteConfig.mainNav.map((item) => {
                 const Icon = NAV_ICONS[item.href] ?? Home;
                 const active = isActiveNav(item.href);
+
+                // Categories gets an inline accordion of subcategories instead
+                // of a plain link — department-style discovery without
+                // leaving the drawer (mirrors the desktop mega-menu's data).
+                if (item.href === "/categories" && categories.length > 0) {
+                  return (
+                    <Accordion key={item.href} type="single" collapsible>
+                      <AccordionItem value="categories" className="border-b-0">
+                        <AccordionTrigger
+                          className={cn(
+                            "rounded-xl px-3 py-2.5 text-[15px] font-medium hover:no-underline",
+                            active
+                              ? "bg-primary/10 text-primary"
+                              : "text-foreground/80 hover:bg-accent hover:text-foreground",
+                          )}
+                        >
+                          <span className="flex items-center gap-3">
+                            <span
+                              className={cn(
+                                "grid size-9 shrink-0 place-items-center rounded-lg bg-accent/70",
+                                active && "bg-primary/15 text-primary",
+                              )}
+                            >
+                              <Icon className="size-[18px]" />
+                            </span>
+                            <span className={cn(active && "font-semibold")}>{item.title}</span>
+                          </span>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-3 pb-1">
+                          <div className="flex flex-col gap-3 pl-12">
+                            {categories.map((category) => (
+                              <div key={category.id}>
+                                <Link
+                                  href={`/categories/${category.slug}`}
+                                  onClick={() => setOpen(false)}
+                                  className="!no-underline text-sm font-semibold text-foreground hover:text-primary"
+                                >
+                                  {category.name}
+                                </Link>
+                                {category.children.length > 0 && (
+                                  <div className="mt-1.5 flex flex-col gap-1.5 border-l border-border/60 pl-3">
+                                    {category.children.map((child) => (
+                                      <Link
+                                        key={child.id}
+                                        href={`/categories/${child.slug}`}
+                                        onClick={() => setOpen(false)}
+                                        className="!no-underline text-sm text-muted-foreground hover:text-primary"
+                                      >
+                                        {child.name}
+                                      </Link>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                            <Link
+                              href="/categories"
+                              onClick={() => setOpen(false)}
+                              className="!no-underline mt-1 text-sm font-semibold text-primary"
+                            >
+                              View all categories →
+                            </Link>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  );
+                }
+
                 return (
                   <Link
                     key={item.href}
@@ -176,17 +255,30 @@ export function SiteHeader({
             </Link>
           </Button>
           {isLoggedIn ? (
-            <Button
-              asChild
-              variant="ghost"
-              size="icon"
-              className={cn("size-11 sm:size-10", onDeep)}
-              aria-label="Account"
-            >
-              <Link href="/account">
-                <User className="size-[22px] sm:size-5" />
-              </Link>
-            </Button>
+            <>
+              <Button
+                asChild
+                variant="ghost"
+                size="icon"
+                className={cn("hidden size-11 sm:inline-flex sm:size-10", onDeep)}
+                aria-label="Orders"
+              >
+                <Link href="/account/orders">
+                  <Package className="size-[22px] sm:size-5" />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="ghost"
+                size="icon"
+                className={cn("size-11 sm:size-10", onDeep)}
+                aria-label="Account"
+              >
+                <Link href="/account">
+                  <User className="size-[22px] sm:size-5" />
+                </Link>
+              </Button>
+            </>
           ) : (
             <SigninSpotlight>
               {/* Filled brand pill — the one loud CTA in the header, so new
@@ -226,6 +318,13 @@ export function SiteHeader({
         <div className="mx-auto flex h-11 w-full max-w-7xl items-center gap-0.5 px-4">
           {siteConfig.mainNav.map((item) => {
             const active = isActiveNav(item.href);
+
+            if (item.href === "/categories" && categories.length > 0) {
+              return (
+                <CategoryMegaMenu key={item.href} categories={categories} active={active} />
+              );
+            }
+
             return (
               <Link
                 key={item.href}
