@@ -5,6 +5,7 @@ import { StarRating } from "@/components/storefront/star-rating";
 import { WishlistButton } from "@/components/storefront/wishlist-button";
 import { BlurImage } from "@/components/storefront/blur-image";
 import { QuickAddButton } from "@/components/storefront/quick-add-button";
+import { QuickViewButton } from "@/components/storefront/quick-view-button";
 import { Reveal } from "@/components/storefront/reveal";
 import { cn } from "@/lib/utils";
 import { formatPrice, discountPercent, effectivePrice } from "@/lib/format";
@@ -79,6 +80,9 @@ export function ProductCard({
               <Badge variant="secondary">Out of stock</Badge>
             </div>
           )}
+          <div className="absolute bottom-2 right-2 z-10 opacity-0 transition-opacity duration-200 group-hover:opacity-100 max-md:opacity-100">
+            <QuickViewButton productId={product.id} productName={product.name} wishlisted={wishlisted} />
+          </div>
         </div>
       </Link>
 
@@ -91,6 +95,9 @@ export function ProductCard({
             {product.name}
           </h3>
         </Link>
+        {!hasMultiple && defaultVariant?.weightLabel && (
+          <p className="text-xs text-muted-foreground">{defaultVariant.weightLabel}</p>
+        )}
         {product.ratingCount > 0 && (
           <StarRating rating={product.ratingAvg} count={product.ratingCount} />
         )}
@@ -105,7 +112,9 @@ export function ProductCard({
                 {formatPrice(mrp)}
               </span>
               {off ? (
-                <span className="text-xs font-semibold text-primary">Save {off}%</span>
+                <span className="text-xs font-semibold text-primary">
+                  Save {off}% · {formatPrice(mrp - sale)}
+                </span>
               ) : null}
             </>
           )}

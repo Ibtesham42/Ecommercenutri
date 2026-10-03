@@ -117,6 +117,46 @@ export async function getDealProducts(limit = 8): Promise<ProductCardData[]> {
     .map((x) => x.product);
 }
 
+export const quickViewSelect = {
+  id: true,
+  name: true,
+  slug: true,
+  ratingAvg: true,
+  ratingCount: true,
+  isBestSeller: true,
+  category: { select: { name: true, slug: true } },
+  images: {
+    orderBy: [{ isMain: "desc" }, { sortOrder: "asc" }],
+    take: 4,
+    select: { url: true, alt: true },
+  },
+  variants: {
+    where: { isActive: true },
+    orderBy: { weightInGrams: "asc" },
+    select: {
+      id: true,
+      weightLabel: true,
+      price: true,
+      discountPrice: true,
+      stock: true,
+      isDefault: true,
+    },
+  },
+} satisfies Prisma.ProductSelect;
+
+export type QuickViewProductData = Prisma.ProductGetPayload<{
+  select: typeof quickViewSelect;
+}>;
+
+/** Trimmed product payload for the product-card Quick View modal — a few
+ *  images and variant pricing, not the full PDP (no reviews/description). */
+export async function getQuickViewProduct(id: string): Promise<QuickViewProductData | null> {
+  return prisma.product.findFirst({
+    where: { id, isActive: true },
+    select: quickViewSelect,
+  });
+}
+
 export async function getProductBySlug(
   slug: string,
 ): Promise<ProductDetailData | null> {
