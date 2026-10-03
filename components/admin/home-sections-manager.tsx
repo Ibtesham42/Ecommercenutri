@@ -47,6 +47,7 @@ export function HomeSectionsManager({
       case "categories":
       case "featured":
       case "bestSellers":
+      case "deals":
       case "recommended":
       case "trending":
         return { kind: "heading", key: row.key, label, value: content[row.key] };

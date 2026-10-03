@@ -131,6 +131,7 @@ export async function getHomeSectionsContent(): Promise<HomeContentMap> {
     categories: resolveSectionContent("categories", byKey.get("categories")),
     featured: resolveSectionContent("featured", byKey.get("featured")),
     bestSellers: resolveSectionContent("bestSellers", byKey.get("bestSellers")),
+    deals: resolveSectionContent("deals", byKey.get("deals")),
     recommended: resolveSectionContent("recommended", byKey.get("recommended")),
     trending: resolveSectionContent("trending", byKey.get("trending")),
     combos: resolveSectionContent("combos", byKey.get("combos")),

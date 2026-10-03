@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { effectivePrice } from "@/lib/format";
+import { effectivePrice, discountPercent } from "@/lib/format";
 
 // ---------------------------------------------------------------------------
 // Shared selects
@@ -87,6 +87,34 @@ export async function getBestSellers(limit = 8): Promise<ProductCardData[]> {
     orderBy: [{ ratingCount: "desc" }, { ratingAvg: "desc" }],
     take: limit,
   });
+}
+
+/**
+ * Products currently on a real, admin-set discount, ranked by the discount
+ * shown on their card (same default-variant math `ProductCard` uses) — never
+ * invented urgency or fake savings, just the biggest genuine discounts first.
+ */
+export async function getDealProducts(limit = 8): Promise<ProductCardData[]> {
+  const candidates = await prisma.product.findMany({
+    where: {
+      isActive: true,
+      variants: { some: { isActive: true, discountPrice: { gt: 0 } } },
+    },
+    select: productCardSelect,
+    take: 60,
+  });
+  return candidates
+    .map((p) => {
+      const defaultVariant = p.variants.find((v) => v.isDefault) ?? p.variants[0];
+      const off = defaultVariant
+        ? discountPercent(defaultVariant.price, defaultVariant.discountPrice)
+        : null;
+      return { product: p, off: off ?? 0 };
+    })
+    .filter((x) => x.off > 0)
+    .sort((a, b) => b.off - a.off)
+    .slice(0, limit)
+    .map((x) => x.product);
 }
 
 export async function getProductBySlug(

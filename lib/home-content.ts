@@ -21,6 +21,7 @@ export type HomeContentMap = {
   categories: HeadingContent;
   featured: HeadingContent;
   bestSellers: HeadingContent;
+  deals: HeadingContent;
   recommended: HeadingContent;
   trending: HeadingContent;
   combos: CombosContent;
@@ -76,6 +77,13 @@ export const HOME_CONTENT_DEFAULTS: HomeContentMap = {
     subtitle: "What everyone's adding to cart.",
     ctaLabel: "View all",
     ctaHref: "/products?sort=best-sellers",
+    limit: 8,
+  },
+  deals: {
+    title: "Today's Nutriyet Deals",
+    subtitle: "Real discounts, right now — no fine print.",
+    ctaLabel: "View all offers",
+    ctaHref: "/offers",
     limit: 8,
   },
   recommended: {
@@ -163,6 +171,7 @@ export const HOME_SECTION_EDITOR: Record<HomeSectionKey, SectionEditorKind> = {
   categories: "heading",
   featured: "heading",
   bestSellers: "heading",
+  deals: "heading",
   recommended: "heading",
   trending: "heading",
   combos: "combos",

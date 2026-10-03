@@ -11,6 +11,7 @@ export const HOME_SECTIONS = [
   { key: "categories", label: "Categories", note: "Shop by category grid" },
   { key: "featured", label: "Featured Products" },
   { key: "bestSellers", label: "Best Sellers" },
+  { key: "deals", label: "Today's Deals", note: "Products with a genuine active discount" },
   { key: "recommended", label: "Recommended", note: "Personalized, logged-in only" },
   { key: "trending", label: "Trending Now", note: "Behavioral — views, orders, wishlist" },
   { key: "combos", label: "Shop by Goal", note: "AI product combos (breakfast, weight loss…)" },

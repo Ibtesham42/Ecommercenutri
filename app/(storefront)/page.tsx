@@ -22,6 +22,7 @@ import { heroRevealLive } from "@/lib/hero-reveal";
 import {
   getFeaturedProducts,
   getBestSellers,
+  getDealProducts,
 } from "@/lib/queries/products";
 import { trending, productCombos } from "@/lib/recommendations/service";
 import { getCategories, getPublishedStories } from "@/lib/queries/catalog";
@@ -34,7 +35,6 @@ import {
   getHeroRevealSettings,
 } from "@/lib/queries/home";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
-import { getCurrentUser } from "@/lib/auth";
 import type { HomeSectionKey } from "@/lib/home-sections";
 
 // Personalized + catalog-driven, so render at request time. This also keeps the
@@ -48,12 +48,12 @@ export default async function HomePage() {
   const [
     featured,
     bestSellers,
+    deals,
     categories,
     stories,
     heroSlides,
     sectionOrder,
     wishlistIds,
-    user,
     trendingProducts,
     combos,
     showcase,
@@ -62,12 +62,12 @@ export default async function HomePage() {
   ] = await Promise.all([
     getFeaturedProducts(content.featured.limit ?? 8),
     getBestSellers(content.bestSellers.limit ?? 8),
+    getDealProducts(content.deals.limit ?? 8),
     getCategories(),
     getPublishedStories(),
     getActiveHeroSlides(),
     getHomeSectionOrder(),
     getWishlistProductIds(),
-    getCurrentUser(),
     trending({ windowDays: 7, limit: content.trending.limit ?? 8 }),
     productCombos(content.combos.items, content.combos.limit ?? 4),
     getActiveShowcase(),
@@ -172,8 +172,13 @@ export default async function HomePage() {
                 />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
-              <span className="absolute inset-x-0 bottom-0 p-3 text-center text-sm font-semibold text-white drop-shadow">
-                {c.name}
+              <span className="absolute inset-x-0 bottom-0 p-3 text-center text-white drop-shadow">
+                <span className="block text-sm font-semibold">{c.name}</span>
+                {c._count.products > 0 && (
+                  <span className="mt-0.5 block text-[11px] font-medium text-white/80">
+                    {c._count.products} {c._count.products === 1 ? "product" : "products"}
+                  </span>
+                )}
               </span>
             </Link>
           ))}
@@ -222,15 +227,34 @@ export default async function HomePage() {
         </section>
       ) : null,
 
-    recommended: user ? (
-      <section className="mx-auto w-full max-w-7xl px-4 py-14 max-sm:py-9">
-        <RecommendedProducts
-          title={content.recommended.title}
-          subtitle={content.recommended.subtitle}
-          excludeProductIds={[...featured, ...bestSellers].map((p) => p.id)}
-        />
-      </section>
-    ) : null,
+    deals:
+      deals.length > 0 ? (
+        <section className="mx-auto w-full max-w-7xl px-4 py-14 max-sm:py-9">
+          <SectionHeading
+            title={content.deals.title}
+            subtitle={content.deals.subtitle}
+            ctaLabel={content.deals.ctaLabel}
+            ctaHref={content.deals.ctaHref}
+          />
+          <Reveal>
+            <ProductRail products={deals} wishlistedIds={wishlistIds} />
+          </Reveal>
+        </section>
+      ) : null,
+
+    // Personalized when signed in; gracefully falls back to best-seller/
+    // featured picks for guests (recommendedForYou's topUp()) — never gated
+    // behind login, so first-time visitors still see a populated homepage.
+    // RecommendedProducts renders null internally when empty, so this never
+    // leaves a blank padded section behind.
+    recommended: (
+      <RecommendedProducts
+        title={content.recommended.title}
+        subtitle={content.recommended.subtitle}
+        excludeProductIds={[...featured, ...bestSellers].map((p) => p.id)}
+        className="mx-auto w-full max-w-7xl px-4 py-14 max-sm:py-9"
+      />
+    ),
 
     trending:
       trendingFresh.length > 0 ? (

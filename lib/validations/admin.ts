@@ -456,6 +456,7 @@ export const homeContentSchemas = {
   categories: headingContentSchema,
   featured: headingContentSchema,
   bestSellers: headingContentSchema,
+  deals: headingContentSchema,
   recommended: headingContentSchema,
   trending: headingContentSchema,
   combos: combosContentSchema,
