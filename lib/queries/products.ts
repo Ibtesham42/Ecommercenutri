@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { effectivePrice, discountPercent } from "@/lib/format";
+import { withDbRetry } from "@/lib/db-retry";
 
 // ---------------------------------------------------------------------------
 // Shared selects
@@ -72,21 +73,25 @@ export function minVariantPrice(
 // ---------------------------------------------------------------------------
 
 export async function getFeaturedProducts(limit = 8): Promise<ProductCardData[]> {
-  return prisma.product.findMany({
-    where: { isActive: true, isFeatured: true },
-    select: productCardSelect,
-    orderBy: { createdAt: "desc" },
-    take: limit,
-  });
+  return withDbRetry(() =>
+    prisma.product.findMany({
+      where: { isActive: true, isFeatured: true },
+      select: productCardSelect,
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    }),
+  );
 }
 
 export async function getBestSellers(limit = 8): Promise<ProductCardData[]> {
-  return prisma.product.findMany({
-    where: { isActive: true, isBestSeller: true },
-    select: productCardSelect,
-    orderBy: [{ ratingCount: "desc" }, { ratingAvg: "desc" }],
-    take: limit,
-  });
+  return withDbRetry(() =>
+    prisma.product.findMany({
+      where: { isActive: true, isBestSeller: true },
+      select: productCardSelect,
+      orderBy: [{ ratingCount: "desc" }, { ratingAvg: "desc" }],
+      take: limit,
+    }),
+  );
 }
 
 /**
@@ -95,14 +100,16 @@ export async function getBestSellers(limit = 8): Promise<ProductCardData[]> {
  * invented urgency or fake savings, just the biggest genuine discounts first.
  */
 export async function getDealProducts(limit = 8): Promise<ProductCardData[]> {
-  const candidates = await prisma.product.findMany({
-    where: {
-      isActive: true,
-      variants: { some: { isActive: true, discountPrice: { gt: 0 } } },
-    },
-    select: productCardSelect,
-    take: 60,
-  });
+  const candidates = await withDbRetry(() =>
+    prisma.product.findMany({
+      where: {
+        isActive: true,
+        variants: { some: { isActive: true, discountPrice: { gt: 0 } } },
+      },
+      select: productCardSelect,
+      take: 60,
+    }),
+  );
   return candidates
     .map((p) => {
       const defaultVariant = p.variants.find((v) => v.isDefault) ?? p.variants[0];
@@ -151,19 +158,23 @@ export type QuickViewProductData = Prisma.ProductGetPayload<{
 /** Trimmed product payload for the product-card Quick View modal — a few
  *  images and variant pricing, not the full PDP (no reviews/description). */
 export async function getQuickViewProduct(id: string): Promise<QuickViewProductData | null> {
-  return prisma.product.findFirst({
-    where: { id, isActive: true },
-    select: quickViewSelect,
-  });
+  return withDbRetry(() =>
+    prisma.product.findFirst({
+      where: { id, isActive: true },
+      select: quickViewSelect,
+    }),
+  );
 }
 
 export async function getProductBySlug(
   slug: string,
 ): Promise<ProductDetailData | null> {
-  return prisma.product.findFirst({
-    where: { slug, isActive: true },
-    include: productDetailInclude,
-  });
+  return withDbRetry(() =>
+    prisma.product.findFirst({
+      where: { slug, isActive: true },
+      include: productDetailInclude,
+    }),
+  );
 }
 
 export async function getRelatedProducts(
@@ -171,12 +182,14 @@ export async function getRelatedProducts(
   categoryId: string,
   limit = 4,
 ): Promise<ProductCardData[]> {
-  return prisma.product.findMany({
-    where: { isActive: true, categoryId, NOT: { id: productId } },
-    select: productCardSelect,
-    orderBy: [{ isBestSeller: "desc" }, { ratingCount: "desc" }],
-    take: limit,
-  });
+  return withDbRetry(() =>
+    prisma.product.findMany({
+      where: { isActive: true, categoryId, NOT: { id: productId } },
+      select: productCardSelect,
+      orderBy: [{ isBestSeller: "desc" }, { ratingCount: "desc" }],
+      take: limit,
+    }),
+  );
 }
 
 export type ProductSort =
@@ -195,9 +208,13 @@ export type GetProductsParams = {
   onSale?: boolean;
   inStock?: boolean;
   minRating?: number;
+  /** Only products created within the last 30 days — backs /new-arrivals. */
+  newOnly?: boolean;
   page?: number;
   perPage?: number;
 };
+
+const NEW_ARRIVAL_WINDOW_DAYS = 30;
 
 export type GetProductsResult = {
   products: ProductCardData[];
@@ -219,6 +236,7 @@ export async function getProducts(
     onSale,
     inStock,
     minRating,
+    newOnly,
     page = 1,
     perPage = 12,
   } = params;
@@ -250,9 +268,19 @@ export async function getProducts(
     ...(onSale ? { variants: { some: { isActive: true, discountPrice: { gt: 0 } } } } : {}),
     ...(inStock ? { variants: { some: { isActive: true, stock: { gt: 0 } } } } : {}),
     ...(typeof minRating === "number" ? { ratingAvg: { gte: minRating } } : {}),
+    ...(newOnly
+      ? {
+          createdAt: {
+            gte: new Date(Date.now() - NEW_ARRIVAL_WINDOW_DAYS * 24 * 60 * 60 * 1000),
+          },
+        }
+      : {}),
   };
 
-  const total = await prisma.product.count({ where });
+  // First DB touch in this call — the one most likely to hit a cold Neon
+  // connection on a fresh request. One retry here warms it for the
+  // find-many call(s) below.
+  const total = await withDbRetry(() => prisma.product.count({ where }));
   const pageCount = Math.max(1, Math.ceil(total / perPage));
   const safePage = Math.min(Math.max(1, page), pageCount);
 

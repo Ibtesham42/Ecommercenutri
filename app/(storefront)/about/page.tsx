@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Leaf, ShieldCheck, HeartPulse } from "lucide-react";
+import { Leaf, ShieldCheck, Sparkles } from "lucide-react";
 import { buildMetadata, breadcrumbSchema, organizationSchema, jsonLd } from "@/lib/seo";
 import { siteConfig } from "@/config/site";
 import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
@@ -7,8 +7,8 @@ import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
 export const metadata: Metadata = buildMetadata({
   title: "About us",
   description:
-    "The story and mission behind Nutriyet — India's AI-powered nutrition brand " +
-    "bringing premium makhana and superfoods from the heart of Mithila to your everyday snacking.",
+    "The story behind Nutriyet — an Indian food brand rooted in the traditions of Bihar and Mithila, " +
+    "bringing makhana, spices and everyday pantry staples to households across India.",
   path: "/about",
 });
 
@@ -21,9 +21,9 @@ const aboutSchema = {
 };
 
 const VALUES = [
-  { icon: Leaf, title: "Clean ingredients", desc: "No artificial preservatives or additives — just the good stuff." },
-  { icon: ShieldCheck, title: "Lab-tested quality", desc: "Every batch checked for purity before it reaches you." },
-  { icon: HeartPulse, title: "Guided by AI", desc: "A nutrition coach in your pocket for advice that fits your life." },
+  { icon: Leaf, title: "Honest ingredients", desc: "Clear information on every pack — no hidden language, no exaggerated claims." },
+  { icon: ShieldCheck, title: "Careful processing", desc: "Every product gets the handling appropriate to it, batch by batch." },
+  { icon: Sparkles, title: "A little help when you want it", desc: "Our AI assistant is there if you have a question — never required, never the point." },
 ];
 
 export default function AboutPage() {
@@ -44,13 +44,14 @@ export default function AboutPage() {
       {/* Lead — editorial, warm */}
       <p className="mt-6 text-sm font-medium tracking-[0.16em] text-gold uppercase">Our story</p>
       <h1 className="mt-3 font-heading text-4xl leading-[1.05] font-semibold tracking-tight sm:text-5xl">
-        Clean nutrition,
-        <br className="hidden sm:block" /> made joyful.
+        Rooted in tradition.
+        <br className="hidden sm:block" /> Made for today.
       </h1>
       <p className="mt-6 max-w-prose text-lg leading-relaxed text-muted-foreground">
-        Nutriyet exists to make wholesome nutrition simple and genuinely enjoyable. We curate
-        premium makhana, dry fruits, seeds, protein and wellness foods — and pair them with an AI
-        nutrition coach, so every choice feels effortless rather than another thing to research.
+        Nutriyet brings together the food traditions of Bihar and Mithila with the convenience of
+        modern, everyday shopping. We focus on makhana, spices and other pantry staples that feel
+        familiar — sourced and prepared with care, labelled honestly, and shipped straight to your
+        door.
       </p>
 
       {/* From the heart of Mithila — the brand's roots, told as an editorial pull-quote */}
@@ -58,7 +59,7 @@ export default function AboutPage() {
         <p className="text-[11px] font-semibold tracking-[0.2em] text-gold uppercase">From the heart of Mithila</p>
         <p className="mt-4 font-heading text-2xl leading-snug font-medium sm:text-[1.75rem]">
           Makhana has been grown in the Mithila region for generations. We bring that heritage to
-          your everyday snacking — roasted, never fried, and seasoned with care.
+          your everyday kitchen — alongside spices and staples chosen with the same care.
         </p>
       </div>
 
@@ -75,7 +76,7 @@ export default function AboutPage() {
       </div>
 
       <p className="mt-12 text-lg leading-relaxed text-muted-foreground">
-        Built for everyone chasing a healthier lifestyle — one wholesome bite at a time.
+        Built for anyone who wants food that feels like home — one honest pack at a time.
       </p>
     </div>
   );

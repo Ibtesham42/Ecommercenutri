@@ -132,11 +132,15 @@ export function OfferBar({ text }: { text: string }) {
 
       {/* Clear confirmation: the user sees exactly what they got. */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-sm overflow-hidden rounded-3xl p-0">
+        {/* Same 320px fix as welcome-popup.tsx: `sm:max-w-sm` (not a bare
+            `max-w-sm`) keeps the base DialogContent's viewport-relative sizing
+            below `sm`, and `overflow-hidden` moves to the header div's own
+            rounded top corners instead of shadowing the base's internal scroll. */}
+        <DialogContent className="rounded-3xl p-0 sm:max-w-sm">
           <DialogHeader className="sr-only">
             <DialogTitle>Your welcome coupon</DialogTitle>
           </DialogHeader>
-          <div className="surface-rich px-6 py-6 text-center text-surface-deep-foreground">
+          <div className="surface-rich overflow-hidden rounded-t-3xl px-6 py-6 text-center text-surface-deep-foreground">
             <span className="mx-auto grid size-14 place-items-center rounded-full bg-white/10">
               <PartyPopper className="size-7 text-gold" />
             </span>

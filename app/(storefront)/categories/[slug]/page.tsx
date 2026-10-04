@@ -15,6 +15,7 @@ import { BlurImage } from "@/components/storefront/blur-image";
 import { buildMetadata, breadcrumbSchema, itemListSchema, jsonLd } from "@/lib/seo";
 import { BannerStrip } from "@/components/storefront/banner-strip";
 import { BehaviorTracker } from "@/components/storefront/behavior-tracker";
+import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
 import { cn } from "@/lib/utils";
 
 export async function generateMetadata({
@@ -86,6 +87,15 @@ export default async function CategoryPage({
         />
       )}
       <BehaviorTracker event={{ type: "CATEGORY_VIEW", categoryId: category.id }} />
+      <div className="mb-4">
+        <PageBreadcrumb
+          items={[
+            { name: "Home", href: "/" },
+            { name: "Categories", href: "/categories" },
+            { name: category.name },
+          ]}
+        />
+      </div>
       <BannerStrip position="categoryTop" className="mb-6 px-0" />
 
       {category.image ? (

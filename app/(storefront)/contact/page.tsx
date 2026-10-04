@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Mail, Phone, MapPin, Clock, MessageCircle } from "lucide-react";
 import { buildMetadata, faqSchema, breadcrumbSchema, jsonLd } from "@/lib/seo";
-import { getStoreSettings } from "@/lib/queries/settings";
+import { getStoreSettings, getReturnSettings } from "@/lib/queries/settings";
+import { formatPrice } from "@/lib/format";
 import { ContactForm } from "@/components/storefront/contact-form";
 import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
 import {
@@ -17,31 +18,39 @@ export const metadata: Metadata = buildMetadata({
   path: "/contact",
 });
 
-const FAQS = [
-  {
-    q: "How long does delivery take?",
-    a: "Most orders arrive within 3–7 business days. You can follow your parcel any time from the Track Order page.",
-  },
-  {
-    q: "Do you offer free shipping?",
-    a: "Yes — shipping is free on all orders above ₹499. A flat ₹49 applies below that.",
-  },
-  {
-    q: "What is your return policy?",
-    a: "As our products are food items, we accept returns for damaged, defective or incorrect items reported within 48 hours of delivery. See Shipping & Returns for details.",
-  },
-  {
-    q: "How can I track my order?",
-    a: "Use your order number and the email you checked out with on the Track Order page — no login needed.",
-  },
-];
-
-// Reads admin-editable store contact details — render per request.
+// Reads admin-editable store contact details and live pricing/return settings
+// (free-shipping threshold, return window) so the FAQ answers below never
+// drift from what checkout/the policy pages actually show.
 export const dynamic = "force-dynamic";
 
 export default async function ContactPage() {
-  const store = await getStoreSettings();
+  const [store, returnSettings] = await Promise.all([
+    getStoreSettings(),
+    getReturnSettings(),
+  ]);
   const whatsappDigits = store.whatsapp?.replace(/[^\d]/g, "");
+
+  const FAQS = [
+    {
+      q: "How long does delivery take?",
+      a: "Most orders arrive within 3–7 business days. You can follow your parcel any time from the Track Order page.",
+    },
+    {
+      q: "Do you offer free shipping?",
+      a:
+        store.freeShippingEnabled && store.freeShippingThreshold > 0
+          ? `Yes — shipping is free on orders above ${formatPrice(store.freeShippingThreshold)}.`
+          : "Shipping charges are shown at checkout based on your order and delivery location.",
+    },
+    {
+      q: "What is your return policy?",
+      a: `As our products are food items, we accept returns for damaged, defective or incorrect items${returnSettings.returnsEnabled ? ` reported within ${returnSettings.returnWindowDays} days of delivery` : ""}. See our Returns & Refunds Policy for details.`,
+    },
+    {
+      q: "How can I track my order?",
+      a: "Use your order number and the email you checked out with on the Track Order page — no login needed.",
+    },
+  ];
 
   const details = [
     { icon: Mail, label: "Email", value: store.supportEmail, href: `mailto:${store.supportEmail}` },

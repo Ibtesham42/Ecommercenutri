@@ -72,9 +72,23 @@ export async function submitReview(
   });
   const verifiedPurchase = Boolean(purchase);
 
+  // A genuinely new review (no prior row for this product+user) with photos
+  // is held for moderation — reusing the existing isApproved flag and the
+  // /admin/reviews approve/hide workflow admins already have, not a new
+  // system. Text-only new reviews keep publishing instantly, unchanged.
+  // Editing an EXISTING review never touches its current approval status —
+  // `update` below omits isApproved entirely, so nothing already live is
+  // ever retroactively hidden by this change.
+  const existing = await prisma.review.findUnique({
+    where: { productId_userId: { productId, userId: user.id } },
+    select: { id: true },
+  });
+  const isNewReview = !existing;
+  const newReviewApproved = images.length === 0;
+
   await prisma.review.upsert({
     where: { productId_userId: { productId, userId: user.id } },
-    update: { rating, title, comment, images, isApproved: true, verifiedPurchase },
+    update: { rating, title, comment, images, verifiedPurchase },
     create: {
       productId,
       userId: user.id,
@@ -82,12 +96,13 @@ export async function submitReview(
       title,
       comment,
       images,
-      isApproved: true,
+      isApproved: newReviewApproved,
       verifiedPurchase,
     },
   });
 
-  // Recompute the product's rating aggregate from approved reviews.
+  // Recompute the product's rating aggregate from approved reviews. A new
+  // pending (photo) review correctly doesn't count until an admin approves it.
   const agg = await prisma.review.aggregate({
     where: { productId, isApproved: true },
     _avg: { rating: true },
@@ -99,5 +114,10 @@ export async function submitReview(
   });
 
   revalidatePath(`/products/${slug}`);
-  return { success: "Thanks for your review!" };
+  const pendingModeration = isNewReview && !newReviewApproved;
+  return {
+    success: pendingModeration
+      ? "Thanks for your review! Since it includes photos, it'll appear on the page after a quick check."
+      : "Thanks for your review!",
+  };
 }

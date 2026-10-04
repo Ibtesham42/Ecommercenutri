@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocation } from "@/lib/store/location";
 import { cn } from "@/lib/utils";
+import { formatPrice } from "@/lib/format";
 
 /**
  * Delivery-location chip + PIN-code selector. Lives on the deep-green header.
@@ -22,7 +23,19 @@ import { cn } from "@/lib/utils";
  * so it could be read server-side later; today it just reflects in the header
  * chip. No pricing/serviceability logic is changed — purely additive UX.
  */
-export function DeliverTo({ className }: { className?: string }) {
+export function DeliverTo({
+  className,
+  freeShippingThreshold,
+  freeShippingEnabled = true,
+}: {
+  className?: string;
+  /** Paise, from StoreSetting.freeShippingThreshold (admin-configurable) — the
+   *  same source of truth `lib/pricing.ts` uses at checkout. Never hardcode a
+   *  fallback value here: if it isn't passed, the line below just omits the
+   *  figure rather than risk showing a stale/invented number. */
+  freeShippingThreshold?: number | null;
+  freeShippingEnabled?: boolean;
+}) {
   const pincode = useLocation((s) => s.pincode);
   const setPincode = useLocation((s) => s.setPincode);
 
@@ -134,7 +147,10 @@ export function DeliverTo({ className }: { className?: string }) {
                 <p className="mt-1.5 text-xs text-destructive">{error}</p>
               ) : (
                 <p className="mt-1.5 text-xs text-muted-foreground">
-                  We deliver across India · free shipping over ₹499.
+                  We deliver across India
+                  {freeShippingEnabled && freeShippingThreshold
+                    ? ` · free shipping over ${formatPrice(freeShippingThreshold)}.`
+                    : "."}
                 </p>
               )}
             </div>

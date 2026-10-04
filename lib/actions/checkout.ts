@@ -25,6 +25,7 @@ import {
   generateOrderNumber,
   markOrderPaid,
   confirmOrder,
+  OrderFulfillmentError,
 } from "@/lib/orders";
 import {
   applyCouponSchema,
@@ -294,7 +295,16 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
   // Cash on Delivery — place the order now (payment collected at delivery).
   // Confirm it (decrement stock, generate invoice, email) with payment PENDING.
   if (isCod) {
-    await confirmOrder(order.id, { paymentStatus: "PENDING" });
+    try {
+      await confirmOrder(order.id, { paymentStatus: "PENDING" });
+    } catch (err) {
+      // No payment was captured for COD — confirmOrder has already cancelled
+      // the order and recorded why. Just surface a friendly message.
+      if (err instanceof OrderFulfillmentError) {
+        return { ok: false, error: err.message };
+      }
+      throw err;
+    }
     return { ok: true, orderNumber, cod: true };
   }
 
@@ -344,8 +354,16 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
     }
   }
 
-  // …otherwise complete via the keyless mock flow.
-  await markOrderPaid(order.id);
+  // …otherwise complete via the keyless mock flow. No real payment is taken
+  // here either, so on failure it's safe to cancel outright, same as COD.
+  try {
+    await markOrderPaid(order.id);
+  } catch (err) {
+    if (err instanceof OrderFulfillmentError) {
+      return { ok: false, error: err.message };
+    }
+    throw err;
+  }
   return { ok: true, orderNumber, mock: true };
 }
 
@@ -374,9 +392,24 @@ export async function verifyPayment(input: unknown): Promise<VerifyPaymentResult
   });
   if (!order) return { ok: false, error: "Order not found." };
 
-  await markOrderPaid(order.id, {
-    paymentId: razorpayPaymentId,
-    signature: razorpaySignature,
-  });
+  try {
+    await markOrderPaid(order.id, {
+      paymentId: razorpayPaymentId,
+      signature: razorpaySignature,
+    });
+  } catch (err) {
+    if (err instanceof OrderFulfillmentError) {
+      // Razorpay has already captured this payment. confirmOrder has
+      // preserved the payment reference and flagged the order for manual
+      // review instead of cancelling it or issuing any refund — never tell
+      // the customer to "try again" here, that risks a second charge.
+      return {
+        ok: false,
+        error:
+          "Your payment was received, but we couldn't automatically confirm your order. Our team has been notified and will contact you shortly.",
+      };
+    }
+    throw err;
+  }
   return { ok: true, orderNumber: order.orderNumber };
 }

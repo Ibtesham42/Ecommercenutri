@@ -91,7 +91,10 @@ export function QuickViewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto p-0">
+      {/* `sm:max-w-2xl` (not a bare `max-w-2xl`) — same 320px fix as the popups:
+          preserves the base DialogContent's `max-w-[calc(100%-2rem)]` sizing
+          below `sm` instead of overflowing a narrow phone viewport. */}
+      <DialogContent className="max-h-[90vh] overflow-y-auto p-0 sm:max-w-2xl">
         {loading ? (
           <div className="grid min-h-[320px] place-items-center p-10">
             <Loader2 className="size-6 animate-spin text-muted-foreground" />

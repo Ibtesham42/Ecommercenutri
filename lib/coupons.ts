@@ -79,11 +79,18 @@ export async function validateCoupon(
     return { ok: false, error: "This coupon has reached its usage limit." };
   }
   if (coupon.perUserLimit !== null) {
+    // `stockDeducted: true` is the same signal confirmOrder() uses to decide
+    // the coupon has actually been consumed — it's set the moment an order is
+    // confirmed, including COD orders that stay `paymentStatus: "PENDING"`
+    // until delivery. Checking paymentStatus alone (PAID/REFUNDED) missed those,
+    // letting a single-use coupon be reused across multiple COD orders before
+    // any of them reached PAID. Keeping the original PAID/REFUNDED clause too
+    // preserves counting a paid-then-refunded order as "used", same as before.
     const usedByUser = await prisma.order.count({
       where: {
         userId,
         couponId: coupon.id,
-        paymentStatus: { in: ["PAID", "REFUNDED"] },
+        OR: [{ paymentStatus: { in: ["PAID", "REFUNDED"] } }, { stockDeducted: true }],
       },
     });
     if (usedByUser >= coupon.perUserLimit) {

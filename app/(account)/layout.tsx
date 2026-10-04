@@ -22,6 +22,8 @@ export default async function AccountLayout({
         logoHeightMobile={settings.logoHeightMobile}
         logoMaxWidth={settings.logoMaxWidth}
         isLoggedIn
+        freeShippingThreshold={settings.freeShippingThreshold}
+        freeShippingEnabled={settings.freeShippingEnabled}
       />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:py-8">
         <h1 className="mb-4 text-2xl font-bold sm:mb-6 sm:text-3xl">My account</h1>

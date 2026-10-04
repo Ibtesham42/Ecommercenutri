@@ -33,6 +33,8 @@ const footerCols = [
       { label: "About Us", href: "/about" },
       { label: "AI Assistant", href: "/assistant" },
       { label: "Affiliate Program", href: "/affiliate" },
+      { label: "Corporate Gifting", href: "/corporate-gifting" },
+      { label: "Careers", href: "/careers" },
       { label: "Contact", href: "/contact" },
       { label: "Blog", href: "/blog" },
     ],
@@ -41,10 +43,14 @@ const footerCols = [
     title: "Support",
     links: [
       { label: "Help & Support", href: "/support" },
+      { label: "FAQ", href: "/faq" },
       { label: "Track Order", href: "/track" },
       { label: "Shipping & Returns", href: "/shipping" },
+      { label: "Returns & Refunds", href: "/returns-refunds" },
       { label: "Privacy Policy", href: "/privacy" },
       { label: "Terms of Service", href: "/terms" },
+      { label: "Cookie Policy", href: "/cookie-policy" },
+      { label: "Disclaimer", href: "/disclaimer" },
     ],
   },
 ];

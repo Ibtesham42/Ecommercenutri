@@ -9,23 +9,22 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cldUrl } from "@/lib/cld";
 import { processShowcaseImage } from "@/lib/showcase-image";
+import { uploadToCloudinary } from "@/components/admin/image-upload-field";
 
 const CHECKER =
   "repeating-conic-gradient(#e5e7eb 0% 25%, #f8fafc 0% 50%) 0 0 / 16px 16px";
 
-async function uploadBlob(
-  blob: Blob,
-  filename: string,
-  folder: string,
-  signal?: AbortSignal,
-): Promise<string> {
-  const fd = new FormData();
-  fd.append("file", blob, filename);
-  fd.append("folder", folder);
-  const res = await fetch("/api/admin/upload", { method: "POST", body: fd, signal });
-  const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
-  if (!res.ok || !json.url) throw new Error(json.error || "Upload failed");
-  return json.url;
+/**
+ * Uploads DIRECTLY to Cloudinary from the browser (signed, via the same
+ * pattern as ImageUploadField) instead of through this app's serverless
+ * function — a showcase original can be a multi-MB photo, which the old
+ * server-buffered `/api/admin/upload` route silently failed on above
+ * Vercel's ~4.5 MB request-body limit (rejected at the platform level,
+ * before the route's own 10 MB check ever ran).
+ */
+async function uploadBlob(blob: Blob, filename: string, folder: string): Promise<string> {
+  const info = await uploadToCloudinary(blob, filename, folder);
+  return info.secure_url;
 }
 
 /**
@@ -72,10 +71,14 @@ export function ShowcaseImageField({
       });
       if (token !== tokenRef.current) return;
       setStatus("uploading");
-      const imageUrl = await uploadBlob(result.originalBlob, "showcase-original.jpg", folder, ac.signal);
+      // uploadToCloudinary (reused from ImageUploadField) doesn't take an
+      // AbortSignal — a cancel during upload still returns to idle
+      // immediately via the token check below; any already-in-flight
+      // request just finishes in the background and its result is discarded.
+      const imageUrl = await uploadBlob(result.originalBlob, "showcase-original.jpg", folder);
       let pngUrl: string | null = null;
       if (result.cutoutBlob) {
-        pngUrl = await uploadBlob(result.cutoutBlob, "showcase-cutout.png", folder, ac.signal);
+        pngUrl = await uploadBlob(result.cutoutBlob, "showcase-cutout.png", folder);
       }
       if (token !== tokenRef.current) return;
       onChange({ image: imageUrl, imagePng: pngUrl });

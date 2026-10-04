@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getProducts, type ProductSort } from "@/lib/queries/products";
+import { getProducts, getBestSellers, type ProductSort } from "@/lib/queries/products";
 import { getCategories } from "@/lib/queries/catalog";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
 import { ProductGrid } from "@/components/storefront/product-card";
@@ -9,13 +9,15 @@ import { SortSelect } from "@/components/storefront/sort-select";
 import { PaginationBar } from "@/components/storefront/pagination-bar";
 import { BannerStrip } from "@/components/storefront/banner-strip";
 import { EmptyState } from "@/components/storefront/empty-state";
+import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
+import { ProductRail } from "@/components/storefront/product-card";
 import { PackageSearch } from "lucide-react";
 import { buildMetadata, itemListSchema, jsonLd } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
   title: "Shop all products",
   description:
-    "Browse Nutriyet's full range of makhana, dry fruits, seeds, protein and wellness products.",
+    "Browse Nutriyet's full range of makhana, spices and traditional pantry staples — rooted in tradition, picked with care.",
   path: "/products",
 });
 
@@ -42,6 +44,9 @@ export default async function ProductsPage({
     getCategories(),
     getWishlistProductIds(),
   ]);
+  // Only fetched when the result set is empty — a "you might like" fallback
+  // rail instead of a dead-end "no products found" page.
+  const fallbackProducts = result.products.length === 0 ? await getBestSellers(6) : [];
 
   const activeCategory = categories.find((c) => c.slug === category);
   const heading = activeCategory ? activeCategory.name : q ? `Results for “${q}”` : "All products";
@@ -65,7 +70,18 @@ export default async function ProductsPage({
       )}
       <BannerStrip position="productsTop" className="pt-6" />
       <div className="mx-auto w-full max-w-7xl px-4 py-8">
-        <header className="mb-6">
+        <PageBreadcrumb
+          items={
+            activeCategory
+              ? [
+                  { name: "Home", href: "/" },
+                  { name: "Products", href: "/products" },
+                  { name: activeCategory.name },
+                ]
+              : [{ name: "Home", href: "/" }, { name: "Products" }]
+          }
+        />
+        <header className="mb-6 mt-4">
           <h1 className="text-2xl font-bold sm:text-3xl">{heading}</h1>
         {activeCategory?.description && (
           <p className="mt-1 text-muted-foreground">{activeCategory.description}</p>
@@ -91,12 +107,20 @@ export default async function ProductsPage({
           {result.products.length > 0 ? (
             <ProductGrid products={result.products} wishlistedIds={wishlistIds} />
           ) : (
-            <EmptyState
-              icon={PackageSearch}
-              title="No products found"
-              description="Try adjusting your filters or search to find what you're craving."
-              action={{ label: "Clear filters", href: "/products" }}
-            />
+            <>
+              <EmptyState
+                icon={PackageSearch}
+                title="No products found"
+                description="Try adjusting your filters or search to find what you're craving."
+                action={{ label: "Clear filters", href: "/products" }}
+              />
+              {fallbackProducts.length > 0 && (
+                <div className="mt-10">
+                  <h2 className="mb-5 text-lg font-bold sm:text-xl">You might like</h2>
+                  <ProductRail products={fallbackProducts} wishlistedIds={wishlistIds} />
+                </div>
+              )}
+            </>
           )}
           <PaginationBar page={result.page} pageCount={result.pageCount} />
         </div>

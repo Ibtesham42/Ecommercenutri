@@ -80,6 +80,8 @@ export default async function StorefrontLayout({
         unreadCount={unreadCount}
         isLoggedIn={!!user}
         categories={categoryTree}
+        freeShippingThreshold={settings.freeShippingThreshold}
+        freeShippingEnabled={settings.freeShippingEnabled}
       />
       {/* Bottom padding on mobile clears the fixed bottom tab bar (its 4rem
           height + the iPhone safe-area inset). Removed on md+ (no bottom bar). */}

@@ -121,8 +121,15 @@ export function WelcomePopup({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-sm gap-0 overflow-hidden rounded-3xl border-none p-0">
-        <div className="surface-rich relative px-6 pt-8 pb-7 text-center text-surface-deep-foreground">
+      {/* `sm:max-w-sm` (not a bare `max-w-sm`) preserves the base DialogContent's
+          `max-w-[calc(100%-2rem)]` sizing below `sm` — that's what keeps the
+          dialog within the viewport (with breathing room) down to 320px instead
+          of overflowing it. Likewise, `overflow-hidden` moved down to the header
+          gradient div below (for its own rounded corners) instead of staying on
+          the outer content, so the base's `overflow-y-auto` can still let this
+          scroll internally on a short/narrow phone instead of clipping. */}
+      <DialogContent className="gap-0 rounded-3xl border-none p-0 sm:max-w-sm">
+        <div className="surface-rich relative overflow-hidden rounded-t-3xl px-6 pt-8 pb-7 text-center text-surface-deep-foreground">
           <Sparkles className="badge-breathe absolute top-8 left-7 size-4 text-gold/40" aria-hidden />
           <Sparkles className="absolute right-9 bottom-7 size-3 text-gold/25" aria-hidden />
           <div className="relative mx-auto size-14">

@@ -16,7 +16,14 @@ export type LegalPageContent = {
   sections: LegalSection[];
 };
 
-export const LEGAL_SLUGS = ["privacy", "terms", "shipping"] as const;
+export const LEGAL_SLUGS = [
+  "privacy",
+  "terms",
+  "shipping",
+  "returns-refunds",
+  "cookie-policy",
+  "disclaimer",
+] as const;
 export type LegalSlug = (typeof LEGAL_SLUGS)[number];
 
 export function isLegalSlug(value: string): value is LegalSlug {
@@ -41,7 +48,7 @@ export const LEGAL_CONTENT: Record<LegalSlug, LegalPageContent> = {
         heading: "Delivery timelines",
         body: [
           "Standard delivery typically takes 3–7 business days depending on your location within India. Metro cities are usually faster than remote pin codes.",
-          "Free shipping is available on orders above ₹499. A flat shipping fee of ₹49 applies to orders below this threshold.",
+          "Free shipping is available above the threshold shown in your cart and at checkout. A flat shipping fee applies to orders below that threshold.",
         ],
       },
       {
@@ -55,7 +62,7 @@ export const LEGAL_CONTENT: Record<LegalSlug, LegalPageContent> = {
         heading: "Returns & replacements",
         body: [
           "Because our products are consumable food items, we accept returns only for items that arrive damaged, defective or incorrect.",
-          "If something is wrong with your order, contact us within 48 hours of delivery with your order number and a photo of the issue, and we will arrange a replacement or refund.",
+          "If something is wrong with your order, contact us as soon as possible after delivery with your order number and a photo of the issue, and we will arrange a replacement or refund. See our Returns & Refunds Policy for the exact return window and full details.",
         ],
       },
       {
@@ -154,6 +161,111 @@ export const LEGAL_CONTENT: Record<LegalSlug, LegalPageContent> = {
         heading: "Changes to these terms",
         body: [
           "We may update these terms from time to time. Continued use of the site after changes take effect constitutes acceptance of the revised terms.",
+        ],
+      },
+    ],
+  },
+  "returns-refunds": {
+    slug: "returns-refunds",
+    title: "Returns & Refunds Policy",
+    intro:
+      "Because our products are consumable food items, our returns policy is deliberately narrow — focused on making things right when something goes wrong, not general change-of-mind returns. The exact return window for your order is shown on your order page under My Account → Orders.",
+    sections: [
+      {
+        heading: "What's eligible for a return",
+        body: [
+          "We accept returns or replacements only for items that arrive damaged, defective, tampered with, incorrect, or missing from your order.",
+          "We do not accept returns for change of mind once a food product has been delivered, for food-safety reasons.",
+        ],
+      },
+      {
+        heading: "How to request a return",
+        body: [
+          "Contact our customer-care team with your order number and clear photos (or a short video) of the issue as soon as possible after delivery — the sooner you reach out, the faster we can help.",
+          "Our team will review the issue and confirm whether a replacement or refund applies, in line with this policy.",
+        ],
+      },
+      {
+        heading: "Refunds",
+        body: [
+          "Approved refunds are issued to your original payment method (or as store credit, where applicable) and typically reflect within 5–7 business days of approval.",
+          "Shipping charges are refunded only when the issue was our error (damaged, defective, incorrect or missing items); they are non-refundable for other cases.",
+          "Cash on Delivery orders are refunded via bank transfer or UPI to the details you provide once the return is approved.",
+        ],
+      },
+      {
+        heading: "Questions about a specific order",
+        body: [
+          "For the fastest help, reach out through the Contact page with your order number ready, or track your order's status any time from the Track Order page.",
+        ],
+      },
+    ],
+  },
+  "cookie-policy": {
+    slug: "cookie-policy",
+    title: "Cookie Policy",
+    intro:
+      "This policy explains how Nutriyet uses cookies and similar technologies on our website, and the choices you have.",
+    sections: [
+      {
+        heading: "What cookies we use",
+        body: [
+          "Essential cookies keep core features working — your cart contents, your signed-in session, and your delivery location preference.",
+          "Analytics cookies help us understand how the site is used (which pages are visited, what's searched for) so we can improve the experience.",
+          "Preference cookies remember choices like your display theme.",
+        ],
+      },
+      {
+        heading: "Why we use them",
+        body: [
+          "To keep you signed in and your cart intact as you browse.",
+          "To understand overall site usage and improve performance and product discovery.",
+          "We do not use cookies to sell your personal information to third parties.",
+        ],
+      },
+      {
+        heading: "Managing cookies",
+        body: [
+          "Most browsers let you view, delete or block cookies through their settings. Blocking essential cookies may prevent core features like the cart or sign-in from working correctly.",
+        ],
+      },
+      {
+        heading: "Questions",
+        body: [
+          "For questions about this policy, reach us through the Contact page.",
+        ],
+      },
+    ],
+  },
+  disclaimer: {
+    slug: "disclaimer",
+    title: "Disclaimer",
+    intro:
+      "Please read this disclaimer carefully before using the Nutriyet website or relying on information provided through it.",
+    sections: [
+      {
+        heading: "Not medical advice",
+        body: [
+          "Product descriptions, nutrition information and any guidance from our AI assistant are provided for general informational purposes only and are not medical, dietary or professional advice.",
+          "They are not intended to diagnose, treat, cure or prevent any condition. Always consult a qualified healthcare professional for guidance specific to your health, allergies or dietary needs — especially for infants, during pregnancy, or if you have an existing medical condition.",
+        ],
+      },
+      {
+        heading: "AI assistant",
+        body: [
+          "Our AI nutrition assistant offers general, automated suggestions based on the information you share and our product catalog. It is a convenience feature, not a substitute for professional advice, and its responses may occasionally be incomplete or imprecise.",
+        ],
+      },
+      {
+        heading: "Product information",
+        body: [
+          "We aim to keep product listings, ingredients and nutrition information accurate and up to date, but packaging and formulations can change. Always check the physical product label before consuming, especially if you have allergies.",
+        ],
+      },
+      {
+        heading: "No guaranteed results",
+        body: [
+          "We make no promises about specific health outcomes from using our products. Individual results and needs vary from person to person.",
         ],
       },
     ],

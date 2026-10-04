@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { siteConfig } from "@/config/site";
 import { PRICING_DEFAULTS, type PricingSettings } from "@/lib/pricing";
+import { withDbRetry } from "@/lib/db-retry";
 
 /** Editable store details, merged with the static config as a fallback. */
 export type StoreSettings = {
@@ -70,7 +71,11 @@ export type StoreSettings = {
 export async function getStoreSettings(): Promise<StoreSettings> {
   let s: Awaited<ReturnType<typeof prisma.storeSetting.findUnique>> = null;
   try {
-    s = await prisma.storeSetting.findUnique({ where: { id: "singleton" } });
+    // This runs on every storefront page via the root layout — almost always
+    // the first DB touch of a request, so it's the most cold-start-prone read
+    // in the app. One retry here means a transient P1001 recovers instead of
+    // silently (and misleadingly) serving config defaults for a live request.
+    s = await withDbRetry(() => prisma.storeSetting.findUnique({ where: { id: "singleton" } }));
   } catch {
     /* fall back to config */
   }
@@ -131,15 +136,17 @@ export async function getStoreSettings(): Promise<StoreSettings> {
  */
 export async function getPricingSettings(): Promise<PricingSettings> {
   try {
-    const s = await prisma.storeSetting.findUnique({
-      where: { id: "singleton" },
-      select: {
-        defaultGstRate: true,
-        defaultShippingFee: true,
-        freeShippingThreshold: true,
-        freeShippingEnabled: true,
-      },
-    });
+    const s = await withDbRetry(() =>
+      prisma.storeSetting.findUnique({
+        where: { id: "singleton" },
+        select: {
+          defaultGstRate: true,
+          defaultShippingFee: true,
+          freeShippingThreshold: true,
+          freeShippingEnabled: true,
+        },
+      }),
+    );
     if (!s) return PRICING_DEFAULTS;
     return {
       defaultGstRate: s.defaultGstRate,
@@ -187,16 +194,18 @@ const AFFILIATE_DEFAULTS: AffiliateSettings = {
 /** Affiliate-program settings. Falls back to defaults on DB error. */
 export async function getAffiliateSettings(): Promise<AffiliateSettings> {
   try {
-    const s = await prisma.storeSetting.findUnique({
-      where: { id: "singleton" },
-      select: {
-        affiliateEnabled: true,
-        affiliateCookieDays: true,
-        affiliateDefaultCommissionType: true,
-        affiliateDefaultCommissionValue: true,
-        affiliateMinPayout: true,
-      },
-    });
+    const s = await withDbRetry(() =>
+      prisma.storeSetting.findUnique({
+        where: { id: "singleton" },
+        select: {
+          affiliateEnabled: true,
+          affiliateCookieDays: true,
+          affiliateDefaultCommissionType: true,
+          affiliateDefaultCommissionValue: true,
+          affiliateMinPayout: true,
+        },
+      }),
+    );
     if (!s) return AFFILIATE_DEFAULTS;
     return {
       affiliateEnabled: s.affiliateEnabled,
@@ -217,10 +226,12 @@ const RETURN_DEFAULTS: ReturnSettings = { returnsEnabled: true, returnWindowDays
 /** Returns/refund policy settings. Falls back to defaults on DB error. */
 export async function getReturnSettings(): Promise<ReturnSettings> {
   try {
-    const s = await prisma.storeSetting.findUnique({
-      where: { id: "singleton" },
-      select: { returnsEnabled: true, returnWindowDays: true },
-    });
+    const s = await withDbRetry(() =>
+      prisma.storeSetting.findUnique({
+        where: { id: "singleton" },
+        select: { returnsEnabled: true, returnWindowDays: true },
+      }),
+    );
     if (!s) return RETURN_DEFAULTS;
     return { returnsEnabled: s.returnsEnabled, returnWindowDays: s.returnWindowDays };
   } catch {
@@ -231,16 +242,18 @@ export async function getReturnSettings(): Promise<ReturnSettings> {
 /** Cash-on-Delivery settings for checkout. COD is off (unavailable) on DB error. */
 export async function getCodSettings(): Promise<CodSettings> {
   try {
-    const s = await prisma.storeSetting.findUnique({
-      where: { id: "singleton" },
-      select: {
-        codEnabled: true,
-        codFee: true,
-        codMinOrder: true,
-        codMaxOrder: true,
-        codPincodes: true,
-      },
-    });
+    const s = await withDbRetry(() =>
+      prisma.storeSetting.findUnique({
+        where: { id: "singleton" },
+        select: {
+          codEnabled: true,
+          codFee: true,
+          codMinOrder: true,
+          codMaxOrder: true,
+          codPincodes: true,
+        },
+      }),
+    );
     if (!s) return COD_DEFAULTS;
     return {
       codEnabled: s.codEnabled,

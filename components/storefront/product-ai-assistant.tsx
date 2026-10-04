@@ -1,8 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Sparkles, ArrowRight } from "lucide-react";
-import { AiChat } from "@/components/storefront/ai-chat";
+
+// Lazy-loaded: the full chat UI (message list, streaming, recommendation
+// cards) only enters the PDP bundle once a shopper actually opens it — same
+// pattern as QuickViewDialog. Most PDP visitors never click this, so it
+// shouldn't weigh down every product page's initial load.
+const AiChat = dynamic(
+  () => import("@/components/storefront/ai-chat").then((m) => m.AiChat),
+  { ssr: false },
+);
 
 const QUESTIONS = [
   "What are the benefits?",

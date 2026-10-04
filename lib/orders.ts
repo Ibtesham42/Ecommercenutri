@@ -13,6 +13,7 @@ import {
   voidCommission,
 } from "@/lib/affiliate/commissions";
 import type { CheckoutItem } from "@/lib/validations/checkout";
+import { withDbRetry } from "@/lib/db-retry";
 
 export {
   FREE_SHIPPING_THRESHOLD,
@@ -21,6 +22,25 @@ export {
 } from "@/lib/shipping";
 
 const orderId = customAlphabet("ACDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
+
+/**
+ * Thrown inside confirmOrder's transaction when the order can't actually be
+ * fulfilled (stock ran out, or a limited coupon was exhausted, between
+ * checkout-time validation and confirmation). Throwing inside the transaction
+ * rolls back every write the transaction made so far — the atomic
+ * `stockDeducted` claim, any partial stock decrements, and the coupon
+ * increment — so the order is left exactly as it was before confirmOrder was
+ * called, never in a half-confirmed state.
+ */
+export class OrderFulfillmentError extends Error {
+  constructor(
+    public readonly reason: "INSUFFICIENT_STOCK" | "COUPON_LIMIT_REACHED",
+    message: string,
+  ) {
+    super(message);
+    this.name = "OrderFulfillmentError";
+  }
+}
 
 /** Human-friendly, unique-enough order number, e.g. NUT-260625-A1B2C3. */
 export function generateOrderNumber(): string {
@@ -55,25 +75,29 @@ export type PricedCart =
 export async function priceCart(items: CheckoutItem[]): Promise<PricedCart> {
   if (items.length === 0) return { ok: false, error: "Your cart is empty." };
 
-  const variants = await prisma.productVariant.findMany({
-    where: { id: { in: items.map((i) => i.variantId) } },
-    include: {
-      product: {
-        select: {
-          id: true,
-          name: true,
-          isActive: true,
-          gstRate: true,
-          deliveryCharge: true,
-          images: {
-            where: { isMain: true },
-            take: 1,
-            select: { url: true },
+  // This is often the first DB touch of a checkout — one retry here covers
+  // a cold Neon connection before the rest of the checkout flow runs.
+  const variants = await withDbRetry(() =>
+    prisma.productVariant.findMany({
+      where: { id: { in: items.map((i) => i.variantId) } },
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            isActive: true,
+            gstRate: true,
+            deliveryCharge: true,
+            images: {
+              where: { isMain: true },
+              take: 1,
+              select: { url: true },
+            },
           },
         },
       },
-    },
-  });
+    }),
+  );
 
   const byId = new Map(variants.map((v) => [v.id, v]));
   const lines: PricedLine[] = [];
@@ -128,59 +152,101 @@ export async function confirmOrder(
     payment?: { paymentId: string; signature?: string };
   },
 ): Promise<void> {
-  const order = await prisma.$transaction(async (tx) => {
-    const existing = await tx.order.findUnique({
-      where: { id },
-      select: { id: true, couponId: true },
-    });
-    if (!existing) throw new Error("ORDER_NOT_FOUND");
-
-    // Claim the confirmation ATOMICALLY before doing any of the side-effects.
-    // The success page and the Razorpay webhook race by design; a read-then-write
-    // check on `stockDeducted` passes in both under Read Committed, which would
-    // double-decrement stock and double-count the coupon. A conditional update
-    // makes the loser block on the row lock, re-evaluate, and match 0 rows.
-    const claim = await tx.order.updateMany({
-      where: { id, stockDeducted: false },
-      data: {
-        stockDeducted: true,
-        paymentStatus: opts.paymentStatus,
-        razorpayPaymentId: opts.payment?.paymentId,
-        razorpaySignature: opts.payment?.signature,
-      },
-    });
-    if (claim.count === 0) return null; // already confirmed by the other caller
-
-    const items = await tx.orderItem.findMany({ where: { orderId: id } });
-
-    // Decrement stock for each line (guarded against going negative).
-    for (const line of items) {
-      if (!line.variantId) continue;
-      await tx.productVariant.updateMany({
-        where: { id: line.variantId, stock: { gte: line.quantity } },
-        data: { stock: { decrement: line.quantity } },
+  let order;
+  try {
+    order = await prisma.$transaction(async (tx) => {
+      const existing = await tx.order.findUnique({
+        where: { id },
+        select: { id: true, couponId: true },
       });
-    }
+      if (!existing) throw new Error("ORDER_NOT_FOUND");
 
-    if (existing.couponId) {
-      await tx.coupon.update({
-        where: { id: existing.couponId },
-        data: { usedCount: { increment: 1 } },
+      // Claim the confirmation ATOMICALLY before doing any of the side-effects.
+      // The success page and the Razorpay webhook race by design; a read-then-write
+      // check on `stockDeducted` passes in both under Read Committed, which would
+      // double-decrement stock and double-count the coupon. A conditional update
+      // makes the loser block on the row lock, re-evaluate, and match 0 rows.
+      const claim = await tx.order.updateMany({
+        where: { id, stockDeducted: false },
+        data: {
+          stockDeducted: true,
+          paymentStatus: opts.paymentStatus,
+          razorpayPaymentId: opts.payment?.paymentId,
+          razorpaySignature: opts.payment?.signature,
+        },
       });
+      if (claim.count === 0) return null; // already confirmed by the other caller
+
+      const items = await tx.orderItem.findMany({ where: { orderId: id } });
+
+      // Decrement stock for each line (guarded against going negative). The
+      // guard's `count` must be checked — a 0-row update means the guard
+      // rejected it (stock insufficient), and that must abort the whole
+      // confirmation rather than silently leaving the order "confirmed" with
+      // less stock reserved than it was sold.
+      for (const line of items) {
+        if (!line.variantId) continue;
+        const decremented = await tx.productVariant.updateMany({
+          where: { id: line.variantId, stock: { gte: line.quantity } },
+          data: { stock: { decrement: line.quantity } },
+        });
+        if (decremented.count === 0) {
+          throw new OrderFulfillmentError(
+            "INSUFFICIENT_STOCK",
+            "One or more items in this order are no longer available in the quantity requested.",
+          );
+        }
+      }
+
+      if (existing.couponId) {
+        const coupon = await tx.coupon.findUnique({
+          where: { id: existing.couponId },
+          select: { usageLimit: true },
+        });
+        if (coupon?.usageLimit != null) {
+          // Same pattern as the stock guard above: re-check the limit against
+          // the row's CURRENT value at write time (not the value `validateCoupon`
+          // saw at preview time), so two orders racing for the last slot can't
+          // both succeed.
+          const claimed = await tx.coupon.updateMany({
+            where: { id: existing.couponId, usedCount: { lt: coupon.usageLimit } },
+            data: { usedCount: { increment: 1 } },
+          });
+          if (claimed.count === 0) {
+            throw new OrderFulfillmentError(
+              "COUPON_LIMIT_REACHED",
+              "The coupon on this order just reached its usage limit.",
+            );
+          }
+        } else {
+          await tx.coupon.update({
+            where: { id: existing.couponId },
+            data: { usedCount: { increment: 1 } },
+          });
+        }
+      }
+
+      const updated = await tx.order.findUniqueOrThrow({
+        where: { id },
+        include: { items: true, user: { select: { email: true, name: true } } },
+      });
+
+      // Seed the timeline with the placement event.
+      await tx.orderEvent.create({
+        data: { orderId: id, status: "PENDING", note: "Order placed", actor: "system" },
+      });
+
+      return updated;
+    });
+  } catch (err) {
+    if (err instanceof OrderFulfillmentError) {
+      // The transaction above has already rolled back in full — the
+      // `stockDeducted` claim, any stock decrements, and the coupon increment
+      // never committed. The order is exactly as it was before this call.
+      await recordFulfillmentFailure(id, err, opts.payment);
     }
-
-    const updated = await tx.order.findUniqueOrThrow({
-      where: { id },
-      include: { items: true, user: { select: { email: true, name: true } } },
-    });
-
-    // Seed the timeline with the placement event.
-    await tx.orderEvent.create({
-      data: { orderId: id, status: "PENDING", note: "Order placed", actor: "system" },
-    });
-
-    return updated;
-  });
+    throw err;
+  }
 
   if (!order) return;
 
@@ -222,6 +288,63 @@ export async function confirmOrder(
   // Create the affiliate commission (PENDING) if this order was referred. Idempotent
   // and best-effort — never blocks order completion.
   await createOrderCommission(order.id);
+}
+
+/**
+ * Called after confirmOrder's transaction rolls back due to an
+ * OrderFulfillmentError. Two distinct, deliberately conservative outcomes —
+ * never a refund, never a new order, never leaving the order looking
+ * "confirmed" when it isn't:
+ *
+ * - No real payment was captured (COD, or the keyless mock flow): safe to
+ *   cancel the order outright. Nothing was charged.
+ * - A Razorpay payment WAS already captured (`opts.payment` present, from
+ *   verifyPayment or the webhook): never auto-cancel or auto-refund here —
+ *   that risks a mismatched Razorpay/ledger state if this runs twice (e.g. a
+ *   webhook retry). Preserve the payment reference on the order and leave its
+ *   status/paymentStatus untouched so it's easy to find and resolve manually
+ *   (stock was never decremented for it, so a later retry can still succeed
+ *   on its own if stock is replenished). Full detail goes to the server log,
+ *   not to the order record — this note is visible to the customer on their
+ *   order timeline.
+ */
+async function recordFulfillmentFailure(
+  orderId: string,
+  err: OrderFulfillmentError,
+  payment?: { paymentId: string; signature?: string },
+): Promise<void> {
+  if (payment) {
+    console.error(
+      `[orders] order ${orderId} received a captured payment (${payment.paymentId}) but could not be ` +
+        `auto-confirmed (${err.reason}): ${err.message}. Needs manual review — stock/coupon were NOT ` +
+        `deducted, no refund was issued.`,
+    );
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        razorpayPaymentId: payment.paymentId,
+        razorpaySignature: payment.signature,
+      },
+    });
+    await prisma.orderEvent.create({
+      data: {
+        orderId,
+        status: "PENDING",
+        note: "We're finalising the details of your order. If anything needs your attention, our team will contact you shortly.",
+        actor: "system",
+      },
+    });
+    return;
+  }
+
+  console.error(`[orders] order ${orderId} could not be confirmed (${err.reason}): ${err.message}`);
+  await prisma.order.update({
+    where: { id: orderId },
+    data: { status: "CANCELLED", paymentStatus: "FAILED", cancelReason: err.message },
+  });
+  await prisma.orderEvent.create({
+    data: { orderId, status: "CANCELLED", note: err.message, actor: "system" },
+  });
 }
 
 /** Transition an order to PAID (online payment). Thin wrapper over confirmOrder. */

@@ -17,6 +17,7 @@ import {
   Phone,
   Gift,
   Package,
+  Sparkle,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "/products": ShoppingBag,
   "/categories": LayoutGrid,
   "/products?sort=best-sellers": Star,
+  "/new-arrivals": Sparkle,
   "/offers": Gift,
   "/assistant": Sparkles,
   "/b2b": Building2,
@@ -70,6 +72,8 @@ export function SiteHeader({
   unreadCount = 0,
   isLoggedIn = false,
   categories = [],
+  freeShippingThreshold,
+  freeShippingEnabled = true,
 }: {
   logoUrl?: string | null;
   siteName?: string;
@@ -80,6 +84,9 @@ export function SiteHeader({
   unreadCount?: number;
   isLoggedIn?: boolean;
   categories?: CategoryNavNode[];
+  /** Paise — StoreSetting.freeShippingThreshold, passed through to DeliverTo. */
+  freeShippingThreshold?: number | null;
+  freeShippingEnabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -116,10 +123,17 @@ export function SiteHeader({
           </SheetTrigger>
           {/* The drawer keeps the light surface for legibility. */}
           <SheetContent side="left" className="w-72 gap-0 p-0">
-            <SheetHeader className="border-b bg-accent/40 p-4">
+            {/* Theme toggle lives here (not the primary header row) below `sm` —
+                there's no room for it in the icon cluster at the narrowest phone
+                widths (see the 320px fix in the primary row below). Relocated,
+                not removed: still one tap away via the menu. */}
+            <SheetHeader className="flex-row items-center justify-between border-b bg-accent/40 p-4">
               <SheetTitle asChild>
                 <Logo logoUrl={logoUrl} name={siteName} className="min-w-0" {...logoSize} />
               </SheetTitle>
+              <div className="shrink-0 sm:hidden">
+                <ThemeToggle />
+              </div>
             </SheetHeader>
             <nav className="flex flex-col gap-1 p-3">
               {siteConfig.mainNav.map((item) => {
@@ -239,7 +253,11 @@ export function SiteHeader({
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
-          <DeliverTo className="mr-1 hidden xl:flex" />
+          <DeliverTo
+            className="mr-1 hidden xl:flex"
+            freeShippingThreshold={freeShippingThreshold}
+            freeShippingEnabled={freeShippingEnabled}
+          />
           {notifications && (
             <NotificationBell initialUnread={unreadCount} items={notifications} />
           )}
@@ -282,15 +300,21 @@ export function SiteHeader({
           ) : (
             <SigninSpotlight>
               {/* Filled brand pill — the one loud CTA in the header, so new
-                  visitors can't miss the account entry point. */}
+                  visitors can't miss the account entry point. Icon-only below
+                  `sm` (text label hidden, square padding like the other icon
+                  buttons) — at 320–639px the full "Sign in" pill plus Cart no
+                  longer fit this row; icon-only guarantees it never clips
+                  instead of relying on exact pixel math. The label returns at
+                  `sm` where there's room (matches the Logo wordmark's own
+                  `hidden sm:inline` breakpoint, same reasoning). */}
               <Button
                 asChild
                 size="sm"
-                className="btn-rich h-11 gap-1.5 rounded-full px-4 text-sm font-bold shadow-elev-2 sm:h-10"
+                className="btn-rich h-11 gap-1.5 rounded-full px-3 text-sm font-bold shadow-elev-2 sm:h-10 sm:px-4"
               >
-                <Link href="/login">
+                <Link href="/login" aria-label="Sign in">
                   <User className="size-[18px]" />
-                  <span>Sign in</span>
+                  <span className="hidden sm:inline">Sign in</span>
                 </Link>
               </Button>
             </SigninSpotlight>
@@ -306,22 +330,34 @@ export function SiteHeader({
               <CartIcon />
             </Link>
           </Button>
-          <div className={cn("grid size-11 place-items-center rounded-md sm:size-10", onDeep)}>
+          {/* Hidden below `sm` — moved into the mobile drawer (see SheetHeader
+              above) so the icon cluster (Sign in / Cart) always has room to
+              breathe down to 320px without clipping. */}
+          <div className={cn("hidden sm:grid sm:size-10 place-items-center rounded-md", onDeep)}>
             <ThemeToggle />
           </div>
         </div>
       </div>
 
       {/* Row 2 — desktop nav bar (lg+). Search-forward primary row above keeps the
-          nav in its own slim row, Amazon/Flipkart-style. */}
+          nav in its own slim row, Amazon/Flipkart-style. `scroll-rail` (same
+          utility as the mobile department chips below) makes this a horizontal
+          scroller instead of wrapping/clipping once all ~10 items plus the
+          mega-menu no longer fit at 1024–1200px — every item stays reachable,
+          none are hidden, and nothing changes at widths where it already fits. */}
       <nav className="hidden border-t border-border/60 lg:block" data-heat="header-nav">
-        <div className="mx-auto flex h-11 w-full max-w-7xl items-center gap-0.5 px-4">
+        <div className="scroll-rail mx-auto h-11 w-full max-w-7xl items-center gap-0.5 px-4">
           {siteConfig.mainNav.map((item) => {
             const active = isActiveNav(item.href);
 
             if (item.href === "/categories" && categories.length > 0) {
               return (
-                <CategoryMegaMenu key={item.href} categories={categories} active={active} />
+                <CategoryMegaMenu
+                  key={item.href}
+                  categories={categories}
+                  active={active}
+                  className="shrink-0"
+                />
               );
             }
 
@@ -331,7 +367,7 @@ export function SiteHeader({
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+                  "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
                   active
                     ? "bg-primary/10 font-semibold text-primary"
                     : "text-foreground/70 hover:bg-accent hover:text-foreground",
@@ -352,7 +388,10 @@ export function SiteHeader({
           <div data-heat="search-bar">
             <MobileSearchTrigger />
           </div>
-          <DeliverTo />
+          <DeliverTo
+            freeShippingThreshold={freeShippingThreshold}
+            freeShippingEnabled={freeShippingEnabled}
+          />
         </div>
       </div>
 
