@@ -26,7 +26,9 @@ export default async function AccountLayout({
         freeShippingEnabled={settings.freeShippingEnabled}
       />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:py-8">
-        <h1 className="mb-4 text-2xl font-bold sm:mb-6 sm:text-3xl">My account</h1>
+        <h1 className="mb-4 font-heading text-2xl font-semibold tracking-tight sm:mb-6 sm:text-3xl">
+          My account
+        </h1>
         {/* grid-cols-1 / minmax(0,1fr) give an explicit, width-constrained track
             (Tailwind's grid-cols-* use minmax(0,1fr)); without it the implicit
             auto track grows to fit the horizontal nav rail and overflows the page

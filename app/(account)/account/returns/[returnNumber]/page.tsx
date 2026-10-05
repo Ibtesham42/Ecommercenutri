@@ -56,7 +56,7 @@ export default async function ReturnDetailPage({
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">{ret.returnNumber}</h1>
+          <h1 className="font-heading text-xl font-semibold">{ret.returnNumber}</h1>
           <p className="text-sm text-muted-foreground">
             Order{" "}
             <Link href={`/account/orders/${ret.order.orderNumber}`} className="text-primary hover:underline">

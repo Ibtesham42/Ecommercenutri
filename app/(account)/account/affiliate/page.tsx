@@ -44,7 +44,7 @@ export default async function AffiliatePage() {
     return (
       <div className="max-w-2xl space-y-4">
         <div>
-          <h1 className="text-xl font-semibold">Become a Nutriyet partner</h1>
+          <h1 className="font-heading text-xl font-semibold">Become a Nutriyet partner</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Earn commission on every sale you refer, with your own link, QR code and coupon.
           </p>
@@ -71,7 +71,7 @@ export default async function AffiliatePage() {
     return (
       <div className="max-w-xl rounded-2xl border bg-muted/20 p-8 text-center">
         <Clock className="mx-auto size-10 text-primary" />
-        <h1 className="mt-3 text-lg font-semibold">Application under review</h1>
+        <h1 className="mt-3 font-heading text-lg font-semibold">Application under review</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Thanks for applying as a {AFFILIATE_ROLE_LABEL[affiliate.role]}. We&rsquo;ll email you
           once it&rsquo;s approved — usually within a couple of days.
@@ -83,7 +83,7 @@ export default async function AffiliatePage() {
     return (
       <div className="max-w-xl rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center">
         <Ban className="mx-auto size-10 text-destructive" />
-        <h1 className="mt-3 text-lg font-semibold">Account suspended</h1>
+        <h1 className="mt-3 font-heading text-lg font-semibold">Account suspended</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {affiliate.suspendReason || "Your affiliate account is currently suspended."} Please
           contact support if you think this is a mistake.
@@ -105,7 +105,7 @@ export default async function AffiliatePage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Affiliate dashboard</h1>
+          <h1 className="font-heading text-xl font-semibold">Affiliate dashboard</h1>
           <p className="text-sm text-muted-foreground">
             {AFFILIATE_ROLE_LABEL[affiliate.role]} · code <span className="font-mono">{affiliate.code}</span>
           </p>

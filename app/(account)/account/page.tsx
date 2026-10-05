@@ -78,9 +78,7 @@ export default async function AccountDashboardPage() {
               href={l.href}
               className="hover-lift flex flex-col items-center gap-2 rounded-xl border bg-card p-3 text-center shadow-elev-1 transition-colors hover:border-primary/40"
             >
-              <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary">
-                <l.icon className="size-5" />
-              </span>
+              <l.icon className="size-5 text-primary" strokeWidth={1.75} />
               <span className="text-xs font-medium">{l.label}</span>
             </Link>
           ))}
