@@ -7,6 +7,7 @@ import { BlurImage } from "@/components/storefront/blur-image";
 import { QuickAddButton } from "@/components/storefront/quick-add-button";
 import { QuickViewButton } from "@/components/storefront/quick-view-button";
 import { Reveal } from "@/components/storefront/reveal";
+import { ProductRailScroller } from "@/components/storefront/product-rail-scroller";
 import { cn } from "@/lib/utils";
 import { formatPrice, discountPercent, effectivePrice } from "@/lib/format";
 import { minVariantPrice, type ProductCardData } from "@/lib/queries/products";
@@ -45,12 +46,12 @@ export function ProductCard({
     >
       <div className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex flex-col items-start gap-1">
         {product.isBestSeller && (
-          <Badge className="badge-breathe gap-1 border-transparent bg-surface-deep text-surface-deep-foreground shadow-sm hover:bg-surface-deep">
+          <Badge className="gap-1 border-transparent bg-surface-deep text-surface-deep-foreground shadow-sm hover:bg-surface-deep">
             <span className="text-gold">★</span> Best Seller
           </Badge>
         )}
         {off ? (
-          <Badge className="badge-breathe border-transparent bg-gold text-gold-foreground shadow-sm [animation-delay:1.6s] hover:bg-gold">
+          <Badge className="border-transparent bg-gold text-gold-foreground shadow-sm hover:bg-gold">
             {off}% OFF
           </Badge>
         ) : null}
@@ -191,14 +192,18 @@ export function ProductRail({
           </div>
         ))}
       </div>
-      {/* Tablet/desktop: grid */}
-      <div className="hidden gap-4 md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      {/* Tablet/desktop: a real horizontal rail (hover-revealed arrows), not a
+          static grid — browsing past what fits on screen is the point of a
+          "rail" vs. the catalog's paginated ProductGrid. */}
+      <ProductRailScroller className="hidden md:block">
         {products.map((p, i) => (
-          <Reveal key={p.id} className="h-full" delay={(i % 5) * 40}>
-            <ProductCard product={p} wishlisted={wishlistedIds?.has(p.id)} priority={i < priorityCount} />
-          </Reveal>
+          <div key={p.id} data-rail-item className="w-[23vw] max-w-[240px] shrink-0 xl:w-[18vw] xl:max-w-[230px]">
+            <Reveal className="h-full" delay={(i % 5) * 40}>
+              <ProductCard product={p} wishlisted={wishlistedIds?.has(p.id)} priority={i < priorityCount} />
+            </Reveal>
+          </div>
         ))}
-      </div>
+      </ProductRailScroller>
     </>
   );
 }

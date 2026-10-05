@@ -2,6 +2,7 @@ import { getRecommendations } from "@/lib/ai/recommendations";
 import { getCurrentUser } from "@/lib/auth";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
 import { ProductGrid } from "@/components/storefront/product-card";
+import { SectionHeading } from "@/components/storefront/section-heading";
 
 /** Server component: a personalized (or best-seller) recommendation strip.
  *  Renders nothing when there are no recommendations to show — so callers
@@ -30,10 +31,7 @@ export async function RecommendedProducts({
 
   return (
     <section className={className}>
-      <div className="mb-6">
-        <h2 className="text-xl font-bold sm:text-2xl">{title}</h2>
-        {subtitle && <p className="text-muted-foreground">{subtitle}</p>}
-      </div>
+      <SectionHeading title={title} subtitle={subtitle} />
       <ProductGrid products={products} wishlistedIds={wishlistIds} />
     </section>
   );
