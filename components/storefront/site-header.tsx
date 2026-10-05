@@ -48,7 +48,8 @@ import { SigninSpotlight } from "@/components/storefront/onboarding/signin-spotl
 
 /** Icon per drawer nav item, keyed by href (drawer-only — the shared
  *  `siteConfig.mainNav` stays a plain title/href list for the desktop nav,
- *  department chips and footer). */
+ *  department chips and footer). Small inline glyphs, not icon tiles — kept
+ *  deliberately secondary to the label. */
 const NAV_ICONS: Record<string, LucideIcon> = {
   "/": Home,
   "/products": ShoppingBag,
@@ -61,6 +62,22 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   "/about": Info,
   "/contact": Phone,
 };
+
+/** Drawer-only grouping of the shared `siteConfig.mainNav` list into labelled
+ *  sections (Shop / Discover / Business / Support) so the menu reads with
+ *  typographic hierarchy instead of one flat list of equally-weighted rows.
+ *  Doesn't change `siteConfig` or any route — purely how the drawer lays the
+ *  same items out. */
+const DRAWER_GROUPS: { label: string | null; hrefs: string[] }[] = [
+  { label: null, hrefs: ["/"] },
+  {
+    label: "Shop",
+    hrefs: ["/products", "/categories", "/products?sort=best-sellers", "/new-arrivals", "/offers"],
+  },
+  { label: "Discover", hrefs: ["/assistant"] },
+  { label: "Business", hrefs: ["/b2b"] },
+  { label: "Support", hrefs: ["/about", "/contact"] },
+];
 
 export function SiteHeader({
   logoUrl,
@@ -121,13 +138,15 @@ export function SiteHeader({
               <Menu className="size-[22px]" />
             </Button>
           </SheetTrigger>
-          {/* The drawer keeps the light surface for legibility. */}
+          {/* The drawer keeps the light surface for legibility. Close button is
+              the default Sheet one (absolute top-3 right-3) — `pr-14` on the
+              header row reserves its corner so nothing sits under it. */}
           <SheetContent side="left" className="w-72 gap-0 p-0">
             {/* Theme toggle lives here (not the primary header row) below `sm` —
                 there's no room for it in the icon cluster at the narrowest phone
                 widths (see the 320px fix in the primary row below). Relocated,
                 not removed: still one tap away via the menu. */}
-            <SheetHeader className="flex-row items-center justify-between border-b bg-accent/40 p-4">
+            <SheetHeader className="flex-row items-center justify-between gap-2 border-b p-4 pr-14">
               <SheetTitle asChild>
                 <Logo logoUrl={logoUrl} name={siteName} className="min-w-0" {...logoSize} />
               </SheetTitle>
@@ -135,104 +154,113 @@ export function SiteHeader({
                 <ThemeToggle />
               </div>
             </SheetHeader>
-            <nav className="flex flex-col gap-1 p-3">
-              {siteConfig.mainNav.map((item) => {
-                const Icon = NAV_ICONS[item.href] ?? Home;
-                const active = isActiveNav(item.href);
+            <nav aria-label="Primary" className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3 pb-6">
+              {DRAWER_GROUPS.map((group, groupIndex) => (
+                <div
+                  key={group.label ?? "top"}
+                  className={cn(groupIndex > 0 && "mt-1 border-t border-border/70 pt-1")}
+                >
+                  {group.label && (
+                    <p className="px-3 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">
+                      {group.label}
+                    </p>
+                  )}
+                  {group.hrefs.map((href) => {
+                    const item = siteConfig.mainNav.find((navItem) => navItem.href === href);
+                    if (!item) return null;
+                    const Icon = NAV_ICONS[href] ?? Home;
+                    const active = isActiveNav(href);
 
-                // Categories gets an inline accordion of subcategories instead
-                // of a plain link — department-style discovery without
-                // leaving the drawer (mirrors the desktop mega-menu's data).
-                if (item.href === "/categories" && categories.length > 0) {
-                  return (
-                    <Accordion key={item.href} type="single" collapsible>
-                      <AccordionItem value="categories" className="border-b-0">
-                        <AccordionTrigger
-                          className={cn(
-                            "rounded-xl px-3 py-2.5 text-[15px] font-medium hover:no-underline",
-                            active
-                              ? "bg-primary/10 text-primary"
-                              : "text-foreground/80 hover:bg-accent hover:text-foreground",
-                          )}
-                        >
-                          <span className="flex items-center gap-3">
-                            <span
+                    // Categories gets an inline accordion of subcategories instead
+                    // of a plain link — department-style discovery without
+                    // leaving the drawer (mirrors the desktop mega-menu's data).
+                    if (href === "/categories" && categories.length > 0) {
+                      return (
+                        <Accordion key={href} type="single" collapsible>
+                          <AccordionItem value="categories" className="border-b-0">
+                            <AccordionTrigger
                               className={cn(
-                                "grid size-9 shrink-0 place-items-center rounded-lg bg-accent/70",
-                                active && "bg-primary/15 text-primary",
+                                "items-center gap-3 border-l-2 py-3 pl-3 pr-3 text-[15px] font-normal hover:no-underline",
+                                active
+                                  ? "border-primary bg-primary/[0.05] text-primary"
+                                  : "border-transparent text-foreground/85 hover:bg-accent/40",
                               )}
                             >
-                              <Icon className="size-[18px]" />
-                            </span>
-                            <span className={cn(active && "font-semibold")}>{item.title}</span>
-                          </span>
-                        </AccordionTrigger>
-                        <AccordionContent className="px-3 pb-1">
-                          <div className="flex flex-col gap-3 pl-12">
-                            {categories.map((category) => (
-                              <div key={category.id}>
-                                <Link
-                                  href={`/categories/${category.slug}`}
-                                  onClick={() => setOpen(false)}
-                                  className="!no-underline text-sm font-semibold text-foreground hover:text-primary"
-                                >
-                                  {category.name}
-                                </Link>
-                                {category.children.length > 0 && (
-                                  <div className="mt-1.5 flex flex-col gap-1.5 border-l border-border/60 pl-3">
-                                    {category.children.map((child) => (
-                                      <Link
-                                        key={child.id}
-                                        href={`/categories/${child.slug}`}
-                                        onClick={() => setOpen(false)}
-                                        className="!no-underline text-sm text-muted-foreground hover:text-primary"
-                                      >
-                                        {child.name}
-                                      </Link>
-                                    ))}
+                              <span className="flex items-center gap-3">
+                                <Icon
+                                  className={cn(
+                                    "size-[17px] shrink-0",
+                                    active ? "text-primary" : "text-foreground/45",
+                                  )}
+                                  strokeWidth={1.75}
+                                />
+                                <span className={cn(active && "font-semibold")}>{item.title}</span>
+                              </span>
+                            </AccordionTrigger>
+                            <AccordionContent className="pr-3 pb-1 pl-3">
+                              <div className="ml-[8px] flex flex-col gap-2.5 border-l border-border pl-[21px]">
+                                {categories.map((category) => (
+                                  <div key={category.id}>
+                                    <Link
+                                      href={`/categories/${category.slug}`}
+                                      onClick={() => setOpen(false)}
+                                      className="!no-underline text-sm font-medium text-foreground hover:text-primary"
+                                    >
+                                      {category.name}
+                                    </Link>
+                                    {category.children.length > 0 && (
+                                      <div className="mt-1.5 flex flex-col gap-1.5">
+                                        {category.children.map((child) => (
+                                          <Link
+                                            key={child.id}
+                                            href={`/categories/${child.slug}`}
+                                            onClick={() => setOpen(false)}
+                                            className="!no-underline text-sm text-muted-foreground hover:text-primary"
+                                          >
+                                            {child.name}
+                                          </Link>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
-                                )}
+                                ))}
+                                <Link
+                                  href="/categories"
+                                  onClick={() => setOpen(false)}
+                                  className="!no-underline mt-1 text-sm font-semibold text-primary"
+                                >
+                                  View all categories →
+                                </Link>
                               </div>
-                            ))}
-                            <Link
-                              href="/categories"
-                              onClick={() => setOpen(false)}
-                              className="!no-underline mt-1 text-sm font-semibold text-primary"
-                            >
-                              View all categories →
-                            </Link>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  );
-                }
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
+                      );
+                    }
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition-colors",
-                      active
-                        ? "bg-primary/10 text-primary"
-                        : "text-foreground/80 hover:bg-accent hover:text-foreground",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "grid size-9 shrink-0 place-items-center rounded-lg bg-accent/70",
-                        active && "bg-primary/15 text-primary",
-                      )}
-                    >
-                      <Icon className="size-[18px]" />
-                    </span>
-                    <span className={cn(active && "font-semibold")}>{item.title}</span>
-                  </Link>
-                );
-              })}
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        onClick={() => setOpen(false)}
+                        aria-current={active ? "page" : undefined}
+                        className={cn(
+                          "flex items-center gap-3 border-l-2 py-3 pl-3 pr-3 text-[15px] transition-colors",
+                          active
+                            ? "border-primary bg-primary/[0.05] font-semibold text-primary"
+                            : "border-transparent text-foreground/85 hover:bg-accent/40 hover:text-foreground",
+                        )}
+                      >
+                        <Icon
+                          className={cn("size-[17px] shrink-0", active ? "text-primary" : "text-foreground/45")}
+                          strokeWidth={1.75}
+                        />
+                        <span>{item.title}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              ))}
             </nav>
           </SheetContent>
         </Sheet>
@@ -367,10 +395,10 @@ export function SiteHeader({
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition-colors",
+                  "shrink-0 whitespace-nowrap rounded-md border-b-2 border-transparent px-2.5 py-1.5 text-sm font-medium tracking-[-0.01em] transition-colors",
                   active
-                    ? "bg-primary/10 font-semibold text-primary"
-                    : "text-foreground/70 hover:bg-accent hover:text-foreground",
+                    ? "border-primary font-semibold text-primary"
+                    : "text-foreground/70 hover:text-primary",
                 )}
               >
                 {item.title}

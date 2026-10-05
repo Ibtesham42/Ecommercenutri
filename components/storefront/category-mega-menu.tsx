@@ -38,10 +38,8 @@ export function CategoryMegaMenu({
         <NavigationMenuItem>
           <NavigationMenuTrigger
             className={cn(
-              "rounded-full bg-transparent px-3 py-1.5 text-sm font-medium transition-colors",
-              active
-                ? "bg-primary/10 font-semibold text-primary hover:bg-primary/10"
-                : "text-foreground/70 hover:bg-accent hover:text-foreground",
+              "rounded-md border-b-2 border-transparent bg-transparent px-2.5 py-1.5 text-sm font-medium tracking-[-0.01em] transition-colors",
+              active ? "border-primary font-semibold text-primary" : "text-foreground/70",
             )}
           >
             Categories
