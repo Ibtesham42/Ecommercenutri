@@ -52,7 +52,7 @@ export default function CorporateGiftingPage() {
       <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "Corporate Gifting" }]} />
 
       <header className="mt-6 border-b pb-6">
-        <h1 className="text-3xl font-bold sm:text-4xl">Corporate Gifting</h1>
+        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">Corporate Gifting</h1>
         <p className="mt-3 text-lg text-muted-foreground">
           Give something rooted in tradition — curated Nutriyet gifting for the people and occasions that
           matter to your business.

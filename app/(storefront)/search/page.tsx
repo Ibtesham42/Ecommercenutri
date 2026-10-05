@@ -78,7 +78,7 @@ export default async function SearchPage({
         <PageBreadcrumb
           items={[{ name: "Home", href: "/" }, { name: term ? `Search: "${term}"` : "Search" }]}
         />
-        <h1 className="mb-1 mt-4 text-2xl font-bold sm:text-3xl">Search</h1>
+        <h1 className="mb-1 mt-4 font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Search</h1>
         <p className="mb-5 text-sm text-muted-foreground">
           Find makhana, spices and more from the Nutriyet pantry — rooted in tradition, picked with care.
         </p>

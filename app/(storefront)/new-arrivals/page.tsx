@@ -71,7 +71,7 @@ export default async function NewArrivalsPage({
       <div className="mx-auto w-full max-w-7xl px-4 py-8">
         <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "New Arrivals" }]} />
         <header className="mb-6 mt-4">
-          <h1 className="text-2xl font-bold sm:text-3xl">New Arrivals</h1>
+          <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">New Arrivals</h1>
           <p className="mt-1 text-muted-foreground">
             The newest additions to the Nutriyet catalog, added in the last 30 days.
           </p>

@@ -72,7 +72,7 @@ export default async function SupportPage() {
       <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "Support" }]} />
 
       <header className="mt-6 max-w-2xl">
-        <h1 className="text-3xl font-bold sm:text-4xl">How can we help?</h1>
+        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">How can we help?</h1>
         <p className="mt-3 text-lg text-muted-foreground">
           Browse common topics below, or get in touch — we usually reply within 1–2 business days.
         </p>

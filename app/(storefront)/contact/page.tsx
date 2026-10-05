@@ -79,7 +79,7 @@ export default async function ContactPage() {
       <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "Contact" }]} />
 
       <header className="mt-6 max-w-2xl">
-        <h1 className="text-3xl font-bold sm:text-4xl">Get in touch</h1>
+        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">Get in touch</h1>
         <p className="mt-3 text-lg text-muted-foreground">
           Questions about a product, an order, or nutrition advice? Our team is here to help.
         </p>

@@ -90,7 +90,9 @@ export default async function BlogPostPage({
 
       <header className="mt-6">
         {post.tag && <Badge variant="secondary">{post.tag}</Badge>}
-        <h1 className="mt-3 text-3xl font-bold leading-tight sm:text-4xl">{post.title}</h1>
+        <h1 className="mt-3 font-heading text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
+          {post.title}
+        </h1>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
             {post.author ? `${post.author} · ` : ""}

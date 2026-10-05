@@ -25,7 +25,7 @@ export default async function OffersPage() {
         <span className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
           <Gift className="size-6" />
         </span>
-        <h1 className="text-2xl font-bold sm:text-3xl">Offers &amp; Coupons</h1>
+        <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Offers &amp; Coupons</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
           Every active discount code, in one place — copy and apply at checkout.
         </p>

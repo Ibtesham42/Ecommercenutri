@@ -13,7 +13,7 @@ export function LegalPageView({ page }: { page: LegalPage }) {
       <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: page.title }]} />
 
       <header className="mt-6 border-b pb-6">
-        <h1 className="text-3xl font-bold sm:text-4xl">{page.title}</h1>
+        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">{page.title}</h1>
         {page.mode === "default" && (
           <p className="mt-3 text-lg text-muted-foreground">{page.content.intro}</p>
         )}

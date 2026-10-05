@@ -15,7 +15,7 @@ export default function TrackOrderPage() {
       <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "Track Order" }]} />
 
       <header className="mt-6 max-w-xl">
-        <h1 className="text-3xl font-bold sm:text-4xl">Track your order</h1>
+        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">Track your order</h1>
         <p className="mt-3 text-lg text-muted-foreground">
           Enter your order number and the email you used at checkout to see your delivery status.
           No account needed.

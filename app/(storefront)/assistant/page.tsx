@@ -65,7 +65,7 @@ export default async function AssistantPage({
         <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary max-sm:size-10 max-sm:rounded-xl">
           <Sparkles className="size-7 max-sm:size-5" />
         </span>
-        <h1 className="mt-4 text-2xl font-bold max-sm:mt-2 max-sm:font-heading max-sm:text-xl max-sm:tracking-tight sm:text-3xl">
+        <h1 className="mt-4 font-heading text-2xl font-semibold tracking-tight max-sm:mt-2 max-sm:text-xl sm:text-3xl">
           AI Nutrition Assistant
         </h1>
         <p className="mx-auto mt-2 max-w-xl text-muted-foreground max-sm:mt-0.5 max-sm:text-[13px]">

@@ -110,7 +110,7 @@ export default async function AffiliateLandingPage() {
           <span className="inline-flex items-center gap-1.5 rounded-full border bg-background/70 px-3 py-1 text-xs font-medium text-primary">
             <Megaphone className="size-3.5" /> Nutriyet Partner Program
           </span>
-          <h1 className="mt-4 max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl">
+          <h1 className="mt-4 max-w-2xl font-heading text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
             Earn <span className="text-primary">{commission} commission</span> sharing the
             products you love.
           </h1>

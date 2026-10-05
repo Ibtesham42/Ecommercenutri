@@ -39,7 +39,7 @@ export default async function CareersPage() {
       <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "Careers" }]} />
 
       <header className="mt-6 border-b pb-6">
-        <h1 className="text-3xl font-bold sm:text-4xl">Careers at Nutriyet</h1>
+        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">Careers at Nutriyet</h1>
         <p className="mt-3 text-lg text-muted-foreground">
           We&apos;re building a modern Indian food brand rooted in the traditions of Bihar and Mithila —
           and growing the team behind it.

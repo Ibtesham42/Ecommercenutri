@@ -75,14 +75,13 @@ export async function SiteFooter() {
         </div>
       </div>
 
-      {/* Trust bar */}
+      {/* Trust bar — bare icons, no per-item tile (matches the homepage trust
+          band + PDP purchase panel's restrained treatment). */}
       <div className="border-b border-white/10">
-        <div className="mx-auto grid w-full max-w-7xl grid-cols-2 gap-4 px-4 py-6 lg:grid-cols-4">
+        <div className="mx-auto grid w-full max-w-7xl grid-cols-2 gap-x-4 gap-y-4 px-4 py-6 lg:grid-cols-4 lg:divide-x lg:divide-white/10">
           {trustItems.map((t) => (
-            <div key={t.label} className="flex items-center gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white/10 text-gold">
-                <t.icon className="size-5" />
-              </span>
+            <div key={t.label} className="flex items-center gap-2.5 lg:px-5 lg:first:pl-0">
+              <t.icon className="size-[18px] shrink-0 text-gold" strokeWidth={1.75} />
               <span className="text-sm font-medium">{t.label}</span>
             </div>
           ))}

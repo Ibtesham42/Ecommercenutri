@@ -112,7 +112,7 @@ export default async function CategoryPage({
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
           </div>
           <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
-            <h1 className="text-2xl font-bold text-white drop-shadow sm:text-3xl">
+            <h1 className="font-heading text-2xl font-semibold text-white drop-shadow sm:text-3xl">
               {category.name}
             </h1>
             {category.description && (
@@ -124,7 +124,7 @@ export default async function CategoryPage({
         </header>
       ) : (
         <header className="mb-6 rounded-2xl bg-gradient-to-r from-accent/50 to-secondary p-8">
-          <h1 className="text-2xl font-bold sm:text-3xl">{category.name}</h1>
+          <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">{category.name}</h1>
           {category.description && (
             <p className="mt-2 max-w-2xl text-muted-foreground">
               {category.description}

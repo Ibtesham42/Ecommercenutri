@@ -234,7 +234,7 @@ export default async function FaqPage() {
       <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "FAQ" }]} />
 
       <header className="mt-6 border-b pb-6">
-        <h1 className="text-3xl font-bold sm:text-4xl">Frequently Asked Questions</h1>
+        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">Frequently Asked Questions</h1>
         <p className="mt-3 text-lg text-muted-foreground">
           Answers to the questions we hear most. Can&apos;t find what you need?{" "}
           <Link href="/contact" className="font-medium text-primary hover:underline">

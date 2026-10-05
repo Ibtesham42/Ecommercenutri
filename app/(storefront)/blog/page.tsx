@@ -51,7 +51,7 @@ export default async function BlogPage() {
       <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "Blog" }]} />
 
       <header className="mt-6 max-w-2xl">
-        <h1 className="text-3xl font-bold sm:text-4xl">The Nutriyet Journal</h1>
+        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">The Nutriyet Journal</h1>
         <p className="mt-3 text-lg text-muted-foreground">
           Nutrition tips, simple recipes and wellness stories to help you eat clean and live strong.
         </p>
