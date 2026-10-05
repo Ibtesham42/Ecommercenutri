@@ -191,13 +191,14 @@ export function ProductPurchase({
         </div>
       </div>
 
-      {/* Highlights (nutrition-derived chips) */}
+      {/* Highlights (nutrition-derived chips) — bordered, no fill, so they
+          read as data (like a spec sheet) rather than decorative pill badges. */}
       {highlights.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {highlights.map((h) => (
             <span
               key={h.label}
-              className="inline-flex items-center gap-1.5 rounded-full border bg-accent/40 px-3 py-1.5 text-xs font-medium"
+              className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium"
             >
               <span className="text-muted-foreground">{h.label}</span>
               <span className="font-semibold">{h.value}</span>
@@ -298,16 +299,16 @@ export function ProductPurchase({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 border-t pt-5 sm:grid-cols-4">
+      {/* Bare icons, no circle-container-per-item — the same restrained
+          treatment as the homepage trust band, not four more icon tiles. */}
+      <ul className="grid grid-cols-2 gap-x-3 gap-y-3 border-t pt-5 sm:grid-cols-4 sm:divide-x sm:divide-border/60">
         {trustBadges.map((b) => (
-          <div key={b.label} className="flex flex-col items-center gap-1.5 text-center">
-            <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary">
-              <b.icon className="size-5" />
-            </span>
+          <li key={b.label} className="flex items-center gap-2 sm:justify-center sm:px-2 sm:first:pl-0">
+            <b.icon className="size-4 shrink-0 text-primary" strokeWidth={1.75} aria-hidden />
             <span className="text-xs font-medium text-muted-foreground">{b.label}</span>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
 
       {/* Quantity */}
       <div className="flex items-center gap-4">

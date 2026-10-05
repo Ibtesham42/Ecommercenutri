@@ -204,7 +204,7 @@ export default async function ProductPage({
               {product.brand.name}
             </p>
           )}
-          <h1 className="text-2xl font-bold sm:text-3xl">{product.name}</h1>
+          <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">{product.name}</h1>
           {product.ratingCount > 0 && (
             <StarRating
               rating={product.ratingAvg}

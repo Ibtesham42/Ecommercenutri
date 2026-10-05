@@ -50,7 +50,9 @@ export default async function CheckoutSuccessPage({
         <span className="mx-auto grid size-20 place-items-center rounded-full bg-primary/10 ring-8 ring-primary/5">
           <CheckCircle2 className="size-12 text-primary" />
         </span>
-        <h1 className="mt-5 text-2xl font-bold sm:text-3xl">Thank you for your order!</h1>
+        <h1 className="mt-5 font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
+          Thank you for your order!
+        </h1>
         <p className="mt-2 text-muted-foreground">
           Your order <span className="font-semibold text-foreground">#{order.orderNumber}</span>{" "}
           has been placed. A confirmation has been sent to your email.

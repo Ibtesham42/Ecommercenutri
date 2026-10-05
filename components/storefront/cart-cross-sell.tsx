@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCart } from "@/lib/store/cart";
 import { ProductGrid } from "@/components/storefront/product-card";
+import { SectionHeading } from "@/components/storefront/section-heading";
 import { cartCrossSell, type CartCrossSellResult } from "@/lib/actions/recommendations";
 
 /** Client cross-sell strip: recommends complementary products based on what's in
@@ -35,7 +36,7 @@ export function CartCrossSell({ title = "Goes well with your cart" }: { title?: 
 
   return (
     <section>
-      <h2 className="mb-6 text-xl font-bold sm:text-2xl">{title}</h2>
+      <SectionHeading title={title} />
       <ProductGrid products={data.products} wishlistedIds={new Set(data.wishlistedIds)} />
     </section>
   );

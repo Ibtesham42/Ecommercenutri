@@ -20,7 +20,8 @@ export default async function CartPage() {
   ]);
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold sm:text-3xl">Your cart</h1>
+      <span className="mb-3 block h-0.5 w-9 rounded-full bg-gold" />
+      <h1 className="mb-6 font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Your cart</h1>
       <CartView
         settings={settings}
         publicCoupons={publicCoupons.slice(0, 2).map((c) => ({

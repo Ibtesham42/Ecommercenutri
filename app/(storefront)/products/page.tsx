@@ -82,7 +82,8 @@ export default async function ProductsPage({
           }
         />
         <header className="mb-6 mt-4">
-          <h1 className="text-2xl font-bold sm:text-3xl">{heading}</h1>
+          <span className="mb-3 block h-0.5 w-9 rounded-full bg-gold" />
+          <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">{heading}</h1>
         {activeCategory?.description && (
           <p className="mt-1 text-muted-foreground">{activeCategory.description}</p>
         )}
