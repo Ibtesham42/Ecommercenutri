@@ -23,7 +23,7 @@ export default async function QuizPage() {
   if (!growth.quizEnabled) {
     return (
       <div className="mx-auto w-full max-w-md px-4 py-20 text-center">
-        <h1 className="font-heading text-2xl font-bold">Health assessment</h1>
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">Health assessment</h1>
         <p className="mt-2 text-muted-foreground">
           The health assessment isn&apos;t available right now. Please check back soon.
         </p>

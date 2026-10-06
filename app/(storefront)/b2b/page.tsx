@@ -79,7 +79,7 @@ export default function B2BPage() {
             <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/30 bg-gold/10 px-3 py-1 text-xs font-semibold text-gold">
               <Building2 className="size-3.5" /> Nutriyet for Business
             </span>
-            <h1 className="font-heading text-3xl font-bold leading-[1.1] sm:text-4xl lg:text-5xl">
+            <h1 className="font-heading text-3xl font-semibold leading-[1.1] tracking-tight sm:text-4xl lg:text-5xl">
               Partner with Nutriyet — wholesale, bulk &amp; private label
             </h1>
             <p className="max-w-xl text-surface-deep-foreground/75">
