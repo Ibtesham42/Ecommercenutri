@@ -117,7 +117,9 @@ export default async function ProductsPage({
               />
               {fallbackProducts.length > 0 && (
                 <div className="mt-10">
-                  <h2 className="mb-5 text-lg font-bold sm:text-xl">You might like</h2>
+                  <h2 className="mb-5 font-heading text-lg font-semibold tracking-tight sm:text-xl">
+                    You might like
+                  </h2>
                   <ProductRail products={fallbackProducts} wishlistedIds={wishlistIds} />
                 </div>
               )}

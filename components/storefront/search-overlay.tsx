@@ -477,6 +477,21 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
       <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 [-webkit-overflow-scrolling:touch]">
         {showIdle && (
           <div className="space-y-7">
+            {/* Subtle, always-reachable AI entry — kept to a single text row
+                (not the padded card used in the no-results state below) so it
+                stays secondary to real search/browse, per the brief's "AI is
+                a supporting feature, not the point" direction. */}
+            <button
+              type="button"
+              onClick={() => navigate("/assistant")}
+              className="flex w-full touch-manipulation items-center gap-2.5 rounded-xl py-1 text-left transition-colors hover:text-primary"
+            >
+              <Sparkles className="size-4 shrink-0 text-primary" />
+              <span className="text-sm font-medium text-foreground">
+                Ask Nutriyet AI to help me choose
+              </span>
+            </button>
+
             {recents.length > 0 && (
               <section className="animate-fade-up">
                 <div className="flex items-baseline justify-between">

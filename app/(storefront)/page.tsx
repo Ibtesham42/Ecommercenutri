@@ -281,7 +281,7 @@ export default async function HomePage() {
             />
             {combos.map((combo) => (
               <div key={combo.key}>
-                <h3 className="mb-5 text-lg font-bold sm:text-xl">
+                <h3 className="mb-5 font-heading text-lg font-semibold tracking-tight sm:text-xl">
                   {combo.title}
                   <span className="ml-2 text-sm font-normal text-muted-foreground">
                     {combo.description}

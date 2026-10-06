@@ -436,10 +436,10 @@ export function SiteHeader({
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors",
+                    "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
                     active
-                      ? "border-gold/60 bg-gold/15 text-gold-foreground"
-                      : "border-border bg-card text-foreground/75 shadow-sm hover:border-primary/30 hover:text-primary",
+                      ? "border-primary/50 font-semibold text-primary"
+                      : "border-border/70 text-foreground/70 hover:border-primary/30 hover:text-primary",
                   )}
                 >
                   {item.title}

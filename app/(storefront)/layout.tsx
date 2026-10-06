@@ -93,7 +93,7 @@ export default async function StorefrontLayout({
       <div className="hidden md:block">
         <WhatsAppButton number={settings.whatsapp} />
       </div>
-      <MobileBottomNav />
+      <MobileBottomNav isLoggedIn={!!user} />
       <AffiliateTracker />
       <VisitTracker />
       <JourneyTracker />
