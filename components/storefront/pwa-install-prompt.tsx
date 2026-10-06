@@ -10,7 +10,6 @@ import {
   SquarePlus,
   Bell,
   Download,
-  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -137,16 +136,14 @@ export function PwaPromptCard({
       </button>
 
       <div className="flex items-start gap-3 pr-8">
-        <span className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary/10 text-primary">
-          {mode === "push" ? (
-            <Bell className="size-5" />
-          ) : logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt="" className="size-full object-contain p-1.5" />
-          ) : (
-            <Smartphone className="size-5" />
-          )}
-        </span>
+        {mode === "push" ? (
+          <Bell className="mt-0.5 size-5 shrink-0 text-primary" strokeWidth={1.75} />
+        ) : logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logoUrl} alt="" className="mt-0.5 size-8 shrink-0 object-contain" />
+        ) : (
+          <Smartphone className="mt-0.5 size-5 shrink-0 text-primary" strokeWidth={1.75} />
+        )}
         <div className="min-w-0">
           <p className="text-[15px] font-semibold leading-snug">{title}</p>
           <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
@@ -155,15 +152,15 @@ export function PwaPromptCard({
 
       {mode === "native" && (
         <>
-          <ul className="mt-3 grid grid-cols-3 gap-1.5 text-center text-[11px] text-muted-foreground">
-            <li className="rounded-lg bg-accent/40 px-1 py-2">
-              <Zap className="mx-auto mb-1 size-4 text-primary" /> Faster loading
+          <ul className="mt-3 grid grid-cols-3 divide-x divide-border text-center text-[11px] text-muted-foreground">
+            <li className="px-1 py-2">
+              <Zap className="mx-auto mb-1 size-4 text-primary" strokeWidth={1.75} /> Faster loading
             </li>
-            <li className="rounded-lg bg-accent/40 px-1 py-2">
-              <WifiOff className="mx-auto mb-1 size-4 text-primary" /> Works offline
+            <li className="px-1 py-2">
+              <WifiOff className="mx-auto mb-1 size-4 text-primary" strokeWidth={1.75} /> Works offline
             </li>
-            <li className="rounded-lg bg-accent/40 px-1 py-2">
-              <Sparkles className="mx-auto mb-1 size-4 text-primary" /> App experience
+            <li className="px-1 py-2">
+              <Smartphone className="mx-auto mb-1 size-4 text-primary" strokeWidth={1.75} /> App experience
             </li>
           </ul>
           <div className="mt-3 flex gap-2">
@@ -186,15 +183,15 @@ export function PwaPromptCard({
       )}
 
       {mode === "ios" && (
-        <ol className="mt-3 space-y-2 text-sm">
-          <li className="flex items-center gap-2.5 rounded-lg bg-accent/40 px-3 py-2.5">
-            <Share className="size-4 shrink-0 text-primary" />
+        <ol className="mt-3 space-y-2.5 border-l border-border pl-3.5 text-sm">
+          <li className="flex items-center gap-2.5">
+            <Share className="size-4 shrink-0 text-primary" strokeWidth={1.75} />
             <span>
               Tap the <span className="font-semibold">Share</span> button in Safari
             </span>
           </li>
-          <li className="flex items-center gap-2.5 rounded-lg bg-accent/40 px-3 py-2.5">
-            <SquarePlus className="size-4 shrink-0 text-primary" />
+          <li className="flex items-center gap-2.5">
+            <SquarePlus className="size-4 shrink-0 text-primary" strokeWidth={1.75} />
             <span>
               Choose <span className="font-semibold">Add to Home Screen</span>
             </span>

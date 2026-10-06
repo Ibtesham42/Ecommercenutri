@@ -82,8 +82,8 @@ function RecoCard({ card, delivery }: { card: AiRecoCard; delivery: string }) {
               loading="lazy"
             />
           ) : (
-            <span className="grid size-20 place-items-center rounded-lg bg-accent text-primary">
-              <Sparkles className="size-6" />
+            <span className="grid size-20 place-items-center rounded-lg border bg-muted/40 text-muted-foreground/60">
+              <Sparkles className="size-6" strokeWidth={1.5} />
             </span>
           )}
         </Link>

@@ -60,9 +60,7 @@ export function B2BForm({ cloudinaryReady }: { cloudinaryReady: boolean }) {
   if (sent) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-2xl border bg-accent/30 p-8 text-center shadow-elev-1">
-        <span className="grid size-16 place-items-center rounded-full bg-primary/10 ring-8 ring-primary/5">
-          <CheckCircle2 className="size-9 text-primary" />
-        </span>
+        <CheckCircle2 className="size-10 text-primary" strokeWidth={1.5} />
         <h3 className="mt-1 font-heading text-xl font-semibold">Inquiry received</h3>
         <p className="max-w-md text-sm text-muted-foreground">
           Thank you for contacting Nutriyet Business. We have successfully received your

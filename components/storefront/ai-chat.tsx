@@ -191,9 +191,7 @@ export function AiChat({
       >
         {empty && (
           <div className="flex h-full flex-col items-center justify-center text-center">
-            <span className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
-              <Sparkles className="size-6" />
-            </span>
+            <Sparkles className="size-7 text-muted-foreground/70" strokeWidth={1.5} />
             <p
               className={cn(
                 "mt-3 max-w-sm text-sm text-muted-foreground",

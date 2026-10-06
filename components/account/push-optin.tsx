@@ -80,9 +80,7 @@ export function PushOptIn({ vapidPublicKey }: { vapidPublicKey: string }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4">
       <div className="flex items-center gap-3">
-        <span className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
-          <Bell className="size-5" />
-        </span>
+        <Bell className="size-5 shrink-0 text-primary" strokeWidth={1.75} />
         <div>
           <p className="font-medium">Push notifications</p>
           <p className="text-xs text-muted-foreground">

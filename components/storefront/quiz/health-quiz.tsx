@@ -222,9 +222,7 @@ function Intro({ onStart, couponPercent }: { onStart: () => void; couponPercent:
               OPTION_DELAYS[i],
             )}
           >
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-              <e.icon className="size-4.5" />
-            </span>
+            <e.icon className="mt-0.5 size-4.5 shrink-0 text-primary" strokeWidth={1.75} />
             <span className="min-w-0">
               <span className="block text-sm font-semibold">{e.title}</span>
               <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{e.desc}</span>
@@ -250,9 +248,7 @@ function Analyzing() {
   ];
   return (
     <div className="animate-fade-up grid place-items-center py-16 text-center">
-      <span className="pulse-halo grid size-16 place-items-center rounded-full bg-primary/10">
-        <Sparkles className="size-7 text-primary" />
-      </span>
+      <Sparkles className="size-9 text-primary" strokeWidth={1.5} />
       <p className="mt-6 font-heading text-xl font-semibold">Reading your answers…</p>
       <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
         {beats.map((b, i) => (
@@ -291,9 +287,7 @@ function QuizResult({
 
         {result.teaserTips[0] && (
           <div className="mx-auto mt-5 flex max-w-md items-start gap-3 rounded-2xl border bg-accent/40 p-4 text-left text-sm">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-gold/15">
-              <Lightbulb className="size-4.5 text-gold" />
-            </span>
+            <Lightbulb className="mt-0.5 size-4.5 shrink-0 text-gold" strokeWidth={1.75} />
             <div className="min-w-0">
               <p className="font-semibold">Your first tip</p>
               <p className="mt-1 text-muted-foreground">{result.teaserTips[0]}</p>

@@ -1,13 +1,13 @@
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { Leaf } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 /**
- * Consistent, friendly empty state used across the storefront (empty cart,
- * wishlist, no search results, no products). Icon + heading + hint + optional
- * CTA, on a soft branded wash with a leaf flourish — premium, never plain.
+ * Consistent empty state used across the storefront (empty cart, wishlist, no
+ * search results, no products). A bare icon and the same gold hairline accent
+ * used under every page heading carry the moment — no decorative wash, no
+ * icon-tile container.
  */
 export function EmptyState({
   icon: Icon,
@@ -25,23 +25,13 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "relative flex flex-col items-center justify-center overflow-hidden rounded-3xl border bg-gradient-to-b from-accent/35 via-card to-card px-6 py-16 text-center shadow-elev-1",
+        "flex flex-col items-center justify-center rounded-3xl border bg-card px-6 py-16 text-center shadow-elev-1",
         className,
       )}
     >
-      {/* Decorative brand leaves — pure ornament. */}
-      <Leaf
-        aria-hidden
-        className="pointer-events-none absolute -left-4 -top-4 size-24 rotate-[-24deg] text-primary/[0.07]"
-      />
-      <Leaf
-        aria-hidden
-        className="pointer-events-none absolute -bottom-6 -right-4 size-28 rotate-[18deg] text-gold/10"
-      />
-      <span className="relative grid size-16 place-items-center rounded-2xl bg-accent/60 text-primary shadow-elev-1 ring-4 ring-accent/30">
-        <Icon className="size-8" />
-      </span>
-      <h2 className="mt-5 font-heading text-lg font-semibold tracking-tight">{title}</h2>
+      <Icon className="size-9 text-muted-foreground/70" strokeWidth={1.5} />
+      <span className="mt-4 block h-0.5 w-9 rounded-full bg-gold" />
+      <h2 className="mt-4 font-heading text-lg font-semibold tracking-tight">{title}</h2>
       {description && (
         <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">{description}</p>
       )}

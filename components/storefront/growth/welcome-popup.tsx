@@ -103,11 +103,6 @@ export function WelcomePopup({
 
   const benefits = [
     {
-      icon: Sparkles,
-      title: "Free AI health check",
-      desc: "60 seconds to your personal wellness score",
-    },
-    {
       icon: Salad,
       title: "Snacks picked for you",
       desc: "Matched to your goal, not generic bestsellers",
@@ -116,6 +111,11 @@ export function WelcomePopup({
       icon: Gift,
       title: `${couponPercent}% welcome reward`,
       desc: "Unlocked on your first order",
+    },
+    {
+      icon: Sparkles,
+      title: "Free AI health check",
+      desc: "60 seconds to your personal wellness score",
     },
   ];
 
@@ -129,15 +129,8 @@ export function WelcomePopup({
           the outer content, so the base's `overflow-y-auto` can still let this
           scroll internally on a short/narrow phone instead of clipping. */}
       <DialogContent className="gap-0 rounded-3xl border-none p-0 sm:max-w-sm">
-        <div className="surface-rich relative overflow-hidden rounded-t-3xl px-6 pt-8 pb-7 text-center text-surface-deep-foreground">
-          <Sparkles className="badge-breathe absolute top-8 left-7 size-4 text-gold/40" aria-hidden />
-          <Sparkles className="absolute right-9 bottom-7 size-3 text-gold/25" aria-hidden />
-          <div className="relative mx-auto size-14">
-            <div className="absolute inset-0 rounded-2xl bg-gold/25 blur-xl" aria-hidden />
-            <span className="relative grid size-14 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15">
-              <Leaf className="size-7 text-gold" />
-            </span>
-          </div>
+        <div className="surface-rich relative rounded-t-3xl px-6 pt-8 pb-7 text-center text-surface-deep-foreground">
+          <Leaf className="mx-auto size-8 text-gold" strokeWidth={1.5} />
           <p className="mt-4 text-[11px] font-semibold tracking-[0.18em] text-gold uppercase">
             A welcome gift for you
           </p>
@@ -159,9 +152,7 @@ export function WelcomePopup({
                   FADE_DELAYS[i],
                 )}
               >
-                <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-                  <b.icon className="size-4.5" />
-                </span>
+                <b.icon className="mt-0.5 size-4.5 shrink-0 text-primary" strokeWidth={1.75} />
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold">{b.title}</span>
                   <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{b.desc}</span>

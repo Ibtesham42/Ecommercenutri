@@ -20,10 +20,9 @@ export default function AuthError({
 
   return (
     <div className="flex flex-col items-center px-4 text-center">
-      <span className="grid size-16 place-items-center rounded-2xl bg-accent/60 text-primary shadow-elev-1 ring-4 ring-accent/30">
-        <AlertTriangle className="size-8" />
-      </span>
-      <h1 className="mt-5 font-heading text-xl font-semibold tracking-tight">
+      <AlertTriangle className="size-9 text-muted-foreground/70" strokeWidth={1.5} />
+      <span className="mt-4 block h-0.5 w-9 rounded-full bg-gold" />
+      <h1 className="mt-4 font-heading text-xl font-semibold tracking-tight">
         Something went wrong
       </h1>
       <p className="mt-1.5 text-sm text-muted-foreground">

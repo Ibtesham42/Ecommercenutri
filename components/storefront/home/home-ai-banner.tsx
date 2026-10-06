@@ -21,10 +21,6 @@ export function HomeAiBanner({ content }: { content: AiBannerContent }) {
         )}
         style={styled ? style : undefined}
       >
-        {/* Warm-gold ambient glow (default surface only). */}
-        {!styled && (
-          <div className="pointer-events-none absolute -right-10 -top-10 size-56 rounded-full bg-gold/25 blur-3xl" />
-        )}
         <div className="relative z-10 max-w-2xl space-y-4">
           {content.eyebrow && (
             <Badge className="gap-1.5 border border-white/20 bg-white/10 text-current hover:bg-white/15">
@@ -50,7 +46,6 @@ export function HomeAiBanner({ content }: { content: AiBannerContent }) {
             </Button>
           )}
         </div>
-        <Sparkles className="absolute -right-6 -top-6 size-48 text-gold opacity-10" />
       </div>
     </section>
   );
