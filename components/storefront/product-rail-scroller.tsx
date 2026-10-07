@@ -53,12 +53,14 @@ export function ProductRailScroller({
       <div ref={trackRef} className="scroll-rail gap-4">
         {children}
       </div>
+      {/* Arrows straddle the rail edge by a quarter (10px): a half-straddle
+          (20px) pokes past the sections' 16px px-4 gutter between md and xl. */}
       {canLeft && (
         <button
           type="button"
           aria-label="Show previous products"
           onClick={() => scroll(-1)}
-          className="absolute left-0 top-1/2 hidden size-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-card text-foreground shadow-elev-2 transition-colors hover:border-primary/40 hover:text-primary md:flex"
+          className="absolute left-0 top-1/2 hidden size-10 -translate-x-1/4 -translate-y-1/2 items-center justify-center rounded-full border bg-card text-foreground shadow-elev-2 transition-colors hover:border-primary/40 hover:text-primary md:flex"
         >
           <ChevronLeft className="size-5" />
         </button>
@@ -68,7 +70,7 @@ export function ProductRailScroller({
           type="button"
           aria-label="Show more products"
           onClick={() => scroll(1)}
-          className="absolute right-0 top-1/2 hidden size-10 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-card text-foreground shadow-elev-2 transition-colors hover:border-primary/40 hover:text-primary md:flex"
+          className="absolute right-0 top-1/2 hidden size-10 translate-x-1/4 -translate-y-1/2 items-center justify-center rounded-full border bg-card text-foreground shadow-elev-2 transition-colors hover:border-primary/40 hover:text-primary md:flex"
         >
           <ChevronRight className="size-5" />
         </button>
