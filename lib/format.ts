@@ -67,3 +67,11 @@ const dateTimeFmt = new Intl.DateTimeFormat("en-IN", {
 export function formatDateTime(date: Date | string | number): string {
   return dateTimeFmt.format(new Date(date));
 }
+
+/** Lowest effective (sale-aware) price across a product's variants, in paise. */
+export function minVariantPrice(
+  variants: { price: number; discountPrice: number | null }[],
+): number | null {
+  if (variants.length === 0) return null;
+  return Math.min(...variants.map((v) => effectivePrice(v.price, v.discountPrice)));
+}

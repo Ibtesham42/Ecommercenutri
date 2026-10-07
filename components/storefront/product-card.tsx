@@ -10,7 +10,8 @@ import { Reveal } from "@/components/storefront/reveal";
 import { ProductRailScroller } from "@/components/storefront/product-rail-scroller";
 import { cn } from "@/lib/utils";
 import { formatPrice, discountPercent, effectivePrice } from "@/lib/format";
-import { minVariantPrice, type ProductCardData } from "@/lib/queries/products";
+import { minVariantPrice } from "@/lib/format";
+import type { ProductCardData } from "@/lib/queries/products";
 
 export function ProductCard({
   product,

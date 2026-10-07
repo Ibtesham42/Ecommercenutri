@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { getStoreSettingRow, type StoreSettingRow } from "@/lib/store-setting-row";
 import { siteConfig } from "@/config/site";
 import { cldUrl } from "@/lib/cld";
 
@@ -141,9 +141,9 @@ function splitKeywords(v: string): string[] {
  * Resilient to a briefly-unreachable DB (falls back to pure config).
  */
 export async function getSeoSettings(): Promise<SeoSettings> {
-  let row: Awaited<ReturnType<typeof prisma.storeSetting.findUnique>> = null;
+  let row: StoreSettingRow | null = null;
   try {
-    row = await prisma.storeSetting.findUnique({ where: { id: "singleton" } });
+    row = await getStoreSettingRow();
   } catch {
     /* fall back to config */
   }
@@ -152,7 +152,7 @@ export async function getSeoSettings(): Promise<SeoSettings> {
 
 /** Pure resolver (exported so the admin page can resolve without a 2nd query). */
 export function resolveSeo(
-  row: Awaited<ReturnType<typeof prisma.storeSetting.findUnique>>,
+  row: StoreSettingRow | null,
 ): SeoSettings {
   const blob = (row?.seo && typeof row.seo === "object" ? row.seo : {}) as SeoBlob;
 

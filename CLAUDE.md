@@ -117,6 +117,10 @@ lowercase with `[slug]`/`(group)` · server actions verb-first (`createOrder`).
 - **StoreSetting is a singleton row**; new feature config = additive column or JSON blob
   resolved over code defaults (`growth`/`pwa`/`seo`/`heroReveal` pattern —
   `docs/architecture.md`).
+- **Shopper-independent storefront reads are data-cached** (`lib/cache.ts#cachedQuery`);
+  the Prisma extension in `lib/prisma.ts` auto-invalidates by model (`MODEL_TAGS`). Never
+  cache stock/price data; cached results must not contain `Date`s. Details:
+  `docs/architecture.md`.
 - **Feature catalogs are client-safe single-source-of-truth modules** (quiz questions,
   survey questions, showcase presets, hero-reveal config) — UI, validation and analytics
   all read the same catalog; store option KEYS, render labels.

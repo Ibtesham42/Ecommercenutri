@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { CACHE_TAGS, cachedQuery } from "@/lib/cache";
 
 /** Category name matches for search typeahead (search overlay + suggestions). */
 export async function searchCategories(q: string, limit = 3) {
@@ -21,7 +22,10 @@ export async function getCategories() {
 /** Top-level categories + their subcategories, for the header's category
  *  mega-menu / drawer accordion. Minimal `select` keeps this a plain,
  *  client-serializable shape (no Decimal/Date fields). */
-export async function getCategoryTree() {
+/** Header/drawer nav tree — same for every shopper, so cached (invalidated on any Category write). */
+export const getCategoryTree = cachedQuery(readCategoryTree, "category-tree", [CACHE_TAGS.categories]);
+
+function readCategoryTree() {
   return prisma.category.findMany({
     where: { isActive: true, parentId: null },
     orderBy: { sortOrder: "asc" },

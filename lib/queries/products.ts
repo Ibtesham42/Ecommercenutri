@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { effectivePrice, discountPercent } from "@/lib/format";
+import { discountPercent, minVariantPrice } from "@/lib/format";
 import { withDbRetry } from "@/lib/db-retry";
 
 // ---------------------------------------------------------------------------
@@ -60,13 +60,8 @@ export type ProductDetailData = Prisma.ProductGetPayload<{
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Lowest effective (sale-aware) price across a product's variants, in paise. */
-export function minVariantPrice(
-  variants: { price: number; discountPrice: number | null }[],
-): number | null {
-  if (variants.length === 0) return null;
-  return Math.min(...variants.map((v) => effectivePrice(v.price, v.discountPrice)));
-}
+// Pure helper lives in lib/format (client-safe); re-exported for server callers.
+export { minVariantPrice } from "@/lib/format";
 
 // ---------------------------------------------------------------------------
 // Queries

@@ -123,6 +123,21 @@ docs/                  Feature documentation (this folder)
   `heroReveal`) resolved over code defaults by a `lib/<feature>-settings.ts`-style
   module (Blob type → `Required<Blob>` settings → DEFAULTS → pure `resolve()` →
   `get()` with defaults-on-error). Blobs need no per-field migrations.
+  Storefront getters read the row via `lib/store-setting-row.ts#getStoreSettingRow`
+  (one cached read shared by every getter); admin pages/actions read it directly.
+- **Storefront data cache** (`lib/cache.ts`): reads that are identical for every
+  shopper — the StoreSetting row, the nav category tree, hero slides, homepage
+  section rows — go through `cachedQuery(fn, key, tags)` (`unstable_cache` + React
+  `cache()` per-request dedupe, 5-min TTL safety net). **Invalidation is automatic:**
+  the Prisma client extension in `lib/prisma.ts` calls `revalidateTag` after any write
+  to a model listed in `MODEL_TAGS`, so admin actions never need to. Rules: cache only
+  the raw DB read (keep defaults-on-error fallbacks *outside*, so a DB blip is never
+  cached); return no `Date`s (JSON round-trip turns them into strings); pass the real
+  query fn (Next keys on `fn.toString()`) and derive the key from any referenced
+  select / the generated column enum so a code or schema change gets a fresh key
+  across deploys; **never cache stock/price-bearing reads** (products, variants,
+  showcase) — they change on every order. Adding a cached model = add it to
+  `MODEL_TAGS`.
 
 ### Database workflow
 

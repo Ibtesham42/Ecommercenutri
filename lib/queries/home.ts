@@ -1,5 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getStoreSettingRow } from "@/lib/store-setting-row";
+import { CACHE_TAGS, cachedQuery } from "@/lib/cache";
 import { effectivePrice } from "@/lib/format";
 import {
   HOME_SECTION_KEYS,
@@ -34,8 +36,8 @@ const heroSlideSelect = {
   textAlign: true,
   sortOrder: true,
   isActive: true,
-  startsAt: true,
-  expiresAt: true,
+  // startsAt/expiresAt are filtered in the query, not selected: the result is
+  // cached, and Dates would come back from the cache as strings.
   product: { select: { slug: true } },
   category: { select: { slug: true } },
 } satisfies Prisma.HeroSlideSelect;
@@ -44,11 +46,14 @@ export type HeroSlideData = Prisma.HeroSlideGetPayload<{
   select: typeof heroSlideSelect;
 }>;
 
-/** Published hero slides within their schedule window, ordered for display. */
-export async function getActiveHeroSlides(): Promise<HeroSlideData[]> {
-  const now = new Date();
-  try {
-    return await prisma.heroSlide.findMany({
+/**
+ * Cached for every shopper; a schedule boundary (startsAt/expiresAt) takes
+ * effect within the cache TTL. Invalidated on any HeroSlide/Product/Category write.
+ */
+const readActiveHeroSlides = cachedQuery(
+  () => {
+    const now = new Date();
+    return prisma.heroSlide.findMany({
       where: {
         isActive: true,
         AND: [
@@ -59,6 +64,16 @@ export async function getActiveHeroSlides(): Promise<HeroSlideData[]> {
       select: heroSlideSelect,
       orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     });
+  },
+  // Key on the select's contents: fn.toString() only sees the identifier.
+  `hero-slides:${JSON.stringify(heroSlideSelect)}`,
+  [CACHE_TAGS.home],
+);
+
+/** Published hero slides within their schedule window, ordered for display. */
+export async function getActiveHeroSlides(): Promise<HeroSlideData[]> {
+  try {
+    return await readActiveHeroSlides();
   } catch {
     // Never let the homepage fail if the DB is briefly unreachable.
     return [];
@@ -74,6 +89,17 @@ export function heroSlideHref(slide: HeroSlideData): string | null {
 
 export type HomeSectionOrderItem = { key: HomeSectionKey; enabled: boolean };
 
+/** All homepage section rows in one cached read, shared by order + content. */
+const readHomeSectionRows = cachedQuery(
+  () =>
+    prisma.homeSection.findMany({
+      orderBy: { sortOrder: "asc" },
+      select: { key: true, enabled: true, content: true },
+    }),
+  "home-section-rows",
+  [CACHE_TAGS.home],
+);
+
 /**
  * Effective homepage section order + visibility. Reads the admin config and
  * merges it with the section registry: configured sections keep their saved
@@ -84,10 +110,7 @@ export type HomeSectionOrderItem = { key: HomeSectionKey; enabled: boolean };
 export async function getHomeSectionOrder(): Promise<HomeSectionOrderItem[]> {
   let rows: { key: string; enabled: boolean }[] = [];
   try {
-    rows = await prisma.homeSection.findMany({
-      orderBy: { sortOrder: "asc" },
-      select: { key: true, enabled: true },
-    });
+    rows = await readHomeSectionRows();
   } catch {
     /* fall back to defaults below */
   }
@@ -120,7 +143,7 @@ export async function getHomeSectionOrder(): Promise<HomeSectionOrderItem[]> {
 export async function getHomeSectionsContent(): Promise<HomeContentMap> {
   let rows: { key: string; content: Prisma.JsonValue }[] = [];
   try {
-    rows = await prisma.homeSection.findMany({ select: { key: true, content: true } });
+    rows = await readHomeSectionRows();
   } catch {
     /* fall back to defaults */
   }
@@ -167,10 +190,7 @@ export async function getActiveShowcase(): Promise<{
 }> {
   try {
     const [setting, rows] = await Promise.all([
-      prisma.storeSetting.findUnique({
-        where: { id: "singleton" },
-        select: { showcase3dEnabled: true },
-      }),
+      getStoreSettingRow(),
       prisma.showcaseItem.findMany({
         where: { isActive: true },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
@@ -222,10 +242,7 @@ export async function getActiveShowcase(): Promise<{
  */
 export async function getHeroRevealSettings(): Promise<HeroRevealSettings> {
   try {
-    const row = await prisma.storeSetting.findUnique({
-      where: { id: "singleton" },
-      select: { heroReveal: true },
-    });
+    const row = await getStoreSettingRow();
     return resolveHeroReveal(row?.heroReveal);
   } catch {
     return HERO_REVEAL_DEFAULTS;

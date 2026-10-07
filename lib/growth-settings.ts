@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { getStoreSettingRow } from "@/lib/store-setting-row";
 
 /**
  * Conversion-optimization ("Growth") configuration — admin-editable feature
@@ -70,10 +70,7 @@ export function resolveGrowth(blob: unknown): GrowthSettings {
 /** Resolved growth config for the storefront/admin. Defaults on DB error. */
 export async function getGrowthSettings(): Promise<GrowthSettings> {
   try {
-    const row = await prisma.storeSetting.findUnique({
-      where: { id: "singleton" },
-      select: { growth: true },
-    });
+    const row = await getStoreSettingRow();
     return resolveGrowth(row?.growth);
   } catch {
     return GROWTH_DEFAULTS;

@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { updatePwaSettings } from "@/lib/actions/admin/pwa";
 import { PwaPromptCard } from "@/components/storefront/pwa-install-prompt";
-import { PWA_REMIND_OPTIONS, type PwaSettings } from "@/lib/pwa-settings";
+import { PWA_REMIND_OPTIONS, type PwaSettings } from "@/lib/pwa-config";
 
 /**
  * Admin → Appearance: PWA install-prompt settings — copy, reminder interval and
