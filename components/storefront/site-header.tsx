@@ -3,25 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import {
-  Heart,
-  Menu,
-  User,
-  Home,
-  ShoppingBag,
-  LayoutGrid,
-  Star,
-  Sparkles,
-  Building2,
-  Info,
-  Phone,
-  Gift,
-  Package,
-  Sparkle,
-  type LucideIcon,
-} from "lucide-react";
+import { Heart, Menu, User, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -35,8 +18,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { siteConfig } from "@/config/site";
-import { CategoryMegaMenu, type CategoryNavNode } from "@/components/storefront/category-mega-menu";
+import {
+  CategoryMegaMenu,
+  CategoryThumb,
+  navLinkClass,
+  type CategoryNavNode,
+} from "@/components/storefront/category-mega-menu";
 import { Logo } from "@/components/storefront/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CartIcon } from "@/components/storefront/cart-icon";
@@ -46,38 +33,32 @@ import { DeliverTo } from "@/components/storefront/deliver-to";
 import { NotificationBell, type BellNotification } from "@/components/account/notification-bell";
 import { SigninSpotlight } from "@/components/storefront/onboarding/signin-spotlight";
 
-/** Icon per drawer nav item, keyed by href (drawer-only — the shared
- *  `siteConfig.mainNav` stays a plain title/href list for the desktop nav,
- *  department chips and footer). Small inline glyphs, not icon tiles — kept
- *  deliberately secondary to the label. */
-const NAV_ICONS: Record<string, LucideIcon> = {
-  "/": Home,
-  "/products": ShoppingBag,
-  "/categories": LayoutGrid,
-  "/products?sort=best-sellers": Star,
-  "/new-arrivals": Sparkle,
-  "/offers": Gift,
-  "/assistant": Sparkles,
-  "/b2b": Building2,
-  "/about": Info,
-  "/contact": Phone,
-};
+/** The single primary row — five destinations, all existing routes. Best
+ *  sellers / New arrivals / Offers live in the Categories flyout + drawer;
+ *  Contact under Help; the AI assistant in search, the drawer and the footer. */
+const PRIMARY_NAV = [
+  { title: "Shop", href: "/products" },
+  { title: "Categories", href: "/categories" },
+  { title: "Our Story", href: "/about" },
+  { title: "Journal", href: "/blog" },
+  { title: "Bulk / B2B", href: "/b2b" },
+] as const;
 
-/** Drawer-only grouping of the shared `siteConfig.mainNav` list into labelled
- *  sections (Shop / Discover / Business / Support) so the menu reads with
- *  typographic hierarchy instead of one flat list of equally-weighted rows.
- *  Doesn't change `siteConfig` or any route — purely how the drawer lays the
- *  same items out. */
-const DRAWER_GROUPS: { label: string | null; hrefs: string[] }[] = [
-  { label: null, hrefs: ["/"] },
-  {
-    label: "Shop",
-    hrefs: ["/products", "/categories", "/products?sort=best-sellers", "/new-arrivals", "/offers"],
-  },
-  { label: "Discover", hrefs: ["/assistant"] },
-  { label: "Business", hrefs: ["/b2b"] },
-  { label: "Support", hrefs: ["/about", "/contact"] },
-];
+const DRAWER_COLLECTIONS = [
+  { title: "Best sellers", href: "/products?sort=best-sellers" },
+  { title: "New arrivals", href: "/new-arrivals" },
+  { title: "Offers", href: "/offers" },
+] as const;
+
+const DRAWER_HELP = [
+  { title: "Track order", href: "/track" },
+  { title: "Help & support", href: "/support" },
+  { title: "Contact us", href: "/contact" },
+] as const;
+
+/** Quiet icon button used across the header (44px tall touch target). */
+const iconBtn =
+  "relative grid h-11 w-9 shrink-0 place-items-center rounded-md text-foreground/80 transition-colors hover:text-foreground min-[400px]:w-10 lg:size-10 [&_svg]:size-[21px] lg:[&_svg]:size-5";
 
 export function SiteHeader({
   logoUrl,
@@ -107,12 +88,9 @@ export function SiteHeader({
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  // Active when on the item's route. Home matches "/" exactly; section links
-  // match their path and any sub-route. Query-bearing links (e.g. Best Sellers)
-  // share a path with their base link, so we don't path-highlight them (would
-  // need useSearchParams, which deopts this layout-mounted client component).
+  // Query-bearing links share a path with their base link, so they're never
+  // path-highlighted (useSearchParams would deopt this layout-mounted header).
   const isActiveNav = (href: string) => {
-    if (href === "/") return pathname === "/";
     if (href.includes("?")) return false;
     return pathname === href || pathname.startsWith(href + "/");
   };
@@ -121,333 +99,254 @@ export function SiteHeader({
     mobileHeight: logoHeightMobile,
     maxWidth: logoMaxWidth,
   };
-  // Icon/ghost buttons on the light cream header chrome (all breakpoints).
-  const onDeep = "text-foreground/80 hover:bg-accent hover:text-foreground";
+  const close = () => setOpen(false);
+  const accountHref = isLoggedIn ? "/account" : "/login";
 
   return (
-    <header className="header-chrome sticky top-0 z-50 w-full shadow-elev-1">
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-2 px-4 sm:gap-3">
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn("size-11 lg:hidden", onDeep)}
-              aria-label="Open menu"
-            >
-              <Menu className="size-[22px]" />
-            </Button>
-          </SheetTrigger>
-          {/* The drawer keeps the light surface for legibility. Close button is
-              the default Sheet one (absolute top-3 right-3) — `pr-14` on the
-              header row reserves its corner so nothing sits under it. */}
-          <SheetContent side="left" className="w-72 gap-0 p-0">
-            {/* Theme toggle lives here (not the primary header row) below `sm` —
-                there's no room for it in the icon cluster at the narrowest phone
-                widths (see the 320px fix in the primary row below). Relocated,
-                not removed: still one tap away via the menu. */}
-            <SheetHeader className="flex-row items-center justify-between gap-2 border-b p-4 pr-14">
-              <SheetTitle asChild>
-                <Logo logoUrl={logoUrl} name={siteName} className="min-w-0" {...logoSize} />
-              </SheetTitle>
-              <div className="shrink-0 sm:hidden">
-                <ThemeToggle />
-              </div>
-            </SheetHeader>
-            <nav aria-label="Primary" className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3 pb-6">
-              {DRAWER_GROUPS.map((group, groupIndex) => (
-                <div
-                  key={group.label ?? "top"}
-                  className={cn(groupIndex > 0 && "mt-1 border-t border-border/70 pt-1")}
-                >
-                  {group.label && (
-                    <p className="px-3 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">
-                      {group.label}
-                    </p>
-                  )}
-                  {group.hrefs.map((href) => {
-                    const item = siteConfig.mainNav.find((navItem) => navItem.href === href);
-                    if (!item) return null;
-                    const Icon = NAV_ICONS[href] ?? Home;
-                    const active = isActiveNav(href);
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
+      {/* ---------------------------------------------------------- mobile -- */}
+      {/* Equal flexible side columns keep the wordmark truly centred. */}
+      <div className="grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-2 min-[375px]:px-3 lg:hidden">
+        <div className="flex items-center">
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+              <button type="button" className={cn(iconBtn, "-ml-1")} aria-label="Open menu">
+                <Menu strokeWidth={1.6} />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[min(86vw,22rem)] gap-0 p-0">
+              <SheetHeader className="border-b border-border px-5 py-4 pr-14">
+                <SheetTitle asChild>
+                  <Logo
+                    logoUrl={logoUrl}
+                    name={siteName}
+                    className="min-w-0 text-xl font-semibold"
+                    {...logoSize}
+                  />
+                </SheetTitle>
+              </SheetHeader>
 
-                    // Categories gets an inline accordion of subcategories instead
-                    // of a plain link — department-style discovery without
-                    // leaving the drawer (mirrors the desktop mega-menu's data).
-                    if (href === "/categories" && categories.length > 0) {
+              <nav aria-label="Primary" className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                <ul className="px-5 pt-2">
+                  {PRIMARY_NAV.map((item) => {
+                    const active = isActiveNav(item.href);
+                    if (item.href === "/categories" && categories.length > 0) {
                       return (
-                        <Accordion key={href} type="single" collapsible>
-                          <AccordionItem value="categories" className="border-b-0">
-                            <AccordionTrigger
-                              className={cn(
-                                "items-center gap-3 border-l-2 py-3 pl-3 pr-3 text-[15px] font-normal hover:no-underline",
-                                active
-                                  ? "border-primary bg-primary/[0.05] text-primary"
-                                  : "border-transparent text-foreground/85 hover:bg-accent/40",
-                              )}
-                            >
-                              <span className="flex items-center gap-3">
-                                <Icon
-                                  className={cn(
-                                    "size-[17px] shrink-0",
-                                    active ? "text-primary" : "text-foreground/45",
-                                  )}
-                                  strokeWidth={1.75}
-                                />
-                                <span className={cn(active && "font-semibold")}>{item.title}</span>
-                              </span>
-                            </AccordionTrigger>
-                            <AccordionContent className="pr-3 pb-1 pl-3">
-                              <div className="ml-[8px] flex flex-col gap-2.5 border-l border-border pl-[21px]">
-                                {categories.map((category) => (
-                                  <div key={category.id}>
+                        <li key={item.href} className="border-b border-border/70">
+                          <Accordion type="single" collapsible>
+                            <AccordionItem value="categories" className="border-b-0">
+                              <AccordionTrigger
+                                className={cn(
+                                  "py-3.5 font-heading text-[1.375rem] font-normal leading-tight hover:no-underline",
+                                  active ? "text-primary" : "text-foreground",
+                                )}
+                              >
+                                {item.title}
+                              </AccordionTrigger>
+                              <AccordionContent className="pb-4">
+                                <ul className="space-y-3">
+                                  {categories.map((category) => (
+                                    <li key={category.id}>
+                                      <Link
+                                        href={`/categories/${category.slug}`}
+                                        onClick={close}
+                                        className="flex items-center gap-3 text-[15px] text-foreground !no-underline hover:text-primary"
+                                      >
+                                        <CategoryThumb
+                                          name={category.name}
+                                          image={category.image}
+                                          className="size-10"
+                                        />
+                                        {category.name}
+                                      </Link>
+                                      {category.children.length > 0 && (
+                                        <ul className="mt-2 space-y-1.5 pl-[3.25rem]">
+                                          {category.children.map((child) => (
+                                            <li key={child.id}>
+                                              <Link
+                                                href={`/categories/${child.slug}`}
+                                                onClick={close}
+                                                className="text-sm text-muted-foreground !no-underline hover:text-foreground"
+                                              >
+                                                {child.name}
+                                              </Link>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      )}
+                                    </li>
+                                  ))}
+                                  <li>
                                     <Link
-                                      href={`/categories/${category.slug}`}
-                                      onClick={() => setOpen(false)}
-                                      className="!no-underline text-sm font-medium text-foreground hover:text-primary"
+                                      href="/categories"
+                                      onClick={close}
+                                      className="inline-flex items-center gap-1 text-sm font-medium text-primary !no-underline"
                                     >
-                                      {category.name}
+                                      View all categories <ArrowRight className="size-3.5" />
                                     </Link>
-                                    {category.children.length > 0 && (
-                                      <div className="mt-1.5 flex flex-col gap-1.5">
-                                        {category.children.map((child) => (
-                                          <Link
-                                            key={child.id}
-                                            href={`/categories/${child.slug}`}
-                                            onClick={() => setOpen(false)}
-                                            className="!no-underline text-sm text-muted-foreground hover:text-primary"
-                                          >
-                                            {child.name}
-                                          </Link>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                                <Link
-                                  href="/categories"
-                                  onClick={() => setOpen(false)}
-                                  className="!no-underline mt-1 text-sm font-semibold text-primary"
-                                >
-                                  View all categories →
-                                </Link>
-                              </div>
-                            </AccordionContent>
-                          </AccordionItem>
-                        </Accordion>
+                                  </li>
+                                </ul>
+                              </AccordionContent>
+                            </AccordionItem>
+                          </Accordion>
+                        </li>
                       );
                     }
-
                     return (
-                      <Link
-                        key={href}
-                        href={href}
-                        onClick={() => setOpen(false)}
-                        aria-current={active ? "page" : undefined}
-                        className={cn(
-                          "flex items-center gap-3 border-l-2 py-3 pl-3 pr-3 text-[15px] transition-colors",
-                          active
-                            ? "border-primary bg-primary/[0.05] font-semibold text-primary"
-                            : "border-transparent text-foreground/85 hover:bg-accent/40 hover:text-foreground",
-                        )}
-                      >
-                        <Icon
-                          className={cn("size-[17px] shrink-0", active ? "text-primary" : "text-foreground/45")}
-                          strokeWidth={1.75}
-                        />
-                        <span>{item.title}</span>
-                      </Link>
+                      <li key={item.href} className="border-b border-border/70">
+                        <Link
+                          href={item.href}
+                          onClick={close}
+                          aria-current={active ? "page" : undefined}
+                          className={cn(
+                            "block py-3.5 font-heading text-[1.375rem] leading-tight transition-colors",
+                            active ? "text-primary" : "text-foreground hover:text-primary",
+                          )}
+                        >
+                          {item.title}
+                        </Link>
+                      </li>
                     );
                   })}
+                </ul>
+
+                <DrawerGroup label="Collections" items={DRAWER_COLLECTIONS} onNavigate={close} />
+                <DrawerGroup label="Help" items={DRAWER_HELP} onNavigate={close} />
+
+                <div className="mt-auto space-y-4 border-t border-border bg-oat/50 px-5 py-5">
+                  <DeliverTo
+                    className="px-0 py-0 text-sm hover:bg-transparent"
+                    freeShippingThreshold={freeShippingThreshold}
+                    freeShippingEnabled={freeShippingEnabled}
+                  />
+                  <Link
+                    href={accountHref}
+                    onClick={close}
+                    className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary"
+                  >
+                    <User className="size-4" strokeWidth={1.75} />
+                    {isLoggedIn ? "My account" : "Sign in or create account"}
+                  </Link>
+                  <div className="flex items-center justify-between">
+                    <Link
+                      href="/assistant"
+                      onClick={close}
+                      className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                    >
+                      Ask Nutriyet AI
+                    </Link>
+                    <ThemeToggle />
+                  </div>
                 </div>
-              ))}
-            </nav>
-          </SheetContent>
-        </Sheet>
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
 
         <Logo
           logoUrl={logoUrl}
           name={siteName}
-          className="min-w-0 shrink"
-          wordmarkClassName="hidden sm:inline"
+          // Cap the admin logo height inside the 56px row so the mark +
+          // wordmark always fit between the side columns (desktop is uncapped).
+          className="min-h-11 min-w-0 justify-self-center gap-1.5 text-lg font-semibold min-[400px]:text-xl [&_img]:max-h-9"
+          wordmarkClassName="hidden min-[360px]:inline"
           {...logoSize}
         />
 
-        {/* Desktop (lg+) search lives in this primary row and gets a generous,
-            stable slot — the nav moved to its own row below, so there's no space
-            competition and the field can never collapse. */}
-        <div className="mx-4 hidden flex-1 lg:block lg:max-w-xl xl:max-w-2xl" data-heat="search-bar">
-          <SearchBox />
-        </div>
-
-        <div className="ml-auto flex shrink-0 items-center gap-1.5">
-          <DeliverTo
-            className="mr-1 hidden xl:flex"
-            freeShippingThreshold={freeShippingThreshold}
-            freeShippingEnabled={freeShippingEnabled}
-          />
-          {notifications && (
-            <NotificationBell initialUnread={unreadCount} items={notifications} />
-          )}
-          <Button
-            asChild
-            variant="ghost"
-            size="icon"
-            className={cn("hidden size-11 sm:inline-flex sm:size-10", onDeep)}
-            aria-label="Wishlist"
-          >
-            <Link href="/account/wishlist">
-              <Heart className="size-[22px] sm:size-5" />
-            </Link>
-          </Button>
-          {isLoggedIn ? (
-            <>
-              <Button
-                asChild
-                variant="ghost"
-                size="icon"
-                className={cn("hidden size-11 sm:inline-flex sm:size-10", onDeep)}
-                aria-label="Orders"
-              >
-                <Link href="/account/orders">
-                  <Package className="size-[22px] sm:size-5" />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="ghost"
-                size="icon"
-                className={cn("size-11 sm:size-10", onDeep)}
-                aria-label="Account"
-              >
-                <Link href="/account">
-                  <User className="size-[22px] sm:size-5" />
-                </Link>
-              </Button>
-            </>
-          ) : (
-            <SigninSpotlight>
-              {/* Filled brand pill — the one loud CTA in the header, so new
-                  visitors can't miss the account entry point. Icon-only below
-                  `sm` (text label hidden, square padding like the other icon
-                  buttons) — at 320–639px the full "Sign in" pill plus Cart no
-                  longer fit this row; icon-only guarantees it never clips
-                  instead of relying on exact pixel math. The label returns at
-                  `sm` where there's room (matches the Logo wordmark's own
-                  `hidden sm:inline` breakpoint, same reasoning). */}
-              <Button
-                asChild
-                size="sm"
-                className="btn-rich h-11 gap-1.5 rounded-full px-3 text-sm font-bold shadow-elev-2 sm:h-10 sm:px-4"
-              >
-                <Link href="/login" aria-label="Sign in">
-                  <User className="size-[18px]" />
-                  <span className="hidden sm:inline">Sign in</span>
-                </Link>
-              </Button>
-            </SigninSpotlight>
-          )}
-          <Button
-            asChild
-            variant="ghost"
-            size="icon"
-            className={cn("relative size-11 sm:size-10", onDeep)}
-            aria-label="Cart"
-          >
-            <Link href="/cart">
-              <CartIcon />
-            </Link>
-          </Button>
-          {/* Hidden below `sm` — moved into the mobile drawer (see SheetHeader
-              above) so the icon cluster (Sign in / Cart) always has room to
-              breathe down to 320px without clipping. */}
-          <div className={cn("hidden sm:grid sm:size-10 place-items-center rounded-md", onDeep)}>
-            <ThemeToggle />
-          </div>
+        <div className="flex items-center justify-end" data-heat="search-bar">
+          <MobileSearchTrigger variant="icon" className={iconBtn} />
+          <Link href="/account/wishlist" className={iconBtn} aria-label="Wishlist">
+            <Heart strokeWidth={1.6} />
+          </Link>
+          <Link href="/cart" className={cn(iconBtn, "-mr-1")} aria-label="Cart">
+            <CartIcon />
+          </Link>
         </div>
       </div>
 
-      {/* Row 2 — desktop nav bar (lg+). Search-forward primary row above keeps the
-          nav in its own slim row, Amazon/Flipkart-style. `scroll-rail` (same
-          utility as the mobile department chips below) makes this a horizontal
-          scroller instead of wrapping/clipping once all ~10 items plus the
-          mega-menu no longer fit at 1024–1200px — every item stays reachable,
-          none are hidden, and nothing changes at widths where it already fits. */}
-      <nav className="hidden border-t border-border/60 lg:block" data-heat="header-nav">
-        <div className="scroll-rail mx-auto h-11 w-full max-w-7xl items-center gap-0.5 px-4">
-          {siteConfig.mainNav.map((item) => {
+      {/* --------------------------------------------------------- desktop -- */}
+      <div className="mx-auto hidden h-20 w-full max-w-7xl items-center gap-6 px-4 lg:flex xl:gap-10">
+        <Logo
+          logoUrl={logoUrl}
+          name={siteName}
+          className="shrink-0 text-2xl font-semibold"
+          {...logoSize}
+        />
+
+        <nav aria-label="Primary" data-heat="header-nav" className="flex items-center gap-5 xl:gap-7 2xl:gap-9">
+          {PRIMARY_NAV.map((item) => {
             const active = isActiveNav(item.href);
-
             if (item.href === "/categories" && categories.length > 0) {
-              return (
-                <CategoryMegaMenu
-                  key={item.href}
-                  categories={categories}
-                  active={active}
-                  className="shrink-0"
-                />
-              );
+              return <CategoryMegaMenu key={item.href} categories={categories} active={active} />;
             }
-
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={cn(
-                  "shrink-0 whitespace-nowrap rounded-md border-b-2 border-transparent px-2.5 py-1.5 text-sm font-medium tracking-[-0.01em] transition-colors",
-                  active
-                    ? "border-primary font-semibold text-primary"
-                    : "text-foreground/70 hover:text-primary",
-                )}
+                className={cn(navLinkClass(active), "whitespace-nowrap")}
               >
                 {item.title}
               </Link>
             );
           })}
-        </div>
-      </nav>
+        </nav>
 
-      {/* Full-width search row + deliver-to on mobile/tablet. Desktop (lg+) uses
-          the inline search bar inside the header row above. The mobile row is a
-          trigger that opens the full-screen SearchOverlay (app-style search). */}
-      <div className="lg:hidden">
-        <div className="mx-auto w-full max-w-7xl space-y-2 px-4 pb-2.5">
-          <div data-heat="search-bar">
-            <MobileSearchTrigger />
+        <div className="ml-auto flex items-center gap-1">
+          <div className="mr-2 w-52 xl:mr-4 xl:w-80 2xl:w-96" data-heat="search-bar">
+            <SearchBox inputClassName="h-10 border-border bg-oat/50 text-sm shadow-none placeholder:text-muted-foreground focus-visible:border-primary/50 focus-visible:shadow-none focus-visible:ring-2 focus-visible:ring-primary/15" />
           </div>
-          <DeliverTo
-            freeShippingThreshold={freeShippingThreshold}
-            freeShippingEnabled={freeShippingEnabled}
-          />
-        </div>
-      </div>
-
-      {/* Department chips — quick catalog jumps. Mobile/tablet only (desktop has
-          the inline nav). Horizontal scroll-snap rail on the light chrome. */}
-      <div className="border-t border-border/60 lg:hidden" data-heat="header-nav">
-        <div className="scroll-rail mx-auto w-full max-w-7xl gap-2 px-4 py-2.5">
-          {siteConfig.mainNav
-            .filter((item) => item.href !== "/")
-            .map((item) => {
-              const active = isActiveNav(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
-                    active
-                      ? "border-primary/50 font-semibold text-primary"
-                      : "border-border/70 text-foreground/70 hover:border-primary/30 hover:text-primary",
-                  )}
-                >
-                  {item.title}
-                </Link>
-              );
-            })}
+          {isLoggedIn ? (
+            <Link href="/account" className={iconBtn} aria-label="Account">
+              <User strokeWidth={1.6} />
+            </Link>
+          ) : (
+            <SigninSpotlight>
+              <Link href="/login" className={iconBtn} aria-label="Sign in">
+                <User strokeWidth={1.6} />
+              </Link>
+            </SigninSpotlight>
+          )}
+          <Link href="/account/wishlist" className={iconBtn} aria-label="Wishlist">
+            <Heart strokeWidth={1.6} />
+          </Link>
+          {notifications && (
+            <NotificationBell initialUnread={unreadCount} items={notifications} />
+          )}
+          <Link href="/cart" className={cn(iconBtn, "-mr-2")} aria-label="Cart">
+            <CartIcon />
+          </Link>
         </div>
       </div>
     </header>
+  );
+}
+
+function DrawerGroup({
+  label,
+  items,
+  onNavigate,
+}: {
+  label: string;
+  items: readonly { title: string; href: string }[];
+  onNavigate: () => void;
+}) {
+  return (
+    <div className="px-5 pt-6">
+      <p className="eyebrow">{label}</p>
+      <ul className="mt-3 space-y-2.5 pb-1">
+        {items.map((item) => (
+          <li key={item.href}>
+            <Link
+              href={item.href}
+              onClick={onNavigate}
+              className="text-[15px] text-foreground/85 transition-colors hover:text-primary"
+            >
+              {item.title}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

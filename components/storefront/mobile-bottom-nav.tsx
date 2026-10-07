@@ -4,9 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
-import { Home, ShoppingBag, Search, User, ShoppingCart } from "lucide-react";
+import { Home, ShoppingBag, Search, User, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CartCount } from "@/components/storefront/cart-count";
 
 // Same lazy-load + idle-prewarm pattern as `mobile-search-trigger.tsx` (the
 // header's mobile search row) — opening search from either entry point reuses
@@ -22,8 +21,8 @@ function prewarm() {
 
 /**
  * Sticky bottom tab bar — mobile only (`md:hidden`). Five equal-weight,
- * calm tabs (Home/Shop/Search/Account/Cart): no raised center AI button, no
- * per-tab pill fill — a mature-ecommerce bottom bar, not an app-template one.
+ * calm tabs (Home/Shop/Search/Wishlist/Account; Cart lives in the header): no
+ * raised center button, no pill fills — thin line icons, clear labels.
  * AI stays reachable (search overlay's "Ask Nutriyet AI" row, header nav,
  * drawer "Discover" group) without visually dominating primary navigation.
  *
@@ -63,16 +62,16 @@ export function MobileBottomNav({ isLoggedIn = false }: { isLoggedIn?: boolean }
         // element makes it scroll with the page instead of staying pinned. Solid
         // background (no backdrop-blur) avoids scroll repaint jitter; safe-area
         // padding fills the iPhone home-indicator gap so there's no white gap.
-        className="fixed inset-x-0 bottom-0 z-50 border-t bg-background shadow-[0_-2px_8px_rgba(20,40,26,0.06)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         data-heat="bottom-nav"
       >
         <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center px-2">
           <Tab href="/" label="Home" active={isActive("/", true)}>
-            <Home className="size-[21px]" />
+            <Home className="size-[22px]" strokeWidth={1.6} />
           </Tab>
-          <Tab href="/products" label="Shop" active={isActive("/products")}>
-            <ShoppingBag className="size-[21px]" />
+          <Tab href="/products" label="Shop" active={isActive("/products") || isActive("/categories")}>
+            <ShoppingBag className="size-[22px]" strokeWidth={1.6} />
           </Tab>
 
           <TabButton
@@ -81,21 +80,18 @@ export function MobileBottomNav({ isLoggedIn = false }: { isLoggedIn?: boolean }
             onClick={() => setSearchOpen(true)}
             onPointerDown={prewarm}
           >
-            <Search className="size-[21px]" />
+            <Search className="size-[22px]" strokeWidth={1.6} />
           </TabButton>
 
+          <Tab href="/account/wishlist" label="Wishlist" active={isActive("/account/wishlist")}>
+            <Heart className="size-[22px]" strokeWidth={1.6} />
+          </Tab>
           <Tab
             href={isLoggedIn ? "/account" : "/login"}
             label="Account"
-            active={isActive("/account") || isActive("/login")}
+            active={(isActive("/account") && !isActive("/account/wishlist")) || isActive("/login")}
           >
-            <User className="size-[21px]" />
-          </Tab>
-          <Tab href="/cart" label="Cart" active={isActive("/cart")}>
-            <span className="relative inline-grid place-items-center">
-              <ShoppingCart className="size-[21px]" />
-              <CartCount />
-            </span>
+            <User className="size-[22px]" strokeWidth={1.6} />
           </Tab>
         </div>
       </nav>
@@ -118,11 +114,11 @@ export function MobileBottomNav({ isLoggedIn = false }: { isLoggedIn?: boolean }
 function tabChrome(active: boolean) {
   return {
     link: cn(
-      "flex flex-col items-center justify-center gap-1 py-1.5 text-[10.5px] font-medium transition-colors",
+      "flex min-h-11 flex-col items-center justify-center gap-1 pt-2 text-[11px] font-medium tracking-[0.01em] transition-colors",
       active ? "text-primary" : "text-muted-foreground hover:text-foreground",
     ),
     indicator: cn(
-      "h-[3px] w-4 rounded-full transition-colors",
+      "h-0.5 w-5 rounded-full transition-colors",
       active ? "bg-primary" : "bg-transparent",
     ),
   };

@@ -22,9 +22,12 @@ type Suggestion = {
 export function SearchBox({
   autoFocus,
   onNavigate,
+  inputClassName,
 }: {
   autoFocus?: boolean;
   onNavigate?: () => void;
+  /** Visual overrides for the field (e.g. the compact desktop header). */
+  inputClassName?: string;
 }) {
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -130,7 +133,10 @@ export function SearchBox({
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
           placeholder="Search for makhana, almonds, protein…"
-          className="h-12 rounded-full border-border/70 bg-card pl-11 pr-11 text-foreground shadow-elev-1 transition-[box-shadow,border-color] placeholder:text-muted-foreground/80 focus-visible:border-primary/40 focus-visible:shadow-elev-2 focus-visible:ring-4 focus-visible:ring-primary/15"
+          className={cn(
+            "h-12 rounded-full border-border/70 bg-card pl-11 pr-11 text-foreground shadow-elev-1 transition-[box-shadow,border-color] placeholder:text-muted-foreground/80 focus-visible:border-primary/40 focus-visible:shadow-elev-2 focus-visible:ring-4 focus-visible:ring-primary/15",
+            inputClassName,
+          )}
           autoFocus={autoFocus}
           aria-label="Search products"
           aria-expanded={showDropdown}

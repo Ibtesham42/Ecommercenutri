@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Search, Mic } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // Loaded lazily but PREWARMED while the browser is idle (below), so the very
 // first tap opens instantly — no chunk-download jank.
@@ -21,7 +22,14 @@ function prewarm() {
  * header's mobile row only (desktop keeps SearchBox untouched). Hydration-safe
  * for the layout-mounted header: no window reads at render, no useSearchParams.
  */
-export function MobileSearchTrigger() {
+export function MobileSearchTrigger({
+  variant = "bar",
+  className,
+}: {
+  /** "bar" = full-width field look; "icon" = compact header icon button. */
+  variant?: "bar" | "icon";
+  className?: string;
+} = {}) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -34,6 +42,22 @@ export function MobileSearchTrigger() {
 
   return (
     <>
+      {variant === "icon" ? (
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => setOpen(true)}
+          onPointerDown={prewarm}
+          aria-label="Open search"
+          aria-haspopup="dialog"
+          className={cn(
+            "grid size-11 touch-manipulation place-items-center rounded-md text-foreground/80 transition-colors hover:text-foreground",
+            className,
+          )}
+        >
+          <Search className="size-[21px]" strokeWidth={1.6} />
+        </button>
+      ) : (
       <button
         ref={triggerRef}
         type="button"
@@ -50,6 +74,7 @@ export function MobileSearchTrigger() {
         </span>
         <Mic className="pointer-events-none absolute right-4 top-1/2 size-[18px] -translate-y-1/2 text-muted-foreground/70" />
       </button>
+      )}
 
       {open && (
         <SearchOverlay

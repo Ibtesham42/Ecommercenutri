@@ -33,6 +33,7 @@ function readCategoryTree() {
       id: true,
       name: true,
       slug: true,
+      image: true, // mega-menu thumbnails (read-only; nav shows a monogram when null)
       children: {
         where: { isActive: true },
         orderBy: { sortOrder: "asc" },

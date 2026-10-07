@@ -9,7 +9,7 @@ import { VisitTracker } from "@/components/storefront/visit-tracker";
 import { JourneyTracker } from "@/components/storefront/journey-tracker";
 import { EngagementTracker } from "@/components/storefront/engagement-tracker";
 import { PwaInstallPrompt } from "@/components/storefront/pwa-install-prompt";
-import { OfferBar } from "@/components/storefront/growth/offer-bar";
+import { UtilityBar } from "@/components/storefront/utility-bar";
 import { WelcomePopup } from "@/components/storefront/growth/welcome-popup";
 import { getStoreSettings } from "@/lib/queries/settings";
 import { getCategoryTree } from "@/lib/queries/catalog";
@@ -73,7 +73,11 @@ export default async function StorefrontLayout({
           }}
         />
       )}
-      {growth.stickyBarEnabled && <OfferBar text={growth.stickyText} />}
+      <UtilityBar
+        offerText={growth.stickyBarEnabled ? growth.stickyText : null}
+        freeShippingThreshold={settings.freeShippingThreshold}
+        freeShippingEnabled={settings.freeShippingEnabled}
+      />
       <AnnouncementBar
         active={settings.announcementActive}
         message={settings.announcement}

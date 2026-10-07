@@ -24,7 +24,17 @@ const HIDE_ON = ["/checkout", "/quiz", "/login", "/register"];
  * so the user always gets an unmistakable "you've got it" moment, and the
  * assessment stays reachable on mobile. Remembers dismissal for 24h.
  */
-export function OfferBar({ text }: { text: string }) {
+export function OfferBar({
+  text,
+  variant = "bar",
+  fallback = null,
+}: {
+  text: string;
+  /** "inline" = quiet text-only content for the storefront utility strip. */
+  variant?: "bar" | "inline";
+  /** Rendered instead when the offer is hidden (dismissed / excluded route). */
+  fallback?: React.ReactNode;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const [show, setShow] = useState(false);
@@ -90,7 +100,48 @@ export function OfferBar({ text }: { text: string }) {
     router.push("/quiz");
   }
 
-  if (!show) return null;
+  if (!show) return <>{fallback}</>;
+
+  const dialog = (
+    <OfferDialog
+      open={open}
+      onOpenChange={setOpen}
+      coupon={coupon}
+      copied={copied}
+      onCopy={copyCode}
+      onAssessment={takeAssessment}
+    />
+  );
+
+  if (variant === "inline") {
+    return (
+      <>
+        <p className="flex min-w-0 items-center justify-center gap-2 sm:justify-start">
+          <span className="min-w-0 truncate">
+            <span className="sm:hidden">20% off your first order</span>
+            <span className="hidden sm:inline">{text}</span>
+          </span>
+          <button
+            type="button"
+            onClick={getCoupon}
+            disabled={loading}
+            className="shrink-0 font-semibold text-surface-deep-foreground underline decoration-surface-deep-foreground/40 underline-offset-4 transition-colors hover:decoration-surface-deep-foreground disabled:opacity-70"
+          >
+            Get coupon
+          </button>
+          <button
+            type="button"
+            onClick={dismiss}
+            aria-label="Dismiss offer"
+            className="-mr-1 grid size-7 shrink-0 place-items-center rounded-sm text-surface-deep-foreground/60 transition-colors hover:text-surface-deep-foreground"
+          >
+            <X className="size-3.5" />
+          </button>
+        </p>
+        {dialog}
+      </>
+    );
+  }
 
   return (
     <>
@@ -130,47 +181,68 @@ export function OfferBar({ text }: { text: string }) {
         </div>
       </div>
 
-      {/* Clear confirmation: the user sees exactly what they got. */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        {/* Same 320px fix as welcome-popup.tsx: `sm:max-w-sm` (not a bare
-            `max-w-sm`) keeps the base DialogContent's viewport-relative sizing
-            below `sm`, and `overflow-hidden` moves to the header div's own
-            rounded top corners instead of shadowing the base's internal scroll. */}
-        <DialogContent className="rounded-3xl p-0 sm:max-w-sm">
-          <DialogHeader className="sr-only">
-            <DialogTitle>Your welcome coupon</DialogTitle>
-          </DialogHeader>
-          <div className="surface-rich overflow-hidden rounded-t-3xl px-6 py-6 text-center text-surface-deep-foreground">
-            <span className="mx-auto grid size-14 place-items-center rounded-full bg-white/10">
-              <PartyPopper className="size-7 text-gold" />
-            </span>
-            <h2 className="mt-3 font-heading text-2xl font-semibold tracking-tight">You&apos;ve got {coupon?.percent ?? 20}% OFF!</h2>
-            <p className="mt-1 text-sm text-surface-deep-foreground/80">Use this code on your first order.</p>
-          </div>
-          <div className="p-6">
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-3">
-              <span className="font-mono text-xl font-bold tracking-[0.2em] text-primary">{coupon?.code}</span>
-              <Button size="sm" variant="outline" onClick={copyCode} className="shrink-0 gap-1.5">
-                {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-                {copied ? "Copied" : "Copy"}
-              </Button>
-            </div>
-            <p className="mt-3 text-center text-xs text-muted-foreground">
-              Apply it at checkout. {copied ? "Already copied to your clipboard." : ""}
-            </p>
-            <Button onClick={() => setOpen(false)} className="mt-4 h-11 w-full font-semibold">
-              Got it
-            </Button>
-            <button
-              type="button"
-              onClick={takeAssessment}
-              className="mx-auto mt-3 flex items-center justify-center gap-1.5 text-sm font-medium text-primary transition-colors hover:underline"
-            >
-              <Sparkles className="size-4" /> Take the free Health Assessment <ArrowRight className="size-3.5" />
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {dialog}
     </>
+  );
+}
+
+/** The coupon confirmation dialog — shared by both variants. */
+function OfferDialog({
+  open,
+  onOpenChange,
+  coupon,
+  copied,
+  onCopy,
+  onAssessment,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  coupon: { code: string; percent: number } | null;
+  copied: boolean;
+  onCopy: () => void;
+  onAssessment: () => void;
+}) {
+  // Clear confirmation: the user sees exactly what they got.
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {/* Same 320px fix as welcome-popup.tsx: `sm:max-w-sm` (not a bare
+          `max-w-sm`) keeps the base DialogContent's viewport-relative sizing
+          below `sm`, and `overflow-hidden` moves to the header div's own
+          rounded top corners instead of shadowing the base's internal scroll. */}
+      <DialogContent className="rounded-3xl p-0 sm:max-w-sm">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Your welcome coupon</DialogTitle>
+        </DialogHeader>
+        <div className="surface-rich overflow-hidden rounded-t-3xl px-6 py-6 text-center text-surface-deep-foreground">
+          <span className="mx-auto grid size-14 place-items-center rounded-full bg-white/10">
+            <PartyPopper className="size-7 text-gold" />
+          </span>
+          <h2 className="mt-3 font-heading text-2xl font-semibold tracking-tight">You&apos;ve got {coupon?.percent ?? 20}% OFF!</h2>
+          <p className="mt-1 text-sm text-surface-deep-foreground/80">Use this code on your first order.</p>
+        </div>
+        <div className="p-6">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-3">
+            <span className="font-mono text-xl font-bold tracking-[0.2em] text-primary">{coupon?.code}</span>
+            <Button size="sm" variant="outline" onClick={onCopy} className="shrink-0 gap-1.5">
+              {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+              {copied ? "Copied" : "Copy"}
+            </Button>
+          </div>
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            Apply it at checkout. {copied ? "Already copied to your clipboard." : ""}
+          </p>
+          <Button onClick={() => onOpenChange(false)} className="mt-4 h-11 w-full font-semibold">
+            Got it
+          </Button>
+          <button
+            type="button"
+            onClick={onAssessment}
+            className="mx-auto mt-3 flex items-center justify-center gap-1.5 text-sm font-medium text-primary transition-colors hover:underline"
+          >
+            <Sparkles className="size-4" /> Take the free Health Assessment <ArrowRight className="size-3.5" />
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
