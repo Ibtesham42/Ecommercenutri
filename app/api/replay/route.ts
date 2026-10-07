@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { checkRateLimit, limiters } from "@/lib/rate-limit";
-import { parseUA } from "@/lib/ua";
+import { isBotUA, parseUA } from "@/lib/ua";
 
 export const runtime = "nodejs";
 
@@ -49,6 +49,8 @@ type PageChunk = {
 };
 
 export async function POST(req: Request) {
+  // Bots/automation: acknowledge but never record.
+  if (isBotUA(req.headers.get("user-agent"))) return NextResponse.json({ ok: true });
   let body: unknown;
   try {
     body = JSON.parse(await req.text());

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit, limiters } from "@/lib/rate-limit";
-import { parseUA } from "@/lib/ua";
+import { isBotUA, parseUA } from "@/lib/ua";
 import { HEAT_SECTIONS, PAGE_SECTION, pageGroup } from "@/lib/heat-sections";
 
 export const runtime = "nodejs";
@@ -38,6 +38,8 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: Request) {
+  // Bots/automation: acknowledge but never record.
+  if (isBotUA(req.headers.get("user-agent"))) return NextResponse.json({ ok: true });
   // sendBeacon posts an opaque blob — parse the text body defensively.
   let body: unknown;
   try {

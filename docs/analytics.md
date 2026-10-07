@@ -89,6 +89,12 @@
    "Not enough data yet" below `minJourneySessions` (30) / `minHeatmapImpressions` (150);
    `heatFacts` never sends an unscored section to the model. UI shows a "Low confidence"
    badge + shortfall note.
+5. **Bots and automation are never recorded.** `/api/track`, `/api/heat` and `/api/replay`
+   ack-and-drop any request whose UA matches `lib/ua.ts#isBotUA` (crawlers, link
+   unfurlers, headless/automation, scripted HTTP clients; unit-tested against real UAs incl.
+   the Cubot phone brand), and the client senders skip when `navigator.webdriver` is set
+   (Playwright/WebDriver with a normal-looking UA). Local automated sweeps used to write
+   into production analytics because `.env` points at the live DB.
 
 ## Pluggable page analytics
 

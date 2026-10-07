@@ -34,6 +34,8 @@ export type TrackPayload = {
  *  identity even before the server's anon cookie is set (see lib/client-id). */
 export function trackClient(payload: TrackPayload): void {
   try {
+    // Automated browsers (Playwright/WebDriver) — even with a normal-looking UA.
+    if (navigator.webdriver) return;
     const cid = getClientId();
     void fetch("/api/track", {
       method: "POST",

@@ -79,6 +79,7 @@ function depthPct(): number {
 
 function beacon(url: string, payload: unknown): void {
   try {
+    if (navigator.webdriver) return; // automated browser — never record
     const body = JSON.stringify(payload);
     if (navigator.sendBeacon?.(url, body)) return;
     void fetch(url, { method: "POST", body, keepalive: true }).catch(() => {});

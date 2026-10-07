@@ -4,7 +4,7 @@ import type { UserEventType } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { trackEvent } from "@/lib/recommendations/events";
 import { checkRateLimit, limiters } from "@/lib/rate-limit";
-import { parseUA } from "@/lib/ua";
+import { isBotUA, parseUA } from "@/lib/ua";
 import { requestGeo } from "@/lib/geo";
 import { env } from "@/lib/env";
 
@@ -62,6 +62,8 @@ function externalReferrerHost(referrer: string | undefined): string | null {
 }
 
 export async function POST(req: Request) {
+  // Bots/automation: acknowledge but never record.
+  if (isBotUA(req.headers.get("user-agent"))) return NextResponse.json({ ok: true });
   let body: unknown;
   try {
     body = await req.json();

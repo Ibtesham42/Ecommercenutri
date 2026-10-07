@@ -25,3 +25,15 @@ export function parseUA(ua: string): { device: string; browser: string } {
           : "Other";
   return { device, browser };
 }
+
+/**
+ * Crawlers, link unfurlers, headless browsers and scripted HTTP clients. Analytics
+ * beacons from these are dropped so they never inflate traffic, funnels or heatmaps.
+ * (Automation that spoofs a normal UA is caught client-side via navigator.webdriver.)
+ */
+const BOT_UA =
+  /(?<!cu)bot(?:[/\s;)_-]|$)|crawl|spider|slurp|headless|lighthouse|pagespeed|gtmetrix|preview|facebookexternalhit|embedly|playwright|puppeteer|phantomjs|selenium|python-|curl\/|wget\/|axios\/|node-fetch|go-http-client|okhttp/i;
+
+export function isBotUA(ua: string | null | undefined): boolean {
+  return !ua || BOT_UA.test(ua);
+}
