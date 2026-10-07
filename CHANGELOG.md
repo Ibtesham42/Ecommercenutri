@@ -3,6 +3,48 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [Storefront de-templating pass] — 2026-10-05 → 2026-10-07
+
+A presentational-only pass to make the storefront read as an editorial
+Indian brand rather than an AI/app template. No data, pricing, auth,
+payment, admin, CMS or JNV logic touched.
+
+### Changed
+- **Navigation** (`27ebfa7`, `7c0385d`): drawer + desktop nav de-boxed
+  (left-accent / underline active states, grouped drawer); mobile bottom
+  nav is five equal tabs (Home/Shop/Search/Account/Cart) — the floating AI
+  button is gone, AI stays reachable from search; category chips unfilled.
+- **Typography** (`06b1247`…`e803704`, `2341b6d`): every storefront h1–h3
+  uses Fraunces `font-heading font-semibold tracking-tight`; no `font-bold`
+  left in `app/(storefront)` / `app/(account)`.
+- **Decoration** (`c8993ff`, `445c4b9`): the icon-in-tinted-circle pattern
+  (~13 components incl. /affiliate, /b2b) → bare icon + gold hairline; AI
+  banner glow/watermark and auth + survey gradient-orb backgrounds removed.
+- **Elevation** (`621f48f`): ad-hoc `shadow-sm/md/lg` moved onto
+  `shadow-elev-1/2/3`; hero-slider CTA renders through the shared Button.
+
+### Added
+- Branded 404 (`0d07fa6`): `app/(storefront)/not-found.tsx` (inside header
+  and footer) + `app/not-found.tsx` (unmatched URLs, real 404 + noindex).
+
+### Fixed
+- `hover:`/`group-hover:`/`focus-visible:`/`max-sm:`/`md:` variants of
+  `shadow-elev-*` compiled to nothing (26 usages) — the elevations are
+  unlayered classes Tailwind can't generate variants for; the used variants
+  are now spelled out in `globals.css` (`621f48f`).
+- Primary Buttons and elevated controls showed no keyboard focus ring: the
+  unlayered `.btn-solid` / `.shadow-elev-*` box-shadow erased `ring-*`. Ring
+  vars are now composed back in under `:focus-visible` (`621f48f`).
+- Product-rail arrows overran the viewport by 4px between md and xl
+  (`5b0c30b`).
+
+### Verified
+- typecheck / lint / 24 unit tests / production build; shared First-Load
+  JS unchanged at 103 kB.
+- 24 routes × 14 widths (320–1920) with real mobile emulation: 0 horizontal
+  overflow. Keyboard pass over 125 focusable elements: all show a focus
+  indicator.
+
 ## [JNV Code Studio] — 2026-07-24
 
 A brand-new learning module at `/jnv/code-studio`, additive alongside the

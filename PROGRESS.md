@@ -1,8 +1,15 @@
 # Nutriyet — Progress Tracker
 
-_Last updated: 2026-07-24 · Auto-maintained. Update at the end of every milestone._
+_Last updated: 2026-10-07 · Auto-maintained. Update at the end of every milestone._
 
-## Latest: JNV Code Studio (2026-07-24, in progress — /loop build)
+## Latest: Storefront de-templating pass (2026-10-05 → 2026-10-07, complete)
+
+Presentational-only design pass across nav, typography, decoration, elevation
+and a branded 404, plus three real fixes (dead elevation variants, missing
+focus rings, rail-arrow overrun). Full detail + commits: `CHANGELOG.md`.
+Open, pre-existing: "N products" label wraps at 320px on category pages.
+
+## Previous: JNV Code Studio (2026-07-24, in progress — /loop build)
 
 New learning module at `/jnv/code-studio`, additive alongside the Notes
 Portal (untouched, still works exactly as before). Students write and run

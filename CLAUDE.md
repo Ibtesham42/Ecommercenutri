@@ -92,6 +92,9 @@ lowercase with `[slug]`/`(group)` · server actions verb-first (`createOrder`).
   `Reveal` (`[data-reveal]` scroll-reveal), `.shimmer`, `BlurImage` (blur-up, no CLS),
   `EmptyState`, `skeletons.tsx` + route `loading.tsx`. **All motion is
   reduced-motion-gated** — keep new motion behind the same gate.
+- `shadow-elev-*` / `.btn-solid` are deliberately **unlayered** CSS (they must beat `shadow-*`/`ring-*`):
+  Tailwind can't generate variants for them — a new `lg:shadow-elev-2` etc. silently does nothing
+  until its selector is added in `globals.css`. Keep the `:focus-visible` ring composition intact.
 - Money via `formatPrice` (never raw division). Images via `next/image` with `sizes`
   (stories/story rail use plain `<img>` deliberately — any-host media).
 - Don't use `useSearchParams` in layout-mounted client components (static-render deopt) —
