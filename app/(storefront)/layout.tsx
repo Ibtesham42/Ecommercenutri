@@ -1,4 +1,5 @@
 import { SiteHeader } from "@/components/storefront/site-header";
+import { SurfaceScope } from "@/components/storefront/surface-scope";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { AnnouncementBar } from "@/components/storefront/announcement-bar";
 import { WhatsAppButton } from "@/components/storefront/whatsapp-button";
@@ -60,9 +61,17 @@ export default async function StorefrontLayout({
     .join("");
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    // data-surface="shop" scopes the editorial storefront design system
+    // (globals.css); <SurfaceScope> mirrors it onto <html> for portals.
+    <div data-surface="shop" className="flex min-h-dvh flex-col">
+      <SurfaceScope />
       {themeVars && (
-        <style dangerouslySetInnerHTML={{ __html: `:root,.dark{${themeVars}}` }} />
+        // Also target the scope, or its own --primary would beat the admin's choice.
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `:root,.dark,[data-surface="shop"],.dark[data-surface="shop"],.dark [data-surface="shop"]{${themeVars}}`,
+          }}
+        />
       )}
       {growth.stickyBarEnabled && <OfferBar text={growth.stickyText} />}
       <AnnouncementBar

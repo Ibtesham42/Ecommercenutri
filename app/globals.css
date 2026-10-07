@@ -20,6 +20,24 @@
   --color-gold-foreground: var(--gold-foreground);
   --color-surface-deep: var(--surface-deep);
   --color-surface-deep-foreground: var(--surface-deep-foreground);
+  /* Storefront editorial roles (values live in the [data-surface="shop"] scope). */
+  --color-oat: var(--oat);
+  --color-oat-foreground: var(--oat-foreground);
+  --color-terracotta: var(--terracotta);
+  /* Editorial type scale — fluid, so no breakpoint variants are needed.
+     text-display 40→72px · text-title 32→48 · text-heading 26→36 · text-subheading 18→22. */
+  --text-display: clamp(2.5rem, 1.55rem + 3.4vw, 4.5rem);
+  --text-display--line-height: 1.02;
+  --text-display--letter-spacing: -0.025em;
+  --text-title: clamp(2rem, 1.55rem + 1.6vw, 3rem);
+  --text-title--line-height: 1.08;
+  --text-title--letter-spacing: -0.02em;
+  --text-heading: clamp(1.625rem, 1.35rem + 1vw, 2.25rem);
+  --text-heading--line-height: 1.15;
+  --text-heading--letter-spacing: -0.015em;
+  --text-subheading: clamp(1.125rem, 1.02rem + 0.4vw, 1.375rem);
+  --text-subheading--line-height: 1.3;
+  --text-subheading--letter-spacing: -0.01em;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -761,4 +779,153 @@
   html {
     scroll-behavior: auto;
   }
+}
+
+/* ===========================================================================
+   STOREFRONT EDITORIAL DESIGN SYSTEM (Phase 1, 2026-10)
+   ---------------------------------------------------------------------------
+   Scoped to [data-surface="shop"]: set on the (storefront) layout wrapper for
+   first paint, and mirrored onto <html> by <SurfaceScope> so portalled
+   dialogs/sheets/popovers get it too. Admin, JNV, auth and account never carry
+   the attribute, so they keep the :root/.dark tokens above unchanged.
+   Direction: warm cream ground, deep low-saturation forest green (hue ~160,
+   close to the logomark), oat secondary surfaces, earthy text, restrained
+   terracotta + muted gold, warm hairlines, quieter radius and elevation.
+   Appended last on purpose: equal-specificity rules here win on source order.
+   ========================================================================= */
+[data-surface="shop"] {
+  --background: oklch(0.966 0.013 84); /* warm cream ≈ #F7F2E9 */
+  --foreground: oklch(0.24 0.022 160); /* deep green-black ink */
+  --card: oklch(0.993 0.005 85);
+  --card-foreground: oklch(0.24 0.022 160);
+  --popover: oklch(0.993 0.005 85);
+  --popover-foreground: oklch(0.24 0.022 160);
+  --primary: oklch(0.4 0.058 160); /* deep forest/pine ≈ #2F4A3B */
+  --primary-foreground: oklch(0.975 0.012 85);
+  --brand: oklch(0.4 0.058 160);
+  --brand-foreground: oklch(0.975 0.012 85);
+  --secondary: oklch(0.935 0.021 80); /* oat */
+  --secondary-foreground: oklch(0.32 0.028 60);
+  --muted: oklch(0.945 0.016 82);
+  --muted-foreground: oklch(0.47 0.027 62); /* earthy brown-grey, ~5:1 on cream */
+  --accent: oklch(0.93 0.022 82); /* hover wash: oat, never mint */
+  --accent-foreground: oklch(0.3 0.04 160);
+  --surface-deep: oklch(0.31 0.042 160); /* utility bar / footer chrome */
+  --surface-deep-foreground: oklch(0.95 0.015 85);
+  --gold: oklch(0.77 0.105 80); /* muted — ratings / small highlights only */
+  --gold-foreground: oklch(0.3 0.05 65);
+  --oat: oklch(0.935 0.021 80);
+  --oat-foreground: oklch(0.32 0.028 60);
+  --terracotta: oklch(0.56 0.115 45); /* eyebrows, sale prices */
+  --border: oklch(0.885 0.019 80); /* warm hairline */
+  --input: oklch(0.885 0.019 80);
+  --ring: oklch(0.4 0.058 160);
+  --radius: 0.55rem; /* sm≈5px · lg≈9px · xl≈12px · 2xl≈16px — quieter than 0.8rem */
+  /* Quieter, warm-tinted elevation (shared by shadow-elev-* via var()). */
+  --elev-1: 0 1px 2px oklch(0.3 0.03 60 / 0.06);
+  --elev-2: 0 1px 2px oklch(0.3 0.03 60 / 0.05), 0 6px 16px oklch(0.3 0.03 60 / 0.07);
+  --elev-3: 0 2px 6px oklch(0.3 0.03 60 / 0.06), 0 14px 32px oklch(0.3 0.03 60 / 0.1);
+  background-color: var(--background);
+  color: var(--foreground);
+}
+.dark[data-surface="shop"],
+.dark [data-surface="shop"] {
+  --background: oklch(0.185 0.012 155);
+  --foreground: oklch(0.94 0.014 85);
+  --card: oklch(0.225 0.014 155);
+  --card-foreground: oklch(0.94 0.014 85);
+  --popover: oklch(0.225 0.014 155);
+  --popover-foreground: oklch(0.94 0.014 85);
+  --primary: oklch(0.74 0.075 155); /* sage — readable on the dark ground */
+  --primary-foreground: oklch(0.18 0.02 155);
+  --brand: oklch(0.74 0.075 155);
+  --brand-foreground: oklch(0.18 0.02 155);
+  --secondary: oklch(0.27 0.014 150);
+  --secondary-foreground: oklch(0.92 0.014 85);
+  --muted: oklch(0.255 0.013 150);
+  --muted-foreground: oklch(0.74 0.022 80);
+  --accent: oklch(0.29 0.016 150);
+  --accent-foreground: oklch(0.94 0.014 85);
+  --surface-deep: oklch(0.235 0.028 158);
+  --surface-deep-foreground: oklch(0.94 0.014 85);
+  --gold: oklch(0.8 0.095 80);
+  --gold-foreground: oklch(0.22 0.04 65);
+  --oat: oklch(0.255 0.013 140);
+  --oat-foreground: oklch(0.92 0.014 85);
+  --terracotta: oklch(0.7 0.105 45);
+  --border: oklch(0.32 0.014 150);
+  --input: oklch(0.32 0.014 150);
+  --ring: oklch(0.74 0.075 155);
+  --elev-1: 0 1px 3px oklch(0 0 0 / 0.35);
+  --elev-2: 0 6px 18px oklch(0 0 0 / 0.4);
+  --elev-3: 0 14px 36px oklch(0 0 0 / 0.5);
+}
+
+/* Chrome utilities above hard-code the old pine-teal and decorative sheens;
+   on the storefront they become flat, token-driven surfaces. */
+[data-surface="shop"] .surface-rich {
+  background-color: var(--surface-deep);
+  background-image: none;
+}
+[data-surface="shop"] .header-chrome,
+.dark [data-surface="shop"] .header-chrome,
+.dark[data-surface="shop"] .header-chrome {
+  background-color: var(--background);
+  background-image: none;
+}
+[data-surface="shop"] .btn-rich,
+[data-surface="shop"] .btn-rich-gold,
+.dark [data-surface="shop"] .btn-rich-gold,
+.dark[data-surface="shop"] .btn-rich-gold {
+  background-image: none;
+}
+[data-surface="shop"] .btn-solid {
+  box-shadow: none;
+}
+[data-surface="shop"] .btn-solid:hover {
+  filter: none;
+  box-shadow: none;
+  background-color: color-mix(in oklab, var(--primary) 88%, black);
+}
+[data-surface="shop"] .btn-solid:focus-visible {
+  box-shadow:
+    var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000);
+}
+[data-surface="shop"] .cn-toast {
+  box-shadow: var(--elev-3);
+}
+
+/* Opt-in layout + type utilities for the redesign phases (unused until then). */
+@utility shop-container {
+  width: 100%;
+  max-width: 82.5rem; /* 1320px */
+  margin-inline: auto;
+  padding-inline: 1rem;
+  @media (width >= 40rem) {
+    padding-inline: 1.5rem;
+  }
+  @media (width >= 64rem) {
+    padding-inline: 2.5rem;
+  }
+}
+/* Section rhythm: 56px mobile · 72px tablet · 104px desktop. */
+@utility shop-section {
+  padding-block: 3.5rem;
+  @media (width >= 48rem) {
+    padding-block: 4.5rem;
+  }
+  @media (width >= 64rem) {
+    padding-block: 6.5rem;
+  }
+}
+/* Small uppercase label above a heading ("AUTHENTICALLY INDIAN", "OUR STORY"). */
+@utility eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--terracotta);
 }

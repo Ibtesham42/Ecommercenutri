@@ -125,6 +125,15 @@ docs/                  Feature documentation (this folder)
   `get()` with defaults-on-error). Blobs need no per-field migrations.
   Storefront getters read the row via `lib/store-setting-row.ts#getStoreSettingRow`
   (one cached read shared by every getter); admin pages/actions read it directly.
+- **Storefront design scope** (`[data-surface="shop"]`, end of `app/globals.css`): the
+  editorial redesign's tokens (colour, radius, elevation) redefine the shadcn variables
+  for the storefront only. The `(storefront)` layout wrapper carries the attribute (correct
+  first paint); `components/storefront/surface-scope.tsx` mirrors it onto `<html>` because
+  Radix portals render on `<body>`, and removes it on unmount (client nav to account/
+  auth/admin falls back to `:root`). Hard-coded chrome (`.surface-rich`, `.header-chrome`,
+  `.btn-solid`, `.btn-rich`) gets scoped overrides, never edits. The admin colour override
+  `<style>` also targets the scope so it keeps winning. Verified by pixel-diffing `/login`
+  and `/jnv` (identical) before/after.
 - **Storefront data cache** (`lib/cache.ts`): reads that are identical for every
   shopper — the StoreSetting row, the nav category tree, hero slides, homepage
   section rows — go through `cachedQuery(fn, key, tags)` (`unstable_cache` + React

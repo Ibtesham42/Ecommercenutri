@@ -85,9 +85,14 @@ lowercase with `[slug]`/`(group)` · server actions verb-first (`createOrder`).
 - Mobile-first (design at 360px), accessible (semantic HTML, labels, keyboard, focus,
   `aria-*` on icon buttons), theme tokens only (`bg-primary`, `text-muted-foreground`,
   `border`, `accent`) — never hard-code hex. Dark mode via `next-themes`.
-- Brand: deep pine-teal `--primary oklch(0.55 0.15 168)` (matches the logomark, hue 176);
-  warm-gold accent (`bg-gold`/`text-gold`) for premium highlights only. Full token sets
-  in `app/globals.css`.
+- **Two token contexts.** The customer storefront uses the editorial design system scoped to
+  `[data-surface="shop"]` (warm cream, deep forest `--primary oklch(0.4 0.058 160)`, oat,
+  earthy text, restrained terracotta/gold, quieter radius + elevation) — set on the
+  `(storefront)` layout wrapper and mirrored onto `<html>` by `SurfaceScope` (portals).
+  Admin, JNV, auth and account keep the `:root`/`.dark` tokens (jade `oklch(0.55 0.15 168)`)
+  and must stay untouched by storefront work. Never restyle via `:root`; add to the scoped
+  block. Opt-in utilities: `shop-container`, `shop-section`, `eyebrow`, `text-display/title/
+  heading/subheading`, `bg-oat`, `text-terracotta`. Full sets in `app/globals.css`.
 - Premium language: `shadow-elev-1/2/3` (+`hover-lift`), `rounded-xl/2xl`, `animate-fade-up`,
   `Reveal` (`[data-reveal]` scroll-reveal), `.shimmer`, `BlurImage` (blur-up, no CLS),
   `EmptyState`, `skeletons.tsx` + route `loading.tsx`. **All motion is
