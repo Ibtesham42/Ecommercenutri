@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { preload } from "react-dom";
 import Link from "next/link";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { cldUrl } from "@/lib/cld";
@@ -48,17 +49,22 @@ export function HeroSlideContent({
   slide,
   preview,
   active = true,
+  first = false,
 }: {
   slide: HeroSlideView;
   preview?: "desktop" | "mobile";
   /** Slider passes false for off-slides so their video pauses/resets. */
   active?: boolean;
+  /** The first slide is the homepage LCP — fetch its visual at high priority. */
+  first?: boolean;
 }) {
   // Video slide: the video is the full visual — no overlay/text (like banners).
   if (isVideoSlide(slide)) {
     const quality = normalizeQuality(slide.videoQuality);
     // Poster priority: admin-chosen frame/custom image → sharp auto first frame.
     const poster = resolvePoster(slide.videoUrl, slide.videoPoster, quality);
+    // A <video poster> is only discovered after HTML parse; preload it from <head>.
+    if (first && !preview && poster) preload(poster, { as: "image", fetchPriority: "high" });
     return (
       <div className="relative size-full overflow-hidden bg-black">
         <BannerVideo
@@ -108,6 +114,7 @@ export function HeroSlideContent({
             sizes="100vw"
             className="absolute inset-0 size-full object-contain"
             loading="eager"
+            fetchPriority={first ? "high" : "low"}
           />
         </picture>
       )}
@@ -218,7 +225,7 @@ export function HeroSlider({ slides }: { slides: HeroSlideView[] }) {
             aria-hidden={i !== index}
             className="relative h-full w-full shrink-0 basis-full"
           >
-            <HeroSlideContent slide={slide} active={i === index} />
+            <HeroSlideContent slide={slide} active={i === index} first={i === 0} />
           </div>
         ))}
       </div>

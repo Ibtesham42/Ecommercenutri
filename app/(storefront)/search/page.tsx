@@ -119,7 +119,7 @@ export default async function SearchPage({
                   <CatalogFilters hideCategoryList />
                 </aside>
                 <div>
-                  <ProductGrid products={products} wishlistedIds={wishlistIds} />
+                  <ProductGrid products={products} wishlistedIds={wishlistIds} priorityCount={2} />
                   <PaginationBar page={search.page} pageCount={pageCount} />
                 </div>
               </div>

@@ -9,9 +9,16 @@ import { cn } from "@/lib/utils";
  * in once decoded, killing the "pop-in". Honors `prefers-reduced-motion` (the
  * blur/scale transition is gated in globals.css `.img-reveal`). No CLS — the
  * caller still controls sizing via `fill`/width+height + `sizes`.
+ *
+ * `priority` images skip the reveal: `.img-reveal` is opacity 0 until React
+ * hydrates and onLoad fires, which held the LCP image invisible for ~1.5s on
+ * mobile even after it had downloaded. Above-the-fold should paint at once.
  */
 export function BlurImage({ className, onLoad, alt, ...props }: ImageProps) {
   const [loaded, setLoaded] = useState(false);
+  if (props.priority) {
+    return <Image {...props} alt={alt} onLoad={onLoad} className={className} />;
+  }
   return (
     <Image
       {...props}

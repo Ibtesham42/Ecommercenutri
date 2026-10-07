@@ -106,7 +106,7 @@ export default async function ProductsPage({
 
         <div>
           {result.products.length > 0 ? (
-            <ProductGrid products={result.products} wishlistedIds={wishlistIds} />
+            <ProductGrid products={result.products} wishlistedIds={wishlistIds} priorityCount={2} />
           ) : (
             <>
               <EmptyState
