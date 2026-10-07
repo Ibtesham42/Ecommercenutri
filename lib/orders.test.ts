@@ -20,12 +20,14 @@ const txMock = {
     findUnique: vi.fn(),
     updateMany: vi.fn(),
     findUniqueOrThrow: vi.fn(),
+    update: vi.fn(),
   },
   orderItem: {
     findMany: vi.fn(),
   },
   productVariant: {
     updateMany: vi.fn(),
+    update: vi.fn(),
   },
   coupon: {
     findUnique: vi.fn(),
@@ -41,6 +43,15 @@ const prismaMock = {
   $transaction: vi.fn(async (cb: (tx: typeof txMock) => unknown) => cb(txMock)),
   order: {
     update: vi.fn(),
+    updateMany: vi.fn(),
+    findFirst: vi.fn(),
+    findUnique: vi.fn(),
+  },
+  returnRequest: {
+    aggregate: vi.fn(),
+  },
+  productVariant: {
+    findMany: vi.fn(),
   },
   orderEvent: {
     create: vi.fn(),
@@ -55,13 +66,16 @@ vi.mock("@/lib/invoices", () => ({
   getInvoiceData: vi.fn(async () => null),
 }));
 vi.mock("@/lib/recommendations/events", () => ({ trackEvent: vi.fn() }));
+const refundPaymentMock = vi.fn();
+vi.mock("@/lib/razorpay", () => ({ refundPayment: refundPaymentMock }));
 vi.mock("@/lib/affiliate/commissions", () => ({
   createOrderCommission: vi.fn(),
   setCommissionMature: vi.fn(),
   voidCommission: vi.fn(),
 }));
 
-const { confirmOrder, markOrderPaid, OrderFulfillmentError } = await import("@/lib/orders");
+const { confirmOrder, markOrderPaid, OrderFulfillmentError, transitionOrderStatus, priceCart } =
+  await import("@/lib/orders");
 
 const BASE_ORDER_ID = "order_1";
 
@@ -80,6 +94,11 @@ function resetMocks() {
     items: [{ productId: "product_1" }],
     user: { email: null, name: null },
   });
+  prismaMock.order.findFirst.mockResolvedValue(null); // no fulfillment failure recorded yet
+  prismaMock.order.updateMany.mockResolvedValue({ count: 1 }); // refund claim succeeds by default
+  prismaMock.returnRequest.aggregate.mockResolvedValue({ _sum: { refundedAmount: null } });
+  refundPaymentMock.mockResolvedValue({ id: "rfnd_test_1", status: "processed" });
+  txMock.order.update.mockResolvedValue({ id: BASE_ORDER_ID });
 }
 
 beforeEach(resetMocks);
@@ -200,5 +219,114 @@ describe("confirmOrder — normal successful flows (no regression)", () => {
       },
     });
     expect(prismaMock.order.update).not.toHaveBeenCalled(); // no failure handling triggered
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Checkout audit 2026-10-07: closing a prepaid order must actually refund it.
+
+const PAID_ORDER = {
+  id: BASE_ORDER_ID,
+  orderNumber: "NUT-261007-TEST01",
+  status: "PENDING",
+  paymentStatus: "PAID",
+  paymentMethod: "RAZORPAY",
+  razorpayPaymentId: "pay_test_1",
+  total: 49900,
+  stockDeducted: true,
+  items: [{ variantId: "variant_1", quantity: 2 }],
+};
+
+describe("transitionOrderStatus — refund on close of a prepaid order", () => {
+  it("cancelling a PAID Razorpay order issues a full refund and marks REFUNDED", async () => {
+    prismaMock.order.findUnique.mockResolvedValue(PAID_ORDER);
+    await transitionOrderStatus(BASE_ORDER_ID, "CANCELLED", { actor: "customer" });
+    expect(refundPaymentMock).toHaveBeenCalledWith("pay_test_1", 49900);
+    expect(txMock.order.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ paymentStatus: "REFUNDED" }) }),
+    );
+    expect(txMock.orderEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ note: expect.stringContaining("rfnd_test_1") }),
+    });
+  });
+
+  it("refunds only what returns haven't already refunded", async () => {
+    prismaMock.order.findUnique.mockResolvedValue(PAID_ORDER);
+    prismaMock.returnRequest.aggregate.mockResolvedValue({ _sum: { refundedAmount: 9900 } });
+    await transitionOrderStatus(BASE_ORDER_ID, "CANCELLED", { actor: "admin" });
+    expect(refundPaymentMock).toHaveBeenCalledWith("pay_test_1", 40000);
+  });
+
+  it("losing the claim to a concurrent close never refunds twice and leaves paymentStatus alone", async () => {
+    prismaMock.order.findUnique.mockResolvedValue(PAID_ORDER);
+    prismaMock.order.updateMany.mockResolvedValue({ count: 0 });
+    await transitionOrderStatus(BASE_ORDER_ID, "CANCELLED", { actor: "customer" });
+    expect(refundPaymentMock).not.toHaveBeenCalled();
+    const data = txMock.order.update.mock.calls[0][0].data;
+    expect(data.paymentStatus).toBeUndefined();
+  });
+
+  it("a Razorpay refund error reverts to PAID (never claims a refund that didn't happen) and still cancels", async () => {
+    prismaMock.order.findUnique.mockResolvedValue(PAID_ORDER);
+    refundPaymentMock.mockRejectedValue(new Error("gateway down"));
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await transitionOrderStatus(BASE_ORDER_ID, "CANCELLED", { actor: "customer" });
+    errSpy.mockRestore();
+    expect(prismaMock.order.update).toHaveBeenCalledWith({
+      where: { id: BASE_ORDER_ID },
+      data: { paymentStatus: "PAID" },
+    });
+    expect(txMock.order.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "CANCELLED", paymentStatus: "PAID" }),
+      }),
+    );
+  });
+
+  it("COD orders never touch the payment gateway", async () => {
+    prismaMock.order.findUnique.mockResolvedValue({
+      ...PAID_ORDER,
+      paymentMethod: "COD",
+      paymentStatus: "PENDING",
+      razorpayPaymentId: null,
+    });
+    await transitionOrderStatus(BASE_ORDER_ID, "CANCELLED", { actor: "customer" });
+    expect(refundPaymentMock).not.toHaveBeenCalled();
+    expect(prismaMock.order.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("recordFulfillmentFailure — webhook retries don't duplicate the review note", () => {
+  it("a repeat failure for an already-recorded payment writes nothing", async () => {
+    txMock.productVariant.updateMany.mockResolvedValue({ count: 0 });
+    prismaMock.order.findFirst.mockResolvedValue({ id: BASE_ORDER_ID }); // payment already recorded
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    await expect(markOrderPaid(BASE_ORDER_ID, { paymentId: "pay_test_1" })).rejects.toThrow(
+      OrderFulfillmentError,
+    );
+    errSpy.mockRestore();
+    expect(prismaMock.order.update).not.toHaveBeenCalled();
+    expect(prismaMock.orderEvent.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("priceCart — repeated variants are merged before the stock check", () => {
+  it("two lines of 3 against stock 5 are rejected up front, not after payment", async () => {
+    prismaMock.productVariant.findMany.mockResolvedValue([
+      {
+        id: "variant_1",
+        isActive: true,
+        stock: 5,
+        price: 10000,
+        discountPrice: null,
+        weightLabel: "250g",
+        product: { id: "product_1", name: "Makhana", isActive: true, gstRate: null, deliveryCharge: null, images: [] },
+      },
+    ]);
+    const res = await priceCart([
+      { variantId: "variant_1", quantity: 3 },
+      { variantId: "variant_1", quantity: 3 },
+    ]);
+    expect(res).toEqual({ ok: false, error: "Only 5 left of Makhana (250g)." });
   });
 });

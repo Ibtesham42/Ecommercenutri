@@ -1,7 +1,8 @@
 import { customAlphabet } from "nanoid";
 import type { OrderStatus, PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { effectivePrice } from "@/lib/format";
+import { effectivePrice, formatPrice } from "@/lib/format";
+import { refundPayment } from "@/lib/razorpay";
 import { orderConfirmationEmail } from "@/lib/emails";
 import { sendEmail } from "@/lib/email";
 import { ensureInvoice, getInvoiceData } from "@/lib/invoices";
@@ -72,8 +73,15 @@ export type PricedCart =
  * Re-price the cart from the database. The client is never trusted for prices
  * or stock — only for variant ids + quantities. Validates availability.
  */
-export async function priceCart(items: CheckoutItem[]): Promise<PricedCart> {
-  if (items.length === 0) return { ok: false, error: "Your cart is empty." };
+export async function priceCart(input: CheckoutItem[]): Promise<PricedCart> {
+  if (input.length === 0) return { ok: false, error: "Your cart is empty." };
+
+  // Merge repeated variants: checked line-by-line, two lines of 3 against a
+  // stock of 5 would each pass here and only fail at confirm — after a
+  // Razorpay payment has already been captured.
+  const merged = new Map<string, number>();
+  for (const i of input) merged.set(i.variantId, (merged.get(i.variantId) ?? 0) + i.quantity);
+  const items = [...merged].map(([variantId, quantity]) => ({ variantId, quantity }));
 
   // This is often the first DB touch of a checkout — one retry here covers
   // a cold Neon connection before the rest of the checkout flow runs.
@@ -314,6 +322,13 @@ async function recordFulfillmentFailure(
   payment?: { paymentId: string; signature?: string },
 ): Promise<void> {
   if (payment) {
+    // verifyPayment and every webhook retry land here for the same payment —
+    // record (and show the customer) the manual-review note only once.
+    const already = await prisma.order.findFirst({
+      where: { id: orderId, razorpayPaymentId: payment.paymentId },
+      select: { id: true },
+    });
+    if (already) return;
     console.error(
       `[orders] order ${orderId} received a captured payment (${payment.paymentId}) but could not be ` +
         `auto-confirmed (${err.reason}): ${err.message}. Needs manual review — stock/coupon were NOT ` +
@@ -355,6 +370,52 @@ export async function markOrderPaid(
   return confirmOrder(id, { paymentStatus: "PAID", payment });
 }
 
+/**
+ * Full refund (minus anything already refunded through returns) of a captured
+ * Razorpay payment when a PAID order is closed. Exactly-once: the PAID→REFUNDED
+ * flip is claimed atomically before any money moves, so a concurrent close
+ * (admin + customer, double submit) sees a non-PAID order and skips. If Razorpay
+ * rejects the refund the claim is reverted to PAID — never label an order
+ * refunded when no money moved — and the order is flagged for a manual refund.
+ */
+async function refundOnClose(order: {
+  id: string;
+  orderNumber: string;
+  total: number;
+  razorpayPaymentId: string | null;
+}): Promise<{ ok: boolean; note: string | null } | null> {
+  const claim = await prisma.order.updateMany({
+    where: { id: order.id, paymentStatus: "PAID" },
+    data: { paymentStatus: "REFUNDED" },
+  });
+  if (claim.count === 0) return null; // another close already handled the payment
+
+  const prior = await prisma.returnRequest.aggregate({
+    where: { orderId: order.id, refundStatus: "COMPLETED" },
+    _sum: { refundedAmount: true },
+  });
+  const amount = order.total - (prior._sum.refundedAmount ?? 0);
+  if (amount <= 0) return { ok: true, note: null }; // fully refunded via returns already
+
+  if (!order.razorpayPaymentId) {
+    await prisma.order.update({ where: { id: order.id }, data: { paymentStatus: "PAID" } });
+    console.error(`[orders] ${order.orderNumber} closed while PAID but has no payment id — refund manually`);
+    return { ok: false, note: "Refund pending — our team will process it and confirm by email." };
+  }
+
+  try {
+    const r = await refundPayment(order.razorpayPaymentId, amount);
+    return {
+      ok: true,
+      note: `Refund of ${formatPrice(amount)} issued to your original payment method (ref ${r.id}). It usually reflects in 5–7 working days.`,
+    };
+  } catch (err) {
+    await prisma.order.update({ where: { id: order.id }, data: { paymentStatus: "PAID" } });
+    console.error(`[orders] auto-refund failed for ${order.orderNumber} — refund manually:`, err);
+    return { ok: false, note: "Refund pending — our team will process it and confirm by email." };
+  }
+}
+
 export type TransitionedOrder = {
   id: string;
   orderNumber: string;
@@ -394,8 +455,18 @@ export async function transitionOrderStatus(
   const closing = isClosed(status);
   const reason = opts.reason?.trim() || null;
 
-  let paymentStatus: PaymentStatus = order.paymentStatus;
-  if (closing) {
+  // Closing a prepaid order must actually return the money, not just relabel
+  // it — the cancellation email tells the customer a refund was initiated.
+  const prepaidClose =
+    closing && order.paymentStatus === "PAID" && order.paymentMethod === "RAZORPAY";
+  const refund = prepaidClose ? await refundOnClose(order) : null;
+
+  // undefined = leave the column alone (a concurrent close owns the payment).
+  let paymentStatus: PaymentStatus | undefined = order.paymentStatus;
+  if (prepaidClose) {
+    paymentStatus = refund ? (refund.ok ? "REFUNDED" : "PAID") : undefined;
+  } else if (closing) {
+    // COD (cash refunds are handled manually / via the returns flow).
     if (order.paymentStatus === "PAID") paymentStatus = "REFUNDED";
   } else if (
     status === "DELIVERED" &&
@@ -448,6 +519,11 @@ export async function transitionOrderStatus(
     await tx.orderEvent.create({
       data: { orderId, status, note: reason, actor: opts.actor },
     });
+    if (refund?.note) {
+      await tx.orderEvent.create({
+        data: { orderId, status, note: refund.note, actor: "system" },
+      });
+    }
     return o;
   });
 

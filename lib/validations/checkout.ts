@@ -7,10 +7,13 @@ export const checkoutItemSchema = z.object({
   quantity: z.number().int().min(1).max(99),
 });
 
+/** Upper bound on distinct cart lines per request (keeps the re-pricing query bounded). */
+export const MAX_CART_LINES = 50;
+
 export const paymentMethodSchema = z.enum(["RAZORPAY", "COD"]).default("RAZORPAY");
 
 export const createOrderSchema = z.object({
-  items: z.array(checkoutItemSchema).min(1, "Your cart is empty."),
+  items: z.array(checkoutItemSchema).min(1, "Your cart is empty.").max(MAX_CART_LINES, "Too many items in one order."),
   addressId: z.string().min(1, "Select a delivery address."),
   couponCode: z.string().trim().max(40).optional(),
   notes: z.string().trim().max(500).optional(),
@@ -19,12 +22,12 @@ export const createOrderSchema = z.object({
 
 export const applyCouponSchema = z.object({
   code: z.string().trim().min(1, "Enter a coupon code.").max(40),
-  items: z.array(checkoutItemSchema).min(1),
+  items: z.array(checkoutItemSchema).min(1).max(MAX_CART_LINES),
 });
 
 /** Live, server-authoritative cart/checkout pricing preview. */
 export const previewPricingSchema = z.object({
-  items: z.array(checkoutItemSchema).min(1),
+  items: z.array(checkoutItemSchema).min(1).max(MAX_CART_LINES),
   couponCode: z.string().trim().max(40).optional(),
   paymentMethod: z.enum(["RAZORPAY", "COD"]).default("RAZORPAY"),
 });

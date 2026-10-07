@@ -291,7 +291,7 @@ export function orderStatusEmail(order: {
   const url = `${siteConfig.url}/account/orders/${order.orderNumber}`;
   const reasonLine =
     order.status === "CANCELLED" && order.reason
-      ? ` Reason: <em>${order.reason}</em>.`
+      ? ` Reason: <em>${esc(order.reason)}</em>.`
       : "";
   return {
     subject: `Order #${order.orderNumber} — ${order.status.replace(/_/g, " ").toLowerCase()} · ${siteConfig.name}`,
@@ -351,7 +351,7 @@ export function returnStatusEmail(data: {
     },
     REJECTED: {
       heading: "About your return request",
-      intro: `${hi} unfortunately your ${ref} could not be approved.${data.reason ? ` Reason: <em>${data.reason}</em>.` : ""}`,
+      intro: `${hi} unfortunately your ${ref} could not be approved.${data.reason ? ` Reason: <em>${esc(data.reason)}</em>.` : ""}`,
     },
     PICKUP_SCHEDULED: {
       heading: "Pickup scheduled 🚚",
@@ -395,13 +395,13 @@ export function affiliateStatusEmail(data: {
     REJECTED: {
       heading: "About your affiliate application",
       intro: `${hi} thanks for applying to the Nutriyet Partner Program. Unfortunately we couldn't approve your application at this time.${
-        data.reason ? ` Reason: <em>${data.reason}</em>.` : ""
+        data.reason ? ` Reason: <em>${esc(data.reason)}</em>.` : ""
       }`,
     },
     SUSPENDED: {
       heading: "Your affiliate account has been suspended",
       intro: `${hi} your affiliate account has been suspended.${
-        data.reason ? ` Reason: <em>${data.reason}</em>.` : ""
+        data.reason ? ` Reason: <em>${esc(data.reason)}</em>.` : ""
       } Please contact support if you think this is a mistake.`,
     },
   };

@@ -52,6 +52,18 @@
   `lib/orders.ts#transitionOrderStatus` (restock by `stockDeducted`, paymentStatus
   derivation, appends an `OrderEvent`, stores `Order.cancelReason`). Admin
   `updateOrderStatus` and customer `cancelOrder` (PENDING-only, owner-scoped) both delegate.
+- **Closing a prepaid order refunds it.** When a `PAID` Razorpay order is closed
+  (cancel by customer or admin, bulk included), `refundOnClose` issues a real
+  `refundPayment` for `total − refunds already completed via returns`, and writes the
+  Razorpay refund id to the timeline. Exactly-once: the `PAID → REFUNDED` flip is claimed
+  atomically before money moves, so a concurrent close skips. If Razorpay rejects the
+  refund, `paymentStatus` reverts to `PAID` (an order is never labelled refunded when no
+  money moved), the order still cancels/restocks, and a "Refund pending" note + server
+  log flag it for a manual refund (CANCELLED + PAID = needs attention). COD is unchanged.
+- **Captured-but-unfulfillable payments** (stock/coupon ran out after capture) are flagged
+  for manual review once per payment id; the Razorpay webhook acks them with 200 so
+  Razorpay doesn't retry for ~24h. `priceCart` merges repeated variant lines before the
+  stock check, and cart payloads are capped at `MAX_CART_LINES` (50).
 - **Timeline** = append-only `OrderEvent` table (status + note + actor + timestamp),
   rendered by `components/storefront/order-timeline.tsx` on customer and admin order pages.
   Customer cancel button shows only while cancellable.

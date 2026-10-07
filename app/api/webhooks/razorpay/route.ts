@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyWebhookSignature } from "@/lib/razorpay";
-import { markOrderPaid } from "@/lib/orders";
+import { markOrderPaid, OrderFulfillmentError } from "@/lib/orders";
 
 // Razorpay posts JSON; we must verify against the *raw* body.
 export async function POST(req: Request) {
@@ -35,6 +35,12 @@ export async function POST(req: Request) {
         try {
           await markOrderPaid(order.id, { paymentId: entity?.id ?? "" });
         } catch (err) {
+          // Captured but unfulfillable (stock/coupon ran out): already recorded
+          // for manual review. Ack it — a 5xx makes Razorpay retry for ~24h and
+          // retrying can't change the outcome.
+          if (err instanceof OrderFulfillmentError) {
+            return NextResponse.json({ received: true, needsReview: true });
+          }
           console.error("[webhook] markOrderPaid failed:", err);
           return NextResponse.json({ error: "processing failed" }, { status: 500 });
         }
