@@ -6,6 +6,7 @@ import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { cldUrl } from "@/lib/cld";
 import { resolvePoster, normalizeQuality } from "@/lib/video";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { BannerVideo } from "@/components/storefront/banner-video";
 
 export type HeroSlideView = {
@@ -136,14 +137,18 @@ export function HeroSlideContent({
           )}
           {slide.ctaText && slide.href && (
             <div className="mt-2">
-              <Link
-                href={slide.href}
-                className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition-transform hover:scale-[1.03] active:scale-100"
+              {/* Shared Button (btn-solid depth, focus ring, press feedback); the
+                  admin-picked slide colour still wins via inline style. */}
+              <Button
+                asChild
+                className="h-11 gap-2 rounded-full px-6 text-sm font-semibold text-white"
                 style={{ backgroundColor: slide.buttonColor || "var(--primary)" }}
               >
-                {slide.ctaText}
-                <ArrowRight className="size-4" />
-              </Link>
+                <Link href={slide.href}>
+                  {slide.ctaText}
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
             </div>
           )}
         </div>

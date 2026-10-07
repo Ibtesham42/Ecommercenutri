@@ -13,7 +13,7 @@ export function WhatsAppButton({ number }: { number: string | null }) {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat on WhatsApp"
-      className="fixed bottom-5 right-5 z-40 grid size-12 place-items-center rounded-full bg-[#25D366] text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+      className="fixed bottom-5 right-5 z-40 grid size-12 place-items-center rounded-full bg-[#25D366] text-white shadow-elev-3 transition-transform hover:scale-105 active:scale-95"
     >
       {/* WhatsApp glyph */}
       <svg viewBox="0 0 24 24" className="size-7" fill="currentColor" aria-hidden="true">

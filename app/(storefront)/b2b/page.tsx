@@ -129,9 +129,7 @@ export default function B2BPage() {
               key={b.title}
               className="hover-lift rounded-2xl border bg-card p-6 shadow-elev-1 hover:shadow-elev-2"
             >
-              <span className="grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-primary/15 to-gold/15 text-primary">
-                <b.icon className="size-6" />
-              </span>
+              <b.icon className="size-6 text-primary" strokeWidth={1.75} aria-hidden />
               <h3 className="mt-4 font-semibold">{b.title}</h3>
               <p className="mt-1.5 text-sm text-muted-foreground">{b.desc}</p>
             </div>

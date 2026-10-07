@@ -278,7 +278,7 @@ export function CheckoutClient({
               <MapPin className="size-4 text-primary" /> Delivery address
             </h2>
             <Button
-              className="h-9 gap-1.5 px-4 shadow-sm"
+              className="h-9 gap-1.5 px-4"
               onClick={() => setAddressOpen(true)}
             >
               <Plus className="size-4" /> Add new address

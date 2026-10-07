@@ -78,7 +78,7 @@ export function Logo({
         <>
           <span
             className={cn(
-              "grid size-8 place-items-center rounded-xl shadow-sm",
+              "grid size-8 place-items-center rounded-xl shadow-elev-1",
               onDark === true && "bg-white text-primary",
               onDark === "lg" &&
                 "bg-primary text-primary-foreground lg:bg-white lg:text-primary",

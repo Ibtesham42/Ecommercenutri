@@ -140,7 +140,7 @@ export default async function CategoryPage({
               key={child.slug}
               href={`/categories/${child.slug}`}
               className={cn(
-                "rounded-full border bg-card px-3.5 py-1.5 text-xs font-semibold shadow-sm transition-colors",
+                "rounded-full border bg-card px-3.5 py-1.5 text-xs font-semibold transition-colors",
                 "text-foreground/75 hover:border-primary/30 hover:text-primary",
               )}
             >

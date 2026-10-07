@@ -106,7 +106,7 @@ export function OfferBar({ text }: { text: string }) {
             type="button"
             onClick={getCoupon}
             disabled={loading}
-            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-gold px-3.5 text-xs font-semibold text-gold-foreground shadow-sm transition-transform hover:brightness-105 disabled:opacity-70 motion-safe:active:scale-95"
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-gold px-3.5 text-xs font-semibold text-gold-foreground shadow-elev-1 transition-transform hover:brightness-105 disabled:opacity-70 motion-safe:active:scale-95"
           >
             <Gift className="size-3.5" />
             <span className="sm:hidden">Get</span>

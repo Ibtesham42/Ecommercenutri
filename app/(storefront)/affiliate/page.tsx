@@ -163,9 +163,7 @@ export default async function AffiliateLandingPage() {
           {steps.map((s, i) => (
             <Reveal key={s.title} delay={i * 60}>
               <div className="h-full rounded-2xl border p-5 shadow-elev-1 hover-lift">
-                <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <s.icon className="size-5" />
-                </div>
+                <s.icon className="size-6 text-primary" strokeWidth={1.75} aria-hidden />
                 <p className="mt-4 text-xs font-semibold text-primary">Step {i + 1}</p>
                 <h3 className="mt-1 font-semibold">{s.title}</h3>
                 <p className="mt-1.5 text-sm text-muted-foreground">{s.body}</p>
@@ -184,9 +182,7 @@ export default async function AffiliateLandingPage() {
           {features.map((f, i) => (
             <Reveal key={f.title} delay={i * 50}>
               <div className="h-full rounded-2xl border p-5 shadow-elev-1">
-                <div className="flex size-11 items-center justify-center rounded-xl bg-gold/15 text-gold-foreground">
-                  <f.icon className="size-5 text-gold" />
-                </div>
+                <f.icon className="size-6 text-gold" strokeWidth={1.75} aria-hidden />
                 <h3 className="mt-4 font-semibold">{f.title}</h3>
                 <p className="mt-1.5 text-sm text-muted-foreground">{f.body}</p>
               </div>

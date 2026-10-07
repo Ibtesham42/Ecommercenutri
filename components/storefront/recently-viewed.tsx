@@ -62,7 +62,7 @@ export function RecentlyViewed({
           <Link
             key={p.slug}
             href={`/products/${p.slug}`}
-            className="group rounded-xl border p-2 transition hover:border-primary/40 hover:shadow-sm"
+            className="group rounded-xl border p-2 transition hover:border-primary/40 hover:shadow-elev-1"
           >
             <div className="relative aspect-square overflow-hidden rounded-lg bg-accent/30">
               {p.image && (

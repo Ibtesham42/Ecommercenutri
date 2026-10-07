@@ -208,7 +208,7 @@ export function StoriesViewer({
             <Link
               href={`/products/${current.product.slug}`}
               onClick={onClose}
-              className="inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black shadow-lg transition hover:bg-white/90"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-black shadow-elev-3 transition hover:bg-white/90"
             >
               {current.ctaText ?? "Shop now"} <ArrowRight className="size-4" />
             </Link>

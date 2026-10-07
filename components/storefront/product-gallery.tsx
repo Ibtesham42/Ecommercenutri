@@ -128,7 +128,7 @@ export function ProductGallery({
             priority
           />
         )}
-        <span className="absolute bottom-3 right-3 grid size-9 place-items-center rounded-full bg-background/80 text-foreground opacity-0 shadow-sm backdrop-blur transition-opacity duration-200 group-hover:opacity-100">
+        <span className="absolute bottom-3 right-3 grid size-9 place-items-center rounded-full bg-background/80 text-foreground opacity-0 shadow-elev-1 backdrop-blur transition-opacity duration-200 group-hover:opacity-100">
           <Expand className="size-4" />
         </span>
       </button>
@@ -237,7 +237,7 @@ function Lightbox({
           )}
 
           {!zoomed && (
-            <span className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-background/80 px-3 py-1.5 text-xs font-medium shadow-sm backdrop-blur">
+            <span className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-background/80 px-3 py-1.5 text-xs font-medium shadow-elev-1 backdrop-blur">
               <ZoomIn className="size-3.5" /> Tap to zoom
             </span>
           )}
@@ -248,7 +248,7 @@ function Lightbox({
                 type="button"
                 onClick={() => go(-1)}
                 aria-label="Previous image"
-                className="absolute left-2 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-background/80 shadow-sm backdrop-blur transition hover:bg-background"
+                className="absolute left-2 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-background/80 shadow-elev-1 backdrop-blur transition hover:bg-background"
               >
                 <ChevronLeft className="size-5" />
               </button>
@@ -256,11 +256,11 @@ function Lightbox({
                 type="button"
                 onClick={() => go(1)}
                 aria-label="Next image"
-                className="absolute right-2 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-background/80 shadow-sm backdrop-blur transition hover:bg-background"
+                className="absolute right-2 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-background/80 shadow-elev-1 backdrop-blur transition hover:bg-background"
               >
                 <ChevronRight className="size-5" />
               </button>
-              <span className="absolute right-3 top-3 rounded-full bg-background/80 px-2.5 py-1 text-xs font-medium shadow-sm backdrop-blur">
+              <span className="absolute right-3 top-3 rounded-full bg-background/80 px-2.5 py-1 text-xs font-medium shadow-elev-1 backdrop-blur">
                 {active + 1} / {count}
               </span>
             </>

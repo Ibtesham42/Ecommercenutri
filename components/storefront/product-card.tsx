@@ -46,12 +46,12 @@ export function ProductCard({
     >
       <div className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex flex-col items-start gap-1">
         {product.isBestSeller && (
-          <Badge className="gap-1 border-transparent bg-surface-deep text-surface-deep-foreground shadow-sm hover:bg-surface-deep">
+          <Badge className="gap-1 border-transparent bg-surface-deep text-surface-deep-foreground shadow-elev-1 hover:bg-surface-deep">
             <span className="text-gold">★</span> Best Seller
           </Badge>
         )}
         {off ? (
-          <Badge className="border-transparent bg-gold text-gold-foreground shadow-sm hover:bg-gold">
+          <Badge className="border-transparent bg-gold text-gold-foreground shadow-elev-1 hover:bg-gold">
             {off}% OFF
           </Badge>
         ) : null}

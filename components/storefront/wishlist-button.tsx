@@ -50,7 +50,7 @@ export function WishlistButton({
         "inline-flex items-center justify-center gap-2 rounded-full transition-transform active:scale-90",
         withLabel
           ? "h-9 border px-4 text-sm font-medium hover:bg-accent"
-          : "size-8 bg-background/80 shadow-sm backdrop-blur hover:bg-background",
+          : "size-8 bg-background/80 shadow-elev-1 backdrop-blur hover:bg-background",
         className,
       )}
     >

@@ -83,7 +83,7 @@ export default async function SupportPage() {
           <Link
             key={r.title}
             href={r.href}
-            className="group rounded-2xl border p-5 transition-shadow hover:shadow-md"
+            className="group rounded-2xl border p-5 transition-shadow hover:shadow-elev-2"
           >
             <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
               <r.icon className="size-6" />
