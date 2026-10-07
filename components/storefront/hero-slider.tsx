@@ -125,7 +125,7 @@ export function HeroSlideContent({
             </span>
           )}
           {slide.title && (
-            <h2 className="font-heading text-3xl font-extrabold leading-[1.1] tracking-tight text-white drop-shadow-md sm:text-4xl lg:text-5xl">
+            <h2 className="font-heading text-3xl font-semibold leading-[1.1] tracking-tight text-white drop-shadow-md sm:text-4xl lg:text-5xl">
               {slide.title}
             </h2>
           )}

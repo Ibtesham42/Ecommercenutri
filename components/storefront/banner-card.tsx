@@ -61,7 +61,7 @@ function TextOverlay({ banner }: { banner: BannerCardData }) {
           </span>
         )}
         {banner.title && (
-          <h3 className="max-w-[16rem] text-lg font-extrabold leading-tight text-white drop-shadow sm:max-w-md sm:text-2xl lg:max-w-lg lg:text-4xl">
+          <h3 className="max-w-[16rem] font-heading text-lg font-semibold leading-tight tracking-tight text-white drop-shadow sm:max-w-md sm:text-2xl lg:max-w-lg lg:text-4xl">
             {banner.title}
           </h3>
         )}

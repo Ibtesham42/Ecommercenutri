@@ -208,7 +208,7 @@ function Intro({ onStart, couponPercent }: { onStart: () => void; couponPercent:
       <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-xs font-semibold text-gold-foreground">
         <Sparkles className="size-3.5 text-gold" /> Free · Under a minute
       </span>
-      <h1 className="mt-4 font-heading text-3xl font-bold sm:text-4xl">Let&apos;s find your healthy snacking profile</h1>
+      <h1 className="mt-4 font-heading text-3xl font-semibold tracking-tight sm:text-4xl">Let&apos;s find your healthy snacking profile</h1>
       <p className="mx-auto mt-3 max-w-md leading-relaxed text-muted-foreground">
         Answer 6 quick questions about your lifestyle — our AI turns them into your personal
         Nutriyet Health Score and a snack plan made just for you.

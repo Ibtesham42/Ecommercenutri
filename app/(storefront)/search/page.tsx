@@ -152,7 +152,7 @@ export default async function SearchPage({
               )}
               {fallbackProducts.length > 0 && (
                 <div>
-                  <h2 className="mb-5 text-lg font-bold sm:text-xl">Popular products</h2>
+                  <h2 className="mb-5 font-heading text-lg font-semibold tracking-tight sm:text-xl">Popular products</h2>
                   <ProductRail products={fallbackProducts} wishlistedIds={wishlistIds} />
                 </div>
               )}

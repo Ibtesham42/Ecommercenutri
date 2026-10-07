@@ -170,7 +170,7 @@ export function Showcase3D({ items }: { items: ShowcaseDisplayItem[] }) {
           >
             <span className="size-1.5 rounded-full bg-current" /> Featured
           </p>
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+          <h2 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
             {item.title}
           </h2>
           {item.tagline && (

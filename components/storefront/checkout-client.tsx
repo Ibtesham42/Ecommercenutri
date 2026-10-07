@@ -434,7 +434,7 @@ export function CheckoutClient({
               <span className="font-medium">{formatPrice(codFee)}</span>
             </div>
           )}
-          <div className="flex justify-between border-t pt-2 text-base font-bold">
+          <div className="flex justify-between border-t pt-2 text-base font-semibold">
             <span>Total</span>
             <span>{formatPrice(total)}</span>
           </div>
@@ -499,7 +499,7 @@ export function CheckoutClient({
         {/* Gold hero pill — the purchase language carried from PDP and cart. */}
         <Button
           size="lg"
-          className="btn-rich btn-rich-gold h-13 w-full gap-2 rounded-full bg-gold text-base font-bold text-gold-foreground shadow-elev-2 focus-visible:border-gold-foreground/40 focus-visible:ring-gold/45"
+          className="btn-rich btn-rich-gold h-13 w-full gap-2 rounded-full bg-gold text-base font-semibold text-gold-foreground shadow-elev-2 focus-visible:border-gold-foreground/40 focus-visible:ring-gold/45"
           onClick={onPlaceOrder}
           disabled={placing || addresses.length === 0}
         >
@@ -569,7 +569,7 @@ function CheckoutSteps() {
           <li className="flex items-center gap-2">
             <span
               className={cn(
-                "grid size-7 place-items-center rounded-full border text-xs font-bold",
+                "grid size-7 place-items-center rounded-full border text-xs font-semibold",
                 s.state === "done" && "border-primary bg-primary text-primary-foreground",
                 s.state === "active" && "border-primary bg-primary/10 text-primary",
                 s.state === "upcoming" && "border-border text-muted-foreground",

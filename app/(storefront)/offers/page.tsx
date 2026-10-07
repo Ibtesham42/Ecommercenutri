@@ -46,7 +46,7 @@ export default async function OffersPage() {
               className="flex flex-col gap-3 rounded-2xl border bg-card p-5 shadow-elev-1"
             >
               <div>
-                <span className="inline-flex items-center rounded-full bg-gold/15 px-2.5 py-1 text-xs font-bold text-gold-foreground">
+                <span className="inline-flex items-center rounded-full bg-gold/15 px-2.5 py-1 text-xs font-semibold text-gold-foreground">
                   {valueLabel(c)}
                 </span>
                 {c.description && (
@@ -58,7 +58,7 @@ export default async function OffersPage() {
                 </div>
               </div>
               <div className="mt-auto flex items-center justify-between gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-2.5">
-                <span className="font-mono text-base font-bold tracking-[0.15em] text-primary">
+                <span className="font-mono text-base font-semibold tracking-[0.15em] text-primary">
                   {c.code}
                 </span>
                 <CopyCouponButton code={c.code} />

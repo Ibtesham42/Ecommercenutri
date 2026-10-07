@@ -153,7 +153,7 @@ export default async function AffiliateLandingPage() {
 
       {/* How it works */}
       <section id="how-it-works" className="mt-16 scroll-mt-24">
-        <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
+        <h2 className="text-center font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
           How it works
         </h2>
         <p className="mx-auto mt-2 max-w-xl text-center text-sm text-muted-foreground">
@@ -177,7 +177,7 @@ export default async function AffiliateLandingPage() {
 
       {/* What you get */}
       <section className="mt-16">
-        <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
+        <h2 className="text-center font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
           Everything you need to succeed
         </h2>
         <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -197,7 +197,7 @@ export default async function AffiliateLandingPage() {
 
       {/* FAQ */}
       <section className="mt-16">
-        <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
+        <h2 className="text-center font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
           Frequently asked questions
         </h2>
         <div className="mx-auto mt-8 max-w-3xl divide-y rounded-2xl border">
@@ -217,7 +217,7 @@ export default async function AffiliateLandingPage() {
 
       {/* Final CTA */}
       <section className="mt-16 rounded-3xl border bg-primary/5 p-8 text-center shadow-elev-1 sm:p-12">
-        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+        <h2 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
           Ready to start earning?
         </h2>
         <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">

@@ -46,7 +46,7 @@ export default async function CategoriesPage() {
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               <div className="absolute bottom-0 left-0 p-4 text-white">
-                <h2 className="font-heading text-lg font-bold">{c.name}</h2>
+                <h2 className="font-heading text-lg font-semibold tracking-tight">{c.name}</h2>
                 <p className="text-xs text-white/80">
                   {c._count.products}{" "}
                   {c._count.products === 1 ? "product" : "products"}

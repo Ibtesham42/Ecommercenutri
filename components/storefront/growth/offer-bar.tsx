@@ -144,7 +144,7 @@ export function OfferBar({ text }: { text: string }) {
             <span className="mx-auto grid size-14 place-items-center rounded-full bg-white/10">
               <PartyPopper className="size-7 text-gold" />
             </span>
-            <h2 className="mt-3 font-heading text-2xl font-bold">You&apos;ve got {coupon?.percent ?? 20}% OFF!</h2>
+            <h2 className="mt-3 font-heading text-2xl font-semibold tracking-tight">You&apos;ve got {coupon?.percent ?? 20}% OFF!</h2>
             <p className="mt-1 text-sm text-surface-deep-foreground/80">Use this code on your first order.</p>
           </div>
           <div className="p-6">

@@ -29,7 +29,7 @@ export default async function ReturnsRefundsPage() {
             <RotateCcw className="size-5 shrink-0" aria-hidden />
             <span>
               Eligible issues can be reported within{" "}
-              <span className="font-bold">{returnSettings.returnWindowDays} days</span> of delivery —
+              <span className="font-semibold">{returnSettings.returnWindowDays} days</span> of delivery —
               see what qualifies below.
             </span>
           </div>

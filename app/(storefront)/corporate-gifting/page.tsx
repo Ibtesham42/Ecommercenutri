@@ -103,7 +103,7 @@ export default function CorporateGiftingPage() {
               purpose and mention gifting details in your message.
             </p>
           </div>
-          <Button asChild size="lg" className="btn-rich btn-rich-gold shrink-0 gap-2 rounded-full bg-gold font-bold text-gold-foreground">
+          <Button asChild size="lg" className="btn-rich btn-rich-gold shrink-0 gap-2 rounded-full bg-gold font-semibold text-gold-foreground">
             <Link href="/b2b">
               Enquire now
             </Link>

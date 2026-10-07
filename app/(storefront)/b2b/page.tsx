@@ -90,7 +90,7 @@ export default function B2BPage() {
             <div className="flex flex-wrap gap-3 pt-1">
               <a
                 href="#inquiry"
-                className="inline-flex items-center gap-2 rounded-full bg-gold px-6 py-3 text-sm font-bold text-gold-foreground transition-transform hover:brightness-105 active:scale-95"
+                className="inline-flex items-center gap-2 rounded-full bg-gold px-6 py-3 text-sm font-semibold text-gold-foreground transition-transform hover:brightness-105 active:scale-95"
               >
                 Send Business Inquiry <ArrowRight className="size-4" />
               </a>
@@ -116,7 +116,7 @@ export default function B2BPage() {
       <section className="mx-auto w-full max-w-7xl px-4 py-14">
         <div className="mb-8 max-w-2xl">
           <span className="mb-2.5 block h-1 w-10 rounded-full bg-gradient-to-r from-primary to-gold" />
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          <h2 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
             Why partner with Nutriyet
           </h2>
           <p className="mt-1 text-muted-foreground">
@@ -159,7 +159,7 @@ export default function B2BPage() {
             <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
               <Handshake className="size-3.5" /> Send Business Inquiry
             </span>
-            <h2 className="font-heading text-2xl font-bold sm:text-3xl">
+            <h2 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
               Let&apos;s talk business
             </h2>
             <p className="text-muted-foreground">

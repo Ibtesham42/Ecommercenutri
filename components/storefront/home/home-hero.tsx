@@ -32,7 +32,7 @@ export function HomeHero({ content }: { content: HeroContent }) {
               {content.eyebrow}
             </Badge>
           )}
-          <h1 className="font-heading text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+          <h1 className="font-heading text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
             {content.title}{" "}
             {content.highlight && (
               <span className={content.textColor ? undefined : "text-primary"}>{content.highlight}</span>
@@ -63,7 +63,7 @@ export function HomeHero({ content }: { content: HeroContent }) {
             <div className="flex gap-8 pt-4">
               {content.stats.map((s, i) => (
                 <div key={i}>
-                  <div className="font-heading text-2xl font-bold">{s.value}</div>
+                  <div className="font-heading text-2xl font-semibold">{s.value}</div>
                   <div className={cn("text-xs", !content.textColor && "text-muted-foreground")}>
                     {s.label}
                   </div>
@@ -80,7 +80,7 @@ export function HomeHero({ content }: { content: HeroContent }) {
                 <span className="grid size-24 place-items-center rounded-full bg-primary/10 text-primary">
                   <Leaf className="size-12" />
                 </span>
-                <p className="font-heading text-xl font-bold text-foreground">Nutrition, reimagined</p>
+                <p className="font-heading text-xl font-semibold tracking-tight text-foreground">Nutrition, reimagined</p>
                 <p className="max-w-xs text-sm text-muted-foreground">
                   Wholesome foods, lab-tested quality, delivered fresh.
                 </p>
