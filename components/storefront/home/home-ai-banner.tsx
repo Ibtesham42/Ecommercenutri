@@ -1,11 +1,14 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AiBannerContent } from "@/lib/validations/admin";
 
+/**
+ * The AI assistant, presented as a quiet supporting band (hairline rules, a
+ * text heading and one outline link) — Nutriyet is a food brand first; AI is a
+ * helper, not the headline. Admin colour overrides still apply.
+ */
 export function HomeAiBanner({ content }: { content: AiBannerContent }) {
   const style: CSSProperties = {};
   if (content.bgColor) style.background = content.bgColor;
@@ -13,37 +16,27 @@ export function HomeAiBanner({ content }: { content: AiBannerContent }) {
   const styled = Boolean(content.bgColor || content.textColor);
 
   return (
-    <section className="mx-auto w-full max-w-7xl px-4 py-16 max-sm:py-10" data-heat="ai-assistant">
-      <div
-        className={cn(
-          "relative overflow-hidden rounded-3xl px-6 py-12 shadow-elev-2 sm:px-12",
-          !styled && "surface-rich text-surface-deep-foreground",
-        )}
-        style={styled ? style : undefined}
-      >
-        <div className="relative z-10 max-w-2xl space-y-4">
-          {content.eyebrow && (
-            <Badge className="gap-1.5 border border-white/20 bg-white/10 text-current hover:bg-white/15">
-              <span className="size-1.5 rounded-full bg-gold" />
-              <Sparkles className="size-3.5 text-gold" /> {content.eyebrow}
-            </Badge>
-          )}
-          {content.title && (
-            <h2 className="font-heading text-3xl font-semibold sm:text-4xl">
-              {content.title}
-            </h2>
-          )}
-          {content.description && <p className="opacity-80">{content.description}</p>}
+    <section data-heat="ai-assistant" style={styled ? style : undefined} className={cn(!styled && "bg-background")}>
+      <div className="mx-auto w-full max-w-7xl px-4">
+        <div className="flex flex-col gap-6 border-y border-border py-10 md:flex-row md:items-center md:justify-between md:gap-12 md:py-12">
+          <div className="max-w-2xl">
+            {content.eyebrow && <p className="eyebrow">{content.eyebrow}</p>}
+            {content.title && (
+              <h2 className="mt-3 font-heading text-subheading font-medium">{content.title}</h2>
+            )}
+            {content.description && (
+              <p className={cn("mt-2 text-[15px] leading-relaxed", !styled && "text-muted-foreground")}>
+                {content.description}
+              </p>
+            )}
+          </div>
           {content.ctaLabel && (
-            <Button
-              asChild
-              size="lg"
-              className="gap-2 bg-gold font-semibold text-gold-foreground hover:bg-gold/90"
+            <Link
+              href={content.ctaHref || "/assistant"}
+              className="inline-flex h-12 shrink-0 items-center gap-2 self-start rounded-md border border-foreground/20 px-6 text-[15px] font-medium transition-colors hover:bg-oat md:self-auto"
             >
-              <Link href={content.ctaHref || "#"}>
-                {content.ctaLabel} <ArrowRight className="size-4" />
-              </Link>
-            </Button>
+              {content.ctaLabel} <ArrowRight className="size-4" />
+            </Link>
           )}
         </div>
       </div>

@@ -31,20 +31,19 @@ export type HomeContentMap = {
 
 export const HOME_CONTENT_DEFAULTS: HomeContentMap = {
   hero: {
-    eyebrow: "AI-powered nutrition marketplace",
-    title: "Eat clean.",
-    highlight: "Live strong.",
+    // Brand line + copy from the approved redesign brief. Used by the editorial
+    // hero (heroSlider) and the legacy hero block. No numeric stats by default:
+    // only show figures an admin can stand behind.
+    eyebrow: "Authentically Indian",
+    title: "Rooted in Tradition.",
+    highlight: "Made for Today.",
     description:
-      "Premium makhana, dry fruits, seeds, protein and wellness essentials — handpicked for your health and guided by your own AI nutrition expert.",
+      "Thoughtfully presented foods rooted in India's rich food heritage for modern everyday living.",
     primaryLabel: "Shop Now",
     primaryHref: "/products",
-    secondaryLabel: "Ask the AI Expert",
-    secondaryHref: "/assistant",
-    stats: [
-      { value: "10k+", label: "Happy customers" },
-      { value: "4.8★", label: "Average rating" },
-      { value: "100%", label: "Natural & clean" },
-    ],
+    secondaryLabel: "Explore Our Story",
+    secondaryHref: "/about",
+    stats: [],
     bgColor: null,
     textColor: null,
   },
@@ -178,6 +177,8 @@ export const HOME_SECTION_EDITOR: Record<HomeSectionKey, SectionEditorKind> = {
   whyChooseUs: "whyChooseUs",
   testimonials: "testimonials",
   aiBanner: "aiBanner",
+  story: "none",
+  journal: "none",
 };
 
 /** Lucide icon names selectable for "Why choose us" value props. */

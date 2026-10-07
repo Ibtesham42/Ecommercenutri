@@ -35,14 +35,14 @@ export async function TrustSection() {
     numbers.push({ icon: Users, value: `${nf.format(stats.returningCustomers)}+`, label: "Returning Customers" });
 
   return (
-    <section className="border-y bg-muted/20" aria-label="Why shop with us">
+    <section className="border-y border-border bg-background" aria-label="Why shop with us">
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:py-10">
         {numbers.length > 0 && (
           <div className="mb-6 grid grid-cols-3 gap-3 sm:mb-8">
             {numbers.map((n) => (
-              <div key={n.label} className="rounded-2xl border bg-card p-4 text-center shadow-elev-1">
-                <n.icon className="mx-auto size-5 text-gold" />
-                <p className="mt-1.5 font-heading text-xl font-bold tabular-nums sm:text-2xl">{n.value}</p>
+              <div key={n.label} className="p-2 text-center">
+                <n.icon className="mx-auto size-5 text-primary" strokeWidth={1.6} />
+                <p className="mt-1.5 font-heading text-xl font-medium tabular-nums sm:text-2xl">{n.value}</p>
                 <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground sm:text-xs">{n.label}</p>
               </div>
             ))}
@@ -58,7 +58,7 @@ export async function TrustSection() {
               key={b.label}
               className="flex flex-col items-center gap-2 px-2 text-center lg:px-5"
             >
-              <b.icon className="size-5 text-gold" strokeWidth={1.75} aria-hidden />
+              <b.icon className="size-5 text-primary" strokeWidth={1.6} aria-hidden />
               <span className="text-xs font-medium leading-snug text-foreground/80 sm:text-[13px]">{b.label}</span>
             </li>
           ))}

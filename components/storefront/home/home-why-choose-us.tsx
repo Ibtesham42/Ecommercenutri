@@ -8,7 +8,7 @@ import type { WhyChooseUsContent } from "@/lib/validations/admin";
  *  page). Echoes `TrustSection`'s restrained divider rhythm further down. */
 export function HomeWhyChooseUs({ content }: { content: WhyChooseUsContent }) {
   return (
-    <section className="mx-auto w-full max-w-7xl px-4 py-14 max-sm:py-9">
+    <section className="shop-section mx-auto w-full max-w-7xl px-4">
       <SectionHeading title={content.title} subtitle={content.subtitle} />
       <ul className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-4 lg:gap-x-0 lg:divide-x lg:divide-border/60">
         {content.items.map((vp, i) => {
@@ -16,7 +16,7 @@ export function HomeWhyChooseUs({ content }: { content: WhyChooseUsContent }) {
           return (
             <li key={i} className="flex flex-col items-start gap-2.5 lg:px-6 lg:first:pl-0">
               <Icon className="size-6 text-primary" strokeWidth={1.5} aria-hidden />
-              <h3 className="font-heading text-base font-semibold">{vp.title}</h3>
+              <h3 className="font-heading text-lg font-medium">{vp.title}</h3>
               <p className="text-sm leading-relaxed text-muted-foreground">{vp.desc}</p>
             </li>
           );

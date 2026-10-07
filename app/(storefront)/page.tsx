@@ -1,12 +1,13 @@
 import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
-import { Truck, Sparkles } from "lucide-react";
 import { ProductGrid, ProductRail } from "@/components/storefront/product-card";
 import { SectionHeading } from "@/components/storefront/section-heading";
 import { BlurImage } from "@/components/storefront/blur-image";
 import { Reveal } from "@/components/storefront/reveal";
 import { StoriesRail } from "@/components/storefront/stories-rail";
-import { HeroSlider } from "@/components/storefront/hero-slider";
+import { EditorialHero } from "@/components/storefront/home/editorial-hero";
+import { StoryBand } from "@/components/storefront/home/story-band";
+import { JournalSection } from "@/components/storefront/home/journal-section";
 import { HeroRevealOverlay } from "@/components/storefront/hero-reveal/hero-reveal-overlay";
 import { Showcase3D } from "@/components/storefront/showcase-3d";
 import { BannerStrip } from "@/components/storefront/banner-strip";
@@ -40,6 +41,10 @@ import type { HomeSectionKey } from "@/lib/home-sections";
 // Personalized + catalog-driven, so render at request time. This also keeps the
 // database out of the build step (it's only needed at runtime).
 export const dynamic = "force-dynamic";
+
+/** A product rail with fewer items than this reads as broken (a lone card in
+ *  an empty row), so data-driven rails below it are skipped. */
+const MIN_RAIL_ITEMS = 3;
 
 export default async function HomePage() {
   // Content first so catalog sections can honor admin-set item limits.
@@ -92,6 +97,8 @@ export default async function HomePage() {
   const revealLive = heroSlides.length > 0 && heroRevealLive(heroReveal);
   // Keep the overlay off the side the slide copy is aligned to.
   const revealSide = heroSlides.some((s) => s.textAlign === "right") ? "left" : "right";
+  // The legacy static hero block owns the page <h1> when an admin enables it.
+  const heroBlockOn = sectionOrder.some((s) => s.key === "hero" && s.enabled);
 
   // Each homepage section keyed for the admin Section Builder. Content comes from
   // the editable defaults (lib/home-content.ts) merged with admin edits, so the
@@ -114,8 +121,12 @@ export default async function HomePage() {
 
     heroSlider: (() => {
       if (heroSlides.length === 0) return null;
-      const slider = (
-        <HeroSlider
+      return (
+        <EditorialHero
+          content={content.hero}
+          headingAs={heroBlockOn ? "h2" : "h1"}
+          showPromises={!growth.trustEnabled}
+          overlay={revealLive ? <HeroRevealOverlay settings={heroReveal} side={revealSide} /> : undefined}
           slides={heroSlides.map((s) => ({
             id: s.id,
             mediaType: s.mediaType,
@@ -135,60 +146,52 @@ export default async function HomePage() {
           }))}
         />
       );
-      return revealLive ? (
-        <div className="relative">
-          {slider}
-          <HeroRevealOverlay settings={heroReveal} side={revealSide} />
-        </div>
-      ) : (
-        slider
-      );
     })(),
 
     hero: <HomeHero content={content.hero} />,
 
     categories: (
-      <section className="mx-auto w-full max-w-7xl px-4 py-14 max-sm:py-9" data-heat="categories">
+      <section className="shop-section mx-auto w-full max-w-7xl px-4" data-heat="categories">
         <SectionHeading
           title={content.categories.title}
           subtitle={content.categories.subtitle}
           ctaLabel={content.categories.ctaLabel}
           ctaHref={content.categories.ctaHref}
         />
-        <Reveal className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
-          {categories.slice(0, content.categories.limit ?? 6).map((c) => (
-            <Link
-              key={c.slug}
-              href={`/categories/${c.slug}`}
-              className="hover-lift group relative block aspect-square overflow-hidden rounded-2xl border bg-accent/30 shadow-elev-1 hover:shadow-elev-2"
-            >
-              {c.image && (
-                <BlurImage
-                  src={c.image}
-                  alt={c.name}
-                  fill
-                  sizes="(max-width: 768px) 33vw, 16vw"
-                  className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
-                />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
-              <span className="absolute inset-x-0 bottom-0 p-3 text-center text-white drop-shadow">
-                <span className="block text-sm font-semibold">{c.name}</span>
-                {c._count.products > 0 && (
-                  <span className="mt-0.5 block text-[11px] font-medium text-white/80">
-                    {c._count.products} {c._count.products === 1 ? "product" : "products"}
+        <Reveal>
+          <ul className="scroll-rail -mx-4 gap-5 px-4 pb-1 sm:mx-0 sm:flex sm:flex-wrap sm:gap-x-10 sm:gap-y-8 sm:px-0">
+            {categories.slice(0, content.categories.limit ?? 6).map((c) => (
+              <li key={c.slug} className="w-24 shrink-0 snap-start sm:w-32">
+                <Link href={`/categories/${c.slug}`} className="group flex flex-col items-center gap-3 text-center">
+                  <span className="relative grid size-24 place-items-center overflow-hidden rounded-full bg-oat ring-1 ring-border transition-shadow group-hover:ring-primary/40 sm:size-32">
+                    {c.image ? (
+                      <BlurImage
+                        src={c.image}
+                        alt=""
+                        fill
+                        sizes="128px"
+                        className="object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-105"
+                      />
+                    ) : (
+                      <span aria-hidden className="font-heading text-3xl text-oat-foreground">
+                        {c.name.charAt(0)}
+                      </span>
+                    )}
                   </span>
-                )}
-              </span>
-            </Link>
-          ))}
+                  <span className="text-sm font-medium leading-snug text-foreground group-hover:text-primary sm:text-[15px]">
+                    {c.name}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </Reveal>
       </section>
     ),
 
     featured:
       featured.length > 0 ? (
-        <section className="mx-auto w-full max-w-7xl px-4 py-6">
+        <section className="shop-section mx-auto w-full max-w-7xl px-4">
           <SectionHeading
             title={content.featured.title}
             subtitle={content.featured.subtitle}
@@ -202,14 +205,13 @@ export default async function HomePage() {
               priorityCount={firstProductSectionKey === "featured" ? 2 : 0}
             />
           </Reveal>
-          <PromoStrip />
         </section>
       ) : null,
 
     bestSellers:
       bestSellers.length > 0 ? (
-        <section className="border-y bg-muted/30">
-          <div className="mx-auto w-full max-w-7xl px-4 py-14 max-sm:py-9">
+        <section className="bg-oat">
+          <div className="shop-section mx-auto w-full max-w-7xl px-4">
             <SectionHeading
               title={content.bestSellers.title}
               subtitle={content.bestSellers.subtitle}
@@ -228,8 +230,8 @@ export default async function HomePage() {
       ) : null,
 
     deals:
-      deals.length > 0 ? (
-        <section className="mx-auto w-full max-w-7xl px-4 py-14 max-sm:py-9">
+      deals.length >= MIN_RAIL_ITEMS ? (
+        <section className="shop-section mx-auto w-full max-w-7xl px-4">
           <SectionHeading
             title={content.deals.title}
             subtitle={content.deals.subtitle}
@@ -252,13 +254,13 @@ export default async function HomePage() {
         title={content.recommended.title}
         subtitle={content.recommended.subtitle}
         excludeProductIds={[...featured, ...bestSellers].map((p) => p.id)}
-        className="mx-auto w-full max-w-7xl px-4 py-14 max-sm:py-9"
+        className="shop-section mx-auto w-full max-w-7xl px-4"
       />
     ),
 
     trending:
-      trendingFresh.length > 0 ? (
-        <section className="mx-auto w-full max-w-7xl px-4 py-14 max-sm:py-9">
+      trendingFresh.length >= MIN_RAIL_ITEMS ? (
+        <section className="shop-section mx-auto w-full max-w-7xl px-4">
           <SectionHeading
             title={content.trending.title}
             subtitle={content.trending.subtitle}
@@ -273,17 +275,17 @@ export default async function HomePage() {
 
     combos:
       combos.length > 0 ? (
-        <section className="border-y bg-muted/30">
-          <div className="mx-auto w-full max-w-7xl space-y-12 px-4 py-14 max-sm:space-y-9 max-sm:py-9">
+        <section className="border-y border-border">
+          <div className="shop-section mx-auto w-full max-w-7xl space-y-12 px-4 max-sm:space-y-9">
             <SectionHeading
               title={content.combos.title}
               subtitle={content.combos.subtitle}
             />
             {combos.map((combo) => (
               <div key={combo.key}>
-                <h3 className="mb-5 font-heading text-lg font-semibold tracking-tight sm:text-xl">
+                <h3 className="mb-5 font-heading text-subheading font-medium">
                   {combo.title}
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  <span className="ml-2 font-sans text-sm font-normal tracking-normal text-muted-foreground">
                     {combo.description}
                   </span>
                 </h3>
@@ -303,6 +305,10 @@ export default async function HomePage() {
     testimonials: <HomeTestimonials content={content.testimonials} />,
 
     aiBanner: <HomeAiBanner content={content.aiBanner} />,
+
+    story: <StoryBand />,
+
+    journal: <JournalSection />,
   };
 
   const visible = sectionOrder.filter((s) => s.enabled && sections[s.key] != null);
@@ -326,7 +332,7 @@ export default async function HomePage() {
   // "hero" is off (the default now, to avoid the stacked-hero redundancy) this
   // keeps exactly one real <h1> on the page for SEO/a11y without an extra
   // visible heading.
-  const needsFallbackH1 = !visible.some((s) => s.key === "hero");
+  const needsFallbackH1 = !visible.some((s) => s.key === "hero" || s.key === "heroSlider");
 
   return (
     <>
@@ -348,36 +354,5 @@ export default async function HomePage() {
         </Fragment>
       ))}
     </>
-  );
-}
-
-/** Presentational promo tiles (free shipping + AI expert) — reference-style. */
-function PromoStrip() {
-  return (
-    <div className="mt-8 grid gap-3 sm:grid-cols-2" data-heat="cta">
-      <div className="flex items-center gap-3 rounded-2xl border bg-accent/40 p-4">
-        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-          <Truck className="size-5" />
-        </span>
-        <div>
-          <p className="text-sm font-semibold">Free shipping</p>
-          <p className="text-xs text-muted-foreground">On orders over ₹499</p>
-        </div>
-      </div>
-      <Link
-        href="/assistant"
-        className="hover-lift flex items-center gap-3 rounded-2xl bg-surface-deep p-4 text-surface-deep-foreground shadow-elev-1"
-      >
-        <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/10 text-gold">
-          <Sparkles className="size-5" />
-        </span>
-        <div>
-          <p className="text-sm font-semibold">Ask the AI expert</p>
-          <p className="text-xs text-surface-deep-foreground/70">
-            Not sure what to buy? Get picks →
-          </p>
-        </div>
-      </Link>
-    </div>
   );
 }
