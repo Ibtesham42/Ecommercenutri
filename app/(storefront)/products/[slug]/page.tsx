@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import type { Metadata } from "next";
 import {
   getProductBySlug,
@@ -35,15 +34,8 @@ import { RecoSection } from "@/components/storefront/reco-section";
 import { FrequentlyBoughtTogether } from "@/components/storefront/frequently-bought-together";
 import { BehaviorTracker } from "@/components/storefront/behavior-tracker";
 import { StarRating } from "@/components/storefront/star-rating";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
+import { ProductDetails } from "@/components/storefront/product-details";
+import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
 
 type NutritionFact = { label: string; value: string };
 
@@ -143,8 +135,12 @@ export default async function ProductPage({
     },
   };
 
+  const hasNutrition =
+    facts.length > 0 || product.variants.some((v) => Boolean(v.nutritionImageUrl));
+
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 pt-8 pb-28 lg:pb-8">
+    // Bottom padding keeps the mobile sticky buy bar off the last section.
+    <div className="shop-container pt-5 pb-28 sm:pt-7 lg:pb-24">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLd(jsonLdData)}
@@ -160,29 +156,14 @@ export default async function ProductPage({
         )}
       />
 
-      <Breadcrumb className="mb-6">
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link href="/">Home</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link href={`/categories/${product.category.slug}`}>
-                {product.category.name}
-              </Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage className="line-clamp-1">
-              {product.name}
-            </BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+      <PageBreadcrumb
+        items={[
+          { name: "Home", href: "/" },
+          { name: "Shop", href: "/products" },
+          { name: product.category.name, href: `/categories/${product.category.slug}` },
+          { name: product.name },
+        ]}
+      />
 
       {/* One shared variant selection: picking a weight switches the gallery,
           price panel, description and nutrition image together — no reload. */}
@@ -191,29 +172,34 @@ export default async function ProductPage({
           (product.variants.find((v) => v.stock > 0) ?? product.variants[0])?.id ?? null
         }
       >
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
+      <div className="mt-5 sm:mt-7 md:grid md:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)] md:items-start md:gap-8 lg:gap-14 xl:gap-20">
         <ProductGallery
           images={product.images.map((i) => ({ url: i.url, alt: i.alt }))}
           name={product.name}
           variantMedia={product.variants.map((v) => ({ id: v.id, images: v.images }))}
         />
 
-        <div className="min-w-0 space-y-5">
-          {product.brand && (
-            <p className="text-sm font-medium text-muted-foreground">
-              {product.brand.name}
-            </p>
-          )}
-          <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">{product.name}</h1>
+        <div className="mt-6 min-w-0 md:mt-0">
+          <p className="eyebrow">
+            {product.brand && product.brand.name !== "Nutriyet"
+              ? `${product.brand.name} · ${product.category.name}`
+              : product.category.name}
+          </p>
+          <h1 className="mt-2.5 font-heading text-[1.75rem] leading-[1.12] tracking-[-0.015em] text-foreground sm:text-[2.125rem] lg:text-[2.5rem]">
+            {product.name}
+          </h1>
           {product.ratingCount > 0 && (
-            <StarRating
-              rating={product.ratingAvg}
-              count={product.ratingCount}
-              size="md"
-            />
+            <a
+              href="#reviews"
+              className="mt-3 inline-flex min-h-8 items-center rounded-sm outline-none hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <StarRating rating={product.ratingAvg} count={product.ratingCount} size="md" />
+            </a>
           )}
           {product.shortDescription && (
-            <p className="text-muted-foreground">{product.shortDescription}</p>
+            <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground sm:text-base">
+              {product.shortDescription}
+            </p>
           )}
 
           <ProductPurchase
@@ -238,10 +224,12 @@ export default async function ProductPage({
             settings={pricingSettings}
           />
 
-          <ProductAiAssistant productId={product.id} productName={product.name} />
+          <div className="mt-8">
+            <ProductAiAssistant productId={product.id} productName={product.name} />
+          </div>
 
           {/* Share — WhatsApp-first product discovery (dominant in India). */}
-          <div className="border-t pt-4">
+          <div className="mt-5">
             <ShareButtons
               url={productUrl}
               title={product.name}
@@ -251,58 +239,34 @@ export default async function ProductPage({
         </div>
       </div>
 
-      {/* Details: description/benefits/ingredients + nutrition flow together
-          as one continuous read on mobile; desktop keeps the 2/3–1/3 split. */}
-      <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-10">
-        <div className="rounded-2xl border bg-card p-5 shadow-elev-1 sm:p-6 lg:col-span-2">
-          <Tabs defaultValue="description">
-            <TabsList>
-              <TabsTrigger value="description">Description</TabsTrigger>
-              {product.benefits && (
-                <TabsTrigger value="benefits">Benefits</TabsTrigger>
-              )}
-              {product.ingredients && (
-                <TabsTrigger value="ingredients">Ingredients</TabsTrigger>
-              )}
-            </TabsList>
-            <TabsContent
-              value="description"
-              className="prose prose-sm max-w-none pt-4 text-muted-foreground"
-            >
-              <VariantDescription
-                fallback={product.description}
-                variants={product.variants.map((v) => ({
-                  id: v.id,
-                  description: v.description,
-                }))}
-              />
-            </TabsContent>
-            {product.benefits && (
-              <TabsContent value="benefits" className="pt-4 text-muted-foreground">
-                <p className="whitespace-pre-line">{product.benefits}</p>
-              </TabsContent>
-            )}
-            {product.ingredients && (
-              <TabsContent
-                value="ingredients"
-                className="pt-4 text-muted-foreground"
-              >
-                <p className="whitespace-pre-line">{product.ingredients}</p>
-              </TabsContent>
-            )}
-          </Tabs>
-        </div>
-        <div className="min-w-0 space-y-6">
-          {facts.length > 0 && <NutritionFacts facts={facts} />}
-          <VariantNutritionImage
+      <ProductDetails
+        name={product.name}
+        description={
+          <VariantDescription
+            fallback={product.description}
             variants={product.variants.map((v) => ({
               id: v.id,
-              nutritionImageUrl: v.nutritionImageUrl,
+              description: v.description,
             }))}
-            name={product.name}
           />
-        </div>
-      </div>
+        }
+        benefits={product.benefits}
+        ingredients={product.ingredients}
+        nutrition={
+          hasNutrition ? (
+            <>
+              {facts.length > 0 && <NutritionFacts facts={facts} />}
+              <VariantNutritionImage
+                variants={product.variants.map((v) => ({
+                  id: v.id,
+                  nutritionImageUrl: v.nutritionImageUrl,
+                }))}
+                name={product.name}
+              />
+            </>
+          ) : null
+        }
+      />
       </VariantSelectionProvider>
 
       {/* Reviews */}
@@ -328,10 +292,10 @@ export default async function ProductPage({
       {/* Frequently bought together — interactive one-tap bundle (AOV). Falls
           back to a passive strip when there aren't ≥2 in-stock companions. */}
       {fbt.length >= 2 ? (
-        <FrequentlyBoughtTogether className="mt-14" products={fbt} />
+        <FrequentlyBoughtTogether className="mt-16 lg:mt-24" products={fbt} />
       ) : (
         <RecoSection
-          className="mt-14"
+          className="mt-16 lg:mt-24"
           title="Frequently bought together"
           products={fbt}
           wishlistedIds={wishlistIds}
@@ -341,7 +305,7 @@ export default async function ProductPage({
 
       {/* Customers also bought */}
       <RecoSection
-        className="mt-14"
+        className="mt-16 lg:mt-24"
         title="Customers also bought"
         products={alsoBought}
         wishlistedIds={wishlistIds}
@@ -350,7 +314,7 @@ export default async function ProductPage({
 
       {/* Similar products */}
       <RecoSection
-        className="mt-14"
+        className="mt-16 lg:mt-24"
         title="Similar products"
         products={similar}
         wishlistedIds={wishlistIds}
@@ -358,7 +322,7 @@ export default async function ProductPage({
       />
 
       {/* Recently viewed */}
-      <div className="mt-14">
+      <div className="mt-16 lg:mt-24">
         <RecentlyViewed excludeSlug={product.slug} />
       </div>
 

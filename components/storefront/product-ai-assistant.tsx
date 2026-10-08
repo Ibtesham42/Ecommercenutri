@@ -52,9 +52,9 @@ export function ProductAiAssistant({
   }
 
   return (
-    <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-      <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-        <Sparkles className="size-4" />
+    <div className="rounded-xl bg-oat p-4 sm:p-5">
+      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+        <Sparkles aria-hidden className="size-4 text-primary" />
         Ask AI about {productName}
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
@@ -63,7 +63,7 @@ export function ProductAiAssistant({
             key={q}
             type="button"
             onClick={() => ask(q)}
-            className="rounded-full border bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary/40 hover:text-primary"
+            className="inline-flex h-11 items-center rounded-full border border-border bg-background px-3.5 text-[13px] text-foreground/80 transition-colors hover:border-foreground/40 hover:text-foreground [@media(pointer:fine)]:h-9"
           >
             {q}
           </button>
@@ -72,7 +72,7 @@ export function ProductAiAssistant({
       <button
         type="button"
         onClick={() => ask()}
-        className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+        className="mt-2 inline-flex min-h-11 items-center gap-1 text-[13px] font-medium text-primary underline-offset-4 hover:underline [@media(pointer:fine)]:min-h-8"
       >
         Open AI assistant <ArrowRight className="size-3" />
       </button>

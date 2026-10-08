@@ -34,7 +34,7 @@ export function useVariantSelection() {
   return useContext(VariantSelectionContext);
 }
 
-/** Description tab body: the selected variant's own copy, or the product's. */
+/** Description body: the selected variant's own copy, or the product's. */
 export function VariantDescription({
   fallback,
   variants,
@@ -70,7 +70,7 @@ export function VariantNutritionImage({
   return (
     <div
       key={url}
-      className="overflow-hidden rounded-2xl border bg-card shadow-elev-1 motion-safe:animate-fade-in"
+      className="overflow-hidden rounded-xl bg-oat motion-safe:animate-fade-in"
     >
       {/* Plain <img>: admin may paste any-host URLs (same policy as stories). */}
       {/* eslint-disable-next-line @next/next/no-img-element */}

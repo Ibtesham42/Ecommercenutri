@@ -13,9 +13,13 @@ export function StarRating({
   className?: string;
 }) {
   const sizeClass = size === "md" ? "size-4" : "size-3.5";
+  const label = `Rated ${rating.toFixed(1)} out of 5${
+    typeof count === "number" ? ` from ${count} ${count === 1 ? "review" : "reviews"}` : ""
+  }`;
   return (
     <div className={cn("flex items-center gap-1", className)}>
-      <div className="flex">
+      <span className="sr-only">{label}</span>
+      <div className="flex" aria-hidden>
         {Array.from({ length: 5 }).map((_, i) => {
           const filled = i < Math.round(rating);
           return (
@@ -23,16 +27,14 @@ export function StarRating({
               key={i}
               className={cn(
                 sizeClass,
-                filled
-                  ? "fill-amber-400 text-amber-400"
-                  : "fill-muted text-muted",
+                filled ? "fill-gold text-gold" : "fill-foreground/10 text-foreground/20",
               )}
             />
           );
         })}
       </div>
       {typeof count === "number" && (
-        <span className="text-xs text-muted-foreground">
+        <span aria-hidden className="text-xs text-muted-foreground tabular-nums">
           {rating.toFixed(1)} ({count})
         </span>
       )}

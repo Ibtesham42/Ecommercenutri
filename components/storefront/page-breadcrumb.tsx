@@ -20,7 +20,7 @@ export function PageBreadcrumb({ items }: { items: Crumb[] }) {
             <span key={item.name} className="contents">
               <BreadcrumbItem>
                 {isLast || !item.href ? (
-                  <BreadcrumbPage>{item.name}</BreadcrumbPage>
+                  <BreadcrumbPage className="line-clamp-1">{item.name}</BreadcrumbPage>
                 ) : (
                   <BreadcrumbLink href={item.href}>{item.name}</BreadcrumbLink>
                 )}

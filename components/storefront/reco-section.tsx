@@ -24,8 +24,8 @@ export function RecoSection({
   const grid = <ProductGrid products={products} wishlistedIds={wishlistedIds} />;
   return (
     <section className={className}>
-      <div className="mb-6">
-        <h2 className="font-heading text-xl font-semibold tracking-tight sm:text-[1.6rem]">{title}</h2>
+      <div className="mb-7">
+        <h2 className="font-heading text-heading text-foreground">{title}</h2>
         {subtitle && <p className="mt-1 text-muted-foreground">{subtitle}</p>}
       </div>
       {source ? <RecoClickArea source={source}>{grid}</RecoClickArea> : grid}

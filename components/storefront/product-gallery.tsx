@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Expand, ZoomIn } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { BlurImage } from "@/components/storefront/blur-image";
 import { useVariantSelection } from "@/components/storefront/variant-selection";
@@ -9,9 +9,8 @@ import { cn } from "@/lib/utils";
 
 type GalleryImage = { url: string; alt: string | null };
 
-/** Horizontal swipe-to-navigate for touch devices — a vertical gesture (page
- *  scroll) is left alone; only a clearly-horizontal drag past the threshold
- *  triggers prev/next. Shared by the inline gallery and the lightbox. */
+/** Horizontal swipe-to-navigate for the lightbox — a vertical gesture is left
+ *  alone; only a clearly-horizontal drag past the threshold triggers prev/next. */
 function useSwipeNav(go: (dir: 1 | -1) => void) {
   const start = useRef<{ x: number; y: number } | null>(null);
   return {
@@ -32,9 +31,8 @@ function useSwipeNav(go: (dir: 1 | -1) => void) {
   };
 }
 
-/** Cursor-following magnify on the main image — desktop/mouse only (gated on
- *  hover+fine-pointer capability and prefers-reduced-motion), restrained to a
- *  single smooth transform, not a gimmicky separate loupe panel. */
+/** Cursor-following magnify on the current image — mouse only (gated on
+ *  hover + fine-pointer capability and prefers-reduced-motion). */
 function useHoverZoom() {
   const capable = useRef(false);
   useEffect(() => {
@@ -44,7 +42,6 @@ function useHoverZoom() {
   }, []);
   const [origin, setOrigin] = useState<{ x: number; y: number } | null>(null);
   return {
-    zoomed: origin !== null,
     origin,
     onMouseMove: (e: React.MouseEvent<HTMLElement>) => {
       if (!capable.current) return;
@@ -55,9 +52,16 @@ function useHoverZoom() {
       });
     },
     onMouseLeave: () => setOrigin(null),
+    reset: () => setOrigin(null),
   };
 }
 
+/**
+ * Product gallery. One scroll-snap track at every width (so there's a single
+ * priority/LCP image): swipeable with dots on mobile; on md+ the track is
+ * driven by thumbnails and magnifies under the cursor. Images sit whole
+ * (object-contain) on an oat tile, never cropped. Any image opens the lightbox.
+ */
 export function ProductGallery({
   images,
   name,
@@ -71,6 +75,7 @@ export function ProductGallery({
 }) {
   const [active, setActive] = useState(0);
   const [open, setOpen] = useState(false);
+  const trackRef = useRef<HTMLDivElement>(null);
 
   const selection = useVariantSelection();
   const variantShots =
@@ -79,79 +84,118 @@ export function ProductGallery({
     variantShots.length > 0
       ? variantShots.map((url) => ({ url, alt: null }))
       : images;
-  // Identity of the current image SET — keys the main image so a variant
-  // switch replays the blur-up crossfade, and resets to the cover shot.
+  // Identity of the current image SET — a variant switch resets to its cover.
   const setKey = variantShots.length > 0 ? (selection?.variantId ?? "product") : "product";
   useEffect(() => setActive(0), [setKey]);
 
-  const main = shots[active] ?? shots[0];
   const count = shots.length;
-
   const go = useCallback(
     (dir: 1 | -1) => setActive((i) => (i + dir + count) % count),
     [count],
   );
-  const swipe = useSwipeNav(go);
   const hoverZoom = useHoverZoom();
 
+  // Keep the track on the active image (thumbnails, lightbox nav, variant switch).
+  useEffect(() => {
+    const t = trackRef.current;
+    if (!t || !t.clientWidth) return;
+    if (Math.round(t.scrollLeft / t.clientWidth) !== active) {
+      t.scrollTo({ left: active * t.clientWidth, behavior: "auto" });
+    }
+  }, [active, setKey]);
+
+  // Swipes (mobile) update the active image from the scroll position.
+  function onTrackScroll() {
+    const t = trackRef.current;
+    if (!t || !t.clientWidth) return;
+    const i = Math.round(t.scrollLeft / t.clientWidth);
+    if (i !== active && i >= 0 && i < count) setActive(i);
+  }
+
+  const altFor = (img: GalleryImage, i: number) =>
+    img.alt ?? (i === 0 ? name : `${name} — image ${i + 1}`);
+
   return (
-    <div className="space-y-3">
-      {/* Main image — click to open the full-screen lightbox; swipe on touch;
-          cursor-follow magnify on hover-capable pointers. */}
-      <button
-        type="button"
-        onClick={() => {
-          if (!hoverZoom.zoomed) setOpen(true);
-        }}
-        aria-label="Open image gallery"
-        className="group relative block aspect-square w-full cursor-zoom-in overflow-hidden rounded-2xl border bg-accent/20 shadow-elev-1"
-        {...swipe}
+    <div>
+      <div
+        className="relative"
         onMouseMove={hoverZoom.onMouseMove}
         onMouseLeave={hoverZoom.onMouseLeave}
       >
-        {main && (
-          <BlurImage
-            // Key on the image-set identity + active index so both thumbnail
-            // switches AND variant switches remount the image and replay the
-            // blur-up reveal — a soft focus-pull between shots instead of a
-            // hard cut (reduced-motion gated in globals).
-            key={`${setKey}-${active}`}
-            src={main.url}
-            alt={main.alt ?? name}
-            fill
-            sizes="(max-width: 1024px) 100vw, 45vw"
-            className={cn(
-              "object-cover transition-transform duration-200 ease-out",
-              hoverZoom.zoomed ? "scale-[2]" : "group-hover:scale-105 duration-500",
-            )}
-            style={hoverZoom.origin ? { transformOrigin: `${hoverZoom.origin.x}% ${hoverZoom.origin.y}%` } : undefined}
-            priority
-          />
-        )}
-        <span className="absolute bottom-3 right-3 grid size-9 place-items-center rounded-full bg-background/80 text-foreground opacity-0 shadow-elev-1 backdrop-blur transition-opacity duration-200 group-hover:opacity-100">
-          <Expand className="size-4" />
-        </span>
-      </button>
-
-      {count > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div
+          ref={trackRef}
+          onScroll={onTrackScroll}
+          className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-xl bg-oat [scrollbar-width:none] md:overflow-hidden [&::-webkit-scrollbar]:hidden"
+        >
           {shots.map((img, i) => (
             <button
               key={`${setKey}-${i}`}
               type="button"
-              onClick={() => setActive(i)}
-              aria-label={`View image ${i + 1}`}
-              className={cn(
-                "relative size-16 shrink-0 overflow-hidden rounded-lg border transition",
-                i === active
-                  ? "ring-2 ring-primary ring-offset-2"
-                  : "opacity-70 hover:opacity-100 hover:border-primary/40",
-              )}
+              onClick={() => {
+                hoverZoom.reset();
+                setActive(i);
+                setOpen(true);
+              }}
+              aria-label={`Open image ${i + 1} of ${count} full screen`}
+              className="relative aspect-square w-full shrink-0 snap-center cursor-zoom-in overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
             >
-              <BlurImage src={img.url} alt={img.alt ?? name} fill sizes="64px" className="object-cover" />
+              <BlurImage
+                src={img.url}
+                alt={altFor(img, i)}
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                priority={i === 0}
+                className={cn(
+                  "object-contain transition-transform duration-200 ease-out",
+                  i === active && hoverZoom.origin && "scale-[2]",
+                )}
+                style={
+                  i === active && hoverZoom.origin
+                    ? { transformOrigin: `${hoverZoom.origin.x}% ${hoverZoom.origin.y}%` }
+                    : undefined
+                }
+              />
             </button>
           ))}
         </div>
+        <span className="sr-only" aria-live="polite">
+          Image {active + 1} of {count}
+        </span>
+      </div>
+
+      {count > 1 && (
+        <>
+          {/* Mobile: position dots (swipe is the control; each image opens the lightbox). */}
+          <div aria-hidden className="mt-3 flex justify-center gap-1.5 md:hidden">
+            {shots.map((_, i) => (
+              <span
+                key={i}
+                className={cn(
+                  "h-1.5 rounded-full transition-all duration-200",
+                  i === active ? "w-5 bg-foreground/70" : "w-1.5 bg-foreground/20",
+                )}
+              />
+            ))}
+          </div>
+          {/* md+: thumbnails drive the track. */}
+          <div className="mt-3 hidden gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] md:flex [&::-webkit-scrollbar]:hidden">
+            {shots.map((img, i) => (
+              <button
+                key={`${setKey}-t${i}`}
+                type="button"
+                onClick={() => setActive(i)}
+                aria-label={`View image ${i + 1}`}
+                aria-current={i === active ? "true" : undefined}
+                className={cn(
+                  "relative size-[4.5rem] shrink-0 overflow-hidden rounded-lg border bg-oat transition outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  i === active ? "border-foreground/70" : "border-transparent opacity-70 hover:opacity-100",
+                )}
+              >
+                <BlurImage src={img.url} alt="" fill sizes="72px" className="object-contain" />
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
       <Lightbox
@@ -209,11 +253,11 @@ function Lightbox({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton
-        className="max-w-5xl gap-3 border-none bg-background/95 p-3 backdrop-blur sm:p-5"
+        className="max-w-5xl gap-3 border-none bg-background p-3 sm:p-5"
       >
         <DialogTitle className="sr-only">{name} — image gallery</DialogTitle>
 
-        <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl bg-accent/20 sm:aspect-[4/3]">
+        <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl bg-oat sm:aspect-[4/3]">
           {current && (
             <button
               type="button"
@@ -237,7 +281,7 @@ function Lightbox({
           )}
 
           {!zoomed && (
-            <span className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-background/80 px-3 py-1.5 text-xs font-medium shadow-elev-1 backdrop-blur">
+            <span className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-background/90 px-3 py-1.5 text-xs font-medium">
               <ZoomIn className="size-3.5" /> Tap to zoom
             </span>
           )}
@@ -248,7 +292,7 @@ function Lightbox({
                 type="button"
                 onClick={() => go(-1)}
                 aria-label="Previous image"
-                className="absolute left-2 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-background/80 shadow-elev-1 backdrop-blur transition hover:bg-background"
+                className="absolute left-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-background/90 transition hover:bg-background"
               >
                 <ChevronLeft className="size-5" />
               </button>
@@ -256,11 +300,11 @@ function Lightbox({
                 type="button"
                 onClick={() => go(1)}
                 aria-label="Next image"
-                className="absolute right-2 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-background/80 shadow-elev-1 backdrop-blur transition hover:bg-background"
+                className="absolute right-2 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-background/90 transition hover:bg-background"
               >
                 <ChevronRight className="size-5" />
               </button>
-              <span className="absolute right-3 top-3 rounded-full bg-background/80 px-2.5 py-1 text-xs font-medium shadow-elev-1 backdrop-blur">
+              <span className="absolute right-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-xs font-medium tabular-nums">
                 {active + 1} / {count}
               </span>
             </>
@@ -275,13 +319,14 @@ function Lightbox({
                 type="button"
                 onClick={() => setActive(i)}
                 aria-label={`View image ${i + 1}`}
+                aria-current={i === active ? "true" : undefined}
                 className={cn(
-                  "relative size-14 shrink-0 overflow-hidden rounded-lg border transition",
-                  i === active ? "ring-2 ring-primary ring-offset-2" : "opacity-60 hover:opacity-100",
+                  "relative size-14 shrink-0 overflow-hidden rounded-lg border bg-oat transition",
+                  i === active ? "border-foreground/70" : "border-transparent opacity-60 hover:opacity-100",
                 )}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img.url} alt={img.alt ?? name} className="size-full object-cover" />
+                <img src={img.url} alt="" className="size-full object-contain" />
               </button>
             ))}
           </div>

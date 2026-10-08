@@ -98,7 +98,7 @@ export function ShareButtons({
   }
 
   const btn =
-    "grid size-9 place-items-center rounded-full border text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary";
+    "grid size-11 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground [@media(pointer:fine)]:size-9";
 
   return (
     <div className={cn("flex items-center gap-2", className)}>

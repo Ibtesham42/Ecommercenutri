@@ -56,7 +56,7 @@ export function RecentlyViewed({
 
   return (
     <section>
-      <h2 className="mb-5 font-heading text-xl font-semibold tracking-tight">{title}</h2>
+      <h2 className="mb-6 font-heading text-subheading text-foreground">{title}</h2>
       {/* Compact variant of the product card language (localStorage only holds
           name/image/price, so there's no rating, size or add-to-cart here). */}
       <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-5">

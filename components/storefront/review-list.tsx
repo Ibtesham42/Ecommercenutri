@@ -6,7 +6,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { StarRating } from "@/components/storefront/star-rating";
 import { ReviewPhotoGallery } from "@/components/storefront/review-photo-gallery";
-import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export type ReviewVM = {
@@ -31,6 +30,16 @@ const SORTS: { key: SortKey; label: string }[] = [
 ];
 
 const PAGE_SIZE = 5;
+
+// Fixed to the store's timezone: this list renders on the server (UTC) and
+// hydrates in the browser, so a timezone-dependent date (e.g. a review posted
+// 00:00–05:30 IST) would differ between the two and throw React #418.
+const reviewDate = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "Asia/Kolkata",
+});
 
 function initials(name: string | null) {
   if (!name) return "U";
@@ -69,9 +78,9 @@ export function ReviewList({ reviews }: { reviews: ReviewVM[] }) {
 
   if (reviews.length === 0) {
     return (
-      <div className="rounded-2xl border border-dashed p-12 text-center">
-        <MessageSquare className="mx-auto size-10 text-muted-foreground/40" />
-        <p className="mt-3 font-medium">No reviews yet</p>
+      <div className="rounded-xl bg-oat px-6 py-12 text-center">
+        <MessageSquare aria-hidden className="mx-auto size-8 text-muted-foreground/50" strokeWidth={1.5} />
+        <p className="mt-3 font-heading text-lg">No reviews yet</p>
         <p className="mt-1 text-sm text-muted-foreground">
           Be the first to share your experience with this product.
         </p>
@@ -83,8 +92,10 @@ export function ReviewList({ reviews }: { reviews: ReviewVM[] }) {
   const withPhotos = reviews.some((r) => r.images.length > 0);
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-1">
+    <div>
+      {/* Sorting only earns its place once there's something to sort. */}
+      {reviews.length >= 3 && (
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-4">
         <div className="flex flex-wrap gap-1.5">
           {SORTS.map((s) => (
             <button
@@ -96,10 +107,10 @@ export function ReviewList({ reviews }: { reviews: ReviewVM[] }) {
               }}
               aria-pressed={sort === s.key}
               className={cn(
-                "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                "inline-flex h-11 items-center rounded-full border px-3.5 text-[13px] transition-colors [@media(pointer:fine)]:h-8",
                 sort === s.key
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                  ? "border-foreground/70 text-foreground"
+                  : "border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground",
               )}
             >
               {s.label}
@@ -107,7 +118,7 @@ export function ReviewList({ reviews }: { reviews: ReviewVM[] }) {
           ))}
         </div>
         {withPhotos && (
-          <label className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <label className="flex min-h-11 shrink-0 items-center gap-2 text-[13px] text-muted-foreground [@media(pointer:fine)]:min-h-8">
             <input
               type="checkbox"
               checked={photosOnly}
@@ -115,23 +126,22 @@ export function ReviewList({ reviews }: { reviews: ReviewVM[] }) {
                 setPhotosOnly(e.target.checked);
                 setVisible(PAGE_SIZE);
               }}
-              className="size-3.5 accent-primary"
+              className="size-4 accent-primary"
             />
             Photos only
           </label>
         )}
       </div>
+      )}
 
       {filtered.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
           No reviews match that filter.
         </p>
       ) : (
-        shown.map((r) => (
-          <div
-            key={r.id}
-            className="rounded-2xl border p-4 transition hover:border-foreground/15 sm:p-5"
-          >
+        <ul className="divide-y divide-border border-y border-border">
+        {shown.map((r) => (
+          <li key={r.id} className="py-6">
             <div className="flex items-center gap-3">
               <Avatar className="size-10">
                 {r.userImage && <AvatarImage src={r.userImage} alt="" />}
@@ -146,23 +156,24 @@ export function ReviewList({ reviews }: { reviews: ReviewVM[] }) {
                     </span>
                   )}
                 </p>
-                <p className="text-xs text-muted-foreground">{formatDate(r.createdAt)}</p>
+                <p className="text-xs text-muted-foreground">{reviewDate.format(new Date(r.createdAt))}</p>
               </div>
               <StarRating rating={r.rating} size="sm" className="ml-auto shrink-0" />
             </div>
-            {r.title && <p className="mt-3 text-sm font-semibold">{r.title}</p>}
+            {r.title && <h3 className="mt-4 font-heading text-base font-medium">{r.title}</h3>}
             {r.comment && (
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{r.comment}</p>
+              <p className="mt-1 text-[15px] leading-relaxed text-muted-foreground">{r.comment}</p>
             )}
             <ReviewPhotoGallery images={r.images} reviewerName={r.userName ?? "Nutriyet customer"} />
-          </div>
-        ))
+          </li>
+        ))}
+        </ul>
       )}
 
       {visible < filtered.length && (
         <Button
           variant="outline"
-          className="w-full"
+          className="mt-6 h-11 w-full rounded-lg"
           onClick={() => setVisible((v) => v + PAGE_SIZE)}
         >
           Show more reviews ({filtered.length - visible} more)

@@ -96,10 +96,10 @@ export function FrequentlyBoughtTogether({
 
   return (
     <section className={className}>
-      <h2 className="mb-1 font-heading text-xl font-semibold tracking-tight sm:text-[1.6rem]">Frequently bought together</h2>
-      <p className="mb-6 text-muted-foreground">Add the set in one tap — save a trip back.</p>
+      <h2 className="font-heading text-heading text-foreground">Frequently bought together</h2>
+      <p className="mt-1.5 mb-7 text-muted-foreground">Add the set in one tap — save a trip back.</p>
 
-      <div className="rounded-2xl border bg-card p-4 shadow-elev-1 sm:p-6">
+      <div className="rounded-xl bg-oat p-5 sm:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           {/* Visual bundle: thumbnails joined by + */}
           <div className="flex flex-wrap items-center gap-3">
@@ -115,8 +115,8 @@ export function FrequentlyBoughtTogether({
                       aria-pressed={isOn}
                       aria-label={`${isOn ? "Remove" : "Add"} ${i.product.name} ${isOn ? "from" : "to"} bundle`}
                       className={cn(
-                        "group relative block aspect-square w-full overflow-hidden rounded-xl border bg-muted transition-all motion-safe:active:scale-[0.97]",
-                        isOn ? "border-primary ring-1 ring-primary" : "opacity-55 hover:opacity-100",
+                        "group relative block aspect-square w-full overflow-hidden rounded-lg border bg-background transition-all motion-safe:active:scale-[0.97]",
+                        isOn ? "border-primary ring-1 ring-primary" : "border-border opacity-55 hover:opacity-100",
                       )}
                     >
                       {i.product.images[0] && (
@@ -141,11 +141,11 @@ export function FrequentlyBoughtTogether({
                     </button>
                     <Link
                       href={`/products/${i.product.slug}`}
-                      className="mt-1.5 line-clamp-2 block text-xs font-medium hover:text-primary"
+                      className="mt-2 line-clamp-2 block font-heading text-[13px] leading-snug hover:text-primary"
                     >
                       {i.product.name}
                     </Link>
-                    <span className="text-xs font-semibold">{formatPrice(i.price)}</span>
+                    <span className="text-xs font-semibold tabular-nums">{formatPrice(i.price)}</span>
                   </div>
                 </div>
               );
@@ -157,11 +157,11 @@ export function FrequentlyBoughtTogether({
             <p className="text-sm text-muted-foreground">
               Total for {chosen.length} {chosen.length === 1 ? "item" : "items"}
             </p>
-            <p className="mt-0.5 text-2xl font-bold tracking-tight">{formatPrice(total)}</p>
+            <p className="mt-0.5 text-2xl font-semibold tracking-tight tabular-nums">{formatPrice(total)}</p>
             <Button
               onClick={addAll}
               disabled={chosen.length === 0}
-              className="btn-rich mt-3 h-11 w-full gap-2 font-semibold shadow-elev-1 lg:w-auto lg:px-6"
+              className="mt-3 h-12 w-full gap-2 rounded-lg text-[15px] font-medium lg:w-auto lg:px-6"
             >
               <ShoppingCart className="size-4" />
               {chosen.length <= 1 ? "Add to cart" : `Add ${chosen.length} to cart`}

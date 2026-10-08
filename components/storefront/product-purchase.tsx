@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, format } from "date-fns";
 import {
   Minus,
   Plus,
-  ArrowRight,
   ShieldCheck,
   Truck,
   RotateCcw,
@@ -14,13 +13,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
+import { ProductPrice } from "@/components/storefront/product-price";
 import { WishlistButton } from "@/components/storefront/wishlist-button";
 import { useVariantSelection } from "@/components/storefront/variant-selection";
 import { useCart } from "@/lib/store/cart";
 import { trackClient } from "@/components/storefront/behavior-tracker";
 import { formatPrice, discountPercent, effectivePrice } from "@/lib/format";
+import { LOW_STOCK_THRESHOLD } from "@/lib/product-card";
 import {
   gstWithin,
   resolveGstRate,
@@ -51,6 +51,26 @@ const trustBadges = [
   { icon: RotateCcw, label: "Easy returns" },
 ];
 
+const noSubscribe = () => () => {};
+const deliveryWindow = () =>
+  `${format(addDays(new Date(), 3), "EEE, d MMM")} – ${format(addDays(new Date(), 5), "EEE, d MMM")}`;
+
+/** The estimated delivery window in the shopper's own timezone. Client-only
+ *  (null on the server and during hydration): rendering `new Date()` on both
+ *  sides mismatched whenever the server's UTC date differed from the
+ *  browser's — every night 00:00–05:30 IST (React #418). */
+function useDeliveryWindow() {
+  return useSyncExternalStore(noSubscribe, deliveryWindow, () => null);
+}
+
+const stepBtn =
+  "grid h-12 w-11 place-items-center text-foreground/80 transition-colors hover:text-foreground disabled:text-muted-foreground/40 outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg";
+
+/**
+ * The buy box below the title: price, size, quantity + Add to cart (the
+ * primary, solid forest action), Buy now, wishlist, then delivery and trust
+ * notes. Also owns the mobile/tablet sticky bar.
+ */
 export function ProductPurchase({
   productId,
   slug,
@@ -76,6 +96,8 @@ export function ProductPurchase({
 }) {
   const router = useRouter();
   const addItem = useCart((s) => s.addItem);
+  const sizeLabelId = useId();
+  const delivery = useDeliveryWindow();
 
   const firstAvailable = variants.find((v) => v.stock > 0) ?? variants[0];
   // Selection lives in the shared PDP context when present (so the gallery,
@@ -87,18 +109,30 @@ export function ProductPurchase({
     selection ? selection.setVariantId(id) : setLocalVariantId(id);
   const [qty, setQty] = useState(1);
 
-  // Show a sticky bar once the inline actions scroll out of view (mobile only).
+  // The sticky bar appears once the inline actions have scrolled up out of
+  // view (below lg) — not before the shopper has reached them. A scroll
+  // listener, not an IntersectionObserver: a fling or a #reviews jump can skip
+  // straight past the actions without ever "intersecting", so IO never fires.
   const actionsRef = useRef<HTMLDivElement>(null);
   const [showSticky, setShowSticky] = useState(false);
   useEffect(() => {
-    const el = actionsRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      ([entry]) => setShowSticky(!entry.isIntersecting),
-      { rootMargin: "0px 0px -10% 0px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const el = actionsRef.current;
+      if (el) setShowSticky(el.getBoundingClientRect().bottom < 0);
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, []);
 
   const variant = variants.find((v) => v.id === variantId) ?? firstAvailable;
@@ -115,9 +149,7 @@ export function ProductPurchase({
     settings.freeShippingEnabled &&
     settings.freeShippingThreshold > 0 &&
     lineTotal >= settings.freeShippingThreshold;
-
-  const deliveryFrom = format(addDays(new Date(), 3), "EEE, d MMM");
-  const deliveryTo = format(addDays(new Date(), 5), "EEE, d MMM");
+  const lowStock = variant && variant.stock > 0 && variant.stock <= LOW_STOCK_THRESHOLD ? variant.stock : null;
 
   function add() {
     if (!variant) return;
@@ -147,73 +179,47 @@ export function ProductPurchase({
     router.push("/cart");
   }
 
+  // Solid forest primary. Explicit text colour: AddToCartButton's "added"
+  // state would otherwise tint the label primary — invisible on a primary fill.
+  const addClass =
+    "h-12 gap-2 rounded-lg border-transparent text-[15px] font-medium text-primary-foreground";
+  const buyClass =
+    "h-12 rounded-lg border-foreground/70 bg-transparent text-[15px] font-medium text-foreground hover:bg-foreground hover:text-background";
+
   return (
-    <div className="space-y-6">
+    <div>
       {/* Price */}
-      <div>
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="text-3xl font-bold tracking-tight sm:text-4xl">
-            {formatPrice(price)}
-          </span>
-          {savings > 0 && (
-            <>
-              <span className="text-lg text-muted-foreground line-through">
-                {formatPrice(variant!.price)}
-              </span>
-              <Badge className="border-transparent bg-primary text-primary-foreground hover:bg-primary">
-                {off}% OFF
-              </Badge>
-            </>
-          )}
+      <div className="mt-5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <ProductPrice size="xl" price={price} mrp={variant?.price} off={off} />
           {variant?.badge && (
-            <Badge
+            <span
               key={variant.id}
-              className="border-gold/40 bg-gold/15 text-gold-foreground motion-safe:animate-fade-in"
+              className="rounded-md bg-oat px-2 py-1 text-xs font-medium text-oat-foreground motion-safe:animate-fade-in"
             >
               {variant.badge}
-            </Badge>
-          )}
-        </div>
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 text-sm">
-          {savings > 0 && (
-            <span className="font-medium text-primary">
-              You save {formatPrice(savings * qty)}
             </span>
           )}
-          <span className="text-muted-foreground">
-            {effectiveGstRate > 0
-              ? `incl. ${effectiveGstRate}% GST (${formatPrice(gstAmount)})`
-              : "inclusive of all taxes"}
-          </span>
-          {variant?.sku && (
-            <span className="text-xs text-muted-foreground/80">SKU {variant.sku}</span>
-          )}
         </div>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          {effectiveGstRate > 0
+            ? `Incl. ${effectiveGstRate}% GST (${formatPrice(gstAmount)})`
+            : "Inclusive of all taxes"}
+          {savings > 0 && (
+            <>
+              {" · "}
+              <span className="text-foreground">You save {formatPrice(savings * qty)}</span>
+            </>
+          )}
+        </p>
       </div>
 
-      {/* Highlights (nutrition-derived chips) — bordered, no fill, so they
-          read as data (like a spec sheet) rather than decorative pill badges. */}
-      {highlights.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {highlights.map((h) => (
-            <span
-              key={h.label}
-              className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium"
-            >
-              <span className="text-muted-foreground">{h.label}</span>
-              <span className="font-semibold">{h.value}</span>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Variant selector */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-semibold">Select weight</p>
-          <span className="text-sm text-muted-foreground">{variant?.weightLabel}</span>
-        </div>
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+      {/* Size */}
+      <div className="mt-6" role="group" aria-labelledby={sizeLabelId}>
+        <p id={sizeLabelId} className="text-sm font-medium">
+          Size <span className="font-normal text-muted-foreground">· {variant?.weightLabel}</span>
+        </p>
+        <div className="mt-2.5 flex flex-wrap gap-2">
           {variants.map((v) => {
             const isActive = v.id === variant?.id;
             const disabled = v.stock <= 0;
@@ -229,20 +235,15 @@ export function ProductPurchase({
                 }}
                 aria-pressed={isActive}
                 className={cn(
-                  "flex min-h-[3.25rem] flex-col items-start justify-center rounded-xl border px-3 py-2 text-left transition-all duration-150 motion-safe:active:scale-[0.97]",
+                  "flex min-h-12 min-w-[6.5rem] flex-col items-start justify-center rounded-lg border px-4 py-2 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   isActive
-                    ? "border-primary bg-primary/5 ring-1 ring-primary"
-                    : "hover:border-primary/40",
-                  disabled && "cursor-not-allowed opacity-40",
+                    ? "border-primary bg-background ring-1 ring-primary"
+                    : "border-border hover:border-foreground/40",
+                  disabled && "cursor-not-allowed opacity-50",
                 )}
               >
-                <span className="text-sm font-semibold">{v.weightLabel}</span>
-                <span
-                  className={cn(
-                    "text-xs",
-                    disabled ? "line-through" : "text-muted-foreground",
-                  )}
-                >
+                <span className="text-sm font-medium">{v.weightLabel}</span>
+                <span className={cn("text-xs tabular-nums text-muted-foreground", disabled && "line-through")}>
                   {disabled ? "Sold out" : formatPrice(vPrice)}
                 </span>
               </button>
@@ -251,20 +252,68 @@ export function ProductPurchase({
         </div>
       </div>
 
-      {/* Key information — delivery/shipping + trust signals, surfaced before
-          the CTA so shoppers see them ahead of committing to add to cart. */}
-      <div className="space-y-2.5 rounded-xl border bg-muted/30 p-4 text-sm">
-        <div className="flex items-start gap-3">
-          <Truck className="mt-0.5 size-4 shrink-0 text-primary" />
+      {/* Quantity + actions */}
+      <div ref={actionsRef} className="mt-6 space-y-2.5">
+        <div className="flex gap-2.5">
+          <div role="group" aria-label="Quantity" className="flex shrink-0 items-center rounded-lg border border-border">
+            <button
+              type="button"
+              className={stepBtn}
+              onClick={() => setQty((q) => Math.max(1, q - 1))}
+              disabled={qty <= 1 || outOfStock}
+              aria-label="Decrease quantity"
+            >
+              <Minus className="size-4" />
+            </button>
+            <span className="w-8 text-center text-[15px] font-medium tabular-nums" aria-live="polite">
+              <span className="sr-only">Quantity </span>
+              {qty}
+            </span>
+            <button
+              type="button"
+              className={stepBtn}
+              onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
+              disabled={qty >= maxQty || outOfStock}
+              aria-label="Increase quantity"
+            >
+              <Plus className="size-4" />
+            </button>
+          </div>
+          <AddToCartButton
+            onAdd={add}
+            disabled={outOfStock}
+            label={outOfStock ? "Out of stock" : "Add to cart"}
+            variant="default"
+            iconClassName="size-4 max-[359px]:hidden"
+            className={cn(addClass, "flex-1")}
+          />
+        </div>
+        <div className="flex gap-2.5">
+          <Button variant="outline" className={cn(buyClass, "flex-1")} onClick={buyNow} disabled={outOfStock}>
+            Buy now
+          </Button>
+          <WishlistButton
+            productId={productId}
+            initial={wishlisted}
+            className="size-12 shrink-0 rounded-lg border border-border hover:bg-oat"
+          />
+        </div>
+        {lowStock && <p className="text-sm text-muted-foreground">Only {lowStock} left</p>}
+      </div>
+
+      {/* Delivery */}
+      <ul className="mt-7 space-y-3 border-t border-border pt-5 text-sm">
+        <li className="flex items-start gap-3">
+          <Truck aria-hidden className="mt-0.5 size-4 shrink-0 text-foreground/70" strokeWidth={1.75} />
           <p>
-            <span className="font-medium">Get it {deliveryFrom} – {deliveryTo}</span>
+            <span className="font-medium">{delivery ? `Get it ${delivery}` : "Delivery in 3–5 business days"}</span>
             <span className="block text-xs text-muted-foreground">
               Usually delivered in 3–5 business days across India.
             </span>
           </p>
-        </div>
-        <div className="flex items-start gap-3">
-          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
+        </li>
+        <li className="flex items-start gap-3">
+          <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-foreground/70" strokeWidth={1.75} />
           <p>
             {freeShipping || effectiveDelivery === 0 ? (
               <>
@@ -274,7 +323,7 @@ export function ProductPurchase({
                     : "Free Delivery on this order."}
                 </span>
                 {freeShipping && effectiveDelivery > 0 && (
-                  <span className="block text-xs font-medium text-primary">
+                  <span className="block text-xs text-muted-foreground">
                     You save {formatPrice(effectiveDelivery)} on shipping.
                   </span>
                 )}
@@ -291,98 +340,48 @@ export function ProductPurchase({
                 </span>
               </>
             ) : (
-              <span className="font-medium">
-                Delivery {formatPrice(effectiveDelivery)}
-              </span>
+              <span className="font-medium">Delivery {formatPrice(effectiveDelivery)}</span>
             )}
           </p>
-        </div>
-      </div>
+        </li>
+      </ul>
 
-      {/* Bare icons, no circle-container-per-item — the same restrained
-          treatment as the homepage trust band, not four more icon tiles. */}
-      <ul className="grid grid-cols-2 gap-x-3 gap-y-3 border-t pt-5 sm:grid-cols-4 sm:divide-x sm:divide-border/60">
+      {/* Nutrition highlights — read as a spec line, not badges. */}
+      {highlights.length > 0 && (
+        <dl className="mt-5 grid grid-cols-3 divide-x divide-border border-y border-border py-3">
+          {highlights.map((h) => (
+            <div key={h.label} className="min-w-0 px-3 first:pl-0">
+              <dt className="truncate text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{h.label}</dt>
+              <dd className="mt-0.5 truncate text-sm font-medium">{h.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      <ul className="mt-5 grid grid-cols-2 gap-x-4 gap-y-2.5">
         {trustBadges.map((b) => (
-          <li key={b.label} className="flex items-center gap-2 sm:justify-center sm:px-2 sm:first:pl-0">
-            <b.icon className="size-4 shrink-0 text-primary" strokeWidth={1.75} aria-hidden />
-            <span className="text-xs font-medium text-muted-foreground">{b.label}</span>
+          <li key={b.label} className="flex items-center gap-2 text-xs text-muted-foreground">
+            <b.icon className="size-4 shrink-0 text-foreground/60" strokeWidth={1.6} aria-hidden />
+            {b.label}
           </li>
         ))}
       </ul>
 
-      {/* Quantity */}
-      <div className="flex items-center gap-4">
-        <span className="text-sm font-semibold">Quantity</span>
-        <div className="flex items-center rounded-xl border">
-          <button
-            type="button"
-            className="grid size-11 place-items-center rounded-l-xl transition-all duration-150 hover:bg-accent disabled:opacity-40 motion-safe:active:scale-90"
-            onClick={() => setQty((q) => Math.max(1, q - 1))}
-            disabled={qty <= 1 || outOfStock}
-            aria-label="Decrease quantity"
-          >
-            <Minus className="size-4" />
-          </button>
-          <span className="w-12 text-center text-base font-semibold tabular-nums">
-            {qty}
-          </span>
-          <button
-            type="button"
-            className="grid size-11 place-items-center rounded-r-xl transition-all duration-150 hover:bg-accent disabled:opacity-40 motion-safe:active:scale-90"
-            onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
-            disabled={qty >= maxQty || outOfStock}
-            aria-label="Increase quantity"
-          >
-            <Plus className="size-4" />
-          </button>
-        </div>
-        {variant && variant.stock > 0 && variant.stock <= 10 && (
-          <span className="text-xs font-medium text-amber-600">
-            Only {variant.stock} left
-          </span>
-        )}
-      </div>
+      {variant?.sku && <p className="mt-4 text-xs text-muted-foreground/80">SKU {variant.sku}</p>}
 
-      {/* Inline actions — crafted purchase pair: soft brand-green Add to cart
-          beside the wishlist circle, then the gold hero Buy now pill (gold is
-          the brand's premium-moment accent; the arrow nudges on hover). */}
-      <div ref={actionsRef} className="space-y-3">
-        <div className="flex gap-3">
-          <AddToCartButton
-            onAdd={add}
-            disabled={outOfStock}
-            label={outOfStock ? "Out of stock" : "Add to cart"}
-            className="btn-rich h-12 flex-1 gap-2 rounded-full border-primary/35 bg-primary/[0.04] text-base font-semibold text-primary hover:border-primary/50 hover:bg-primary/10 hover:text-primary dark:bg-primary/10 dark:hover:bg-primary/15"
-          />
-          <WishlistButton
-            productId={productId}
-            initial={wishlisted}
-            className="size-12 shrink-0 rounded-full border hover:bg-accent"
-          />
-        </div>
-        <Button
-          size="lg"
-          className="btn-rich btn-rich-gold h-13 w-full gap-2 rounded-full bg-gold text-base font-bold text-gold-foreground shadow-elev-2 focus-visible:border-gold-foreground/40 focus-visible:ring-gold/45"
-          onClick={buyNow}
-          disabled={outOfStock}
-        >
-          Buy now
-          <ArrowRight className="size-5 transition-transform duration-200 group-hover/button:translate-x-0.5" />
-        </Button>
-      </div>
-
-      {/* Sticky mobile add-to-cart bar */}
+      {/* Sticky add-to-cart bar (below lg), once the inline actions are passed. */}
       <div
         className={cn(
-          "fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 backdrop-blur transition-transform duration-300 lg:hidden",
-          "[box-shadow:0_-8px_24px_-12px_oklch(0.2_0.03_176/0.25)]",
-          showSticky ? "translate-y-0" : "translate-y-full",
+          "fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background px-4 pt-3 transition-transform duration-300 motion-reduce:transition-none lg:hidden",
+          showSticky ? "translate-y-0" : "pointer-events-none translate-y-full",
         )}
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+        aria-hidden={!showSticky}
+        inert={!showSticky}
       >
-        <div className="mx-auto flex max-w-7xl items-center gap-2.5">
+        <div className="mx-auto flex max-w-3xl items-center gap-2">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">{formatPrice(price)}</p>
+            <p className="text-[15px] font-semibold tabular-nums">{formatPrice(price)}</p>
             <p className="truncate text-xs text-muted-foreground">
               {name} · {variant?.weightLabel}
             </p>
@@ -390,17 +389,18 @@ export function ProductPurchase({
           <AddToCartButton
             onAdd={add}
             disabled={outOfStock}
-            label="Add"
-            className="h-11 gap-1.5 rounded-full border-primary/35 bg-primary/[0.04] font-semibold text-primary hover:bg-primary/10 hover:text-primary dark:bg-primary/10 dark:hover:bg-primary/15"
+            label={outOfStock ? "Sold out" : "Add"}
+            variant="default"
             iconClassName="size-4"
+            className="h-11 gap-1.5 rounded-lg border-transparent px-4 text-sm font-medium text-primary-foreground"
           />
           <Button
-            className="btn-rich btn-rich-gold h-11 gap-1 rounded-full bg-gold px-4 font-bold text-gold-foreground focus-visible:border-gold-foreground/40 focus-visible:ring-gold/45"
+            variant="outline"
+            className="h-11 rounded-lg border-foreground/70 bg-transparent px-4 text-sm font-medium hover:bg-foreground hover:text-background"
             onClick={buyNow}
             disabled={outOfStock}
           >
             Buy now
-            <ArrowRight className="size-4" />
           </Button>
         </div>
       </div>

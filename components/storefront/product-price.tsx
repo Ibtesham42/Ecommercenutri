@@ -18,7 +18,8 @@ export function ProductPrice({
   mrp?: number | null;
   off?: number | null;
   fromPrice?: boolean;
-  size?: "md" | "lg";
+  /** md: cards · lg: Quick View · xl: product page buy box. */
+  size?: "md" | "lg" | "xl";
   className?: string;
 }) {
   const discounted = !!off && !!mrp && mrp > price;
@@ -27,7 +28,7 @@ export function ProductPrice({
       <span
         className={cn(
           "font-semibold tracking-tight text-foreground tabular-nums",
-          size === "lg" ? "text-xl" : "text-[15px] sm:text-base",
+          size === "xl" ? "text-[1.75rem] sm:text-[2rem]" : size === "lg" ? "text-xl" : "text-[15px] sm:text-base",
         )}
       >
         {fromPrice && (
@@ -37,14 +38,14 @@ export function ProductPrice({
       </span>
       {discounted && (
         <>
-          <s className={cn("text-muted-foreground tabular-nums", size === "lg" ? "text-sm" : "text-xs")}>
+          <s className={cn("text-muted-foreground tabular-nums", size === "xl" ? "text-base" : size === "lg" ? "text-sm" : "text-xs")}>
             <span className="sr-only">MRP </span>
             {formatPrice(mrp)}
           </s>
           <span
             className={cn(
               "font-medium text-(--pcard-accent-text)",
-              size === "lg" ? "text-sm" : "text-xs",
+              size === "xl" ? "text-base" : size === "lg" ? "text-sm" : "text-xs",
             )}
           >
             {off}% off
