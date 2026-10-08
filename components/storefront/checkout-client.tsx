@@ -322,7 +322,7 @@ export function CheckoutClient({
                     <span className="min-w-0 text-sm">
                       <span className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
                         {a.fullName}
-                        <span className="rounded bg-oat px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-oat-foreground">
+                        <span className="rounded bg-oat px-1.5 py-0.5 text-xs font-semibold uppercase tracking-[0.1em] text-oat-foreground">
                           {a.type}
                         </span>
                       </span>

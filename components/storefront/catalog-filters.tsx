@@ -128,7 +128,7 @@ export function CatalogFilters({
 function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="py-5 first:pt-0 last:pb-0">
-      <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{title}</h3>
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{title}</h3>
       <ul>{children}</ul>
     </section>
   );

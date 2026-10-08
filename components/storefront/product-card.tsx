@@ -67,7 +67,7 @@ export function ProductCard({
         {view.badge && (
           <span
             className={cn(
-              "pointer-events-none absolute left-2.5 top-2.5 z-10 rounded-md bg-background/92 px-2 py-1 text-[11px] font-medium leading-none tracking-[0.03em]",
+              "pointer-events-none absolute left-2.5 top-2.5 z-10 rounded-md bg-background/92 px-2 py-1 text-xs font-medium leading-none tracking-[0.03em]",
               view.badge === "bestSeller" ? "text-primary" : "text-muted-foreground",
             )}
           >

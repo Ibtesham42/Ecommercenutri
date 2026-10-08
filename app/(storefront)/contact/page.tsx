@@ -90,7 +90,7 @@ export default async function ContactPage() {
                 <div key={d.label} className="flex items-start gap-3.5 border-b border-border py-4">
                   <d.icon className="mt-0.5 size-5 shrink-0 text-foreground/60" strokeWidth={1.6} aria-hidden />
                   <div className="min-w-0">
-                    <dt className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    <dt className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                       {d.label}
                     </dt>
                     <dd className="break-words text-[15px] font-medium">

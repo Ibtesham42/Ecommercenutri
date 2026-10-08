@@ -37,7 +37,7 @@ export function SortSelect({ relevanceDefault = false }: { relevanceDefault?: bo
 
   return (
     <Select value={current} onValueChange={onChange}>
-      <SelectTrigger aria-label="Sort products" className="h-11 w-[9.75rem] rounded-lg sm:w-[12rem] [@media(pointer:fine)]:h-10">
+      <SelectTrigger aria-label="Sort products" className="w-[9.75rem] rounded-lg sm:w-[12rem] data-[size=default]:h-11 [@media(pointer:fine)]:data-[size=default]:h-10">
         <span className="text-muted-foreground max-sm:sr-only">Sort:</span>
         <SelectValue />
       </SelectTrigger>

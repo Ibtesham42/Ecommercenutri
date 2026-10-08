@@ -108,25 +108,26 @@ export async function SiteFooter() {
               {store.businessHours && <p>{store.businessHours}</p>}
             </div>
           )}
-          <div className="flex items-center gap-3">
+          {/* 44px circles; -ml-3 keeps the first glyph on the column edge. */}
+          <div className="-ml-3 flex items-center">
             <a
               href={store.instagram}
               aria-label="Instagram"
-              className="text-surface-deep-foreground/70 transition-colors hover:text-gold"
+              className="grid size-11 place-items-center rounded-full text-surface-deep-foreground/70 transition-colors hover:text-gold"
             >
               <InstagramIcon className="size-5" />
             </a>
             <a
               href={store.facebook}
               aria-label="Facebook"
-              className="text-surface-deep-foreground/70 transition-colors hover:text-gold"
+              className="grid size-11 place-items-center rounded-full text-surface-deep-foreground/70 transition-colors hover:text-gold"
             >
               <FacebookIcon className="size-5" />
             </a>
             <a
               href={store.youtube}
               aria-label="YouTube"
-              className="text-surface-deep-foreground/70 transition-colors hover:text-gold"
+              className="grid size-11 place-items-center rounded-full text-surface-deep-foreground/70 transition-colors hover:text-gold"
             >
               <YoutubeIcon className="size-5" />
             </a>

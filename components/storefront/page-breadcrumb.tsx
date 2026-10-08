@@ -22,7 +22,13 @@ export function PageBreadcrumb({ items }: { items: Crumb[] }) {
                 {isLast || !item.href ? (
                   <BreadcrumbPage className="line-clamp-1">{item.name}</BreadcrumbPage>
                 ) : (
-                  <BreadcrumbLink href={item.href}>{item.name}</BreadcrumbLink>
+                  <BreadcrumbLink
+                    href={item.href}
+                    // Pads the touch target to ~44px tall without spacing the row out.
+                    className="relative after:absolute after:-inset-x-1.5 after:-inset-y-3 after:content-['']"
+                  >
+                    {item.name}
+                  </BreadcrumbLink>
                 )}
               </BreadcrumbItem>
               {!isLast && <BreadcrumbSeparator />}

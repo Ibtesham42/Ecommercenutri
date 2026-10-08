@@ -23,7 +23,7 @@ export function TableOfContents({
       aria-label="On this page"
       className={cn(rail ? "border-l border-border pl-5" : "rounded-xl bg-oat px-5 py-4 text-oat-foreground", className)}
     >
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
         On this page
       </p>
       <ul className={cn("mt-3 text-sm", rail ? "space-y-1" : "space-y-0.5")}>

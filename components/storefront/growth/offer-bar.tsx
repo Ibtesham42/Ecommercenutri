@@ -125,7 +125,8 @@ export function OfferBar({
             type="button"
             onClick={getCoupon}
             disabled={loading}
-            className="shrink-0 font-semibold text-surface-deep-foreground underline decoration-surface-deep-foreground/40 underline-offset-4 transition-colors hover:decoration-surface-deep-foreground disabled:opacity-70"
+            // after: pads the hit area to ~44px without growing the strip.
+            className="relative shrink-0 font-semibold text-surface-deep-foreground underline decoration-surface-deep-foreground/40 underline-offset-4 transition-colors after:absolute after:-inset-x-2 after:-inset-y-3 after:content-[''] hover:decoration-surface-deep-foreground disabled:opacity-70"
           >
             Get coupon
           </button>
@@ -133,7 +134,7 @@ export function OfferBar({
             type="button"
             onClick={dismiss}
             aria-label="Dismiss offer"
-            className="-mr-1 grid size-7 shrink-0 place-items-center rounded-sm text-surface-deep-foreground/60 transition-colors hover:text-surface-deep-foreground"
+            className="relative -mr-1 grid size-7 shrink-0 place-items-center rounded-sm text-surface-deep-foreground/60 transition-colors after:absolute after:-inset-2 after:content-[''] hover:text-surface-deep-foreground"
           >
             <X className="size-3.5" />
           </button>

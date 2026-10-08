@@ -926,6 +926,18 @@
 [data-surface="shop"] .rich-content img {
   border-radius: var(--radius-lg);
 }
+/* iOS Safari zooms the page when a focused field's text is under 16px. Phones
+   and tablets get 16px fields on the storefront; desktop keeps its sizes. */
+@media (width < 64rem) {
+  [data-surface="shop"]
+    :is(
+      input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]),
+      select,
+      textarea
+    ) {
+    font-size: 16px;
+  }
+}
 /* Lift the floating WhatsApp button (md+) above a visible sticky action bar
    (PDP / cart / checkout render one below lg) so it never covers the CTA. */
 @media (width < 64rem) {
