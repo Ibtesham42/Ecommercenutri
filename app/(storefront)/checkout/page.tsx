@@ -41,11 +41,13 @@ export default async function CheckoutPage() {
   }));
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-8">
+    <div className="shop-container pt-6 pb-28 sm:pt-8 lg:pb-24">
       {/* Funnel signal; remounts may re-fire — analytics counts distinct shoppers. */}
       <BehaviorTracker event={{ type: "CHECKOUT_START" }} />
-      <span className="mb-3 block h-0.5 w-9 rounded-full bg-gold" />
-      <h1 className="mb-6 font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Checkout</h1>
+      <header className="mb-5 sm:mb-6">
+        <p className="eyebrow">Secure checkout</p>
+        <h1 className="mt-2 font-heading text-title text-foreground sm:mt-3">Checkout</h1>
+      </header>
       <CheckoutClient
         addresses={data}
         razorpayEnabled={razorpayEnabled}

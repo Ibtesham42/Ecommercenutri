@@ -900,6 +900,13 @@
     var(--tw-ring-offset-shadow, 0 0 #0000),
     var(--tw-ring-shadow, 0 0 #0000);
 }
+/* Lift the floating WhatsApp button (md+) above a visible sticky action bar
+   (PDP / cart / checkout render one below lg) so it never covers the CTA. */
+@media (width < 64rem) {
+  body:has([data-sticky-bar="shown"]) .whatsapp-fab {
+    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
+}
 [data-surface="shop"] .cn-toast {
   box-shadow: var(--elev-3);
 }

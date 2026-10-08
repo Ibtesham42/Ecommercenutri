@@ -1,13 +1,12 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Script from "next/script";
 import { toast } from "sonner";
 import {
-  ShoppingBag,
   Plus,
   Tag,
   X,
@@ -32,7 +31,12 @@ import {
   AddressForm,
   type AddressData,
 } from "@/components/account/address-form";
+import { CartEmpty } from "@/components/storefront/cart/cart-empty";
+import { OrderTotals } from "@/components/storefront/cart/order-totals";
+import { StickyTotalBar } from "@/components/storefront/cart/sticky-total-bar";
+import { useViewportPosition } from "@/components/storefront/use-viewport-position";
 import { useCart } from "@/lib/store/cart";
+import { useHydrated } from "@/lib/use-hydrated";
 import { formatPrice } from "@/lib/format";
 import {
   computeBreakdown,
@@ -91,7 +95,7 @@ export function CheckoutClient({
   const items = useCart((s) => s.items);
   const clearCart = useCart((s) => s.clear);
 
-  const [mounted, setMounted] = useState(false);
+  const mounted = useHydrated();
   const [selectedId, setSelectedId] = useState<string>("");
   const [addressOpen, setAddressOpen] = useState(false);
   const [couponInput, setCouponInput] = useState("");
@@ -100,8 +104,6 @@ export function CheckoutClient({
   const [placing, setPlacing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("RAZORPAY");
   const [codAvailable, setCodAvailable] = useState(false);
-
-  useEffect(() => setMounted(true), []);
 
   // Keep a valid address selected as the list changes (e.g. after adding one).
   useEffect(() => {
@@ -131,7 +133,10 @@ export function CheckoutClient({
 
   const payloadKey = JSON.stringify(payload);
   const couponCode = coupon?.code;
-  const [server, setServer] = useState<PriceBreakdown | null>(null);
+  // Keyed by what it priced: a response for an older cart/coupon/payment method
+  // must never outrank the instant optimistic figures for the current one.
+  const pricingKey = `${payloadKey}|${couponCode ?? ""}|${paymentMethod}`;
+  const [server, setServer] = useState<{ key: string; breakdown: PriceBreakdown } | null>(null);
   useEffect(() => {
     if (payload.length === 0) {
       setServer(null);
@@ -141,7 +146,7 @@ export function CheckoutClient({
     let active = true;
     void previewOrderPricing({ items: payload, couponCode, paymentMethod }).then((res) => {
       if (!active || !res.ok) return;
-      setServer(res.breakdown);
+      setServer({ key: pricingKey, breakdown: res.breakdown });
       setCodAvailable(res.codAvailable);
       // If COD became unavailable (e.g. cart changed), fall back to online.
       if (!res.codAvailable && paymentMethod === "COD") setPaymentMethod("RAZORPAY");
@@ -152,26 +157,19 @@ export function CheckoutClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [payloadKey, couponCode, paymentMethod]);
 
-  const { subtotal, shipping, shippingSaved, codFee, tax, total, discount } =
-    server ?? optimistic;
+  const breakdown = server?.key === pricingKey ? server.breakdown : optimistic;
+  const { codFee, total } = breakdown;
+
+  // The sticky pay bar shows whenever the summary's pay button is off screen.
+  const ctaRef = useRef<HTMLButtonElement>(null);
+  const showSticky = useViewportPosition(ctaRef, mounted && items.length > 0) !== "visible";
 
   if (!mounted) {
     return <div className="h-72 animate-pulse rounded-xl bg-muted" />;
   }
 
   if (items.length === 0) {
-    return (
-      <div className="rounded-2xl border border-dashed p-16 text-center">
-        <ShoppingBag className="mx-auto size-12 text-muted-foreground/40" />
-        <p className="mt-4 text-lg font-semibold">Your cart is empty</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Add something wholesome before checking out.
-        </p>
-        <Button asChild className="mt-6">
-          <Link href="/products">Browse products</Link>
-        </Button>
-      </div>
-    );
+    return <CartEmpty description="Add something wholesome before checking out." />;
   }
 
   function onApplyCoupon() {
@@ -261,270 +259,279 @@ export function CheckoutClient({
     checkout.open();
   }
 
+  const placeLabel =
+    paymentMethod === "RAZORPAY" && razorpayEnabled
+      ? `Pay ${formatPrice(total)}`
+      : `Place order · ${formatPrice(total)}`;
+  const placeDisabled = placing || addresses.length === 0;
+  const itemCount = items.reduce((n, i) => n + i.quantity, 0);
+
   return (
-    <div className="space-y-6">
+    <div>
       {razorpayEnabled && (
         <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
       )}
 
       <CheckoutSteps />
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
-      {/* Left: address + items */}
-      <div className="space-y-8">
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 font-semibold">
-              <MapPin className="size-4 text-primary" /> Delivery address
-            </h2>
-            <Button
-              className="h-9 gap-1.5 px-4"
-              onClick={() => setAddressOpen(true)}
-            >
-              <Plus className="size-4" /> Add new address
-            </Button>
-          </div>
-
-          {addresses.length === 0 ? (
-            <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-              Add a delivery address to continue.
-            </div>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {addresses.map((a) => (
-                <label
-                  key={a.id}
-                  className={`cursor-pointer rounded-xl border p-4 transition ${
-                    selectedId === a.id
-                      ? "border-primary ring-1 ring-primary"
-                      : "hover:border-foreground/20"
-                  }`}
+      {/* One column below lg in reading order — address, payment, summary + pay,
+          then the item review. From lg the steps sit left of a sticky summary
+          (the left wrapper only becomes a box at lg; below it, `contents` lets
+          `order` interleave its sections with the summary). */}
+      <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-12 xl:gap-16">
+        <div className="contents lg:block lg:space-y-12">
+          <section aria-labelledby="checkout-address" className="order-1">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <StepHeading id="checkout-address" n={1}>
+                Delivery address
+              </StepHeading>
+              {addresses.length > 0 && (
+                <Button
+                  variant="outline"
+                  className="h-11 gap-1.5 rounded-lg border-foreground/30 bg-transparent px-4"
+                  onClick={() => setAddressOpen(true)}
                 >
-                  <div className="flex items-start gap-3">
+                  <Plus className="size-4" /> Add new address
+                </Button>
+              )}
+            </div>
+
+            {addresses.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border px-5 py-8 text-center">
+                <MapPin className="mx-auto size-6 text-muted-foreground" strokeWidth={1.5} />
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Add a delivery address to continue.
+                </p>
+                <Button className="mt-4 h-11 gap-1.5 rounded-lg px-5" onClick={() => setAddressOpen(true)}>
+                  <Plus className="size-4" /> Add address
+                </Button>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-labelledby="checkout-address">
+                {addresses.map((a) => (
+                  <label key={a.id} className={choiceCard(selectedId === a.id)}>
                     <input
                       type="radio"
                       name="address"
-                      className="mt-1 size-4 accent-primary"
+                      className="mt-0.5 size-4 shrink-0 accent-primary"
                       checked={selectedId === a.id}
                       onChange={() => setSelectedId(a.id)}
                     />
-                    <div className="text-sm">
-                      <p className="font-medium">
+                    <span className="min-w-0 text-sm">
+                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
                         {a.fullName}
-                        <span className="ml-2 text-xs uppercase text-muted-foreground">
+                        <span className="rounded bg-oat px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-oat-foreground">
                           {a.type}
                         </span>
-                      </p>
-                      <p className="text-muted-foreground">
+                      </span>
+                      <span className="mt-1 block text-muted-foreground [overflow-wrap:anywhere]">
                         {a.line1}
                         {a.line2 ? `, ${a.line2}` : ""}
                         <br />
                         {a.city}, {a.state} {a.pincode}
-                      </p>
-                      <p className="text-muted-foreground">{a.phone}</p>
-                    </div>
-                  </div>
-                </label>
-              ))}
-            </div>
-          )}
-        </section>
+                      </span>
+                      <span className="mt-1 block text-muted-foreground">{a.phone}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </section>
 
-        <section>
-          <h2 className="mb-3 font-semibold">Order items ({items.length})</h2>
-          <ul className="space-y-3">
-            {items.map((item) => (
-              <li key={item.variantId} className="flex gap-3 rounded-xl border p-3">
-                <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-accent/30">
-                  {item.image && (
-                    <Image
-                      src={item.image}
-                      alt={item.name}
-                      fill
-                      sizes="64px"
-                      className="object-cover"
-                    />
-                  )}
-                </div>
-                <div className="flex flex-1 items-center justify-between gap-2">
-                  <div className="min-w-0 text-sm">
-                    <p className="truncate font-medium">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">
+          <section aria-labelledby="checkout-payment" className="order-2">
+            <StepHeading id="checkout-payment" n={2} className="mb-4">
+              Payment method
+            </StepHeading>
+            <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-labelledby="checkout-payment">
+              <label className={choiceCard(paymentMethod === "RAZORPAY")}>
+                <input
+                  type="radio"
+                  name="payment"
+                  className="mt-0.5 size-4 shrink-0 accent-primary"
+                  checked={paymentMethod === "RAZORPAY"}
+                  onChange={() => setPaymentMethod("RAZORPAY")}
+                />
+                <span className="min-w-0 text-sm">
+                  <span className="flex items-center gap-2 font-medium">
+                    <CreditCard className="size-4 text-foreground/70" strokeWidth={1.75} />
+                    {razorpayEnabled ? "Pay online" : "Pay online (demo)"}
+                  </span>
+                  <span className="mt-1 block text-muted-foreground">
+                    UPI, cards, net banking &amp; wallets via Razorpay.
+                  </span>
+                </span>
+              </label>
+              {codAvailable && (
+                <label className={choiceCard(paymentMethod === "COD")}>
+                  <input
+                    type="radio"
+                    name="payment"
+                    className="mt-0.5 size-4 shrink-0 accent-primary"
+                    checked={paymentMethod === "COD"}
+                    onChange={() => setPaymentMethod("COD")}
+                  />
+                  <span className="min-w-0 text-sm">
+                    <span className="flex items-center gap-2 font-medium">
+                      <Banknote className="size-4 text-foreground/70" strokeWidth={1.75} /> Cash on Delivery
+                    </span>
+                    <span className="mt-1 block text-muted-foreground">
+                      Pay in cash when your order arrives
+                      {codFee > 0 ? ` · +${formatPrice(codFee)} fee` : ""}.
+                    </span>
+                  </span>
+                </label>
+              )}
+            </div>
+          </section>
+
+          <section aria-labelledby="checkout-items" className="order-4">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <StepHeading id="checkout-items" n={3}>
+                Review items
+              </StepHeading>
+              <Link
+                href="/cart"
+                className="inline-flex h-11 items-center px-1 text-sm font-medium underline underline-offset-4"
+              >
+                Edit cart
+              </Link>
+            </div>
+            <ul className="divide-y divide-border border-b border-border">
+              {items.map((item) => (
+                <li key={item.variantId} className="flex items-center gap-4 py-4">
+                  <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-oat">
+                    {item.image && (
+                      <Image src={item.image} alt="" fill sizes="64px" className="object-cover" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 text-sm">
+                    <p className="line-clamp-2 font-medium leading-snug">{item.name}</p>
+                    <p className="mt-0.5 text-muted-foreground">
                       {item.weightLabel} · Qty {item.quantity}
                     </p>
                   </div>
-                  <span className="shrink-0 text-sm font-semibold">
+                  <span className="shrink-0 text-sm font-semibold tabular-nums">
                     {formatPrice(item.price * item.quantity)}
                   </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+
+        <aside
+          aria-labelledby="checkout-summary"
+          className="order-3 h-fit rounded-xl border border-border bg-card p-5 sm:p-6 lg:order-none lg:sticky lg:top-28"
+        >
+          <h2 id="checkout-summary" className="font-heading text-subheading">
+            Order summary
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {itemCount} {itemCount === 1 ? "item" : "items"}
+          </p>
+
+          {/* Coupon */}
+          <div className="mt-5">
+            {coupon ? (
+              <div className="flex items-center justify-between gap-2 rounded-lg bg-primary/[0.07] py-1 pr-1 pl-3 text-sm">
+                <span className="flex min-w-0 items-center gap-2 font-medium text-primary">
+                  <Tag className="size-4 shrink-0" strokeWidth={1.75} />
+                  <span className="truncate">{coupon.code} applied</span>
+                </span>
+                <button
+                  type="button"
+                  className="grid size-10 shrink-0 place-items-center rounded-md text-muted-foreground outline-none hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => {
+                    setCoupon(null);
+                    setCouponInput("");
+                  }}
+                  aria-label={`Remove coupon ${coupon.code}`}
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <label htmlFor="checkout-coupon" className="sr-only">
+                  Coupon code
+                </label>
+                <Input
+                  id="checkout-coupon"
+                  placeholder="Coupon code"
+                  className="h-11 rounded-lg"
+                  value={couponInput}
+                  autoComplete="off"
+                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === "Enter" && onApplyCoupon()}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 rounded-lg border-foreground/30 bg-transparent px-4"
+                  onClick={onApplyCoupon}
+                  disabled={couponPending || !couponInput.trim()}
+                >
+                  {couponPending ? <Loader2 className="size-4 animate-spin" aria-label="Applying" /> : "Apply"}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-5 border-t border-border pt-5">
+            <OrderTotals breakdown={breakdown} couponCode={coupon?.code} />
+          </div>
+
+          <Button
+            ref={ctaRef}
+            className="mt-6 h-12 w-full gap-2 rounded-lg text-[15px]"
+            onClick={onPlaceOrder}
+            disabled={placeDisabled}
+          >
+            {placing ? (
+              <>
+                <Loader2 className="size-4 animate-spin" /> Processing…
+              </>
+            ) : (
+              placeLabel
+            )}
+          </Button>
+          {addresses.length === 0 && (
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              Add a delivery address to place your order.
+            </p>
+          )}
+          <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+            <ShieldCheck className="size-3.5" strokeWidth={1.75} /> 100% secure payments
+          </p>
+          {!razorpayEnabled && paymentMethod === "RAZORPAY" && (
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              Demo mode — no payment gateway configured. Orders are simulated.
+            </p>
+          )}
+        </aside>
       </div>
 
-      {/* Right: summary */}
-      <aside className="h-fit space-y-4 rounded-2xl border p-5 shadow-elev-1 lg:sticky lg:top-24">
-        <h2 className="font-semibold">Order summary</h2>
-
-        {/* Coupon */}
-        <div>
-          {coupon ? (
-            <div className="flex items-center justify-between rounded-lg bg-primary/10 px-3 py-2 text-sm">
-              <span className="flex items-center gap-1.5 font-medium text-primary">
-                <Tag className="size-3.5" /> {coupon.code}
-              </span>
-              <button
-                type="button"
-                className="text-muted-foreground hover:text-destructive"
-                onClick={() => {
-                  setCoupon(null);
-                  setCouponInput("");
-                }}
-                aria-label="Remove coupon"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <Input
-                placeholder="Coupon code"
-                value={couponInput}
-                onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-                onKeyDown={(e) => e.key === "Enter" && onApplyCoupon()}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onApplyCoupon}
-                disabled={couponPending || !couponInput.trim()}
-              >
-                {couponPending ? <Loader2 className="size-4 animate-spin" /> : "Apply"}
-              </Button>
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-2 border-t pt-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span className="font-medium">{formatPrice(subtotal)}</span>
-          </div>
-          {discount > 0 && (
-            <div className="flex justify-between text-primary">
-              <span>Discount</span>
-              <span className="font-medium">−{formatPrice(discount)}</span>
-            </div>
-          )}
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Delivery</span>
-            <span className={shipping === 0 ? "font-semibold text-primary" : "font-medium"}>
-              {shipping === 0 ? "Free Delivery" : formatPrice(shipping)}
-            </span>
-          </div>
-          {shipping === 0 && shippingSaved > 0 && (
-            <p className="text-xs font-medium text-primary">
-              You saved {formatPrice(shippingSaved)} on shipping
-            </p>
-          )}
-          {codFee > 0 && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Cash on Delivery fee</span>
-              <span className="font-medium">{formatPrice(codFee)}</span>
-            </div>
-          )}
-          <div className="flex justify-between border-t pt-2 text-base font-semibold">
-            <span>Total</span>
-            <span>{formatPrice(total)}</span>
-          </div>
-          {tax > 0 && (
-            <p className="text-xs text-muted-foreground">
-              Inclusive of GST {formatPrice(tax)}
-            </p>
-          )}
-        </div>
-
-        {/* Payment method */}
-        <div className="space-y-2.5 border-t pt-4">
-          <p className="text-sm font-semibold">Payment method</p>
-          <label
-            className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 text-sm transition ${
-              paymentMethod === "RAZORPAY" ? "border-primary ring-1 ring-primary" : "hover:border-foreground/20"
-            }`}
-          >
-            <input
-              type="radio"
-              name="payment"
-              className="mt-1 size-4 accent-primary"
-              checked={paymentMethod === "RAZORPAY"}
-              onChange={() => setPaymentMethod("RAZORPAY")}
-            />
-            <span>
-              <span className="flex items-center gap-1.5 font-medium">
-                <CreditCard className="size-4 text-primary" />
-                {razorpayEnabled ? "Pay online" : "Pay online (demo)"}
-              </span>
-              <span className="block text-xs text-muted-foreground">
-                UPI, cards, net banking &amp; wallets via Razorpay.
-              </span>
-            </span>
-          </label>
-          {codAvailable && (
-            <label
-              className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 text-sm transition ${
-                paymentMethod === "COD" ? "border-primary ring-1 ring-primary" : "hover:border-foreground/20"
-              }`}
-            >
-              <input
-                type="radio"
-                name="payment"
-                className="mt-1 size-4 accent-primary"
-                checked={paymentMethod === "COD"}
-                onChange={() => setPaymentMethod("COD")}
-              />
-              <span>
-                <span className="flex items-center gap-1.5 font-medium">
-                  <Banknote className="size-4 text-primary" /> Cash on Delivery
-                </span>
-                <span className="block text-xs text-muted-foreground">
-                  Pay in cash when your order arrives
-                  {settings && codFee > 0 ? ` · +${formatPrice(codFee)} fee` : ""}.
-                </span>
-              </span>
-            </label>
-          )}
-        </div>
-
-        {/* Gold hero pill — the purchase language carried from PDP and cart. */}
+      <StickyTotalBar
+        show={showSticky}
+        total={total}
+        note={paymentMethod === "COD" ? "Cash on Delivery" : undefined}
+      >
         <Button
-          size="lg"
-          className="btn-rich btn-rich-gold h-13 w-full gap-2 rounded-full bg-gold text-base font-semibold text-gold-foreground shadow-elev-2 focus-visible:border-gold-foreground/40 focus-visible:ring-gold/45"
+          className="h-12 w-full gap-2 rounded-lg text-[15px]"
           onClick={onPlaceOrder}
-          disabled={placing || addresses.length === 0}
+          disabled={placeDisabled}
         >
           {placing ? (
             <>
               <Loader2 className="size-4 animate-spin" /> Processing…
             </>
-          ) : paymentMethod === "COD" ? (
-            `Place order · ${formatPrice(total)}`
-          ) : razorpayEnabled ? (
-            `Pay ${formatPrice(total)}`
+          ) : paymentMethod === "RAZORPAY" && razorpayEnabled ? (
+            "Pay now"
           ) : (
-            `Place order · ${formatPrice(total)}`
+            "Place order"
           )}
         </Button>
-        <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-          <ShieldCheck className="size-3.5 text-primary" /> 100% secure payments
-        </div>
-        {!razorpayEnabled && paymentMethod === "RAZORPAY" && (
-          <p className="text-center text-xs text-muted-foreground">
-            Demo mode — no payment gateway configured. Orders are simulated.
-          </p>
-        )}
-      </aside>
-      </div>
+      </StickyTotalBar>
 
       <Dialog open={addressOpen} onOpenChange={setAddressOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
@@ -555,48 +562,89 @@ export function CheckoutClient({
   );
 }
 
+/** Selectable address / payment card — the whole card is the radio's label. */
+function choiceCard(selected: boolean) {
+  return cn(
+    "flex cursor-pointer items-start gap-3 rounded-xl border bg-card p-4 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring",
+    selected ? "border-primary ring-1 ring-primary" : "border-border hover:border-foreground/30",
+  );
+}
+
+function StepHeading({
+  id,
+  n,
+  className,
+  children,
+}: {
+  id: string;
+  n: number;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <h2 id={id} className={cn("flex items-center gap-3 font-heading text-subheading", className)}>
+      <span
+        aria-hidden
+        className="grid size-7 shrink-0 place-items-center rounded-full bg-oat font-sans text-xs font-semibold text-oat-foreground"
+      >
+        {n}
+      </span>
+      {children}
+    </h2>
+  );
+}
+
 /** Presentational checkout progress — Cart (done) → Checkout (active) → Confirmation. */
 function CheckoutSteps() {
   const steps = [
-    { label: "Cart", state: "done" as const },
-    { label: "Checkout", state: "active" as const },
-    { label: "Confirmation", state: "upcoming" as const },
+    { label: "Cart", state: "done" as const, href: "/cart" },
+    { label: "Checkout", state: "active" as const, href: undefined },
+    { label: "Confirmation", state: "upcoming" as const, href: undefined },
   ];
   return (
-    <ol className="flex items-center gap-2 sm:gap-3">
-      {steps.map((s, i) => (
-        <Fragment key={s.label}>
-          <li className="flex items-center gap-2">
+    <ol className="flex max-w-xl items-center gap-2 sm:gap-3" aria-label="Checkout progress">
+      {steps.map((s, i) => {
+        const label = (
+          <>
             <span
               className={cn(
-                "grid size-7 place-items-center rounded-full border text-xs font-semibold",
-                s.state === "done" && "border-primary bg-primary text-primary-foreground",
-                s.state === "active" && "border-primary bg-primary/10 text-primary",
-                s.state === "upcoming" && "border-border text-muted-foreground",
+                "grid size-6 place-items-center rounded-full text-[11px] font-semibold",
+                s.state === "done" && "bg-primary text-primary-foreground",
+                s.state === "active" && "border border-primary text-primary",
+                s.state === "upcoming" && "border border-border text-muted-foreground",
               )}
             >
-              {s.state === "done" ? <Check className="size-4" /> : i + 1}
+              {s.state === "done" ? <Check className="size-3.5" aria-hidden /> : i + 1}
             </span>
             <span
               className={cn(
-                "text-sm font-medium",
-                s.state === "upcoming" ? "text-muted-foreground" : "text-foreground",
-                s.state === "upcoming" && "hidden sm:inline",
+                "text-sm",
+                s.state === "active" ? "font-medium text-foreground" : "text-muted-foreground",
+                s.state === "upcoming" && "max-sm:sr-only",
               )}
             >
               {s.label}
+              {s.state === "done" && <span className="sr-only"> (completed)</span>}
             </span>
-          </li>
-          {i < steps.length - 1 && (
-            <span
-              className={cn(
-                "h-px flex-1",
-                s.state === "done" ? "bg-primary/40" : "bg-border",
+          </>
+        );
+        return (
+          <Fragment key={s.label}>
+            <li className="flex items-center gap-2" aria-current={s.state === "active" ? "step" : undefined}>
+              {s.href ? (
+                <Link href={s.href} className="flex min-h-11 items-center gap-2 hover:underline hover:underline-offset-4">
+                  {label}
+                </Link>
+              ) : (
+                label
               )}
-            />
-          )}
-        </Fragment>
-      ))}
+            </li>
+            {i < steps.length - 1 && (
+              <li aria-hidden className={cn("h-px flex-1", s.state === "done" ? "bg-primary/40" : "bg-border")} />
+            )}
+          </Fragment>
+        );
+      })}
     </ol>
   );
 }

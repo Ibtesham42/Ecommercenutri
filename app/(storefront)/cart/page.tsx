@@ -19,9 +19,11 @@ export default async function CartPage() {
     getPublicCoupons(),
   ]);
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-8">
-      <span className="mb-3 block h-0.5 w-9 rounded-full bg-gold" />
-      <h1 className="mb-6 font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Your cart</h1>
+    <div className="shop-container pt-6 pb-28 sm:pt-8 lg:pb-24">
+      <header className="mb-6 sm:mb-8">
+        <p className="eyebrow">Cart</p>
+        <h1 className="mt-2 font-heading text-title text-foreground sm:mt-3">Your cart</h1>
+      </header>
       <CartView
         settings={settings}
         publicCoupons={publicCoupons.slice(0, 2).map((c) => ({
@@ -31,7 +33,7 @@ export default async function CartPage() {
         }))}
       />
 
-      <div className="mt-16 space-y-16">
+      <div className="mt-16 space-y-16 lg:mt-24 lg:space-y-24">
         <CartCrossSell />
         <RecommendedProducts title="You might also like" />
         <RecentlyViewed />

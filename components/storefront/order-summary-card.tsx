@@ -2,6 +2,7 @@ import Image from "next/image";
 import type { Prisma } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice, formatDate } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { statusBadgeVariant, statusLabel } from "@/lib/order-status";
 
 type OrderWithItems = Prisma.OrderGetPayload<{ include: { items: true } }>;
@@ -17,11 +18,17 @@ type ShippingAddress = {
   country: string;
 };
 
-export function OrderSummaryCard({ order }: { order: OrderWithItems }) {
+export function OrderSummaryCard({
+  order,
+  className,
+}: {
+  order: OrderWithItems;
+  className?: string;
+}) {
   const address = order.shippingAddress as unknown as ShippingAddress | null;
 
   return (
-    <div className="space-y-5 rounded-2xl border bg-card p-5 shadow-elev-1">
+    <div className={cn("space-y-5 rounded-2xl border bg-card p-5 shadow-elev-1", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="font-heading text-lg font-semibold">#{order.orderNumber}</p>

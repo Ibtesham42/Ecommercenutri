@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { CheckCircle2, Package, Truck, Sparkles, ArrowRight } from "lucide-react";
+import { Check, Package, Truck, Sparkles, ArrowRight } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
@@ -44,68 +44,80 @@ export default async function CheckoutSuccessPage({
   const recommended = bestSellers.filter((p) => !purchasedIds.has(p.id)).slice(0, 5);
   const showQuizInvite = growth.quizEnabled && !healthScore;
 
+  const firstName = user.name?.trim().split(/\s+/)[0];
+
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-12">
-      <div className="motion-safe:animate-fade-up text-center">
-        <span className="mx-auto grid size-20 place-items-center rounded-full bg-primary/10 ring-8 ring-primary/5">
-          <CheckCircle2 className="size-12 text-primary" />
-        </span>
-        <h1 className="mt-5 font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
-          Thank you for your order!
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          Your order <span className="font-semibold text-foreground">#{order.orderNumber}</span>{" "}
-          has been placed. A confirmation has been sent to your email.
+    <div className="shop-container pt-10 pb-24 sm:pt-14">
+      <div className="mx-auto max-w-2xl">
+        <header className="motion-safe:animate-fade-up text-center">
+          <span className="mx-auto grid size-14 place-items-center rounded-full bg-primary text-primary-foreground">
+            <Check className="size-7" strokeWidth={2.25} aria-hidden />
+          </span>
+          <p className="eyebrow mt-6">Order confirmed</p>
+          <h1 className="mt-2 font-heading text-title text-foreground sm:mt-3">
+            Thank you{firstName ? `, ${firstName}` : ""}.
+          </h1>
+          <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-muted-foreground">
+            Your order <span className="font-medium text-foreground">#{order.orderNumber}</span>{" "}
+            has been placed. A confirmation has been sent to your email.
+          </p>
+        </header>
+
+        {/* Delivery reassurance — cuts post-purchase anxiety + "where is my order" support load. */}
+        <p className="mt-8 flex items-start gap-3 rounded-xl bg-oat px-4 py-3.5 text-sm text-oat-foreground sm:items-center">
+          <Truck className="mt-0.5 size-4 shrink-0 sm:mt-0" strokeWidth={1.75} aria-hidden />
+          <span>Usually delivered in 3–5 business days · track it anytime from your orders.</span>
         </p>
-      </div>
 
-      {/* Delivery reassurance — cuts post-purchase anxiety + "where is my order" support load. */}
-      <div className="mt-6 flex items-center justify-center gap-2 rounded-2xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm font-medium text-primary">
-        <Truck className="size-4 shrink-0" />
-        <span>Usually delivered in 3–5 business days · track anytime from your orders</span>
-      </div>
+        <div className="mt-6">
+          <OrderSummaryCard order={order} className="rounded-xl border-border shadow-none" />
+        </div>
 
-      <div className="mt-8">
-        <OrderSummaryCard order={order} />
-      </div>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <Button asChild className="h-12 flex-1 gap-2 rounded-lg text-[15px]">
+            <Link href={`/account/orders/${order.orderNumber}`}>
+              <Package className="size-4" /> View order
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="h-12 flex-1 rounded-lg border-foreground/70 bg-transparent text-[15px] hover:bg-foreground hover:text-background"
+          >
+            <Link href="/products">Continue shopping</Link>
+          </Button>
+        </div>
 
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-        <Button asChild className="btn-rich">
-          <Link href={`/account/orders/${order.orderNumber}`}>
-            <Package className="size-4" /> View order
+        {/* AI Assessment invite — a high-engagement moment to start personalization
+            (only when the shopper hasn't taken it and the quiz is enabled). */}
+        {showQuizInvite && (
+          <Link
+            href="/quiz"
+            className="group mt-10 flex items-center gap-4 rounded-xl border border-border bg-card p-5 transition-colors hover:border-foreground/30"
+          >
+            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-oat">
+              <Sparkles className="size-5 text-terracotta" strokeWidth={1.75} aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-heading text-subheading">
+                While your order ships — meet your nutrition coach
+              </span>
+              <span className="mt-1 block text-sm text-muted-foreground">
+                Take the free 60-second Health Assessment for snacks matched to your goals.
+              </span>
+            </span>
+            <ArrowRight
+              className="size-5 shrink-0 text-foreground/60 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+              aria-hidden
+            />
           </Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/products">Continue shopping</Link>
-        </Button>
+        )}
       </div>
-
-      {/* AI Assessment invite — a high-engagement moment to start personalization
-          (only when the shopper hasn't taken it and the quiz is enabled). */}
-      {showQuizInvite && (
-        <Link
-          href="/quiz"
-          className="surface-rich hover-lift group mt-10 flex items-center gap-4 overflow-hidden rounded-3xl p-5 text-surface-deep-foreground shadow-elev-2"
-        >
-          <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-white/10 ring-1 ring-white/15">
-            <Sparkles className="size-6 text-gold" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block font-heading text-lg font-semibold">
-              While your order ships — meet your nutrition coach
-            </span>
-            <span className="mt-0.5 block text-sm text-surface-deep-foreground/80">
-              Take the free 60-second Health Assessment for snacks matched to your goals.
-            </span>
-          </span>
-          <ArrowRight className="size-5 shrink-0 text-gold transition-transform group-hover:translate-x-0.5" />
-        </Link>
-      )}
 
       {/* Post-purchase discovery — seeds the next order (repeat purchase / AOV). */}
       {recommended.length > 0 && (
         <RecoSection
-          className="mt-14"
+          className="mt-20 lg:mt-24"
           title="Popular with our customers"
           subtitle="Loved by the Nutriyet community — add these to your next box."
           products={recommended}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { useId, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, format } from "date-fns";
 import {
@@ -17,6 +17,7 @@ import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 import { ProductPrice } from "@/components/storefront/product-price";
 import { WishlistButton } from "@/components/storefront/wishlist-button";
 import { useVariantSelection } from "@/components/storefront/variant-selection";
+import { useViewportPosition } from "@/components/storefront/use-viewport-position";
 import { useCart } from "@/lib/store/cart";
 import { trackClient } from "@/components/storefront/behavior-tracker";
 import { formatPrice, discountPercent, effectivePrice } from "@/lib/format";
@@ -110,30 +111,9 @@ export function ProductPurchase({
   const [qty, setQty] = useState(1);
 
   // The sticky bar appears once the inline actions have scrolled up out of
-  // view (below lg) — not before the shopper has reached them. A scroll
-  // listener, not an IntersectionObserver: a fling or a #reviews jump can skip
-  // straight past the actions without ever "intersecting", so IO never fires.
+  // view (below lg) — not before the shopper has reached them.
   const actionsRef = useRef<HTMLDivElement>(null);
-  const [showSticky, setShowSticky] = useState(false);
-  useEffect(() => {
-    let raf = 0;
-    const update = () => {
-      raf = 0;
-      const el = actionsRef.current;
-      if (el) setShowSticky(el.getBoundingClientRect().bottom < 0);
-    };
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update);
-    };
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, []);
+  const showSticky = useViewportPosition(actionsRef) === "above";
 
   const variant = variants.find((v) => v.id === variantId) ?? firstAvailable;
   const price = variant ? effectivePrice(variant.price, variant.discountPrice) : 0;
@@ -376,6 +356,7 @@ export function ProductPurchase({
           showSticky ? "translate-y-0" : "pointer-events-none translate-y-full",
         )}
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+        data-sticky-bar={showSticky ? "shown" : "hidden"}
         aria-hidden={!showSticky}
         inert={!showSticky}
       >

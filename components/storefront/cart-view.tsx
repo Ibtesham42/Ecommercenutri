@@ -2,11 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { Minus, Plus, Trash2, ShoppingBag, Truck, ShieldCheck, ArrowLeft, ArrowRight, Gift } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Minus, Plus, Trash2, ShieldCheck, ArrowLeft, ArrowRight, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/storefront/empty-state";
+import { CartEmpty } from "@/components/storefront/cart/cart-empty";
+import { OrderTotals } from "@/components/storefront/cart/order-totals";
+import { StickyTotalBar } from "@/components/storefront/cart/sticky-total-bar";
+import { useViewportPosition } from "@/components/storefront/use-viewport-position";
 import { useCart } from "@/lib/store/cart";
+import { useHydrated } from "@/lib/use-hydrated";
 import { formatPrice } from "@/lib/format";
 import {
   computeBreakdown,
@@ -18,6 +22,9 @@ import { previewOrderPricing } from "@/lib/actions/checkout";
 
 type PublicCoupon = { code: string; type: "PERCENT" | "FIXED"; value: number };
 
+const stepBtn =
+  "grid size-11 place-items-center rounded-lg text-foreground/80 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:text-muted-foreground/40";
+
 export function CartView({
   settings = PRICING_DEFAULTS,
   publicCoupons = [],
@@ -28,9 +35,7 @@ export function CartView({
   const items = useCart((s) => s.items);
   const updateQty = useCart((s) => s.updateQty);
   const removeItem = useCart((s) => s.removeItem);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
+  const mounted = useHydrated();
   // Optimistic client breakdown for instant render; corrected by the server
   // (which re-prices from the DB) so admin delivery/GST values always win.
   const optimistic = computeBreakdown(
@@ -48,7 +53,9 @@ export function CartView({
     [items],
   );
   const payloadKey = JSON.stringify(payload);
-  const [server, setServer] = useState<PriceBreakdown | null>(null);
+  // Keyed by the cart it priced: a response for an older cart must never
+  // outrank the instant optimistic figures for the current one.
+  const [server, setServer] = useState<{ key: string; breakdown: PriceBreakdown } | null>(null);
 
   useEffect(() => {
     if (payload.length === 0) {
@@ -57,7 +64,7 @@ export function CartView({
     }
     let active = true;
     void previewOrderPricing({ items: payload }).then((res) => {
-      if (active && res.ok) setServer(res.breakdown);
+      if (active && res.ok) setServer({ key: payloadKey, breakdown: res.breakdown });
     });
     return () => {
       active = false;
@@ -65,227 +72,200 @@ export function CartView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [payloadKey]);
 
+  // The sticky bar shows whenever the summary's checkout button is off screen.
+  const ctaRef = useRef<HTMLAnchorElement>(null);
+  const hasItems = mounted && items.length > 0;
+  const showSticky = useViewportPosition(ctaRef, hasItems) !== "visible";
+
   if (!mounted) {
     return <div className="h-64 animate-pulse rounded-xl bg-muted" />;
   }
 
-  if (items.length === 0) {
-    return (
-      <EmptyState
-        icon={ShoppingBag}
-        title="Your cart is empty"
-        description="Add some wholesome goodness to get started."
-        action={{ label: "Browse products", href: "/products" }}
-      />
-    );
-  }
+  if (items.length === 0) return <CartEmpty />;
 
-  const { subtotal, shipping, shippingSaved, tax, total } = server ?? optimistic;
+  const breakdown = server?.key === payloadKey ? server.breakdown : optimistic;
+  const { subtotal, shipping, total } = breakdown;
+  const itemCount = items.reduce((n, i) => n + i.quantity, 0);
   const freeShippingProgress =
     settings.freeShippingEnabled && settings.freeShippingThreshold > 0
       ? Math.min(100, Math.round((subtotal / settings.freeShippingThreshold) * 100))
       : null;
 
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
-      <div className="space-y-4">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-12 xl:gap-16">
+      <div className="min-w-0">
         {/* Free-delivery progress nudge */}
-        {freeShippingProgress !== null && shipping > 0 && (
-          <div className="rounded-2xl border bg-accent/30 p-4">
-            <p className="text-sm">
-              Add{" "}
-              <span className="font-semibold text-primary">
-                {formatPrice(settings.freeShippingThreshold - subtotal)}
-              </span>{" "}
-              more for <span className="font-semibold">Free Delivery</span>
-            </p>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-primary/10">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-primary to-gold transition-all"
-                style={{ width: `${freeShippingProgress}%` }}
-              />
-            </div>
-          </div>
-        )}
-        {freeShippingProgress !== null && shipping === 0 && (
-          <div className="flex items-center gap-2 rounded-2xl border border-primary/30 bg-primary/5 p-4 text-sm font-medium text-primary">
-            <Truck className="size-4" /> You&apos;ve unlocked Free Delivery!
+        {freeShippingProgress !== null && (
+          <div className="mb-2 rounded-xl bg-oat px-4 py-3.5 text-sm text-oat-foreground">
+            {shipping > 0 ? (
+              <>
+                <p>
+                  Add{" "}
+                  <span className="font-semibold">
+                    {formatPrice(settings.freeShippingThreshold - subtotal)}
+                  </span>{" "}
+                  more for Free Delivery
+                </p>
+                <div
+                  className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-foreground/10"
+                  role="progressbar"
+                  aria-label="Progress to Free Delivery"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={freeShippingProgress}
+                >
+                  <div
+                    className="h-full rounded-full bg-primary transition-[width] duration-500 motion-reduce:transition-none"
+                    style={{ width: `${freeShippingProgress}%` }}
+                  />
+                </div>
+              </>
+            ) : (
+              <p className="font-medium">You&apos;ve unlocked Free Delivery</p>
+            )}
           </div>
         )}
 
-        <ul className="space-y-3">
+        <h2 className="sr-only">Items in your cart</h2>
+        <ul className="divide-y divide-border border-b border-border">
           {items.map((item) => (
-            <li
-              key={item.variantId}
-              className="flex gap-4 rounded-2xl border bg-card p-3 shadow-elev-1 sm:p-4"
-            >
+            <li key={item.variantId} className="flex gap-4 py-5 sm:gap-5">
               <Link
                 href={`/products/${item.slug}`}
-                className="relative size-24 shrink-0 overflow-hidden rounded-xl bg-muted"
+                className="relative size-24 shrink-0 overflow-hidden rounded-lg bg-oat sm:size-28"
+                tabIndex={-1}
+                aria-hidden
               >
                 {item.image && (
                   <Image
                     src={item.image}
-                    alt={item.name}
+                    alt=""
                     fill
-                    sizes="96px"
+                    sizes="(max-width: 640px) 96px, 112px"
                     className="object-cover"
                   />
                 )}
               </Link>
 
-              <div className="flex flex-1 flex-col">
-                <div className="flex justify-between gap-2">
+              <div className="flex min-w-0 flex-1 flex-col">
+                <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <Link
                       href={`/products/${item.slug}`}
-                      className="line-clamp-2 text-sm font-semibold hover:text-primary"
+                      className="line-clamp-2 text-[15px] font-medium leading-snug hover:underline hover:underline-offset-4"
                     >
                       {item.name}
                     </Link>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       {item.weightLabel} · {formatPrice(item.price)} each
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => removeItem(item.variantId)}
-                    aria-label="Remove item"
-                    className="size-8 shrink-0 rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 className="mx-auto size-4" />
-                  </button>
+                  <span className="shrink-0 text-[15px] font-semibold tabular-nums">
+                    {formatPrice(item.price * item.quantity)}
+                  </span>
                 </div>
 
-                <div className="mt-auto flex items-center justify-between pt-2">
-                  <div className="flex items-center rounded-xl border">
+                <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+                  <div className="flex items-center rounded-lg border border-border">
                     <button
                       type="button"
-                      className="grid size-9 place-items-center rounded-l-xl transition-colors hover:bg-accent disabled:opacity-40"
+                      className={stepBtn}
                       onClick={() => updateQty(item.variantId, item.quantity - 1)}
                       disabled={item.quantity <= 1}
-                      aria-label="Decrease quantity"
+                      aria-label={`Decrease quantity of ${item.name}`}
                     >
-                      <Minus className="size-3.5" />
+                      <Minus className="size-4" />
                     </button>
-                    <span className="w-9 text-center text-sm font-semibold tabular-nums">
+                    <span className="w-8 text-center text-sm font-medium tabular-nums" aria-live="polite">
                       {item.quantity}
                     </span>
                     <button
                       type="button"
-                      className="grid size-9 place-items-center rounded-r-xl transition-colors hover:bg-accent disabled:opacity-40"
+                      className={stepBtn}
                       onClick={() => updateQty(item.variantId, item.quantity + 1)}
                       disabled={item.quantity >= (item.maxStock || 99)}
-                      aria-label="Increase quantity"
+                      aria-label={`Increase quantity of ${item.name}`}
                     >
-                      <Plus className="size-3.5" />
+                      <Plus className="size-4" />
                     </button>
                   </div>
-                  <span className="text-base font-bold tracking-tight">
-                    {formatPrice(item.price * item.quantity)}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(item.variantId)}
+                    aria-label={`Remove ${item.name}`}
+                    className="inline-flex h-11 items-center gap-1.5 rounded-lg px-2 text-sm text-muted-foreground outline-none transition-colors hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <Trash2 className="size-4" strokeWidth={1.75} />
+                    <span className="max-[359px]:sr-only">Remove</span>
+                  </button>
                 </div>
               </div>
             </li>
           ))}
         </ul>
 
-        <Button asChild variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+        <Button asChild variant="ghost" className="mt-3 h-11 gap-1.5 px-2 text-muted-foreground">
           <Link href="/products">
             <ArrowLeft className="size-4" /> Continue shopping
           </Link>
         </Button>
       </div>
 
-      <aside className="h-fit space-y-4 rounded-2xl border bg-card p-5 shadow-elev-1 lg:sticky lg:top-24">
-        <h2 className="font-heading text-lg font-semibold">Order summary</h2>
+      <aside className="h-fit rounded-xl border border-border bg-card p-5 sm:p-6 lg:sticky lg:top-28">
+        <h2 className="font-heading text-subheading">Order summary</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {itemCount} {itemCount === 1 ? "item" : "items"}
+        </p>
 
-        {publicCoupons.length > 0 && (
-          <div className="space-y-1.5 rounded-xl border border-dashed border-primary/30 bg-primary/5 p-3 text-xs">
-            <p className="flex items-center gap-1.5 font-semibold text-primary">
-              <Gift className="size-3.5" /> Coupons you can use
-            </p>
-            {publicCoupons.map((c) => (
-              <p key={c.code} className="flex items-center justify-between gap-2">
-                <span className="font-mono font-semibold">{c.code}</span>
-                <span className="text-muted-foreground">
-                  {c.type === "PERCENT" ? `${c.value}% off` : `${formatPrice(c.value)} off`}
-                </span>
-              </p>
-            ))}
-            <Link href="/offers" className="font-medium text-primary hover:underline">
-              View all offers →
-            </Link>
-          </div>
-        )}
-
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span className="font-medium">{formatPrice(subtotal)}</span>
-          </div>
-          {tax > 0 && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">GST (incl.)</span>
-              <span className="font-medium">{formatPrice(tax)}</span>
-            </div>
-          )}
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Delivery</span>
-            <span className={shipping === 0 ? "font-semibold text-primary" : "font-medium"}>
-              {shipping === 0 ? "Free Delivery" : formatPrice(shipping)}
-            </span>
-          </div>
-          {shipping === 0 && shippingSaved > 0 && (
-            <p className="text-xs font-medium text-primary">
-              You saved {formatPrice(shippingSaved)} on shipping
-            </p>
-          )}
-          <div className="mt-1 flex justify-between border-t pt-3 text-lg font-bold">
-            <span>Total</span>
-            <span>{formatPrice(total)}</span>
-          </div>
+        <div className="mt-5">
+          <OrderTotals breakdown={breakdown} />
         </div>
-        {/* Gold hero pill — same purchase language as the PDP Buy now. */}
-        <Button
-          asChild
-          size="lg"
-          className="btn-rich btn-rich-gold h-13 w-full gap-2 rounded-full bg-gold text-base font-bold text-gold-foreground shadow-elev-2 focus-visible:border-gold-foreground/40 focus-visible:ring-gold/45"
-        >
-          <Link href="/checkout">
+
+        <Button asChild className="mt-6 h-12 w-full gap-2 rounded-lg text-[15px]">
+          <Link href="/checkout" ref={ctaRef}>
             Proceed to checkout
-            <ArrowRight className="size-5 transition-transform duration-200 group-hover/button:translate-x-0.5" />
+            <ArrowRight className="size-4 transition-transform duration-200 group-hover/button:translate-x-0.5" />
           </Link>
         </Button>
-        <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-          <ShieldCheck className="size-3.5 text-primary" /> Secure checkout · easy returns
-        </div>
-      </aside>
+        <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+          <ShieldCheck className="size-3.5" strokeWidth={1.75} /> Secure checkout · easy returns
+        </p>
 
-      {/* Sticky mobile checkout bar (bottom nav is hidden on /cart). */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-4 py-3 backdrop-blur md:hidden"
-        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
-      >
-        <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs text-muted-foreground">Total</p>
-            <p className="truncate text-base font-bold leading-tight">
-              {formatPrice(total)}
+        {publicCoupons.length > 0 && (
+          <div className="mt-6 border-t border-border pt-5 text-sm">
+            <p className="flex items-center gap-1.5 font-medium">
+              <Gift className="size-4 text-terracotta" strokeWidth={1.75} /> Offers you can use
+            </p>
+            <ul className="mt-2.5 space-y-1.5">
+              {publicCoupons.map((c) => (
+                <li key={c.code} className="flex items-center justify-between gap-2">
+                  <span className="rounded-md border border-dashed border-border px-2 py-0.5 font-mono text-xs font-semibold tracking-wide">
+                    {c.code}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {c.type === "PERCENT" ? `${c.value}% off` : `${formatPrice(c.value)} off`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2.5 text-xs text-muted-foreground">
+              Apply a code at checkout.{" "}
+              <Link href="/offers" className="font-medium text-foreground underline underline-offset-4">
+                View all offers
+              </Link>
             </p>
           </div>
-          <Button
-            asChild
-            size="lg"
-            className="btn-rich btn-rich-gold h-12 flex-1 gap-1.5 rounded-full bg-gold text-base font-bold text-gold-foreground focus-visible:border-gold-foreground/40 focus-visible:ring-gold/45"
-          >
-            <Link href="/checkout">
-              Checkout
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
-        </div>
-      </div>
+        )}
+      </aside>
+
+      <StickyTotalBar show={showSticky} total={total}>
+        <Button asChild className="h-12 w-full gap-1.5 rounded-lg text-[15px]">
+          <Link href="/checkout">
+            Checkout
+            <ArrowRight className="size-4" />
+          </Link>
+        </Button>
+      </StickyTotalBar>
     </div>
   );
 }

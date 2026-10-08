@@ -40,9 +40,8 @@ export function MobileBottomNav({ isLoggedIn = false }: { isLoggedIn?: boolean }
     else setTimeout(prewarm, 1500);
   }, []);
 
-  // Hidden on pages where it would get in the way: product detail (/products/<slug>)
-  // and cart render their own sticky bottom action bar at the same screen edge;
-  // checkout is kept distraction-free (its place-order CTA lives in the summary card).
+  // Hidden on pages that render their own sticky bottom action bar at the same
+  // screen edge: product detail (/products/<slug>), cart and checkout.
   const onProductDetail =
     pathname.startsWith("/products/") && pathname !== "/products";
   const onOwnBottomBar =
