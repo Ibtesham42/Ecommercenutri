@@ -41,7 +41,7 @@ export function ContactForm() {
 
   if (sent) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border bg-accent/30 p-8 text-center">
+      <div className="flex flex-col items-center gap-3 rounded-xl bg-oat p-8 text-center text-oat-foreground">
         <CheckCircle2 className="size-10 text-primary" />
         <h3 className="text-lg font-semibold">Thanks for reaching out!</h3>
         <p className="text-sm text-muted-foreground">
@@ -55,7 +55,7 @@ export function ContactForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 rounded-2xl border p-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="shop-form space-y-4 rounded-xl border border-border bg-card p-5 sm:p-7">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="name">Name</Label>
@@ -77,7 +77,7 @@ export function ContactForm() {
         <Textarea id="message" rows={5} {...register("message")} />
         {errors.message && <p className="text-xs text-destructive">{errors.message.message}</p>}
       </div>
-      <Button type="submit" disabled={sending} className="gap-2">
+      <Button type="submit" disabled={sending} className="w-full gap-2 rounded-lg px-6 text-[15px] sm:w-auto">
         {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
         Send message
       </Button>

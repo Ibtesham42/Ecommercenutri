@@ -1,50 +1,79 @@
 import { sanitizeRichText } from "@/lib/sanitize";
-import { formatDate } from "@/lib/format";
-import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
+import { formatDate, slugify } from "@/lib/format";
+import { buildToc, type TocHeading } from "@/lib/toc";
+import { CONTENT_PAGE_CLASS, PageHeader, ReadingLayout } from "@/components/storefront/page-header";
+import { TableOfContents } from "@/components/storefront/table-of-contents";
 import type { LegalPage } from "@/lib/queries/content";
 
 /**
  * Renders a legal/policy page from either the built-in default sections or an
- * admin-edited HTML body (sanitized). Shared by /privacy, /terms and /shipping.
+ * admin-edited HTML body (sanitized). Shared by /privacy, /terms, /shipping,
+ * /returns-refunds, /cookie-policy and /disclaimer. Sections get anchors so the
+ * page carries an "On this page" list (side rail from lg, inline card below).
  */
-export function LegalPageView({ page }: { page: LegalPage }) {
+export function LegalPageView({
+  page,
+  notice,
+}: {
+  page: LegalPage;
+  /** Optional callout above the body (e.g. the live return window). */
+  notice?: React.ReactNode;
+}) {
+  let headings: TocHeading[];
+  let body: React.ReactNode;
+
+  if (page.mode === "custom") {
+    const toc = buildToc(sanitizeRichText(page.html));
+    headings = toc.headings;
+    body = <article className="rich-content" dangerouslySetInnerHTML={{ __html: toc.html }} />;
+  } else {
+    const used = new Set<string>();
+    const sections = page.content.sections.map((section) => {
+      const base = slugify(section.heading) || "section";
+      let id = base;
+      for (let n = 2; used.has(id); n++) id = `${base}-${n}`;
+      used.add(id);
+      return { ...section, id };
+    });
+    headings = sections.map((s) => ({ id: s.id, text: s.heading, level: 2 as const }));
+    body = (
+      <div className="space-y-10">
+        {sections.map((section) => (
+          <section key={section.id} aria-labelledby={section.id}>
+            <h2 id={section.id} className="scroll-mt-28 font-heading text-subheading font-medium">
+              {section.heading}
+            </h2>
+            <div className="mt-3 space-y-3 text-[15px] leading-relaxed text-foreground/80">
+              {section.body.map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    );
+  }
+
+  const showToc = headings.length >= 3;
+
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-12">
-      <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: page.title }]} />
-
-      <header className="mt-6 border-b pb-6">
-        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">{page.title}</h1>
-        {page.mode === "default" && (
-          <p className="mt-3 text-lg text-muted-foreground">{page.content.intro}</p>
-        )}
+    <div className={CONTENT_PAGE_CLASS}>
+      <PageHeader
+        crumbs={[{ name: "Home", href: "/" }, { name: page.title }]}
+        eyebrow="Policies"
+        title={page.title}
+        lede={page.mode === "default" ? page.content.intro : undefined}
+      >
         {page.updatedAt && (
-          <p className="mt-3 text-xs text-muted-foreground">
-            Last updated {formatDate(page.updatedAt)}
-          </p>
+          <p className="mt-4 text-xs text-muted-foreground">Last updated {formatDate(page.updatedAt)}</p>
         )}
-      </header>
+      </PageHeader>
 
-      {page.mode === "custom" ? (
-        <article
-          className="rich-content mt-8"
-          dangerouslySetInnerHTML={{ __html: sanitizeRichText(page.html) }}
-        />
-      ) : (
-        <div className="mt-8 space-y-8">
-          {page.content.sections.map((section) => (
-            <section key={section.heading}>
-              <h2 className="text-xl font-semibold">{section.heading}</h2>
-              <div className="mt-2 space-y-3">
-                {section.body.map((para, i) => (
-                  <p key={i} className="text-muted-foreground">
-                    {para}
-                  </p>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
+      <ReadingLayout rail={showToc ? <TableOfContents headings={headings} variant="rail" /> : undefined}>
+        {notice && <div className="mb-8">{notice}</div>}
+        {showToc && <TableOfContents headings={headings} className="mb-10 lg:hidden" />}
+        {body}
+      </ReadingLayout>
     </div>
   );
 }

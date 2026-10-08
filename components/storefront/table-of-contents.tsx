@@ -1,27 +1,40 @@
-import { List } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TocHeading } from "@/lib/toc";
 
 /**
- * On-this-page contents for long articles. Plain anchor links (no JS needed);
- * h3s are indented under their section. Rendered only when the caller decides
- * there are enough headings to be worth it.
+ * On-this-page contents for long articles and policies. Plain anchor links (no
+ * JS needed); h3s are indented under their section. Rendered only when the
+ * caller decides there are enough headings to be worth it.
+ *  - card: inline block in the reading column (articles; policies below lg);
+ *  - rail: quiet list for the sticky side rail of `ReadingLayout`.
  */
-export function TableOfContents({ headings }: { headings: TocHeading[] }) {
+export function TableOfContents({
+  headings,
+  variant = "card",
+  className,
+}: {
+  headings: TocHeading[];
+  variant?: "card" | "rail";
+  className?: string;
+}) {
+  const rail = variant === "rail";
   return (
     <nav
       aria-label="On this page"
-      className="my-8 rounded-2xl border bg-card/60 p-5 shadow-elev-1"
+      className={cn(rail ? "border-l border-border pl-5" : "rounded-xl bg-oat px-5 py-4 text-oat-foreground", className)}
     >
-      <p className="flex items-center gap-2 text-sm font-semibold">
-        <List className="size-4 text-primary" aria-hidden /> On this page
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        On this page
       </p>
-      <ul className="mt-3 space-y-1.5 text-sm">
+      <ul className={cn("mt-3 text-sm", rail ? "space-y-1" : "space-y-0.5")}>
         {headings.map((h) => (
-          <li key={h.id} className={cn(h.level === 3 && "ml-4")}>
+          <li key={h.id} className={cn(h.level === 3 && "ml-3")}>
             <a
               href={`#${h.id}`}
-              className="text-muted-foreground transition-colors hover:text-primary"
+              className={cn(
+                "-mx-1 flex items-center rounded px-1 leading-snug text-foreground/75 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
+                rail ? "py-1.5" : "min-h-11 py-2",
+              )}
             >
               {h.text}
             </a>

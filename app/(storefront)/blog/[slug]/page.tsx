@@ -8,8 +8,8 @@ import { siteConfig } from "@/config/site";
 import { getBlogPost, getRelatedPosts } from "@/lib/queries/blog";
 import { cldUrl } from "@/lib/cld";
 import { formatDate } from "@/lib/format";
-import { Badge } from "@/components/ui/badge";
-import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
+import { JournalCard } from "@/components/storefront/journal-card";
+import { CONTENT_PAGE_CLASS, PageHeader, ReadingLayout } from "@/components/storefront/page-header";
 import { ShareButtons } from "@/components/storefront/share-buttons";
 import { NewsletterForm } from "@/components/storefront/newsletter-form";
 import { TableOfContents } from "@/components/storefront/table-of-contents";
@@ -70,8 +70,13 @@ export default async function BlogPostPage({
     },
   };
 
+  const { html, headings } = buildToc(sanitizeRichText(post.content));
+  // TOC only when the article is long enough to benefit — also earns Google
+  // "jump to" links in results.
+  const showToc = headings.length >= 3;
+
   return (
-    <article className="mx-auto w-full max-w-3xl px-4 py-12">
+    <div className={CONTENT_PAGE_CLASS}>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(articleSchema)} />
       <script
         type="application/ld+json"
@@ -84,87 +89,77 @@ export default async function BlogPostPage({
         )}
       />
 
-      <PageBreadcrumb
-        items={[{ name: "Home", href: "/" }, { name: "Blog", href: "/blog" }, { name: post.title }]}
-      />
-
-      <header className="mt-6">
-        {post.tag && <Badge variant="secondary">{post.tag}</Badge>}
-        <h1 className="mt-3 font-heading text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
-          {post.title}
-        </h1>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
-            {post.author ? `${post.author} · ` : ""}
-            {formatDate(post.publishedAt)} · {readingMinutes(post.content)} min read
-          </p>
-          <ShareButtons url={articleUrl} title={post.title} image={post.coverImage} />
-        </div>
-      </header>
-
-      {post.coverImage && (
-        <div className="mt-6 overflow-hidden rounded-2xl">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={cldUrl(post.coverImage, { w: 1280, h: 720, crop: "fill" })}
-            alt={post.title}
-            className="aspect-[16/9] w-full object-cover"
-          />
-        </div>
-      )}
-
-      {(() => {
-        const { html, headings } = buildToc(sanitizeRichText(post.content));
-        return (
-          <>
-            {/* TOC only when the article is long enough to benefit — also earns
-                Google "jump to" links in results. */}
-            {headings.length >= 3 && <TableOfContents headings={headings} />}
-            <div className="rich-content mt-8" dangerouslySetInnerHTML={{ __html: html }} />
-          </>
-        );
-      })()}
-
-      {/* Share again at the end — readers share after finishing, not before. */}
-      <div className="mt-10 flex items-center justify-between border-t pt-6">
-        <Link
-          href="/blog"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+      <article>
+        <PageHeader
+          crumbs={[{ name: "Home", href: "/" }, { name: "Journal", href: "/blog" }, { name: post.title }]}
+          eyebrow={post.tag || "Journal"}
+          title={post.title}
         >
-          <ArrowLeft className="size-4" /> Back to all articles
-        </Link>
-        <ShareButtons url={articleUrl} title={post.title} />
-      </div>
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-y border-border py-3">
+            <p className="text-sm text-muted-foreground">
+              {post.author ? `${post.author} · ` : ""}
+              {formatDate(post.publishedAt)} · {readingMinutes(post.content)} min read
+            </p>
+            <ShareButtons url={articleUrl} title={post.title} image={post.coverImage} />
+          </div>
+        </PageHeader>
 
-      {/* Newsletter CTA — the reader just got value; offer more of it. */}
-      <div className="surface-rich mt-12 rounded-2xl p-6 text-surface-deep-foreground sm:p-8">
-        <h2 className="font-heading text-xl font-semibold">Enjoyed this? Get more like it</h2>
-        <p className="mt-1.5 text-sm text-surface-deep-foreground/70">
-          Fresh nutrition tips, recipes and member-only offers — straight to your
-          inbox. No spam, ever.
-        </p>
-        <div className="mt-4">
-          <NewsletterForm source="blog" />
-        </div>
-      </div>
+        <ReadingLayout
+          className="mt-8 sm:mt-10"
+          rail={showToc ? <TableOfContents headings={headings} variant="rail" /> : undefined}
+        >
+          {post.coverImage && (
+            <div className="mb-10 overflow-hidden rounded-xl bg-oat">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={cldUrl(post.coverImage, { w: 1280, h: 720, crop: "fill" })}
+                alt={post.title}
+                className="aspect-[16/9] w-full object-cover"
+              />
+            </div>
+          )}
+          {showToc && <TableOfContents headings={headings} className="mb-10 lg:hidden" />}
+          <div className="rich-content" dangerouslySetInnerHTML={{ __html: html }} />
+
+          {/* Share again at the end — readers share after finishing, not before. */}
+          <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6">
+            <Link
+              href="/blog"
+              className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="size-4" /> All articles
+            </Link>
+            <ShareButtons url={articleUrl} title={post.title} />
+          </div>
+
+          {/* Newsletter CTA — the reader just got value; offer more of it. */}
+          <aside className="mt-12 rounded-xl bg-surface-deep p-6 text-surface-deep-foreground sm:p-8">
+            <p className="eyebrow !text-gold">Newsletter</p>
+            <h2 className="mt-2 font-heading text-subheading font-medium">Enjoyed this? Get more like it</h2>
+            <p className="mt-1.5 text-sm text-surface-deep-foreground/75">
+              Fresh nutrition tips, recipes and member-only offers — straight to your inbox. No spam,
+              ever.
+            </p>
+            <div className="mt-5">
+              <NewsletterForm source="blog" />
+            </div>
+          </aside>
+        </ReadingLayout>
+      </article>
 
       {related.length > 0 && (
-        <section className="mt-12">
-          <h2 className="text-lg font-semibold">Keep reading</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <section className="mt-20 border-t border-border pt-12 lg:mt-24 lg:pt-16" aria-labelledby="keep-reading">
+          <p className="eyebrow">Journal</p>
+          <h2 id="keep-reading" className="mt-2 font-heading text-heading font-medium">
+            Keep reading
+          </h2>
+          <div className="mt-8 grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {related.map((r) => (
-              <Link
-                key={r.slug}
-                href={`/blog/${r.slug}`}
-                className="group rounded-xl border p-4 transition-shadow hover:shadow-elev-2"
-              >
-                <p className="font-medium leading-snug group-hover:text-primary">{r.title}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{formatDate(r.publishedAt)}</p>
-              </Link>
+              <JournalCard key={r.slug} post={r} />
             ))}
           </div>
         </section>
       )}
-    </article>
+    </div>
   );
 }

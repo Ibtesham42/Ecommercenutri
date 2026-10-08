@@ -900,6 +900,32 @@
     var(--tw-ring-offset-shadow, 0 0 #0000),
     var(--tw-ring-shadow, 0 0 #0000);
 }
+/* CMS article/policy HTML on the storefront: editorial heading scale, a
+   softer body tone, and anchors that clear the sticky header. */
+[data-surface="shop"] .rich-content {
+  font-size: 1rem;
+  line-height: 1.75;
+}
+[data-surface="shop"] .rich-content p,
+[data-surface="shop"] .rich-content ul,
+[data-surface="shop"] .rich-content ol {
+  color: color-mix(in oklab, var(--foreground) 80%, transparent);
+}
+[data-surface="shop"] .rich-content h2 {
+  margin-top: 2.5rem;
+  font-size: var(--text-subheading);
+  line-height: var(--text-subheading--line-height);
+  font-weight: 500;
+  scroll-margin-top: 7rem;
+}
+[data-surface="shop"] .rich-content h3 {
+  margin-top: 2rem;
+  font-weight: 500;
+  scroll-margin-top: 7rem;
+}
+[data-surface="shop"] .rich-content img {
+  border-radius: var(--radius-lg);
+}
 /* Lift the floating WhatsApp button (md+) above a visible sticky action bar
    (PDP / cart / checkout render one below lg) so it never covers the CTA. */
 @media (width < 64rem) {
@@ -922,6 +948,18 @@
   }
   @media (width >= 64rem) {
     padding-inline: 2.5rem;
+  }
+}
+/* Storefront forms: 44px text fields and submit buttons (base inputs are 32px,
+   tuned for admin density). min-height beats the components' fixed height. */
+@utility shop-form {
+  & input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="file"]),
+  & select,
+  & button[type="submit"] {
+    min-height: 2.75rem;
+  }
+  & textarea {
+    min-height: 7.5rem;
   }
 }
 /* Section rhythm: 56px mobile · 72px tablet · 104px desktop. */

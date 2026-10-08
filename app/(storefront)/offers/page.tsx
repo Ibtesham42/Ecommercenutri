@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
-import { Gift, Tag } from "lucide-react";
+import { Tag } from "lucide-react";
 import { getPublicCoupons } from "@/lib/queries/offers";
 import { CopyCouponButton } from "@/components/storefront/copy-coupon-button";
 import { EmptyState } from "@/components/storefront/empty-state";
+import {
+  CONTENT_PAGE_CLASS,
+  PageHeader,
+} from "@/components/storefront/page-header";
 import { formatPrice, formatDate } from "@/lib/format";
 import { buildMetadata } from "@/lib/seo";
 
@@ -13,59 +17,74 @@ export const metadata: Metadata = buildMetadata({
 });
 
 function valueLabel(c: { type: string; value: number }) {
-  return c.type === "PERCENT" ? `${c.value}% OFF` : `${formatPrice(c.value)} OFF`;
+  return c.type === "PERCENT"
+    ? `${c.value}% OFF`
+    : `${formatPrice(c.value)} OFF`;
 }
 
 export default async function OffersPage() {
   const coupons = await getPublicCoupons();
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 py-10">
-      <div className="mb-8 text-center">
-        <span className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
-          <Gift className="size-6" />
-        </span>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Offers &amp; Coupons</h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          Every active discount code, in one place — copy and apply at checkout.
-        </p>
-      </div>
+    <div className={CONTENT_PAGE_CLASS}>
+      <PageHeader
+        crumbs={[{ name: "Home", href: "/" }, { name: "Offers" }]}
+        eyebrow="Offers"
+        title="Offers & coupons"
+        lede="Every active discount code, in one place — copy and apply at checkout."
+      />
 
       {coupons.length === 0 ? (
         <EmptyState
+          className="mt-10 sm:mt-12"
           icon={Tag}
           title="No public offers right now"
           description="Check back soon — new coupons are added regularly."
           action={{ label: "Continue shopping", href: "/products" }}
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <ul className="mt-10 grid gap-5 sm:mt-12 sm:grid-cols-2 lg:grid-cols-3">
           {coupons.map((c) => (
-            <div
+            <li
               key={c.id}
-              className="flex flex-col gap-3 rounded-2xl border bg-card p-5 shadow-elev-1"
+              className="flex flex-col rounded-xl bg-oat p-6 text-oat-foreground"
             >
-              <div>
-                <span className="inline-flex items-center rounded-full bg-gold/15 px-2.5 py-1 text-xs font-semibold text-gold-foreground">
+              <div className="flex-1">
+                <p className="font-heading text-heading font-medium text-foreground">
                   {valueLabel(c)}
-                </span>
+                </p>
                 {c.description && (
-                  <p className="mt-2 text-sm text-muted-foreground">{c.description}</p>
+                  <p className="mt-2 text-[15px] leading-relaxed">
+                    {c.description}
+                  </p>
                 )}
-                <div className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
-                  {c.minOrder ? <p>Min. order {formatPrice(c.minOrder)}</p> : null}
-                  {c.expiresAt ? <p>Valid till {formatDate(c.expiresAt)}</p> : null}
-                </div>
+                {(c.minOrder || c.expiresAt) && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {[
+                      c.minOrder
+                        ? `Min. order ${formatPrice(c.minOrder)}`
+                        : null,
+                      c.expiresAt
+                        ? `Valid till ${formatDate(c.expiresAt)}`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                )}
               </div>
-              <div className="mt-auto flex items-center justify-between gap-3 rounded-xl border border-dashed border-primary/40 bg-primary/5 px-3 py-2.5">
-                <span className="font-mono text-base font-semibold tracking-[0.15em] text-primary">
+              <div className="mt-6 flex items-center justify-between gap-3 border-t border-dashed border-foreground/25 pt-4">
+                <span className="font-mono text-base font-semibold tracking-[0.15em] text-foreground">
                   {c.code}
                 </span>
-                <CopyCouponButton code={c.code} />
+                <CopyCouponButton
+                  code={c.code}
+                  className="h-11 rounded-lg border-foreground/30 bg-transparent px-4"
+                />
               </div>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );

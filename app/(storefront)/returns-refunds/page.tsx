@@ -22,20 +22,20 @@ export default async function ReturnsRefundsPage() {
   ]);
 
   return (
-    <>
-      {returnSettings.returnsEnabled && (
-        <div className="mx-auto w-full max-w-3xl px-4 pt-12">
-          <div className="flex items-center gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-4 text-sm font-medium text-primary">
-            <RotateCcw className="size-5 shrink-0" aria-hidden />
+    <LegalPageView
+      page={page}
+      notice={
+        returnSettings.returnsEnabled && (
+          <p className="flex items-start gap-3 rounded-xl bg-oat px-4 py-3.5 text-sm text-oat-foreground">
+            <RotateCcw className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} aria-hidden />
             <span>
               Eligible issues can be reported within{" "}
               <span className="font-semibold">{returnSettings.returnWindowDays} days</span> of delivery —
               see what qualifies below.
             </span>
-          </div>
-        </div>
-      )}
-      <LegalPageView page={page} />
-    </>
+          </p>
+        )
+      }
+    />
   );
 }

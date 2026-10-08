@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Gift, Sparkles, Package, MessageSquare } from "lucide-react";
+import { Gift, Package, MessageSquare, ArrowRight } from "lucide-react";
 import { buildMetadata, breadcrumbSchema, jsonLd } from "@/lib/seo";
-import { Button } from "@/components/ui/button";
-import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
+import { CONTENT_PAGE_CLASS, PageHeader } from "@/components/storefront/page-header";
 
 export const metadata: Metadata = buildMetadata({
   title: "Corporate Gifting",
@@ -39,7 +38,7 @@ const STEPS = [
 
 export default function CorporateGiftingPage() {
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-12">
+    <div className={CONTENT_PAGE_CLASS}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLd(
@@ -49,67 +48,66 @@ export default function CorporateGiftingPage() {
           ]),
         )}
       />
-      <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "Corporate Gifting" }]} />
+      <PageHeader
+        crumbs={[{ name: "Home", href: "/" }, { name: "Corporate Gifting" }]}
+        eyebrow="For business"
+        title="Corporate gifting"
+        lede="Give something rooted in tradition — curated Nutriyet gifting for the people and occasions that matter to your business."
+      />
 
-      <header className="mt-6 border-b pb-6">
-        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">Corporate Gifting</h1>
-        <p className="mt-3 text-lg text-muted-foreground">
-          Give something rooted in tradition — curated Nutriyet gifting for the people and occasions that
-          matter to your business.
-        </p>
-      </header>
+      <section aria-labelledby="gifting-occasions" className="mt-12 sm:mt-14">
+        <h2 id="gifting-occasions" className="font-heading text-subheading font-medium">
+          Suited for
+        </h2>
+        <ul className="mt-4 grid grid-cols-2 border-t border-border sm:grid-cols-3 lg:grid-cols-4">
+          {OCCASIONS.map((o) => (
+            <li key={o} className="border-b border-border py-3 text-[15px]">
+              {o}
+            </li>
+          ))}
+        </ul>
+      </section>
 
-      <div className="mt-8 space-y-10">
-        <div>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Suited for
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {OCCASIONS.map((o) => (
-              <span
-                key={o}
-                className="rounded-full border bg-card px-4 py-1.5 text-sm font-medium shadow-elev-1"
-              >
-                {o}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <h2 className="mb-5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            How it works
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {STEPS.map((s) => (
-              <div key={s.title} className="rounded-2xl border bg-card p-5 shadow-elev-1">
-                <span className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
-                  <s.icon className="size-5" aria-hidden />
+      <section aria-labelledby="gifting-steps" className="mt-14 sm:mt-16">
+        <h2 id="gifting-steps" className="font-heading text-subheading font-medium">
+          How it works
+        </h2>
+        <ol className="mt-6 grid gap-8 sm:grid-cols-3 sm:gap-10">
+          {STEPS.map((step, i) => (
+            <li key={step.title} className="border-t border-foreground/80 pt-5">
+              <span className="flex items-center justify-between">
+                <span className="font-heading text-subheading text-muted-foreground tabular-nums">
+                  0{i + 1}
                 </span>
-                <h3 className="mt-3 font-semibold">{s.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{s.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+                <step.icon className="size-5 text-terracotta" strokeWidth={1.5} aria-hidden />
+              </span>
+              <h3 className="mt-4 text-[15px] font-semibold">{step.title}</h3>
+              <p className="mt-1.5 text-[15px] leading-relaxed text-muted-foreground">{step.desc}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
 
-        <div className="surface-rich hover-lift flex flex-col items-start gap-4 rounded-3xl p-6 text-surface-deep-foreground shadow-elev-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="flex items-center gap-2 font-heading text-lg font-semibold">
-              <Sparkles className="size-5 text-gold" aria-hidden /> Ready to start?
-            </p>
-            <p className="mt-1 text-sm text-surface-deep-foreground/80">
-              Submit a business enquiry with your requirements — select &quot;Corporate Order&quot; as the
-              purpose and mention gifting details in your message.
-            </p>
-          </div>
-          <Button asChild size="lg" className="btn-rich btn-rich-gold shrink-0 gap-2 rounded-full bg-gold font-semibold text-gold-foreground">
-            <Link href="/b2b">
-              Enquire now
-            </Link>
-          </Button>
+      <section
+        aria-labelledby="gifting-start"
+        className="mt-14 flex flex-col items-start gap-6 rounded-xl bg-surface-deep p-6 text-surface-deep-foreground sm:mt-16 sm:p-10 md:flex-row md:items-center md:justify-between"
+      >
+        <div className="max-w-xl">
+          <h2 id="gifting-start" className="font-heading text-heading font-medium">
+            Ready to start?
+          </h2>
+          <p className="mt-2 text-[15px] leading-relaxed text-surface-deep-foreground/80">
+            Submit a business enquiry with your requirements — select &quot;Corporate Order&quot; as the
+            purpose and mention gifting details in your message.
+          </p>
         </div>
-      </div>
+        <Link
+          href="/b2b"
+          className="inline-flex h-12 shrink-0 items-center gap-2 rounded-lg bg-gold px-6 text-[15px] font-medium text-gold-foreground outline-none transition-colors hover:bg-gold/90 focus-visible:ring-3 focus-visible:ring-gold/50"
+        >
+          Enquire now <ArrowRight className="size-4" />
+        </Link>
+      </section>
     </div>
   );
 }

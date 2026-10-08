@@ -59,7 +59,7 @@ export function B2BForm({ cloudinaryReady }: { cloudinaryReady: boolean }) {
 
   if (sent) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border bg-accent/30 p-8 text-center shadow-elev-1">
+      <div className="flex flex-col items-center gap-3 rounded-xl bg-card p-8 text-center">
         <CheckCircle2 className="size-10 text-primary" strokeWidth={1.5} />
         <h3 className="mt-1 font-heading text-xl font-semibold">Inquiry received</h3>
         <p className="max-w-md text-sm text-muted-foreground">
@@ -77,7 +77,7 @@ export function B2BForm({ cloudinaryReady }: { cloudinaryReady: boolean }) {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="space-y-4 rounded-2xl border bg-card p-5 shadow-elev-1 sm:p-6"
+      className="shop-form space-y-4 rounded-xl border border-border bg-card p-5 sm:p-7"
     >
       {/* Honeypot — visually hidden, off-screen, not focusable. */}
       <div className="absolute left-[-9999px]" aria-hidden>
@@ -151,7 +151,7 @@ export function B2BForm({ cloudinaryReady }: { cloudinaryReady: boolean }) {
         />
       </Field>
 
-      <Button type="submit" size="lg" disabled={sending} className="w-full gap-2 sm:w-auto">
+      <Button type="submit" size="lg" disabled={sending} className="w-full gap-2 rounded-lg px-6 text-[15px] sm:w-auto">
         {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
         Send Business Inquiry
       </Button>

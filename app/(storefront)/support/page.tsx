@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { buildMetadata } from "@/lib/seo";
 import { getStoreSettings } from "@/lib/queries/settings";
-import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
+import { CONTENT_PAGE_CLASS, PageHeader } from "@/components/storefront/page-header";
 
 export const metadata: Metadata = buildMetadata({
   title: "Help & Support",
@@ -38,7 +38,7 @@ const RESOURCES = [
     icon: RotateCcw,
     title: "Refunds",
     desc: "How and when refunds are processed for eligible orders.",
-    href: "/shipping",
+    href: "/returns-refunds",
   },
   {
     icon: Sparkles,
@@ -68,62 +68,63 @@ export default async function SupportPage() {
   const whatsappDigits = store.whatsapp?.replace(/[^\d]/g, "");
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-12">
-      <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "Support" }]} />
+    <div className={CONTENT_PAGE_CLASS}>
+      <PageHeader
+        crumbs={[{ name: "Home", href: "/" }, { name: "Support" }]}
+        eyebrow="Help centre"
+        title="How can we help?"
+        lede="Browse common topics below, or get in touch — we usually reply within 1–2 business days."
+      />
 
-      <header className="mt-6 max-w-2xl">
-        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">How can we help?</h1>
-        <p className="mt-3 text-lg text-muted-foreground">
-          Browse common topics below, or get in touch — we usually reply within 1–2 business days.
-        </p>
-      </header>
-
-      <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="mt-10 grid gap-x-10 sm:mt-12 sm:grid-cols-2 lg:grid-cols-3">
         {RESOURCES.map((r) => (
-          <Link
-            key={r.title}
-            href={r.href}
-            className="group rounded-2xl border p-5 transition-shadow hover:shadow-elev-2"
-          >
-            <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
-              <r.icon className="size-6" />
-            </span>
-            <h2 className="mt-3 flex items-center gap-1 font-semibold group-hover:text-primary">
-              {r.title}
-              <ArrowRight className="size-4 opacity-0 transition-opacity group-hover:opacity-100" />
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">{r.desc}</p>
-          </Link>
+          <li key={r.title} className="border-t border-border">
+            <Link href={r.href} className="group flex items-start gap-4 py-6 outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <r.icon className="mt-0.5 size-5 shrink-0 text-terracotta" strokeWidth={1.5} aria-hidden />
+              <span className="min-w-0">
+                <span className="flex items-center gap-1.5 font-heading text-subheading font-medium group-hover:text-primary">
+                  {r.title}
+                  <ArrowRight className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
+                </span>
+                <span className="mt-1 block text-[15px] leading-relaxed text-muted-foreground">{r.desc}</span>
+              </span>
+            </Link>
+          </li>
         ))}
-      </div>
+      </ul>
 
-      <section className="mt-12 rounded-2xl border bg-accent/30 p-8 text-center">
-        <h2 className="text-xl font-semibold">Still need a hand?</h2>
-        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+      <section
+        aria-labelledby="support-contact"
+        className="mt-14 rounded-xl bg-surface-deep p-6 text-surface-deep-foreground sm:mt-16 sm:p-10"
+      >
+        <h2 id="support-contact" className="font-heading text-heading font-medium">
+          Still need a hand?
+        </h2>
+        <p className="mt-2 max-w-md text-[15px] leading-relaxed text-surface-deep-foreground/80">
           Our team is happy to help with orders, products or nutrition questions.
         </p>
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+        <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link
             href="/contact"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+            className="inline-flex h-12 items-center gap-2 rounded-lg bg-gold px-5 text-[15px] font-medium text-gold-foreground outline-none transition-colors hover:bg-gold/90 focus-visible:ring-3 focus-visible:ring-gold/50"
           >
-            <Mail className="size-4" /> Contact us
+            <Mail className="size-4" aria-hidden /> Contact us
           </Link>
           {whatsappDigits && (
             <a
               href={`https://wa.me/${whatsappDigits}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border bg-background px-5 py-2.5 text-sm font-semibold transition hover:bg-accent"
+              className="inline-flex h-12 items-center gap-2 rounded-lg border border-white/25 px-5 text-[15px] font-medium outline-none transition-colors hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-gold/50"
             >
-              <MessageCircle className="size-4" /> WhatsApp
+              <MessageCircle className="size-4" aria-hidden /> WhatsApp
             </a>
           )}
           <a
             href={`mailto:${store.supportEmail}`}
-            className="inline-flex items-center gap-2 rounded-full border bg-background px-5 py-2.5 text-sm font-semibold transition hover:bg-accent"
+            className="inline-flex min-h-12 max-w-full items-center gap-2 rounded-lg border border-white/25 px-5 text-[15px] font-medium outline-none transition-colors [overflow-wrap:anywhere] hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-gold/50"
           >
-            <Mail className="size-4" /> {store.supportEmail}
+            <Mail className="size-4 shrink-0" aria-hidden /> {store.supportEmail}
           </a>
         </div>
       </section>

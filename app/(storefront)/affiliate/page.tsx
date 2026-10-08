@@ -10,12 +10,14 @@ import {
   IndianRupee,
   CheckCircle2,
   Sparkles,
+  ArrowRight,
 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getMyAffiliate } from "@/lib/queries/affiliate";
 import { getAffiliateSettings } from "@/lib/queries/settings";
-import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/storefront/reveal";
+import { SectionHeading } from "@/components/storefront/section-heading";
+import { FaqList } from "@/components/storefront/faq-list";
 import { formatPrice } from "@/lib/format";
 import { siteConfig } from "@/config/site";
 import { buildMetadata } from "@/lib/seo";
@@ -102,134 +104,119 @@ export default async function AffiliateLandingPage() {
     },
   ];
 
+  const canApply = settings.affiliateEnabled || enrolled;
+  const goldCta =
+    "inline-flex h-12 items-center gap-2 rounded-lg bg-gold px-6 text-[15px] font-medium text-gold-foreground outline-none transition-colors hover:bg-gold/90 focus-visible:ring-3 focus-visible:ring-gold/50";
+
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:py-14">
-      {/* Hero */}
-      <section className="overflow-hidden rounded-3xl border bg-gradient-to-br from-primary/10 via-background to-gold/10 p-8 shadow-elev-2 sm:p-12">
-        <Reveal>
-          <span className="inline-flex items-center gap-1.5 rounded-full border bg-background/70 px-3 py-1 text-xs font-medium text-primary">
-            <Megaphone className="size-3.5" /> Nutriyet Partner Program
-          </span>
-          <h1 className="mt-4 max-w-2xl font-heading text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
-            Earn <span className="text-primary">{commission} commission</span> sharing the
-            products you love.
-          </h1>
-          <p className="mt-4 max-w-xl text-base text-muted-foreground sm:text-lg">
-            Join the {siteConfig.name} affiliate program. Get your own link, QR code and coupon,
-            promote India&rsquo;s AI nutrition marketplace, and earn on every sale you refer.
-          </p>
-          <div className="mt-7 flex flex-wrap items-center gap-3">
-            {settings.affiliateEnabled || enrolled ? (
-              <Button asChild size="lg" className="gap-2">
-                <Link href={ctaHref}>
-                  <Sparkles className="size-4" /> {ctaLabel}
+    <div>
+      {/* Hero — forest colour block, same language as /b2b */}
+      <section className="bg-surface-deep text-surface-deep-foreground">
+        <div className="shop-container py-14 md:py-20 lg:py-24">
+          <Reveal>
+            <p className="eyebrow !text-gold">Nutriyet partner program</p>
+            <h1 className="mt-3 max-w-3xl font-heading text-title [overflow-wrap:anywhere]">
+              Earn <span className="text-gold">{commission} commission</span> sharing the products you
+              love.
+            </h1>
+            <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-surface-deep-foreground/80 sm:text-base">
+              Join the {siteConfig.name} affiliate program. Get your own link, QR code and coupon,
+              promote India&rsquo;s AI nutrition marketplace, and earn on every sale you refer.
+            </p>
+            <div className="mt-7 flex flex-wrap items-center gap-3">
+              {canApply ? (
+                <Link href={ctaHref} className={goldCta}>
+                  {ctaLabel} <ArrowRight className="size-4" />
                 </Link>
-              </Button>
-            ) : (
-              <Button size="lg" disabled className="gap-2">
-                Applications paused
-              </Button>
-            )}
-            <Button asChild variant="outline" size="lg">
-              <Link href="#how-it-works">See how it works</Link>
-            </Button>
-          </div>
-          <div className="mt-8 flex flex-wrap gap-6 text-sm">
-            <div className="flex items-center gap-2">
-              <IndianRupee className="size-4 text-primary" />
-              <span className="font-medium">{commission} per sale</span>
+              ) : (
+                <span className="inline-flex h-12 items-center rounded-lg border border-white/25 px-6 text-[15px] text-surface-deep-foreground/70">
+                  Applications paused
+                </span>
+              )}
+              <Link
+                href="#how-it-works"
+                className="inline-flex h-12 items-center rounded-lg border border-white/25 px-6 text-[15px] font-medium outline-none transition-colors hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-gold/50"
+              >
+                See how it works
+              </Link>
             </div>
-            <div className="flex items-center gap-2">
-              <BarChart3 className="size-4 text-primary" />
-              <span className="font-medium">Real-time tracking</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Wallet className="size-4 text-primary" />
-              <span className="font-medium">UPI &amp; bank payouts</span>
-            </div>
-          </div>
-        </Reveal>
+            <ul className="mt-10 flex max-w-2xl flex-wrap gap-x-8 gap-y-3 border-t border-white/15 pt-5 text-[15px]">
+              <li className="flex items-center gap-2">
+                <IndianRupee className="size-4 text-gold" strokeWidth={1.75} aria-hidden /> {commission} per sale
+              </li>
+              <li className="flex items-center gap-2">
+                <BarChart3 className="size-4 text-gold" strokeWidth={1.75} aria-hidden /> Real-time tracking
+              </li>
+              <li className="flex items-center gap-2">
+                <Wallet className="size-4 text-gold" strokeWidth={1.75} aria-hidden /> UPI &amp; bank payouts
+              </li>
+            </ul>
+          </Reveal>
+        </div>
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" className="mt-16 scroll-mt-24">
-        <h2 className="text-center font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
-          How it works
-        </h2>
-        <p className="mx-auto mt-2 max-w-xl text-center text-sm text-muted-foreground">
-          From application to your first payout in four simple steps.
-        </p>
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {steps.map((s, i) => (
-            <Reveal key={s.title} delay={i * 60}>
-              <div className="h-full rounded-2xl border p-5 shadow-elev-1 hover-lift">
-                <s.icon className="size-6 text-primary" strokeWidth={1.75} aria-hidden />
-                <p className="mt-4 text-xs font-semibold text-primary">Step {i + 1}</p>
-                <h3 className="mt-1 font-semibold">{s.title}</h3>
-                <p className="mt-1.5 text-sm text-muted-foreground">{s.body}</p>
-              </div>
-            </Reveal>
+      <section id="how-it-works" className="shop-container shop-section scroll-mt-28">
+        <SectionHeading
+          eyebrow="How it works"
+          title="Four steps to your first payout"
+          subtitle="From application to your first payout in four simple steps."
+        />
+        <ol className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-10">
+          {steps.map((step, i) => (
+            <li key={step.title} className="border-t border-foreground/80 pt-5">
+              <Reveal delay={i * 60}>
+                <span className="flex items-center justify-between">
+                  <span className="font-heading text-subheading text-muted-foreground tabular-nums">0{i + 1}</span>
+                  <step.icon className="size-5 text-terracotta" strokeWidth={1.5} aria-hidden />
+                </span>
+                <h3 className="mt-4 text-[15px] font-semibold">{step.title}</h3>
+                <p className="mt-1.5 text-[15px] leading-relaxed text-muted-foreground">{step.body}</p>
+              </Reveal>
+            </li>
           ))}
-        </div>
+        </ol>
       </section>
 
       {/* What you get */}
-      <section className="mt-16">
-        <h2 className="text-center font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
-          Everything you need to succeed
-        </h2>
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((f, i) => (
-            <Reveal key={f.title} delay={i * 50}>
-              <div className="h-full rounded-2xl border p-5 shadow-elev-1">
-                <f.icon className="size-6 text-gold" strokeWidth={1.75} aria-hidden />
-                <h3 className="mt-4 font-semibold">{f.title}</h3>
-                <p className="mt-1.5 text-sm text-muted-foreground">{f.body}</p>
-              </div>
-            </Reveal>
-          ))}
+      <section className="bg-oat">
+        <div className="shop-container shop-section">
+          <SectionHeading eyebrow="Your toolkit" title="Everything you need to succeed" />
+          <div className="grid gap-x-10 sm:grid-cols-2 lg:grid-cols-3">
+            {features.map((f, i) => (
+              <Reveal key={f.title} delay={i * 50}>
+                <div className="h-full border-t border-foreground/15 py-6">
+                  <f.icon className="size-5 text-terracotta" strokeWidth={1.5} aria-hidden />
+                  <h3 className="mt-4 font-heading text-subheading font-medium">{f.title}</h3>
+                  <p className="mt-1.5 text-[15px] leading-relaxed text-oat-foreground">{f.body}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="mt-16">
-        <h2 className="text-center font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
-          Frequently asked questions
-        </h2>
-        <div className="mx-auto mt-8 max-w-3xl divide-y rounded-2xl border">
-          {faqs.map((f) => (
-            <details key={f.q} className="group p-5 [&_summary]:cursor-pointer">
-              <summary className="flex items-center justify-between gap-3 font-medium marker:content-['']">
-                {f.q}
-                <span className="text-muted-foreground transition-transform group-open:rotate-45">
-                  +
-                </span>
-              </summary>
-              <p className="mt-2 text-sm text-muted-foreground">{f.a}</p>
-            </details>
-          ))}
+      {/* FAQ + final CTA */}
+      <section className="shop-container shop-section grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-16">
+        <div>
+          <SectionHeading eyebrow="FAQ" title="Frequently asked questions" />
+          <FaqList items={faqs} />
         </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="mt-16 rounded-3xl border bg-primary/5 p-8 text-center shadow-elev-1 sm:p-12">
-        <h2 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
-          Ready to start earning?
-        </h2>
-        <p className="mx-auto mt-2 max-w-lg text-sm text-muted-foreground">
-          Join hundreds of creators promoting better nutrition. It takes two minutes to apply.
-        </p>
-        {settings.affiliateEnabled || enrolled ? (
-          <Button asChild size="lg" className="mt-6 gap-2">
-            <Link href={ctaHref}>
-              <Sparkles className="size-4" /> {ctaLabel}
-            </Link>
-          </Button>
-        ) : (
-          <p className="mt-6 text-sm text-muted-foreground">
-            Applications are paused right now — please check back soon.
+        <aside className="h-fit rounded-xl bg-surface-deep p-6 text-surface-deep-foreground sm:p-8 lg:sticky lg:top-28">
+          <h2 className="font-heading text-subheading font-medium">Ready to start earning?</h2>
+          <p className="mt-2 text-[15px] leading-relaxed text-surface-deep-foreground/80">
+            Join creators promoting better nutrition. It takes two minutes to apply.
           </p>
-        )}
+          {canApply ? (
+            <Link href={ctaHref} className={`${goldCta} mt-6 w-full justify-center`}>
+              {ctaLabel}
+            </Link>
+          ) : (
+            <p className="mt-6 text-sm text-surface-deep-foreground/70">
+              Applications are paused right now — please check back soon.
+            </p>
+          )}
+        </aside>
       </section>
     </div>
   );

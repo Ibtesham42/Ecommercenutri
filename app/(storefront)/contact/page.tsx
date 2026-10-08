@@ -1,16 +1,12 @@
 import type { Metadata } from "next";
-import { Mail, Phone, MapPin, Clock, MessageCircle } from "lucide-react";
+import Link from "next/link";
+import { Mail, Phone, MapPin, Clock, MessageCircle, ArrowRight } from "lucide-react";
 import { buildMetadata, faqSchema, breadcrumbSchema, jsonLd } from "@/lib/seo";
 import { getStoreSettings, getReturnSettings } from "@/lib/queries/settings";
 import { formatPrice } from "@/lib/format";
 import { ContactForm } from "@/components/storefront/contact-form";
-import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { CONTENT_PAGE_CLASS, PageHeader } from "@/components/storefront/page-header";
+import { FaqList } from "@/components/storefront/faq-list";
 
 export const metadata: Metadata = buildMetadata({
   title: "Contact us",
@@ -63,7 +59,7 @@ export default async function ContactPage() {
   ].filter((d): d is { icon: typeof Mail; label: string; value: string; href?: string } => d != null);
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-12">
+    <div className={CONTENT_PAGE_CLASS}>
       {/* FAQPage marks up the real on-page Q&A below (helps AI/search
           understanding); breadcrumb for consistency with other pages. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(faqSchema(FAQS))} />
@@ -76,85 +72,87 @@ export default async function ContactPage() {
           ]),
         )}
       />
-      <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "Contact" }]} />
+      <PageHeader
+        crumbs={[{ name: "Home", href: "/" }, { name: "Contact" }]}
+        eyebrow="Contact"
+        title="Get in touch"
+        lede="Questions about a product, an order, or nutrition advice? Our team is here to help."
+      />
 
-      <header className="mt-6 max-w-2xl">
-        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">Get in touch</h1>
-        <p className="mt-3 text-lg text-muted-foreground">
-          Questions about a product, an order, or nutrition advice? Our team is here to help.
-        </p>
-      </header>
-
-      <div className="mt-10 grid gap-10 lg:grid-cols-[1.1fr_1fr]">
-        <div className="space-y-8">
-          <section className="grid gap-3 sm:grid-cols-2">
-            {details.map((d) => {
-              const content = (
-                <div className="flex items-start gap-3 rounded-xl border p-4">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-                    <d.icon className="size-5" />
-                  </span>
+      <div className="mt-10 grid gap-12 sm:mt-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] lg:gap-16 xl:gap-24">
+        <div className="space-y-12">
+          <section aria-labelledby="contact-details">
+            <h2 id="contact-details" className="sr-only">
+              Contact details
+            </h2>
+            <dl className="grid gap-x-8 border-t border-border sm:grid-cols-2">
+              {details.map((d) => (
+                <div key={d.label} className="flex items-start gap-3.5 border-b border-border py-4">
+                  <d.icon className="mt-0.5 size-5 shrink-0 text-foreground/60" strokeWidth={1.6} aria-hidden />
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <dt className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                       {d.label}
-                    </p>
-                    <p className="mt-0.5 break-words text-sm font-medium">{d.value}</p>
+                    </dt>
+                    <dd className="break-words text-[15px] font-medium">
+                      {d.href ? (
+                        <a
+                          href={d.href}
+                          className="inline-flex min-h-11 items-center underline-offset-4 hover:underline"
+                          {...(d.href.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                        >
+                          {d.value}
+                        </a>
+                      ) : (
+                        d.value
+                      )}
+                    </dd>
                   </div>
                 </div>
-              );
-              return d.href ? (
-                <a key={d.label} href={d.href} className="transition-colors hover:[&_p]:text-primary">
-                  {content}
-                </a>
-              ) : (
-                <div key={d.label}>{content}</div>
-              );
-            })}
+              ))}
+            </dl>
           </section>
 
           {/* Only render when there is something real to show — an empty
-              "coming soon" box reads unfinished. Address-only stores get a
-              clean address card instead of a placeholder map. */}
-          {(store.mapsEmbedUrl || store.address) && (
-            <section>
-              <h2 className="text-lg font-semibold">Find us</h2>
-              <div className="mt-3 overflow-hidden rounded-2xl border">
-                {store.mapsEmbedUrl ? (
-                  <iframe
-                    src={store.mapsEmbedUrl}
-                    title="Store location"
-                    className="h-64 w-full"
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    allowFullScreen
-                  />
-                ) : (
-                  <div className="flex items-start gap-3 bg-accent/30 p-4">
-                    <MapPin className="mt-0.5 size-5 shrink-0 text-primary" />
-                    <p className="text-sm font-medium">{store.address}</p>
-                  </div>
-                )}
+              "coming soon" box reads unfinished. Address-only stores keep the
+              address in the details list above instead of a placeholder map. */}
+          {store.mapsEmbedUrl && (
+            <section aria-labelledby="contact-map">
+              <h2 id="contact-map" className="font-heading text-subheading font-medium">
+                Find us
+              </h2>
+              <div className="mt-4 overflow-hidden rounded-xl border border-border">
+                <iframe
+                  src={store.mapsEmbedUrl}
+                  title="Store location"
+                  className="h-64 w-full"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  allowFullScreen
+                />
               </div>
             </section>
           )}
 
-          <section>
-            <h2 className="text-lg font-semibold">Frequently asked</h2>
-            <Accordion type="single" collapsible className="mt-2">
-              {FAQS.map((f) => (
-                <AccordionItem key={f.q} value={f.q}>
-                  <AccordionTrigger className="text-left">{f.q}</AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground">{f.a}</AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+          <section aria-labelledby="contact-faq">
+            <h2 id="contact-faq" className="font-heading text-subheading font-medium">
+              Frequently asked
+            </h2>
+            <FaqList items={FAQS} className="mt-3" />
+            <Link
+              href="/faq"
+              className="mt-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-primary underline-offset-4 hover:underline"
+            >
+              All FAQs <ArrowRight className="size-4" />
+            </Link>
           </section>
         </div>
 
-        <div className="lg:sticky lg:top-24 lg:self-start">
-          <h2 className="mb-3 text-lg font-semibold">Send us a message</h2>
+        <section aria-labelledby="contact-form" className="lg:sticky lg:top-28 lg:self-start">
+          <h2 id="contact-form" className="mb-4 font-heading text-subheading font-medium">
+            Send us a message
+          </h2>
           <ContactForm />
-        </div>
+        </section>
       </div>
     </div>
   );

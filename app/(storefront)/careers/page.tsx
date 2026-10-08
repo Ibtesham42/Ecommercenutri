@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Mail, Sparkles } from "lucide-react";
+import { Mail } from "lucide-react";
 import { buildMetadata, breadcrumbSchema, jsonLd } from "@/lib/seo";
 import { getStoreSettings } from "@/lib/queries/settings";
-import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
+import { Button } from "@/components/ui/button";
+import { CONTENT_PAGE_CLASS, PageHeader, ReadingLayout } from "@/components/storefront/page-header";
 
 export const metadata: Metadata = buildMetadata({
   title: "Careers",
@@ -29,70 +30,60 @@ export default async function CareersPage() {
   const store = await getStoreSettings();
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-12">
+    <div className={CONTENT_PAGE_CLASS}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLd(
           breadcrumbSchema([{ name: "Home", path: "/" }, { name: "Careers", path: "/careers" }]),
         )}
       />
-      <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "Careers" }]} />
+      <PageHeader
+        crumbs={[{ name: "Home", href: "/" }, { name: "Careers" }]}
+        eyebrow="Careers"
+        title="Careers at Nutriyet"
+        lede="We're building a modern Indian food brand rooted in the traditions of Bihar and Mithila — and growing the team behind it."
+      />
 
-      <header className="mt-6 border-b pb-6">
-        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">Careers at Nutriyet</h1>
-        <p className="mt-3 text-lg text-muted-foreground">
-          We&apos;re building a modern Indian food brand rooted in the traditions of Bihar and Mithila —
-          and growing the team behind it.
-        </p>
-      </header>
-
-      <div className="mt-8 space-y-6">
-        <p className="text-muted-foreground">
+      <ReadingLayout>
+        <p className="text-[15px] leading-relaxed text-foreground/80 sm:text-base">
           We don&apos;t have specific open roles listed right now, but we&apos;re always happy to hear from
           people who care about good food, honest brands and building something real. If that&apos;s you,
           we&apos;d love to know what you&apos;re interested in.
         </p>
 
-        <div>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <section aria-labelledby="careers-areas" className="mt-12">
+          <h2 id="careers-areas" className="font-heading text-subheading font-medium">
             Areas we grow in
           </h2>
-          <div className="flex flex-wrap gap-2">
+          <ul className="mt-4 grid grid-cols-2 border-t border-border sm:grid-cols-4">
             {AREAS.map((a) => (
-              <span
-                key={a}
-                className="rounded-full border bg-card px-4 py-1.5 text-sm font-medium shadow-elev-1"
-              >
+              <li key={a} className="border-b border-border py-3 text-[15px]">
                 {a}
-              </span>
+              </li>
             ))}
-          </div>
-        </div>
+          </ul>
+        </section>
 
-        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
-          <p className="flex items-center gap-2 font-semibold text-primary">
-            <Mail className="size-4" aria-hidden /> Get in touch
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Send us a note at{" "}
-            <a href={`mailto:${store.supportEmail}`} className="font-medium text-primary hover:underline">
-              {store.supportEmail}
-            </a>{" "}
+        <section aria-labelledby="careers-apply" className="mt-12 rounded-xl bg-oat p-6 text-oat-foreground sm:p-8">
+          <h2 id="careers-apply" className="font-heading text-subheading font-medium">
+            Get in touch
+          </h2>
+          <p className="mt-2 text-[15px] leading-relaxed">
+            Send us a note at <span className="font-medium [overflow-wrap:anywhere]">{store.supportEmail}</span>{" "}
             with a little about yourself and what you&apos;re interested in — we read every message.
           </p>
-        </div>
-
-        <div className="flex items-start gap-3 rounded-2xl border bg-accent/30 p-4 text-sm text-muted-foreground">
-          <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
-          <p>
-            Prefer to explore the brand first? Read our{" "}
-            <Link href="/about" className="font-medium text-primary hover:underline">
-              story
-            </Link>{" "}
-            to see what we&apos;re building.
-          </p>
-        </div>
-      </div>
+          <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
+            <Button asChild className="h-12 gap-2 rounded-lg px-6 text-[15px]">
+              <a href={`mailto:${store.supportEmail}`}>
+                <Mail className="size-4" aria-hidden /> Email us
+              </a>
+            </Button>
+            <Link href="/about" className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4">
+              Read our story first
+            </Link>
+          </div>
+        </section>
+      </ReadingLayout>
     </div>
   );
 }

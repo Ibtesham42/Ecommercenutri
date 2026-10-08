@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Leaf, ShieldCheck, Sparkles } from "lucide-react";
 import { buildMetadata, breadcrumbSchema, organizationSchema, jsonLd } from "@/lib/seo";
 import { siteConfig } from "@/config/site";
-import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/storefront/page-header";
 
 export const metadata: Metadata = buildMetadata({
   title: "About us",
@@ -28,7 +30,7 @@ const VALUES = [
 
 export default function AboutPage() {
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-14 sm:py-20">
+    <>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(aboutSchema)} />
       <script
         type="application/ld+json"
@@ -39,45 +41,66 @@ export default function AboutPage() {
           ]),
         )}
       />
-      <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "About" }]} />
-
-      {/* Lead — editorial, warm */}
-      <p className="mt-6 text-sm font-medium tracking-[0.16em] text-gold uppercase">Our story</p>
-      <h1 className="mt-3 font-heading text-4xl leading-[1.05] font-semibold tracking-tight sm:text-5xl">
-        Rooted in tradition.
-        <br className="hidden sm:block" /> Made for today.
-      </h1>
-      <p className="mt-6 max-w-prose text-lg leading-relaxed text-muted-foreground">
-        Nutriyet brings together the food traditions of Bihar and Mithila with the convenience of
-        modern, everyday shopping. We focus on makhana, spices and other pantry staples that feel
-        familiar — sourced and prepared with care, labelled honestly, and shipped straight to your
-        door.
-      </p>
-
-      {/* From the heart of Mithila — the brand's roots, told as an editorial pull-quote */}
-      <div className="surface-rich mt-12 overflow-hidden rounded-3xl px-7 py-9 text-surface-deep-foreground sm:px-10 sm:py-11">
-        <p className="text-[11px] font-semibold tracking-[0.2em] text-gold uppercase">From the heart of Mithila</p>
-        <p className="mt-4 font-heading text-2xl leading-snug font-medium sm:text-[1.75rem]">
-          Makhana has been grown in the Mithila region for generations. We bring that heritage to
-          your everyday kitchen — alongside spices and staples chosen with the same care.
-        </p>
+      <div className="shop-container pt-6 pb-14 sm:pt-8 lg:pb-20">
+        <PageHeader
+          crumbs={[{ name: "Home", href: "/" }, { name: "About" }]}
+          eyebrow="Our story"
+          title={
+            <>
+              Rooted in tradition.
+              <span className="block text-primary">Made for today.</span>
+            </>
+          }
+          lede="Nutriyet brings together the food traditions of Bihar and Mithila with the convenience of modern, everyday shopping. We focus on makhana, spices and other pantry staples that feel familiar — sourced and prepared with care, labelled honestly, and shipped straight to your door."
+        />
       </div>
 
-      {/* Values — a single warm panel with gold thin-stroke icons + hairline
-          dividers (one considered statement, not three stamped cards). */}
-      <div className="mt-12 divide-y divide-border rounded-3xl border bg-card/60 shadow-elev-1 sm:divide-x sm:divide-y-0 sm:grid sm:grid-cols-3">
-        {VALUES.map((v) => (
-          <div key={v.title} className="p-6 sm:p-7">
-            <v.icon className="size-6 text-gold" strokeWidth={1.75} aria-hidden />
-            <h2 className="mt-3.5 font-heading text-lg font-semibold">{v.title}</h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{v.desc}</p>
+      {/* From the heart of Mithila — the brand's roots as a colour-block band. */}
+      <section className="bg-oat">
+        <div className="shop-container shop-section">
+          <figure className="max-w-4xl rounded-2xl bg-surface-deep px-7 py-10 text-surface-deep-foreground sm:px-12 sm:py-14">
+            <p className="eyebrow !text-gold">From the heart of Mithila</p>
+            <blockquote className="mt-5 font-heading text-[1.6rem] leading-snug font-normal sm:text-[2rem]">
+              Makhana has been grown in the Mithila region for generations. We bring that heritage to
+              your everyday kitchen — alongside spices and staples chosen with the same care.
+            </blockquote>
+          </figure>
+        </div>
+      </section>
+
+      <div className="shop-container shop-section">
+        <p className="eyebrow">What we care about</p>
+        <ul className="mt-6 grid border-t border-border sm:grid-cols-3 sm:border-t-0">
+          {VALUES.map((v) => (
+            <li
+              key={v.title}
+              className="border-b border-border py-7 sm:border-b-0 sm:border-l sm:px-8 sm:py-2 sm:first:border-l-0 sm:first:pl-0"
+            >
+              <v.icon className="size-6 text-terracotta" strokeWidth={1.5} aria-hidden />
+              <h2 className="mt-4 font-heading text-subheading font-medium">{v.title}</h2>
+              <p className="mt-2 max-w-xs text-[15px] leading-relaxed text-muted-foreground">{v.desc}</p>
+            </li>
+          ))}
+        </ul>
+
+        <div className="mt-16 flex flex-col gap-6 border-t border-border pt-10 sm:flex-row sm:items-end sm:justify-between lg:mt-20">
+          <p className="max-w-xl font-heading text-subheading text-foreground">
+            Built for anyone who wants food that feels like home — one honest pack at a time.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button asChild className="h-12 rounded-lg px-6 text-[15px]">
+              <Link href="/products">Shop the range</Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              className="h-12 rounded-lg border-foreground/70 bg-transparent px-6 text-[15px] hover:bg-foreground hover:text-background"
+            >
+              <Link href="/blog">Read the journal</Link>
+            </Button>
           </div>
-        ))}
+        </div>
       </div>
-
-      <p className="mt-12 text-lg leading-relaxed text-muted-foreground">
-        Built for anyone who wants food that feels like home — one honest pack at a time.
-      </p>
-    </div>
+    </>
   );
 }

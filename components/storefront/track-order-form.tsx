@@ -112,7 +112,7 @@ function Timeline({ order }: { order: TrackedOrder }) {
 
 function Result({ order }: { order: TrackedOrder }) {
   return (
-    <div className="space-y-6 rounded-2xl border p-6">
+    <div className="space-y-6 rounded-xl border border-border bg-card p-5 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="font-semibold">#{order.orderNumber}</p>
@@ -234,7 +234,7 @@ export function TrackOrderForm() {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 rounded-2xl border p-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="shop-form space-y-4 rounded-xl border border-border bg-card p-5 sm:p-7">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="orderNumber">Order number</Label>
@@ -249,7 +249,7 @@ export function TrackOrderForm() {
             {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
           </div>
         </div>
-        <Button type="submit" disabled={loading} className="gap-2">
+        <Button type="submit" disabled={loading} className="w-full gap-2 rounded-lg px-6 text-[15px] sm:w-auto">
           {loading ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
           Track order
         </Button>

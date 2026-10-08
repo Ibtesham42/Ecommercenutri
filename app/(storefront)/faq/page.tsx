@@ -2,14 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { buildMetadata, faqSchema, breadcrumbSchema, jsonLd } from "@/lib/seo";
 import { getStoreSettings, getReturnSettings } from "@/lib/queries/settings";
-import { formatPrice } from "@/lib/format";
-import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { formatPrice, slugify } from "@/lib/format";
+import { CONTENT_PAGE_CLASS, PageHeader, ReadingLayout } from "@/components/storefront/page-header";
+import { TableOfContents } from "@/components/storefront/table-of-contents";
+import { FaqList, type FaqItem } from "@/components/storefront/faq-list";
 
 export const metadata: Metadata = buildMetadata({
   title: "Frequently Asked Questions",
@@ -21,8 +17,7 @@ export const metadata: Metadata = buildMetadata({
 // answers never drift from what checkout/the policy pages actually show.
 export const dynamic = "force-dynamic";
 
-type Faq = { q: string; a: React.ReactNode };
-type FaqGroup = { heading: string; items: Faq[] };
+type FaqGroup = { heading: string; items: FaqItem[] };
 
 export default async function FaqPage() {
   const [store, returnSettings] = await Promise.all([
@@ -222,8 +217,10 @@ export default async function FaqPage() {
     })),
   );
 
+  const sections = groups.map((g) => ({ ...g, id: slugify(g.heading) }));
+
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-12">
+    <div className={CONTENT_PAGE_CLASS}>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(faqSchema(schemaItems))} />
       <script
         type="application/ld+json"
@@ -231,36 +228,40 @@ export default async function FaqPage() {
           breadcrumbSchema([{ name: "Home", path: "/" }, { name: "FAQ", path: "/faq" }]),
         )}
       />
-      <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "FAQ" }]} />
+      <PageHeader
+        crumbs={[{ name: "Home", href: "/" }, { name: "FAQ" }]}
+        eyebrow="Help centre"
+        title="Frequently asked questions"
+        lede={
+          <>
+            Answers to the questions we hear most. Can&apos;t find what you need?{" "}
+            <Link href="/contact" className="font-medium text-foreground underline underline-offset-4">
+              Get in touch
+            </Link>
+            .
+          </>
+        }
+      />
 
-      <header className="mt-6 border-b pb-6">
-        <h1 className="font-heading text-3xl font-semibold tracking-tight sm:text-4xl">Frequently Asked Questions</h1>
-        <p className="mt-3 text-lg text-muted-foreground">
-          Answers to the questions we hear most. Can&apos;t find what you need?{" "}
-          <Link href="/contact" className="font-medium text-primary hover:underline">
-            Get in touch
-          </Link>
-          .
-        </p>
-      </header>
-
-      <div className="mt-8 space-y-10">
-        {groups.map((group) => (
-          <section key={group.heading}>
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              {group.heading}
-            </h2>
-            <Accordion type="single" collapsible>
-              {group.items.map((item) => (
-                <AccordionItem key={item.q} value={item.q}>
-                  <AccordionTrigger className="text-left">{item.q}</AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground">{item.a}</AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </section>
-        ))}
-      </div>
+      <ReadingLayout
+        rail={
+          <TableOfContents
+            variant="rail"
+            headings={sections.map((g) => ({ id: g.id, text: g.heading, level: 2 as const }))}
+          />
+        }
+      >
+        <div className="space-y-12">
+          {sections.map((group) => (
+            <section key={group.id} aria-labelledby={group.id}>
+              <h2 id={group.id} className="scroll-mt-28 font-heading text-subheading font-medium">
+                {group.heading}
+              </h2>
+              <FaqList items={group.items} className="mt-3" />
+            </section>
+          ))}
+        </div>
+      </ReadingLayout>
     </div>
   );
 }
