@@ -58,7 +58,12 @@ const footerCols = [
 export async function SiteFooter() {
   const store = await getStoreSettings();
   return (
-    <footer className="surface-rich mt-16 text-surface-deep-foreground" data-heat="footer">
+    // Below md a fixed bar (tab bar, or the PDP/cart/checkout sticky bar) covers the
+    // bottom of the viewport; the padding keeps the last footer lines clear of it.
+    <footer
+      className="surface-rich mt-16 text-surface-deep-foreground max-md:pb-[calc(4.5rem+env(safe-area-inset-bottom))]"
+      data-heat="footer"
+    >
       {/* Newsletter CTA */}
       <div className="border-b border-white/10">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-10 md:flex-row md:items-center md:justify-between">
