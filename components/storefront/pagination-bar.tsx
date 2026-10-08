@@ -1,9 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CatalogLink } from "@/components/storefront/catalog/catalog-transition";
 import { cn } from "@/lib/utils";
+
+const cell =
+  "grid size-11 place-items-center rounded-lg text-sm tabular-nums outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring";
 
 export function PaginationBar({
   page,
@@ -36,51 +39,46 @@ export function PaginationBar({
   }
 
   return (
-    <nav className="mt-10 flex items-center justify-center gap-1">
+    <nav aria-label="Pagination" className="mt-12 flex items-center justify-center gap-1 border-t border-border pt-8">
       {page > 1 ? (
-        <Link
-          href={hrefFor(page - 1)}
-          className="grid size-10 place-items-center rounded-xl border transition-colors hover:border-primary/40 hover:bg-accent"
-          aria-label="Previous page"
-        >
+        <CatalogLink href={hrefFor(page - 1)} className={cn(cell, "hover:bg-oat")} aria-label="Previous page">
           <ChevronLeft className="size-4" />
-        </Link>
+        </CatalogLink>
       ) : (
-        <span className="grid size-10 place-items-center rounded-xl border opacity-40">
+        <span aria-hidden className={cn(cell, "text-muted-foreground/40")}>
           <ChevronLeft className="size-4" />
         </span>
       )}
 
       {items.map((it, i) =>
         it === "…" ? (
-          <span key={`e${i}`} className="px-2 text-muted-foreground">
+          <span key={`e${i}`} aria-hidden className="px-1 text-muted-foreground">
             …
           </span>
         ) : (
-          <Link
+          <CatalogLink
             key={it}
             href={hrefFor(it)}
+            aria-label={`Page ${it}`}
+            aria-current={it === page ? "page" : undefined}
             className={cn(
-              "grid size-10 place-items-center rounded-xl border text-sm font-medium transition-colors hover:border-primary/40 hover:bg-accent",
-              it === page &&
-                "border-primary bg-primary font-semibold text-primary-foreground hover:bg-primary",
+              cell,
+              it === page
+                ? "bg-primary font-medium text-primary-foreground"
+                : "text-foreground/75 hover:bg-oat hover:text-foreground",
             )}
           >
             {it}
-          </Link>
+          </CatalogLink>
         ),
       )}
 
       {page < pageCount ? (
-        <Link
-          href={hrefFor(page + 1)}
-          className="grid size-10 place-items-center rounded-xl border transition-colors hover:border-primary/40 hover:bg-accent"
-          aria-label="Next page"
-        >
+        <CatalogLink href={hrefFor(page + 1)} className={cn(cell, "hover:bg-oat")} aria-label="Next page">
           <ChevronRight className="size-4" />
-        </Link>
+        </CatalogLink>
       ) : (
-        <span className="grid size-10 place-items-center rounded-xl border opacity-40">
+        <span aria-hidden className={cn(cell, "text-muted-foreground/40")}>
           <ChevronRight className="size-4" />
         </span>
       )}

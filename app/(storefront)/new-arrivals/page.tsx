@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
-import { Sparkles } from "lucide-react";
 import { getProducts, type ProductSort } from "@/lib/queries/products";
 import { getCategories } from "@/lib/queries/catalog";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
 import { ProductGrid } from "@/components/storefront/product-card";
-import { CatalogFilters } from "@/components/storefront/catalog-filters";
-import { MobileFilters } from "@/components/storefront/mobile-filters";
-import { SortSelect } from "@/components/storefront/sort-select";
-import { PaginationBar } from "@/components/storefront/pagination-bar";
-import { EmptyState } from "@/components/storefront/empty-state";
-import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
+import { CatalogShell } from "@/components/storefront/catalog/catalog-shell";
+import { CatalogHeader } from "@/components/storefront/catalog/catalog-header";
+import { CATALOG_GRID_CLASS } from "@/lib/product-card";
+import { toCatalogQuery } from "@/lib/catalog-params";
 import { buildMetadata, itemListSchema, jsonLd } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
@@ -68,45 +65,36 @@ export default async function NewArrivalsPage({
           )}
         />
       )}
-      <div className="mx-auto w-full max-w-7xl px-4 py-8">
-        <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "New Arrivals" }]} />
-        <header className="mb-6 mt-4">
-          <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">New Arrivals</h1>
-          <p className="mt-1 text-muted-foreground">
-            The newest additions to the Nutriyet catalog, added in the last 30 days.
-          </p>
-        </header>
-
-        <div className="mb-6 flex items-center justify-between gap-3 border-b pb-4">
-          <div className="flex items-center gap-3">
-            <MobileFilters categories={categories} />
-            <span className="text-sm text-muted-foreground">
-              {result.total} {result.total === 1 ? "product" : "products"}
-            </span>
-          </div>
-          <SortSelect />
-        </div>
-
-        <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
-          <aside className="hidden lg:block">
-            <CatalogFilters categories={categories} />
-          </aside>
-
-          <div>
-            {result.products.length > 0 ? (
-              <ProductGrid products={result.products} wishlistedIds={wishlistIds} priorityCount={2} />
-            ) : (
-              <EmptyState
-                icon={Sparkles}
-                title="No new arrivals right now"
-                description="Check back soon — we're always adding fresh products."
-                action={{ label: "Browse all products", href: "/products" }}
-              />
-            )}
-            <PaginationBar page={result.page} pageCount={result.pageCount} />
-          </div>
-        </div>
-      </div>
+      <CatalogShell
+        pathname="/new-arrivals"
+        query={toCatalogQuery(sp)}
+        supports={{ category: true, price: true }}
+        categories={categories}
+        breadcrumb={[{ name: "Home", href: "/" }, { name: "Shop", href: "/products" }, { name: "New arrivals" }]}
+        header={
+          <CatalogHeader
+            eyebrow="Just in"
+            title="New arrivals"
+            description="The newest additions to the Nutriyet catalog, added in the last 30 days."
+          />
+        }
+        total={result.total}
+        page={result.page}
+        pageCount={result.pageCount}
+        perPage={result.perPage}
+        empty={{
+          title: "No new arrivals right now",
+          description: "Check back soon — we're always adding fresh products.",
+          action: { label: "Browse all products", href: "/products" },
+        }}
+      >
+        <ProductGrid
+          products={result.products}
+          wishlistedIds={wishlistIds}
+          priorityCount={2}
+          className={CATALOG_GRID_CLASS}
+        />
+      </CatalogShell>
     </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Select,
   SelectContent,
@@ -8,6 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useCatalogNav } from "@/components/storefront/catalog/catalog-transition";
+import { catalogHref } from "@/lib/catalog-params";
 
 const sorts = [
   { value: "newest", label: "Newest" },
@@ -17,26 +19,30 @@ const sorts = [
   { value: "price-high", label: "Price: High to Low" },
 ];
 
-export function SortSelect() {
+/** Search results have no `sort` param by default — they're in relevance order. */
+const RELEVANCE = "relevance";
+
+export function SortSelect({ relevanceDefault = false }: { relevanceDefault?: boolean }) {
   const sp = useSearchParams();
   const pathname = usePathname();
-  const router = useRouter();
-  const current = sp.get("sort") ?? "newest";
+  const { navigate } = useCatalogNav();
+  const current = sp.get("sort") ?? (relevanceDefault ? RELEVANCE : "newest");
+  const options = relevanceDefault ? [{ value: RELEVANCE, label: "Relevance" }, ...sorts] : sorts;
 
   function onChange(value: string) {
-    const params = new URLSearchParams(sp.toString());
-    params.set("sort", value);
-    params.delete("page");
-    router.push(`${pathname}?${params.toString()}`);
+    const query = Object.fromEntries(sp.entries());
+    // "Relevance" is the absence of a sort param — never sent to the server.
+    navigate(catalogHref(pathname, query, { sort: value === RELEVANCE ? undefined : value }));
   }
 
   return (
     <Select value={current} onValueChange={onChange}>
-      <SelectTrigger className="h-10 w-[150px] rounded-xl sm:w-[180px]">
-        <SelectValue placeholder="Sort by" />
+      <SelectTrigger aria-label="Sort products" className="h-11 w-[9.75rem] rounded-lg sm:w-[12rem] [@media(pointer:fine)]:h-10">
+        <span className="text-muted-foreground max-sm:sr-only">Sort:</span>
+        <SelectValue />
       </SelectTrigger>
-      <SelectContent>
-        {sorts.map((s) => (
+      <SelectContent align="end">
+        {options.map((s) => (
           <SelectItem key={s.value} value={s.value}>
             {s.label}
           </SelectItem>

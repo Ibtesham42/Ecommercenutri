@@ -2,16 +2,12 @@ import type { Metadata } from "next";
 import { getProducts, getBestSellers, type ProductSort } from "@/lib/queries/products";
 import { getCategories } from "@/lib/queries/catalog";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
-import { ProductGrid } from "@/components/storefront/product-card";
-import { CatalogFilters } from "@/components/storefront/catalog-filters";
-import { MobileFilters } from "@/components/storefront/mobile-filters";
-import { SortSelect } from "@/components/storefront/sort-select";
-import { PaginationBar } from "@/components/storefront/pagination-bar";
+import { ProductGrid, ProductRail } from "@/components/storefront/product-card";
 import { BannerStrip } from "@/components/storefront/banner-strip";
-import { EmptyState } from "@/components/storefront/empty-state";
-import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
-import { ProductRail } from "@/components/storefront/product-card";
-import { PackageSearch } from "lucide-react";
+import { CatalogShell } from "@/components/storefront/catalog/catalog-shell";
+import { CatalogHeader } from "@/components/storefront/catalog/catalog-header";
+import { CATALOG_GRID_CLASS } from "@/lib/product-card";
+import { toCatalogQuery } from "@/lib/catalog-params";
 import { buildMetadata, itemListSchema, jsonLd } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
@@ -69,66 +65,54 @@ export default async function ProductsPage({
         />
       )}
       <BannerStrip position="productsTop" className="pt-6" />
-      <div className="mx-auto w-full max-w-7xl px-4 py-8">
-        <PageBreadcrumb
-          items={
-            activeCategory
-              ? [
-                  { name: "Home", href: "/" },
-                  { name: "Products", href: "/products" },
-                  { name: activeCategory.name },
-                ]
-              : [{ name: "Home", href: "/" }, { name: "Products" }]
-          }
+      <CatalogShell
+        pathname="/products"
+        query={toCatalogQuery(sp)}
+        supports={{ category: true, price: true }}
+        categories={categories}
+        breadcrumb={
+          activeCategory
+            ? [{ name: "Home", href: "/" }, { name: "Shop", href: "/products" }, { name: activeCategory.name }]
+            : [{ name: "Home", href: "/" }, { name: "Shop" }]
+        }
+        header={
+          <CatalogHeader
+            eyebrow="Shop"
+            title={heading}
+            description={
+              activeCategory
+                ? activeCategory.description
+                : q
+                  ? null
+                  : "Makhana, spices and traditional pantry staples — rooted in tradition, picked with care."
+            }
+          />
+        }
+        total={result.total}
+        page={result.page}
+        pageCount={result.pageCount}
+        perPage={result.perPage}
+        empty={{
+          title: "No products found",
+          description: "Try a different search, or browse the full catalog.",
+          action: { label: "Browse all products", href: "/products" },
+        }}
+        emptyExtra={
+          fallbackProducts.length > 0 && (
+            <div className="mt-12">
+              <h2 className="mb-5 font-heading text-subheading">You might like</h2>
+              <ProductRail products={fallbackProducts} wishlistedIds={wishlistIds} />
+            </div>
+          )
+        }
+      >
+        <ProductGrid
+          products={result.products}
+          wishlistedIds={wishlistIds}
+          priorityCount={2}
+          className={CATALOG_GRID_CLASS}
         />
-        <header className="mb-6 mt-4">
-          <span className="mb-3 block h-0.5 w-9 rounded-full bg-gold" />
-          <h1 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">{heading}</h1>
-        {activeCategory?.description && (
-          <p className="mt-1 text-muted-foreground">{activeCategory.description}</p>
-        )}
-      </header>
-
-      <div className="mb-6 flex items-center justify-between gap-3 border-b pb-4">
-        <div className="flex items-center gap-3">
-          <MobileFilters categories={categories} />
-          <span className="text-sm text-muted-foreground">
-            {result.total} {result.total === 1 ? "product" : "products"}
-          </span>
-        </div>
-        <SortSelect />
-      </div>
-
-      <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
-        <aside className="hidden lg:block">
-          <CatalogFilters categories={categories} />
-        </aside>
-
-        <div>
-          {result.products.length > 0 ? (
-            <ProductGrid products={result.products} wishlistedIds={wishlistIds} priorityCount={2} />
-          ) : (
-            <>
-              <EmptyState
-                icon={PackageSearch}
-                title="No products found"
-                description="Try adjusting your filters or search to find what you're craving."
-                action={{ label: "Clear filters", href: "/products" }}
-              />
-              {fallbackProducts.length > 0 && (
-                <div className="mt-10">
-                  <h2 className="mb-5 font-heading text-lg font-semibold tracking-tight sm:text-xl">
-                    You might like
-                  </h2>
-                  <ProductRail products={fallbackProducts} wishlistedIds={wishlistIds} />
-                </div>
-              )}
-            </>
-          )}
-          <PaginationBar page={result.page} pageCount={result.pageCount} />
-        </div>
-      </div>
-    </div>
+      </CatalogShell>
     </>
   );
 }

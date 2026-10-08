@@ -1,198 +1,192 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { Star } from "lucide-react";
+import { Check, Star } from "lucide-react";
+import { CatalogLink } from "@/components/storefront/catalog/catalog-transition";
 import { cn } from "@/lib/utils";
+import {
+  PRICE_RANGES,
+  RATING_OPTIONS,
+  catalogHref,
+  type CatalogQuery,
+  type CatalogSupports,
+} from "@/lib/catalog-params";
 
-type CategoryOption = {
+export type CategoryOption = {
   name: string;
   slug: string;
   _count: { products: number };
 };
 
-const priceRanges = [
-  { label: "Under ₹200", min: "", max: "200" },
-  { label: "₹200 – ₹500", min: "200", max: "500" },
-  { label: "₹500 – ₹1000", min: "500", max: "1000" },
-  { label: "Over ₹1000", min: "1000", max: "" },
-];
-
+/**
+ * Editorial filter panel shared by the desktop sidebar and the mobile drawer.
+ * Every option is a real link that rewrites the URL (same params as always);
+ * single-choice groups render a radio mark, toggles a checkbox mark. Picking
+ * the active single-choice option again clears it.
+ */
 export function CatalogFilters({
+  pathname,
+  query,
+  supports,
   categories = [],
-  hideCategoryList = false,
 }: {
+  pathname: string;
+  query: CatalogQuery;
+  supports: CatalogSupports;
+  /** Only on routes that filter by `?category=` (not category or search pages). */
   categories?: CategoryOption[];
-  /** Skip the "Category" section — used on an already category-scoped page
-   *  (`/categories/[slug]`), where that list would conflict with the route. */
-  hideCategoryList?: boolean;
 }) {
-  const sp = useSearchParams();
-  const pathname = usePathname();
-
-  function buildHref(updates: Record<string, string | undefined>) {
-    const params = new URLSearchParams(sp.toString());
-    for (const [k, v] of Object.entries(updates)) {
-      if (!v) params.delete(k);
-      else params.set(k, v);
-    }
-    params.delete("page");
-    const qs = params.toString();
-    return qs ? `${pathname}?${qs}` : pathname;
-  }
-
-  const activeCategory = sp.get("category") ?? "";
-  const activeMin = sp.get("minPrice") ?? "";
-  const activeMax = sp.get("maxPrice") ?? "";
-  const activeOnSale = sp.get("onSale") === "1";
-  const activeInStock = sp.get("inStock") === "1";
-  const activeRating = sp.get("minRating") ?? "";
-  const hasFilters = Boolean(
-    activeCategory || activeMin || activeMax || activeOnSale || activeInStock || activeRating || sp.get("q"),
-  );
+  const href = (updates: Record<string, string | undefined>) => catalogHref(pathname, query, updates);
+  const activeCategory = query.category ?? "";
+  const activeMin = query.minPrice ?? "";
+  const activeMax = query.maxPrice ?? "";
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="font-heading text-base font-semibold">Filters</h3>
-        {hasFilters && (
-          <Link
-            href={pathname}
-            className="text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
-          >
-            Clear all
-          </Link>
-        )}
-      </div>
-
-      {!hideCategoryList && (
-      <div>
-        <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Category
-        </h4>
-        <ul className="space-y-1">
-          <li>
-            <Link
-              href={buildHref({ category: undefined })}
-              className={cn(
-                "block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent",
-                !activeCategory && "bg-primary/10 font-semibold text-primary",
-              )}
-            >
-              All products
-            </Link>
-          </li>
-          {categories.map((c) => {
-            const isActive = activeCategory === c.slug;
-            return (
-              <li key={c.slug}>
-                <Link
-                  href={buildHref({ category: c.slug })}
-                  className={cn(
-                    "flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent",
-                    isActive && "bg-primary/10 font-semibold text-primary",
-                  )}
-                >
-                  <span>{c.name}</span>
-                  <span
-                    className={cn(
-                      "rounded-full px-1.5 text-xs",
-                      isActive
-                        ? "bg-primary/15 text-primary"
-                        : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {c._count.products}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+    <div className="divide-y divide-border">
+      {supports.category && categories.length > 0 && (
+        <FilterGroup title="Category">
+          <FilterOption
+            href={href({ category: undefined })}
+            active={!activeCategory}
+            mark="radio"
+            label="All products"
+          />
+          {categories.map((c) => (
+            <FilterOption
+              key={c.slug}
+              href={href({ category: c.slug })}
+              active={activeCategory === c.slug}
+              mark="radio"
+              label={c.name}
+              count={c._count.products}
+            />
+          ))}
+        </FilterGroup>
       )}
 
-      <div>
-        <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Price
-        </h4>
-        <div className="grid grid-cols-2 gap-2">
-          {priceRanges.map((r) => {
-            const isActive = activeMin === r.min && activeMax === r.max;
+      {supports.price && (
+        <FilterGroup title="Price">
+          {PRICE_RANGES.map((r) => {
+            const active = activeMin === r.min && activeMax === r.max;
             return (
-              <Link
+              <FilterOption
                 key={r.label}
-                href={buildHref({
-                  minPrice: r.min || undefined,
-                  maxPrice: r.max || undefined,
-                })}
-                className={cn(
-                  "rounded-xl border px-3 py-2 text-center text-xs font-medium transition-colors",
-                  isActive
-                    ? "border-primary bg-primary/5 text-primary"
-                    : "hover:border-primary/40 hover:bg-accent",
+                href={href(
+                  active
+                    ? { minPrice: undefined, maxPrice: undefined }
+                    : { minPrice: r.min || undefined, maxPrice: r.max || undefined },
                 )}
-              >
-                {r.label}
-              </Link>
+                active={active}
+                mark="radio"
+                label={r.label}
+              />
             );
           })}
-        </div>
-      </div>
+        </FilterGroup>
+      )}
 
-      <div>
-        <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Availability
-        </h4>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href={buildHref({ onSale: activeOnSale ? undefined : "1" })}
-            className={cn(
-              "rounded-xl border px-3 py-2 text-xs font-medium transition-colors",
-              activeOnSale
-                ? "border-primary bg-primary/5 text-primary"
-                : "hover:border-primary/40 hover:bg-accent",
-            )}
-          >
-            On sale
-          </Link>
-          <Link
-            href={buildHref({ inStock: activeInStock ? undefined : "1" })}
-            className={cn(
-              "rounded-xl border px-3 py-2 text-xs font-medium transition-colors",
-              activeInStock
-                ? "border-primary bg-primary/5 text-primary"
-                : "hover:border-primary/40 hover:bg-accent",
-            )}
-          >
-            In stock only
-          </Link>
-        </div>
-      </div>
+      <FilterGroup title="Availability">
+        <FilterOption
+          href={href({ inStock: query.inStock === "1" ? undefined : "1" })}
+          active={query.inStock === "1"}
+          mark="check"
+          label="In stock only"
+        />
+      </FilterGroup>
 
-      <div>
-        <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Rating
-        </h4>
-        <div className="flex flex-wrap gap-2">
-          {[4, 3].map((r) => (
-            <Link
+      <FilterGroup title="Offers">
+        <FilterOption
+          href={href({ onSale: query.onSale === "1" ? undefined : "1" })}
+          active={query.onSale === "1"}
+          mark="check"
+          label="On sale"
+        />
+      </FilterGroup>
+
+      <FilterGroup title="Rating">
+        {RATING_OPTIONS.map((r) => {
+          const active = query.minRating === String(r);
+          return (
+            <FilterOption
               key={r}
-              href={buildHref({ minRating: activeRating === String(r) ? undefined : String(r) })}
-              className={cn(
-                "flex items-center gap-1 rounded-xl border px-3 py-2 text-xs font-medium transition-colors",
-                activeRating === String(r)
-                  ? "border-primary bg-primary/5 text-primary"
-                  : "hover:border-primary/40 hover:bg-accent",
-              )}
-            >
-              {r}
-              <Star className="size-3 fill-current" />
-              & up
-            </Link>
-          ))}
-        </div>
-      </div>
+              href={href({ minRating: active ? undefined : String(r) })}
+              active={active}
+              mark="radio"
+              label={
+                <span className="inline-flex items-center gap-1">
+                  {r}
+                  <Star aria-hidden className="size-3.5 fill-gold text-gold" />
+                  <span>&amp; up</span>
+                </span>
+              }
+              srLabel={`${r} stars and up`}
+            />
+          );
+        })}
+      </FilterGroup>
     </div>
+  );
+}
+
+function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="py-5 first:pt-0 last:pb-0">
+      <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{title}</h3>
+      <ul>{children}</ul>
+    </section>
+  );
+}
+
+function FilterOption({
+  href,
+  active,
+  mark,
+  label,
+  srLabel,
+  count,
+}: {
+  href: string;
+  active: boolean;
+  mark: "radio" | "check";
+  label: React.ReactNode;
+  srLabel?: string;
+  count?: number;
+}) {
+  return (
+    <li>
+      <CatalogLink
+        href={href}
+        aria-current={active ? "true" : undefined}
+        className={cn(
+          "group/opt flex min-h-11 items-center gap-3 rounded-md text-sm transition-colors [@media(pointer:fine)]:min-h-9",
+          "outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          active ? "font-medium text-foreground" : "text-foreground/75 hover:text-foreground",
+        )}
+      >
+        <span
+          aria-hidden
+          className={cn(
+            "grid size-4 shrink-0 place-items-center border transition-colors",
+            mark === "radio" ? "rounded-full" : "rounded-[4px]",
+            active
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-foreground/30 group-hover/opt:border-foreground/60",
+          )}
+        >
+          {active &&
+            (mark === "radio" ? (
+              <span className="size-1.5 rounded-full bg-primary-foreground" />
+            ) : (
+              <Check className="size-3" strokeWidth={3} />
+            ))}
+        </span>
+        {srLabel ? (
+          <>
+            <span aria-hidden className="flex-1">{label}</span>
+            <span className="sr-only">{srLabel}</span>
+          </>
+        ) : (
+          <span className="flex-1">{label}</span>
+        )}
+        {count !== undefined && <span className="text-xs tabular-nums text-muted-foreground">{count}</span>}
+      </CatalogLink>
+    </li>
   );
 }

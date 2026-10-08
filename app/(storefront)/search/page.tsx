@@ -1,19 +1,18 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Sparkles, SearchX, TrendingUp } from "lucide-react";
+import { Sparkles, TrendingUp } from "lucide-react";
 import { aiProductSearch } from "@/lib/ai/search";
 import { getBestSellers, type ProductSort } from "@/lib/queries/products";
 import { getCategories } from "@/lib/queries/catalog";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
 import { ProductGrid, ProductRail } from "@/components/storefront/product-card";
 import { SearchBox } from "@/components/storefront/search-box";
-import { SortSelect } from "@/components/storefront/sort-select";
-import { CatalogFilters } from "@/components/storefront/catalog-filters";
-import { MobileFilters } from "@/components/storefront/mobile-filters";
-import { PaginationBar } from "@/components/storefront/pagination-bar";
-import { EmptyState } from "@/components/storefront/empty-state";
 import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
 import { BehaviorTracker } from "@/components/storefront/behavior-tracker";
+import { CatalogShell } from "@/components/storefront/catalog/catalog-shell";
+import { CatalogHeader } from "@/components/storefront/catalog/catalog-header";
+import { CATALOG_GRID_CLASS } from "@/lib/product-card";
+import { toCatalogQuery } from "@/lib/catalog-params";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
@@ -34,6 +33,24 @@ const POPULAR = [
   "Moringa",
   "Multigrain Flour",
 ];
+
+const pill =
+  "inline-flex h-11 items-center rounded-full border border-border bg-background px-4 text-sm text-foreground/80 transition-colors hover:border-foreground/40 hover:text-foreground [@media(pointer:fine)]:h-9";
+
+function SearchTools({ term }: { term: string }) {
+  return (
+    <div className="mt-6 max-w-2xl">
+      <SearchBox autoFocus={!term} />
+      <Link
+        href={term ? `/assistant?q=${encodeURIComponent(term)}` : "/assistant"}
+        className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline"
+      >
+        <Sparkles className="size-4" />
+        Not sure? Ask the AI nutrition assistant
+      </Link>
+    </div>
+  );
+}
 
 export default async function SearchPage({
   searchParams,
@@ -71,112 +88,97 @@ export default async function SearchPage({
       ? await Promise.all([getBestSellers(6), getCategories()])
       : [[], []];
 
-  return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-10">
-      <div className="mx-auto max-w-4xl">
-        {term && <BehaviorTracker event={{ type: "SEARCH", query: term }} />}
-        <PageBreadcrumb
-          items={[{ name: "Home", href: "/" }, { name: term ? `Search: "${term}"` : "Search" }]}
-        />
-        <h1 className="mb-1 mt-4 font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Search</h1>
-        <p className="mb-5 text-sm text-muted-foreground">
-          Find makhana, spices and more from the Nutriyet pantry — rooted in tradition, picked with care.
-        </p>
-        <SearchBox autoFocus />
-
-        <Link
-          href={term ? `/assistant?q=${encodeURIComponent(term)}` : "/assistant"}
-          className="mt-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
-        >
-          <Sparkles className="size-4" />
-          Not sure? Ask the AI nutrition assistant
-        </Link>
-      </div>
-
-      <div className="mt-8">
-        {term ? (
-          total > 0 ? (
-            <>
-              {usedAI && interpreted ? (
-                <p className="mb-5 flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <Sparkles className="size-4 text-primary" />
-                  Showing results for: <span className="font-medium text-foreground">{interpreted}</span>
-                </p>
-              ) : null}
-
-              <div className="mb-6 flex items-center justify-between gap-3 border-b pb-4">
-                <div className="flex items-center gap-3">
-                  <MobileFilters hideCategoryList />
-                  <span className="text-sm text-muted-foreground">
-                    {total} result{total === 1 ? "" : "s"} for “{term}”
-                  </span>
-                </div>
-                <SortSelect />
-              </div>
-
-              <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
-                <aside className="hidden lg:block">
-                  <CatalogFilters hideCategoryList />
-                </aside>
-                <div>
-                  <ProductGrid products={products} wishlistedIds={wishlistIds} priorityCount={2} />
-                  <PaginationBar page={search.page} pageCount={pageCount} />
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="space-y-10">
-              <EmptyState
-                icon={SearchX}
-                title={`No results for “${term}”`}
-                description="Try a different keyword or browse our full catalog."
-                action={{ label: "Browse all products", href: "/products" }}
-              />
-              {fallbackCategories.length > 0 && (
-                <div>
-                  <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
-                    Browse categories
-                  </h2>
-                  <div className="flex flex-wrap gap-2">
-                    {fallbackCategories.slice(0, 8).map((c) => (
-                      <Link
-                        key={c.slug}
-                        href={`/categories/${c.slug}`}
-                        className="rounded-full border bg-card px-4 py-2 text-sm font-medium shadow-elev-1 transition-colors hover:border-primary/40 hover:text-primary"
-                      >
-                        {c.name}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {fallbackProducts.length > 0 && (
-                <div>
-                  <h2 className="mb-5 font-heading text-lg font-semibold tracking-tight sm:text-xl">Popular products</h2>
-                  <ProductRail products={fallbackProducts} wishlistedIds={wishlistIds} />
-                </div>
-              )}
-            </div>
-          )
-        ) : (
-          <div className="mx-auto max-w-4xl">
-            <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <TrendingUp className="size-3.5 text-primary" /> Popular searches
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {POPULAR.map((p) => (
-                <Link
-                  key={p}
-                  href={`/search?q=${encodeURIComponent(p)}`}
-                  className="rounded-full border bg-card px-4 py-2 text-sm font-medium shadow-elev-1 transition-colors hover:border-primary/40 hover:text-primary"
-                >
+  if (!term) {
+    return (
+      <div className="shop-container pt-5 pb-16 sm:pt-7 lg:pb-24">
+        <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "Search" }]} />
+        <div className="mt-6 sm:mt-8">
+          <CatalogHeader
+            eyebrow="Search"
+            title="Search"
+            description="Find makhana, spices and more from the Nutriyet pantry — rooted in tradition, picked with care."
+          >
+            <SearchTools term="" />
+          </CatalogHeader>
+        </div>
+        <section className="mt-10 max-w-2xl" aria-labelledby="popular-searches">
+          <h2 id="popular-searches" className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <TrendingUp aria-hidden className="size-3.5 text-primary" /> Popular searches
+          </h2>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {POPULAR.map((p) => (
+              <li key={p}>
+                <Link href={`/search?q=${encodeURIComponent(p)}`} className={pill}>
                   {p}
                 </Link>
-              ))}
-            </div>
-          </div>
-        )}
+              </li>
+            ))}
+          </ul>
+        </section>
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <>
+      <BehaviorTracker event={{ type: "SEARCH", query: term }} />
+      <CatalogShell
+        pathname="/search"
+        query={toCatalogQuery(sp)}
+        // aiProductSearch has no category/price refinements — don't offer filters it would ignore.
+        supports={{ category: false, price: false }}
+        breadcrumb={[{ name: "Home", href: "/" }, { name: "Search" }]}
+        header={
+          <CatalogHeader eyebrow="Search" title={`Results for “${term}”`}>
+            {usedAI && interpreted ? (
+              <p className="mt-3 flex items-start gap-1.5 text-sm text-muted-foreground">
+                <Sparkles aria-hidden className="mt-0.5 size-4 shrink-0 text-primary" />
+                <span>
+                  Showing results for: <span className="font-medium text-foreground">{interpreted}</span>
+                </span>
+              </p>
+            ) : null}
+            <SearchTools term={term} />
+          </CatalogHeader>
+        }
+        total={total}
+        page={search.page}
+        pageCount={pageCount}
+        relevanceSort
+        empty={{
+          title: `No results for “${term}”`,
+          description: "Try a different keyword or browse our full catalog.",
+          action: { label: "Browse all products", href: "/products" },
+        }}
+        emptyExtra={
+          <div className="mt-12 space-y-12">
+            {fallbackCategories.length > 0 && (
+              <section aria-labelledby="browse-categories">
+                <h2 id="browse-categories" className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Browse categories
+                </h2>
+                <ul className="mt-3 flex flex-wrap gap-2">
+                  {fallbackCategories.slice(0, 8).map((c) => (
+                    <li key={c.slug}>
+                      <Link href={`/categories/${c.slug}`} className={pill}>
+                        {c.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {fallbackProducts.length > 0 && (
+              <section>
+                <h2 className="mb-5 font-heading text-subheading">Popular products</h2>
+                <ProductRail products={fallbackProducts} wishlistedIds={wishlistIds} />
+              </section>
+            )}
+          </div>
+        }
+      >
+        <ProductGrid products={products} wishlistedIds={wishlistIds} priorityCount={2} className={CATALOG_GRID_CLASS} />
+      </CatalogShell>
+    </>
   );
 }

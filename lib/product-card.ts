@@ -7,6 +7,11 @@ import { discountPercent, effectivePrice } from "@/lib/format";
 export const PRODUCT_GRID_CLASS =
   "grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 sm:gap-y-10 @xl:grid-cols-3 @4xl:grid-cols-4 @6xl:grid-cols-5";
 
+/** Catalog pages (no sidebar below `lg`): pin 3 columns across 576–1023px, where
+ *  the container queries alone would give 2 (narrow) or 4 (near 1000px). `!`
+ *  because media vs container query rules have no reliable relative order. */
+export const CATALOG_GRID_CLASS = "min-[36rem]:max-lg:grid-cols-3!";
+
 /** Stock at or below this shows a quiet "Only N left" note (real stock, never invented). */
 export const LOW_STOCK_THRESHOLD = 5;
 
