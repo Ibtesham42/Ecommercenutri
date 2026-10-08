@@ -29,6 +29,7 @@ export function AddToCartButton({
   variant = "outline",
   size = "lg",
   iconClassName = "size-5",
+  srContext,
 }: {
   onAdd: () => void;
   disabled?: boolean;
@@ -38,6 +39,8 @@ export function AddToCartButton({
   variant?: React.ComponentProps<typeof Button>["variant"];
   size?: React.ComponentProps<typeof Button>["size"];
   iconClassName?: string;
+  /** Visually hidden suffix for the accessible name, e.g. the product name on a card. */
+  srContext?: string;
 }) {
   const [added, setAdded] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -92,6 +95,7 @@ export function AddToCartButton({
           />
         )}
         {added ? addedLabel : label}
+        {srContext && <span className="sr-only">: {srContext}</span>}
       </span>
     </Button>
   );

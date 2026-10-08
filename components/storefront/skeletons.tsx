@@ -1,22 +1,23 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { PRODUCT_GRID_CLASS } from "@/lib/product-card";
 
 /** A single product-card placeholder mirroring the real card's layout. */
 export function ProductCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-xl border">
-      <Skeleton className="aspect-square w-full rounded-none" />
-      <div className="space-y-2 p-4">
-        <Skeleton className="h-3 w-1/3" />
+    <div className="flex flex-col">
+      <Skeleton className="aspect-square w-full rounded-xl" />
+      <div className="space-y-2 pt-3.5">
         <Skeleton className="h-4 w-4/5" />
-        <Skeleton className="h-3 w-2/5" />
-        <Skeleton className="h-5 w-1/3" />
+        <Skeleton className="h-3 w-1/4" />
+        <Skeleton className="mt-3 h-4 w-2/5" />
+        <Skeleton className="mt-3 h-10 w-full rounded-lg" />
       </div>
     </div>
   );
 }
 
-/** A responsive grid of product-card skeletons (matches ProductGrid columns). */
+/** A responsive grid of product-card skeletons (same container-query columns as ProductGrid). */
 export function ProductGridSkeleton({
   count = 8,
   className,
@@ -25,10 +26,12 @@ export function ProductGridSkeleton({
   className?: string;
 }) {
   return (
-    <div className={cn("grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4", className)}>
-      {Array.from({ length: count }).map((_, i) => (
-        <ProductCardSkeleton key={i} />
-      ))}
+    <div className="@container">
+      <div className={cn(PRODUCT_GRID_CLASS, className)}>
+        {Array.from({ length: count }).map((_, i) => (
+          <ProductCardSkeleton key={i} />
+        ))}
+      </div>
     </div>
   );
 }

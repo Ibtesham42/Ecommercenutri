@@ -16,7 +16,8 @@ import { StarRating } from "@/components/storefront/star-rating";
 import { WishlistButton } from "@/components/storefront/wishlist-button";
 import { useCart } from "@/lib/store/cart";
 import { trackClient } from "@/components/storefront/behavior-tracker";
-import { formatPrice, discountPercent, effectivePrice } from "@/lib/format";
+import { discountPercent, effectivePrice } from "@/lib/format";
+import { ProductPrice } from "@/components/storefront/product-price";
 import { cn } from "@/lib/utils";
 import type { QuickViewProductData } from "@/lib/queries/products";
 
@@ -105,7 +106,7 @@ export function QuickViewDialog({
           </div>
         ) : (
           <div className="grid gap-0 sm:grid-cols-2">
-            <div className="relative aspect-square bg-muted sm:aspect-auto">
+            <div className="pcard relative aspect-square bg-(--pcard-media) sm:aspect-auto">
               {product.images[0] ? (
                 <BlurImage
                   src={product.images[0].url}
@@ -131,7 +132,12 @@ export function QuickViewDialog({
               )}
 
               {variant && (
-                <PriceBlock price={variant.price} discountPrice={variant.discountPrice} />
+                <ProductPrice
+                  size="lg"
+                  price={effectivePrice(variant.price, variant.discountPrice)}
+                  mrp={variant.price}
+                  off={discountPercent(variant.price, variant.discountPrice)}
+                />
               )}
 
               {product.variants.length > 1 && (
@@ -156,9 +162,7 @@ export function QuickViewDialog({
               )}
 
               {variant && variant.stock > 0 && variant.stock <= 5 && (
-                <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                  Only {variant.stock} left
-                </p>
+                <p className="text-xs text-muted-foreground">Only {variant.stock} left</p>
               )}
 
               <div className="mt-2 flex items-center gap-2">
@@ -166,7 +170,7 @@ export function QuickViewDialog({
                   type="button"
                   onClick={addToCart}
                   disabled={outOfStock || !variant}
-                  className="btn-rich flex-1 gap-2 rounded-xl"
+                  className="h-11 flex-1 gap-2 rounded-lg"
                 >
                   <ShoppingBag className="size-4" />
                   {outOfStock ? "Sold out" : "Add to cart"}
@@ -174,7 +178,7 @@ export function QuickViewDialog({
                 <WishlistButton
                   productId={product.id}
                   initial={wishlisted}
-                  className="size-10 border bg-background"
+                  className="size-11 border bg-background"
                 />
               </div>
 
@@ -190,29 +194,5 @@ export function QuickViewDialog({
         )}
       </DialogContent>
     </Dialog>
-  );
-}
-
-function PriceBlock({
-  price,
-  discountPrice,
-}: {
-  price: number;
-  discountPrice: number | null;
-}) {
-  const sale = effectivePrice(price, discountPrice);
-  const off = discountPercent(price, discountPrice);
-  return (
-    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-      <span className="text-xl font-bold tracking-tight">{formatPrice(sale)}</span>
-      {off ? (
-        <>
-          <span className="text-sm text-muted-foreground line-through">{formatPrice(price)}</span>
-          <span className="text-sm font-semibold text-primary">
-            Save {off}% · {formatPrice(price - sale)}
-          </span>
-        </>
-      ) : null}
-    </div>
   );
 }

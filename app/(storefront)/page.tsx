@@ -223,6 +223,7 @@ export default async function HomePage() {
                 products={bestSellers}
                 wishlistedIds={wishlistIds}
                 priorityCount={firstProductSectionKey === "bestSellers" ? 2 : 0}
+                showBestSellerBadge={false}
               />
             </Reveal>
           </div>

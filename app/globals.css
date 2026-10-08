@@ -339,14 +339,25 @@
     box-shadow 0.25s ease;
 }
 
-/* Product-card lift — a touch stronger than .hover-lift, with its own border
-   transition so the elevation, lift and border tint animate together. The hover
-   translate itself is reduced-motion gated below. */
-.card-lift {
-  transition:
-    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.25s ease,
-    border-color 0.2s ease;
+/* Product card system (Phase 4). The card also renders outside the shop scope
+   (account wishlist, :root tokens), so its editorial colours fall back there.
+   Hover elevation sits on the image tile only, for real pointers; it's not motion,
+   so it isn't reduced-motion gated (the image zoom is, via motion-safe:). */
+.pcard,
+.pcard-price {
+  --pcard-media: var(--oat, var(--muted));
+  --pcard-accent: var(--terracotta, var(--destructive));
+  /* Small-text variant nudged toward the ink so 12px copy clears WCAG AA
+     (raw terracotta is ~4.4:1 on cream); mixing with foreground works in dark too. */
+  --pcard-accent-text: color-mix(in oklab, var(--pcard-accent) 82%, var(--foreground));
+}
+.pcard-media {
+  transition: box-shadow 0.3s ease;
+}
+@media (hover: hover) {
+  .pcard:hover .pcard-media {
+    box-shadow: var(--elev-2);
+  }
 }
 
 /* Hidden scrollbar helper (cross-browser). */
@@ -450,9 +461,6 @@
   }
   .hover-lift:hover {
     transform: translateY(-3px);
-  }
-  .card-lift:hover {
-    transform: translateY(-5px);
   }
   /* Very subtle "breathing" for promotional badges (discount / Best Seller).
      A tiny scale pulse — premium and calm, never distracting. */

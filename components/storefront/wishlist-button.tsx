@@ -12,11 +12,14 @@ export function WishlistButton({
   initial,
   className,
   withLabel = false,
+  appearance = "default",
 }: {
   productId: string;
   initial?: boolean;
   className?: string;
   withLabel?: boolean;
+  /** "overlay": product-card corner control — a quiet 32px disc inside a 44px touch target. */
+  appearance?: "default" | "overlay";
 }) {
   const [active, setActive] = useState(Boolean(initial));
   // Bumped each time we favorite, to re-trigger the pop animation (via `key`).
@@ -39,6 +42,46 @@ export function WishlistButton({
     });
   }
 
+  const heart = (
+    <Heart
+      // `key` remounts the icon on each favorite so the pop keyframe replays.
+      key={pop}
+      className={cn(
+        "size-4 transition-all duration-200",
+        appearance === "overlay"
+          ? active
+            ? "fill-(--pcard-accent) text-(--pcard-accent)"
+            : "text-foreground/80 group-hover/wl:text-(--pcard-accent)"
+          : active
+            ? "scale-110 fill-rose-500 text-rose-500"
+            : "hover:text-rose-500",
+        // `.animate-pop` lives inside the reduced-motion `no-preference` block,
+        // so it's already suppressed for users who prefer reduced motion.
+        pop > 0 && active && "animate-pop",
+      )}
+    />
+  );
+
+  if (appearance === "overlay") {
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={pending}
+        aria-label={active ? "Remove from wishlist" : "Add to wishlist"}
+        aria-pressed={active}
+        className={cn(
+          "group/wl grid size-11 place-items-center rounded-full outline-none focus-visible:[&>span]:ring-2 focus-visible:[&>span]:ring-ring",
+          className,
+        )}
+      >
+        <span className="grid size-8 place-items-center rounded-full bg-background/90 transition-[background-color,transform] group-hover/wl:bg-background group-active/wl:scale-90">
+          {heart}
+        </span>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -54,17 +97,7 @@ export function WishlistButton({
         className,
       )}
     >
-      <Heart
-        // `key` remounts the icon on each favorite so the pop keyframe replays.
-        key={pop}
-        className={cn(
-          "size-4 transition-all duration-200",
-          active ? "scale-110 fill-rose-500 text-rose-500" : "hover:text-rose-500",
-          // `.animate-pop` lives inside the reduced-motion `no-preference` block,
-          // so it's already suppressed for users who prefer reduced motion.
-          pop > 0 && active && "animate-pop",
-        )}
-      />
+      {heart}
       {withLabel && (active ? "Wishlisted" : "Wishlist")}
     </button>
   );

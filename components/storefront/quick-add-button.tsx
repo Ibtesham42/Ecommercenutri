@@ -53,13 +53,20 @@ export function QuickAddButton({
     <AddToCartButton
       onAdd={add}
       disabled={outOfStock}
-      label={outOfStock ? "Sold out" : "Add"}
+      label={outOfStock ? "Sold out" : "Add to cart"}
       addedLabel="Added"
-      variant="default"
+      srContext={product.name}
+      variant={outOfStock ? "outline" : "default"}
       size="sm"
-      iconClassName="size-4"
+      iconClassName="size-4 max-[359px]:hidden"
       className={cn(
-        "h-9 w-full gap-1.5 rounded-xl bg-gold font-semibold text-gold-foreground hover:bg-gold/90",
+        // 44px on touch, 40px where there's a precise pointer. Explicit text
+        // colour: AddToCartButton's "added" state would otherwise tint the
+        // label primary — invisible on a primary fill.
+        "h-11 w-full gap-1.5 rounded-lg text-[13px] font-medium sm:text-sm [@media(hover:hover)_and_(pointer:fine)]:h-10",
+        outOfStock
+          ? "border-border bg-transparent text-muted-foreground disabled:opacity-100"
+          : "border-transparent text-primary-foreground",
         className,
       )}
     />

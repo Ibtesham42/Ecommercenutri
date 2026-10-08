@@ -57,27 +57,27 @@ export function RecentlyViewed({
   return (
     <section>
       <h2 className="mb-5 font-heading text-xl font-semibold tracking-tight">{title}</h2>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      {/* Compact variant of the product card language (localStorage only holds
+          name/image/price, so there's no rating, size or add-to-cart here). */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-5">
         {items.slice(0, 5).map((p) => (
-          <Link
-            key={p.slug}
-            href={`/products/${p.slug}`}
-            className="group rounded-xl border p-2 transition hover:border-primary/40 hover:shadow-elev-1"
-          >
-            <div className="relative aspect-square overflow-hidden rounded-lg bg-accent/30">
+          <Link key={p.slug} href={`/products/${p.slug}`} className="pcard group rounded-xl">
+            <div className="pcard-media relative aspect-square overflow-hidden rounded-xl bg-(--pcard-media)">
               {p.image && (
                 <Image
                   src={p.image}
                   alt={p.name}
                   fill
                   sizes="(max-width: 640px) 50vw, 20vw"
-                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  className="object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03]"
                 />
               )}
             </div>
-            <p className="mt-2 line-clamp-1 text-sm font-medium">{p.name}</p>
+            <p className="mt-2.5 line-clamp-2 font-heading text-[15px] font-medium leading-snug group-hover:text-primary">
+              {p.name}
+            </p>
             {p.price != null && (
-              <p className="text-sm text-muted-foreground">{formatPrice(p.price)}</p>
+              <p className="mt-1 text-sm font-semibold tabular-nums">{formatPrice(p.price)}</p>
             )}
           </Link>
         ))}
