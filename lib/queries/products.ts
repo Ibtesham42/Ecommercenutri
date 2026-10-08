@@ -219,29 +219,44 @@ export type GetProductsResult = {
   pageCount: number;
 };
 
-export async function getProducts(
-  params: GetProductsParams = {},
-): Promise<GetProductsResult> {
-  const {
-    category,
-    q,
-    sort = "newest",
-    minPrice,
-    maxPrice,
-    onSale,
-    inStock,
-    minRating,
-    newOnly,
-    page = 1,
-    perPage = 12,
-  } = params;
+/**
+ * Variant whose SELLING price (`effectivePrice`: the discount price when it's
+ * a real one, i.e. > 0 and below MRP; otherwise MRP) falls within `range`.
+ */
+function sellingPriceWithin(range: Prisma.IntFilter): Prisma.ProductVariantWhereInput {
+  const mrp = prisma.productVariant.fields.price;
+  return {
+    OR: [
+      { discountPrice: { ...range, gt: 0, lt: mrp } },
+      {
+        price: range,
+        OR: [{ discountPrice: null }, { discountPrice: { lte: 0 } }, { discountPrice: { gte: mrp } }],
+      },
+    ],
+  };
+}
+
+/** The catalog `where` for `getProducts` (pure — exported for tests). */
+export function buildProductWhere(params: GetProductsParams = {}): Prisma.ProductWhereInput {
+  const { category, q, minPrice, maxPrice, onSale, inStock, minRating, newOnly } = params;
 
   const priceFilter: Prisma.IntFilter = {};
   if (typeof minPrice === "number") priceFilter.gte = Math.round(minPrice * 100);
   if (typeof maxPrice === "number") priceFilter.lte = Math.round(maxPrice * 100);
-  const hasPriceFilter = Object.keys(priceFilter).length > 0;
 
-  const where: Prisma.ProductWhereInput = {
+  // All variant-level filters go into ONE `some`, so they combine (spreading a
+  // separate `variants` key per filter let the last one silently win) and a
+  // single variant must satisfy them all — e.g. "under ₹200 + in stock" means
+  // an in-stock size that sells under ₹200.
+  const variantFilters: Prisma.ProductVariantWhereInput[] = [];
+  if (Object.keys(priceFilter).length > 0) variantFilters.push(sellingPriceWithin(priceFilter));
+  // discountPrice > 0 is the same "really on sale" signal effectivePrice()/
+  // discountPercent() already trust elsewhere — the admin form only lets a
+  // discount price through when it's below MRP.
+  if (onSale) variantFilters.push({ discountPrice: { gt: 0 } });
+  if (inStock) variantFilters.push({ stock: { gt: 0 } });
+
+  return {
     isActive: true,
     ...(category ? { category: { slug: category } } : {}),
     ...(q
@@ -254,14 +269,9 @@ export async function getProducts(
           ],
         }
       : {}),
-    ...(hasPriceFilter
-      ? { variants: { some: { isActive: true, price: priceFilter } } }
+    ...(variantFilters.length > 0
+      ? { variants: { some: { isActive: true, AND: variantFilters } } }
       : {}),
-    // discountPrice > 0 is the same "really on sale" signal effectivePrice()/
-    // discountPercent() already trust elsewhere — the admin form only lets a
-    // discount price through when it's below MRP.
-    ...(onSale ? { variants: { some: { isActive: true, discountPrice: { gt: 0 } } } } : {}),
-    ...(inStock ? { variants: { some: { isActive: true, stock: { gt: 0 } } } } : {}),
     ...(typeof minRating === "number" ? { ratingAvg: { gte: minRating } } : {}),
     ...(newOnly
       ? {
@@ -271,6 +281,13 @@ export async function getProducts(
         }
       : {}),
   };
+}
+
+export async function getProducts(
+  params: GetProductsParams = {},
+): Promise<GetProductsResult> {
+  const { sort = "newest", page = 1, perPage = 12 } = params;
+  const where = buildProductWhere(params);
 
   // First DB touch in this call — the one most likely to hit a cold Neon
   // connection on a fresh request. One retry here warms it for the
