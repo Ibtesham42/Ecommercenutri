@@ -204,7 +204,7 @@ export function PhoneSection({
           {error && (
             <p className="rounded-xl bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">{error}</p>
           )}
-          <div className="flex h-12 items-center overflow-hidden rounded-xl border bg-background shadow-elev-1 transition-all focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25">
+          <div className="flex h-12 items-center overflow-hidden rounded-xl border bg-background transition-all focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25">
             <span className="grid h-full shrink-0 place-items-center border-r bg-secondary/50 px-3.5 text-sm font-semibold text-foreground/80">
               +91
             </span>

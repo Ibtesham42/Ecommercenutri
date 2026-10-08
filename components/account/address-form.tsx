@@ -40,7 +40,7 @@ export function AddressForm({
   }, [state, onSuccess]);
 
   return (
-    <form action={action} className="space-y-3">
+    <form action={action} className="shop-form space-y-3">
       {state?.error && (
         <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {state.error}

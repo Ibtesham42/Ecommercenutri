@@ -44,7 +44,7 @@ export default async function AffiliatePage() {
     return (
       <div className="max-w-2xl space-y-4">
         <div>
-          <h1 className="font-heading text-xl font-semibold">Become a Nutriyet partner</h1>
+          <h2 className="font-heading text-subheading font-medium">Become a Nutriyet partner</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Earn commission on every sale you refer, with your own link, QR code and coupon.
           </p>
@@ -69,9 +69,9 @@ export default async function AffiliatePage() {
   // --- Pending / suspended ---
   if (affiliate.status === "PENDING") {
     return (
-      <div className="max-w-xl rounded-2xl border bg-muted/20 p-8 text-center">
+      <div className="max-w-xl rounded-xl border bg-muted/20 p-8 text-center">
         <Clock className="mx-auto size-10 text-primary" />
-        <h1 className="mt-3 font-heading text-lg font-semibold">Application under review</h1>
+        <h2 className="mt-3 font-heading text-subheading font-medium">Application under review</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Thanks for applying as a {AFFILIATE_ROLE_LABEL[affiliate.role]}. We&rsquo;ll email you
           once it&rsquo;s approved — usually within a couple of days.
@@ -81,9 +81,9 @@ export default async function AffiliatePage() {
   }
   if (affiliate.status === "SUSPENDED") {
     return (
-      <div className="max-w-xl rounded-2xl border border-destructive/30 bg-destructive/5 p-8 text-center">
+      <div className="max-w-xl rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center">
         <Ban className="mx-auto size-10 text-destructive" />
-        <h1 className="mt-3 font-heading text-lg font-semibold">Account suspended</h1>
+        <h2 className="mt-3 font-heading text-subheading font-medium">Account suspended</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {affiliate.suspendReason || "Your affiliate account is currently suspended."} Please
           contact support if you think this is a mistake.
@@ -105,7 +105,7 @@ export default async function AffiliatePage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-heading text-xl font-semibold">Affiliate dashboard</h1>
+          <h2 className="font-heading text-subheading font-medium">Affiliate dashboard</h2>
           <p className="text-sm text-muted-foreground">
             {AFFILIATE_ROLE_LABEL[affiliate.role]} · code <span className="font-mono">{affiliate.code}</span>
           </p>
@@ -132,7 +132,7 @@ export default async function AffiliatePage() {
       </div>
 
       {/* Monthly performance */}
-      <div className="rounded-2xl border p-5">
+      <div className="rounded-xl border border-border p-5">
         <h2 className="mb-4 font-semibold">Monthly performance</h2>
         <div className="flex items-end gap-3">
           {data.monthly.map((m) => (
@@ -153,7 +153,7 @@ export default async function AffiliatePage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
         {/* Recent referred orders */}
-        <div className="rounded-2xl border p-5">
+        <div className="rounded-xl border border-border p-5">
           <h2 className="mb-3 font-semibold">Recent referred orders</h2>
           {data.recentOrders.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
@@ -197,7 +197,7 @@ export default async function AffiliatePage() {
             }}
           />
           {data.payouts.length > 0 && (
-            <div className="rounded-2xl border p-5">
+            <div className="rounded-xl border border-border p-5">
               <h2 className="mb-3 font-semibold">Payout history</h2>
               <ul className="divide-y text-sm">
                 {data.payouts.map((p) => (
@@ -219,7 +219,7 @@ export default async function AffiliatePage() {
       </div>
 
       {/* Marketing kit */}
-      <div className="rounded-2xl border p-5">
+      <div className="rounded-xl border border-border p-5">
         <h2 className="mb-3 flex items-center gap-2 font-semibold">
           <Megaphone className="size-4 text-primary" /> Marketing kit
         </h2>

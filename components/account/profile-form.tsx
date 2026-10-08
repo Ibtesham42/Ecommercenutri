@@ -56,7 +56,7 @@ export function ProfileForm({
             <label
               key={g.value}
               className={cn(
-                "flex h-11 cursor-pointer items-center justify-center rounded-xl border bg-background text-sm font-medium text-muted-foreground shadow-elev-1 transition-all",
+                "flex h-11 cursor-pointer items-center justify-center rounded-xl border bg-background text-sm font-medium text-muted-foreground transition-all",
                 "hover:border-primary/40 hover:text-foreground motion-safe:active:scale-[0.97]",
                 "has-checked:border-primary has-checked:bg-primary/5 has-checked:font-semibold has-checked:text-primary",
               )}

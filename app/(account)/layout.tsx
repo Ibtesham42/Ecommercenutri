@@ -1,51 +1,44 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
-import { getStoreSettings } from "@/lib/queries/settings";
-import { SiteHeader } from "@/components/storefront/site-header";
-import { SiteFooter } from "@/components/storefront/site-footer";
-import { AccountSidebar } from "@/components/account/account-sidebar";
+import { prisma } from "@/lib/prisma";
+import { StorefrontChrome, getChromeData } from "@/components/storefront/storefront-chrome";
+import { AccountSidebar, AccountTitle } from "@/components/account/account-sidebar";
 
 export default async function AccountLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [user, settings] = await Promise.all([getCurrentUser(), getStoreSettings()]);
-  if (!user) redirect("/login?callbackUrl=/account");
+  const chrome = await getChromeData();
+  if (!chrome.user) redirect("/login?callbackUrl=/account");
+  // Read the name from the DB, not the JWT: a profile edit must show at once.
+  const profile = await prisma.user.findUnique({ where: { id: chrome.user.id }, select: { name: true } });
+  const firstName = profile?.name?.trim().split(/\s+/)[0];
 
+  // Same shop chrome and editorial surface as the storefront, without its
+  // analytics trackers or growth popups.
   return (
-    <div className="flex min-h-dvh flex-col">
-      <SiteHeader
-        logoUrl={settings.logo}
-        siteName={settings.siteName}
-        logoHeight={settings.logoHeight}
-        logoHeightMobile={settings.logoHeightMobile}
-        logoMaxWidth={settings.logoMaxWidth}
-        isLoggedIn
-        freeShippingThreshold={settings.freeShippingThreshold}
-        freeShippingEnabled={settings.freeShippingEnabled}
-      />
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:py-8">
-        <h1 className="mb-4 font-heading text-2xl font-semibold tracking-tight sm:mb-6 sm:text-3xl">
-          My account
-        </h1>
-        {/* grid-cols-1 / minmax(0,1fr) give an explicit, width-constrained track
-            (Tailwind's grid-cols-* use minmax(0,1fr)); without it the implicit
-            auto track grows to fit the horizontal nav rail and overflows the page
-            on mobile. The rail then scrolls inside its column instead. */}
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-[240px_minmax(0,1fr)] md:gap-8">
-          {/* Mobile: a clean full-bleed horizontal nav bar (native-app feel).
-              Desktop: a sticky card sidebar. `min-w-0` lets the horizontal nav
-              rail scroll internally instead of forcing the page wider. */}
-          <aside className="-mx-4 min-w-0 md:mx-0">
-            <div className="min-w-0 border-y bg-card px-2 py-2 md:sticky md:top-24 md:rounded-2xl md:border md:shadow-elev-1">
+    <StorefrontChrome data={chrome}>
+      <div className="shop-container pt-6 pb-20 sm:pt-8 lg:pb-28">
+        <header>
+          <p className="eyebrow">My account</p>
+          <AccountTitle firstName={firstName} />
+        </header>
+        {/* grid-cols-1 / minmax(0,1fr) give an explicit, width-constrained track;
+            without it the implicit auto track grows to fit the horizontal nav
+            rail and overflows the page on mobile. The rail scrolls inside it. */}
+        <div className="mt-6 grid grid-cols-1 gap-6 sm:mt-8 md:grid-cols-[13rem_minmax(0,1fr)] md:gap-10 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-16">
+          <aside className="-mx-4 min-w-0 border-b border-border px-1 sm:-mx-6 sm:px-3 md:mx-0 md:border-b-0 md:px-0">
+            <div className="md:sticky md:top-28">
               <AccountSidebar />
             </div>
           </aside>
-          <div className="min-w-0">{children}</div>
+          {/* 44px fields everywhere here; on touch screens also 44px text
+              buttons (the account UI uses compact `sm` buttons for mouse). */}
+          <div className="shop-form min-w-0 pointer-coarse:[&_[data-slot=button]:not([data-size^=icon])]:min-h-11">
+            {children}
+          </div>
         </div>
-      </main>
-      <SiteFooter />
-    </div>
+      </div>
+    </StorefrontChrome>
   );
 }

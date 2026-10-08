@@ -27,7 +27,7 @@ export function MyHealthScoreCard({ data }: { data: MyHealthScore }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border bg-card shadow-elev-1">
+    <div className="overflow-hidden rounded-xl border border-border bg-card">
       <div className="flex flex-col items-center gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
         <ScoreGauge score={data.score} band={data.band} size={148} />
         <div className="min-w-0 flex-1 text-center sm:text-left">
@@ -76,7 +76,7 @@ export function MyHealthScoreCard({ data }: { data: MyHealthScore }) {
               <Link
                 key={f.label}
                 href={f.href}
-                className="inline-flex items-center gap-1.5 rounded-full border bg-background px-3.5 py-1.5 text-sm font-medium shadow-elev-1 transition-colors hover:border-primary/50 hover:text-primary"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full border bg-background px-4 text-sm font-medium transition-colors hover:border-primary/50 hover:text-primary"
               >
                 {f.label} <ArrowRight className="size-3.5" />
               </Link>

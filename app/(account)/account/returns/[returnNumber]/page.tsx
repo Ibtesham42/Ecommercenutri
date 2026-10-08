@@ -56,7 +56,7 @@ export default async function ReturnDetailPage({
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="font-heading text-xl font-semibold">{ret.returnNumber}</h1>
+          <h2 className="font-heading text-subheading font-medium">{ret.returnNumber}</h2>
           <p className="text-sm text-muted-foreground">
             Order{" "}
             <Link href={`/account/orders/${ret.order.orderNumber}`} className="text-primary hover:underline">
@@ -73,7 +73,7 @@ export default async function ReturnDetailPage({
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
         <div className="space-y-5">
           {/* Items */}
-          <div className="rounded-2xl border p-5">
+          <div className="rounded-xl border border-border p-5">
             <h2 className="mb-3 font-semibold">Items</h2>
             <ul className="space-y-3">
               {ret.items.map((it) => (
@@ -111,7 +111,7 @@ export default async function ReturnDetailPage({
           </div>
 
           {/* Reason + description */}
-          <div className="rounded-2xl border p-5">
+          <div className="rounded-xl border border-border p-5">
             <h2 className="mb-2 font-semibold">Reason</h2>
             <p className="text-sm">{ret.reason}</p>
             {ret.description && (
@@ -126,7 +126,7 @@ export default async function ReturnDetailPage({
 
           {/* Proof */}
           {ret.media.length > 0 && (
-            <div className="rounded-2xl border p-5">
+            <div className="rounded-xl border border-border p-5">
               <h2 className="mb-3 font-semibold">Proof</h2>
               <div className="flex flex-wrap gap-2">
                 {ret.media.map((url) =>
@@ -155,7 +155,7 @@ export default async function ReturnDetailPage({
         </div>
 
         {/* Timeline */}
-        <aside className="h-fit rounded-2xl border p-5">
+        <aside className="h-fit rounded-xl border border-border p-5">
           <h2 className="mb-4 font-semibold">Status</h2>
           <ReturnTimeline
             status={ret.status}

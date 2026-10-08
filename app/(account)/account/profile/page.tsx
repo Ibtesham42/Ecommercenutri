@@ -41,7 +41,7 @@ export default async function ProfilePage() {
   return (
     <div className="max-w-xl space-y-5">
       {/* Identity header — photo, name, member-since. */}
-      <div className="flex items-center gap-4 rounded-2xl border bg-card p-4 shadow-elev-1 sm:p-5">
+      <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 sm:p-6">
         <AvatarUpload
           image={user.image}
           name={user.name}
@@ -55,7 +55,7 @@ export default async function ProfilePage() {
         </div>
       </div>
 
-      <div className="rounded-2xl border bg-card p-4 shadow-elev-1 sm:p-5">
+      <div className="rounded-xl border border-border bg-card p-5 sm:p-6">
         <h2 className="mb-4 font-heading text-lg font-semibold">Personal details</h2>
         <ProfileForm
           defaultName={user.name ?? ""}
@@ -64,7 +64,7 @@ export default async function ProfilePage() {
         />
       </div>
 
-      <div className="rounded-2xl border bg-card p-4 shadow-elev-1 sm:p-5">
+      <div className="rounded-xl border border-border bg-card p-5 sm:p-6">
         <h2 className="mb-4 font-heading text-lg font-semibold">Contact &amp; security</h2>
         <div className="space-y-5 divide-y [&>div]:pb-5 [&>div:last-child]:pb-0">
           <EmailSection email={user.email} verified={Boolean(user.emailVerified)} />

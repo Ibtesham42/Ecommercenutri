@@ -80,7 +80,7 @@ export function AffiliatePayoutPanel({
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border p-5">
+      <div className="rounded-xl border border-border p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-sm text-muted-foreground">Available to withdraw</p>
@@ -98,7 +98,7 @@ export function AffiliatePayoutPanel({
         )}
       </div>
 
-      <form onSubmit={handleSubmit(saveDetails)} className="space-y-3 rounded-2xl border p-5">
+      <form onSubmit={handleSubmit(saveDetails)} className="space-y-3 rounded-xl border border-border p-5">
         <p className="text-sm font-semibold">Payout details</p>
         <div className="space-y-1.5">
           <Label htmlFor="payoutMethod">Method</Label>

@@ -157,7 +157,7 @@ export function AvatarUpload({
             onClick={() => inputRef.current?.click()}
             disabled={busy}
             aria-label="Change profile photo"
-            className="absolute -right-1 -bottom-1 grid size-7 place-items-center rounded-full bg-primary text-primary-foreground shadow-elev-2 transition-transform motion-safe:hover:scale-110 motion-safe:active:scale-95"
+            className="absolute -right-1 -bottom-1 grid size-7 place-items-center rounded-full bg-primary text-primary-foreground shadow-elev-2 transition-transform after:absolute after:-inset-2 after:content-[''] motion-safe:hover:scale-110 motion-safe:active:scale-95"
           >
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Camera className="size-3.5" />}
           </button>

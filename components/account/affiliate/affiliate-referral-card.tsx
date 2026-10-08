@@ -36,7 +36,7 @@ export function AffiliateReferralCard({
   }
 
   return (
-    <div className="grid gap-5 rounded-2xl border p-5 sm:grid-cols-[1fr_auto]">
+    <div className="grid gap-5 rounded-xl border border-border p-5 sm:grid-cols-[1fr_auto]">
       <div className="space-y-4">
         <div className="space-y-1.5">
           <p className="text-sm font-semibold">Your referral link</p>
