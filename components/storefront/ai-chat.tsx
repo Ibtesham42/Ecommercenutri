@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { AiRecoCards } from "@/components/storefront/ai-reco-cards";
 import { RECO_MARKER, type AiRecoPayload } from "@/lib/ai/reco-types";
 import { cn } from "@/lib/utils";
+import { scrollBehavior } from "@/lib/motion";
 
 type Msg = {
   id: string;
@@ -71,7 +72,7 @@ export function AiChat({
   const sentInitial = useRef(false);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: scrollBehavior() });
   }, [messages]);
 
   useEffect(() => {
@@ -270,7 +271,7 @@ export function AiChat({
               className={cn(
                 "rounded-full border bg-background px-3 py-1.5 text-xs font-medium transition-colors hover:border-primary/40 hover:text-primary",
                 page &&
-                  "max-sm:shrink-0 max-sm:bg-accent/40 max-sm:px-4 max-sm:py-2.5 max-sm:text-sm max-sm:transition-transform max-sm:active:scale-95",
+                  "max-sm:shrink-0 max-sm:bg-accent/40 max-sm:px-4 max-sm:py-2.5 max-sm:text-sm max-sm:transition-transform max-sm:motion-safe:active:scale-95",
               )}
             >
               {s}
@@ -305,7 +306,7 @@ export function AiChat({
           aria-label="Send"
           className={cn(
             page &&
-              "max-sm:size-12 max-sm:rounded-full max-sm:shadow-elev-1 max-sm:transition-transform max-sm:active:scale-95 max-sm:[&_svg]:size-5",
+              "max-sm:size-12 max-sm:rounded-full max-sm:shadow-elev-1 max-sm:transition-transform max-sm:motion-safe:active:scale-95 max-sm:[&_svg]:size-5",
           )}
         >
           {streaming ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}

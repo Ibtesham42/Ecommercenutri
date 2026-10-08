@@ -7,6 +7,8 @@ import {
   normalizeQuality,
   type VariantHeight,
 } from "@/lib/video";
+import { usePrefersReducedMotion } from "@/lib/motion";
+import { useHydrated } from "@/lib/use-hydrated";
 
 /**
  * Autoplaying, muted, looping banner/hero video — no controls, fills the frame
@@ -40,6 +42,13 @@ export function BannerVideo({
 }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [inView, setInView] = useState(false);
+  // Moving, looping media with no pause control: reduced-motion users get the
+  // poster (or first frame) instead of playback.
+  const reduced = usePrefersReducedMotion();
+  const play = active && !reduced;
+  // The server can't know the preference, so the autoplay attribute is only
+  // set once hydrated; until then the effect below starts playback.
+  const hydrated = useHydrated();
   // SSR renders the middle rung; the client corrects it before/at first play.
   const [height, setHeight] = useState<VariantHeight>(720);
 
@@ -67,7 +76,7 @@ export function BannerVideo({
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
-    if (active && inView) {
+    if (play && inView) {
       const p = v.play();
       if (p && typeof p.catch === "function") p.catch(() => {});
     } else {
@@ -82,7 +91,7 @@ export function BannerVideo({
       }
     }
     // `mp4` re-runs this against the freshly-mounted element after a rung swap.
-  }, [active, inView, mp4]);
+  }, [active, play, inView, mp4]);
 
   return (
     <video
@@ -94,8 +103,8 @@ export function BannerVideo({
       muted
       loop
       playsInline
-      autoPlay={active}
-      preload={active ? "auto" : preload}
+      autoPlay={hydrated && play}
+      preload={play ? "auto" : reduced ? "metadata" : preload}
       aria-hidden
       tabIndex={-1}
       disableRemotePlayback

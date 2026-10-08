@@ -57,7 +57,7 @@ export function NewsletterForm({ source = "footer" }: { source?: string }) {
       <button
         type="submit"
         disabled={state === "busy"}
-        className="inline-flex h-12 shrink-0 items-center gap-2 rounded-xl bg-gold px-5 text-sm font-bold text-gold-foreground transition-transform hover:brightness-105 active:scale-95 disabled:opacity-70"
+        className="inline-flex h-12 shrink-0 items-center gap-2 rounded-xl bg-gold px-5 text-sm font-bold text-gold-foreground transition-transform hover:brightness-105 motion-safe:active:scale-95 disabled:opacity-70"
       >
         Subscribe
         {state === "busy" ? (

@@ -20,7 +20,7 @@ export function StoriesRail({ stories }: { stories: StoryItem[] }) {
               onClick={() => setOpenIndex(i)}
               className="group flex w-[76px] shrink-0 snap-start flex-col items-center gap-1.5"
             >
-              <span className="rounded-full p-[2px] ring-1 ring-primary/50 transition-transform duration-200 group-hover:scale-105 group-active:scale-95">
+              <span className="rounded-full p-[2px] ring-1 ring-primary/50 transition-transform duration-200 motion-safe:group-hover:scale-105 motion-safe:group-active:scale-95">
                 <span className="block rounded-full bg-background p-[2px]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img

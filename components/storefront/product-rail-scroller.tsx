@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { scrollBehavior } from "@/lib/motion";
 
 /**
  * Horizontal scroll-snap rail with hover-revealed prev/next arrows — the
@@ -45,7 +46,7 @@ export function ProductRailScroller({
   const scroll = (dir: 1 | -1) => {
     const el = trackRef.current;
     if (!el) return;
-    el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: "smooth" });
+    el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: scrollBehavior() });
   };
 
   return (
