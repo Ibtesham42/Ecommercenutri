@@ -96,7 +96,9 @@ export function CheckoutClient({
   const clearCart = useCart((s) => s.clear);
 
   const mounted = useHydrated();
-  const [selectedId, setSelectedId] = useState<string>("");
+  // Seeded from props, not only the effect below: effect-scheduled updates can
+  // wait on the pricing server action, leaving no address picked for seconds.
+  const [selectedId, setSelectedId] = useState<string>(addresses[0]?.id ?? "");
   const [addressOpen, setAddressOpen] = useState(false);
   const [couponInput, setCouponInput] = useState("");
   const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
