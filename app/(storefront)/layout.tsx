@@ -5,7 +5,6 @@ import { JourneyTracker } from "@/components/storefront/journey-tracker";
 import { EngagementTracker } from "@/components/storefront/engagement-tracker";
 import { PwaInstallPrompt } from "@/components/storefront/pwa-install-prompt";
 import { WelcomePopup } from "@/components/storefront/growth/welcome-popup";
-import { getPwaSettings } from "@/lib/pwa-settings";
 import { env, isConfigured } from "@/lib/env";
 
 export default async function StorefrontLayout({
@@ -13,8 +12,8 @@ export default async function StorefrontLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [chrome, pwa] = await Promise.all([getChromeData(), getPwaSettings()]);
-  const { settings, growth, user } = chrome;
+  const chrome = await getChromeData();
+  const { growth, user } = chrome;
 
   return (
     <StorefrontChrome
@@ -26,10 +25,8 @@ export default async function StorefrontLayout({
           <JourneyTracker />
           <EngagementTracker />
           <PwaInstallPrompt
-            settings={pwa}
             vapidPublicKey={isConfigured.webPush() ? env.vapidPublicKey : ""}
             signedIn={!!user}
-            logoUrl={settings.logo}
           />
           {growth.welcomePopupEnabled && (
             <WelcomePopup

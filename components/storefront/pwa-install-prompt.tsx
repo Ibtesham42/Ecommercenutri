@@ -14,21 +14,14 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { trackClient } from "@/components/storefront/behavior-tracker";
 import { isPushSupported, subscribeToPush } from "@/lib/push-client";
-import type { PwaSettings } from "@/lib/pwa-settings";
+import { getPwaInstallState, onAppInstalled } from "@/lib/pwa-install";
 
 /**
- * PWA install experience:
- *  - Chrome/Edge (Android + desktop): native `beforeinstallprompt` flow.
- *  - iPhone/iPad Safari: Share → "Add to Home Screen" guide.
- *  - Notifications ask (strictly gated: signed-in + VAPID + supported +
- *    permission undecided + never asked before): offered right after a PWA
- *    install, on load when already installed, and — for regular browser tabs —
- *    after the visitor has settled in for a while (BROWSER_ASK_DELAY_MS).
- *    It never replaces a card that's already showing.
- * Display logic never annoys: once per session, reminder interval between
- * shows, permanently silent once installed / running standalone.
+ * Shared PWA prompt card (notifications ask + the admin preview) and the
+ * signed-in notifications ask. The app is installed only on request, via
+ * Menu → Install App (components/storefront/install-app.tsx + lib/pwa-install.ts)
+ * — nothing in this file ever offers an install by itself.
  */
 
 /** Dwell time before politely offering notifications in a plain browser tab. */
@@ -36,9 +29,6 @@ const BROWSER_ASK_DELAY_MS = 45_000;
 
 // --- storage (typeof-window guarded, quota-safe) -------------------------------
 
-const K_INSTALLED = "nutriyet-pwa-installed";
-const K_DISMISSED_AT = "nutriyet-pwa-dismissed-at";
-const K_SESSION = "nutriyet-pwa-session";
 const K_PUSH_ASKED = "nutriyet-push-asked";
 
 function lsGet(key: string): string | null {
@@ -55,47 +45,12 @@ function lsSet(key: string, value: string): void {
     /* private mode */
   }
 }
-function ssGet(key: string): string | null {
-  try {
-    return window.sessionStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-function ssSet(key: string, value: string): void {
-  try {
-    window.sessionStorage.setItem(key, value);
-  } catch {
-    /* private mode */
-  }
-}
 
 /** True while any Radix dialog (welcome popup, coupon reveal, …) is open —
- *  the install/notification card must never stack on top of a modal moment. */
+ *  the notifications card must never stack on top of a modal moment. */
 function modalIsOpen(): boolean {
   return !!document.querySelector('[role="dialog"][data-state="open"]');
 }
-
-function isStandalone(): boolean {
-  return (
-    window.matchMedia?.("(display-mode: standalone)").matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true
-  );
-}
-
-function isIosSafari(): boolean {
-  const ua = navigator.userAgent;
-  const isIos =
-    /iphone|ipad|ipod/i.test(ua) ||
-    // iPadOS ≥13 reports a Mac UA but has touch.
-    (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
-  return isIos && !isStandalone();
-}
-
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-};
 
 // --- presentational card (shared with the admin live preview) ------------------
 
@@ -223,23 +178,22 @@ export function PwaPromptCard({
 
 // --- orchestrator ---------------------------------------------------------------
 
+/**
+ * Notifications ask only. Installing the app is user-initiated (Menu → Install
+ * App, components/storefront/install-app.tsx) — this never shows an install
+ * card. The ask follows a browser-confirmed install, appears on load when
+ * already installed, or after a while in a regular tab; strictly gated (see
+ * canAskPush) and it never stacks on an open modal.
+ */
 export function PwaInstallPrompt({
-  settings,
   vapidPublicKey,
   signedIn,
-  logoUrl,
 }: {
-  settings: PwaSettings;
   vapidPublicKey: string;
   signedIn: boolean;
-  logoUrl: string | null;
 }) {
-  const [visible, setVisible] = useState<PwaPromptMode | null>(null);
+  const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
-  const deferred = useRef<BeforeInstallPromptEvent | null>(null);
-  const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const track = (source: string) => trackClient({ type: "CLICK", source });
 
   /** Gates for the polite notifications ask (all must hold). */
   const canAskPush = useCallback((): boolean => {
@@ -258,140 +212,27 @@ export function PwaInstallPrompt({
       if (!canAskPush()) return;
       if (pushTimer.current) clearTimeout(pushTimer.current);
       pushTimer.current = setTimeout(() => {
-        // Re-check at fire time, and never replace a card that's already open
-        // (if the install card is up, we simply don't ask this visit — the
-        // one-time flag is only set when the user actually sees and closes it).
-        // Likewise yield to an open modal: skipping this visit beats stacking.
-        if (canAskPush() && !modalIsOpen()) setVisible((v) => v ?? "push");
+        // Re-check at fire time, and yield to an open modal: skipping this
+        // visit beats stacking a second overlay.
+        if (canAskPush() && !modalIsOpen()) setVisible(true);
       }, delayMs);
     },
     [canAskPush],
   );
 
   useEffect(() => {
-    // Installed detection first — self-heal the flag when running standalone.
-    const standalone = isStandalone();
-    if (standalone) lsSet(K_INSTALLED, "1");
-    const installed = standalone || !!lsGet(K_INSTALLED);
-
-    // Always listen for installs (covers omnibox/menu installs too).
-    const onInstalled = () => {
-      lsSet(K_INSTALLED, "1");
-      setVisible(null);
-      toast.success("🎉 Nutriyet App installed successfully!", {
-        description: "Thank you for installing Nutriyet. Enjoy faster shopping and a better experience.",
-        duration: 6000,
-      });
-      track("pwa-installed");
-      // Politely offer notifications once the celebration lands.
-      askPushSoon(2500);
-    };
-    window.addEventListener("appinstalled", onInstalled);
-
-    // Hide if another tab installs/dismisses.
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === K_INSTALLED || e.key === K_DISMISSED_AT) setVisible(null);
-    };
-    window.addEventListener("storage", onStorage);
-
-    // Installed (now or previously): the install card never shows, but the
-    // signed-in-later notifications ask still may (once).
-    if (installed) {
-      askPushSoon(4000);
-      return () => {
-        window.removeEventListener("appinstalled", onInstalled);
-        window.removeEventListener("storage", onStorage);
-        if (pushTimer.current) clearTimeout(pushTimer.current);
-      };
-    }
-
-    // Install-prompt eligibility.
-    const eligible = (() => {
-      if (!settings.enabled) return false;
-      if (ssGet(K_SESSION)) return false;
-      const dismissedAt = Number(lsGet(K_DISMISSED_AT) ?? 0);
-      if (dismissedAt && Date.now() - dismissedAt < settings.remindDays * 86_400_000) return false;
-      return true;
-    })();
-
-    const show = (mode: "native" | "ios") => {
-      if (showTimer.current) return;
-      const fire = () => {
-        // Never cover task-critical surfaces — an install nag must not block
-        // the cart CTA, checkout or the auth flow.
-        const path = window.location.pathname;
-        if (["/checkout", "/cart", "/login", "/register"].some((p) => path.startsWith(p))) {
-          return;
-        }
-        // A modal (welcome popup, coupon reveal) owns the screen — wait our
-        // turn instead of stacking a second overlay on top of it.
-        if (modalIsOpen()) {
-          showTimer.current = setTimeout(fire, 12_000);
-          return;
-        }
-        // Stamp the session at SHOW time (not only on dismiss) so ignoring the
-        // card doesn't re-summon it on every subsequent page load — this is
-        // what the "once per session" promise above actually means.
-        ssSet(K_SESSION, "1");
-        setVisible(mode);
-        track(mode === "ios" ? "pwa-ios-guide-shown" : "pwa-prompt-shown");
-      };
-      showTimer.current = setTimeout(fire, 4000);
-    };
-
-    const onBip = (e: Event) => {
-      e.preventDefault();
-      deferred.current = e as BeforeInstallPromptEvent; // may re-fire; keep latest
-      if (eligible) show("native");
-    };
-    window.addEventListener("beforeinstallprompt", onBip);
-
-    if (eligible && isIosSafari()) show("ios");
-
-    // Regular browser tab (not installed): politely offer notifications once
-    // the visitor has settled in. Same strict gates — signed-in, supported,
-    // permission undecided, never asked before — and it yields to any install
-    // card already on screen.
-    askPushSoon(BROWSER_ASK_DELAY_MS);
-
+    // After a browser-confirmed install, politely offer notifications.
+    const off = onAppInstalled(() => askPushSoon(2500));
+    askPushSoon(getPwaInstallState().installed ? 4000 : BROWSER_ASK_DELAY_MS);
     return () => {
-      window.removeEventListener("appinstalled", onInstalled);
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("beforeinstallprompt", onBip);
-      if (showTimer.current) clearTimeout(showTimer.current);
+      off();
       if (pushTimer.current) clearTimeout(pushTimer.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function dismiss(source: "pwa-maybe-later" | "pwa-dismissed") {
-    ssSet(K_SESSION, "1");
-    lsSet(K_DISMISSED_AT, String(Date.now()));
-    setVisible(null);
-    track(source);
-  }
-
-  async function install() {
-    const evt = deferred.current;
-    if (!evt) return;
-    track("pwa-install-click");
-    setBusy(true);
-    try {
-      await evt.prompt();
-      const choice = await evt.userChoice;
-      if (choice.outcome === "dismissed") dismiss("pwa-maybe-later");
-      else setVisible(null); // `appinstalled` handles the rest
-    } catch {
-      dismiss("pwa-dismissed");
-    } finally {
-      deferred.current = null; // a BIP event's prompt() is single-use
-      setBusy(false);
-    }
-  }
+  }, [askPushSoon]);
 
   function closePushAsk() {
     lsSet(K_PUSH_ASKED, "1");
-    setVisible(null);
+    setVisible(false);
   }
 
   async function enablePush() {
@@ -399,7 +240,7 @@ export function PwaInstallPrompt({
     setBusy(true);
     const result = await subscribeToPush(vapidPublicKey);
     setBusy(false);
-    setVisible(null);
+    setVisible(false);
     if (result === "subscribed") {
       toast.success("🔔 Notifications enabled", {
         description: "You'll get order updates, exclusive offers and healthy picks.",
@@ -413,7 +254,7 @@ export function PwaInstallPrompt({
   return (
     <div
       role="dialog"
-      aria-label={visible === "push" ? "Enable notifications" : "Install app"}
+      aria-label="Enable notifications"
       className={cn(
         // Below the dialog overlay (z-50): if a modal opens while the card is
         // up, the scrim covers it instead of the card floating on top.
@@ -423,32 +264,17 @@ export function PwaInstallPrompt({
         "md:inset-x-auto md:bottom-6 md:right-6 md:w-96",
       )}
     >
-      {visible === "push" ? (
-        <PwaPromptCard
-          mode="push"
-          title="Enable notifications?"
-          description="Get order updates, exclusive offers, and healthy snack recommendations."
-          installText="Enable notifications"
-          laterText="Not now"
-          busy={busy}
-          onInstall={enablePush}
-          onLater={closePushAsk}
-          onClose={closePushAsk}
-        />
-      ) : (
-        <PwaPromptCard
-          mode={visible}
-          title={settings.title}
-          description={settings.description}
-          installText={settings.installText}
-          laterText={settings.laterText}
-          logoUrl={logoUrl}
-          busy={busy}
-          onInstall={install}
-          onLater={() => dismiss("pwa-maybe-later")}
-          onClose={() => dismiss("pwa-dismissed")}
-        />
-      )}
+      <PwaPromptCard
+        mode="push"
+        title="Enable notifications?"
+        description="Get order updates, exclusive offers, and healthy snack recommendations."
+        installText="Enable notifications"
+        laterText="Not now"
+        busy={busy}
+        onInstall={enablePush}
+        onLater={closePushAsk}
+        onClose={closePushAsk}
+      />
     </div>
   );
 }

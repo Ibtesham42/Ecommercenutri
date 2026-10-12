@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Heart, Menu, User, ArrowRight } from "lucide-react";
+import { Heart, Menu, User, ArrowRight, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Sheet,
@@ -32,6 +32,8 @@ import { MobileSearchTrigger } from "@/components/storefront/mobile-search-trigg
 import { DeliverTo } from "@/components/storefront/deliver-to";
 import { NotificationBell, type BellNotification } from "@/components/account/notification-bell";
 import { SigninSpotlight } from "@/components/storefront/onboarding/signin-spotlight";
+import { useInstallApp, type InstallCopy } from "@/components/storefront/install-app";
+import { PWA_DEFAULTS } from "@/lib/pwa-config";
 
 /** The single primary row — five destinations, all existing routes. Best
  *  sellers / New arrivals / Offers live in the Categories flyout + drawer;
@@ -72,6 +74,7 @@ export function SiteHeader({
   categories = [],
   freeShippingThreshold,
   freeShippingEnabled = true,
+  installCopy = PWA_DEFAULTS,
 }: {
   logoUrl?: string | null;
   siteName?: string;
@@ -85,8 +88,13 @@ export function SiteHeader({
   /** Paise — StoreSetting.freeShippingThreshold, passed through to DeliverTo. */
   freeShippingThreshold?: number | null;
   freeShippingEnabled?: boolean;
+  /** Heading + intro of the Install App instructions (admin-editable). */
+  installCopy?: InstallCopy;
 }) {
   const [open, setOpen] = useState(false);
+  // Menu → Install App (user-initiated only). Hidden inside the installed app.
+  const install = useInstallApp(installCopy);
+  const showInstall = !install.state.standalone;
   const pathname = usePathname();
   // Query-bearing links share a path with their base link, so they're never
   // path-highlighted (useSearchParams would deopt this layout-mounted header).
@@ -227,6 +235,19 @@ export function SiteHeader({
                     <User className="size-4" strokeWidth={1.75} />
                     {isLoggedIn ? "My account" : "Sign in or create account"}
                   </Link>
+                  {showInstall && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        close();
+                        void install.start();
+                      }}
+                      className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary"
+                    >
+                      <Download className="size-4" strokeWidth={1.75} />
+                      Install App
+                    </button>
+                  )}
                   <div className="flex items-center justify-between">
                     <Link
                       href="/assistant"
@@ -296,6 +317,17 @@ export function SiteHeader({
           <div className="mr-2 w-52 xl:mr-4 xl:w-80 2xl:w-96" data-heat="search-bar">
             <SearchBox inputClassName="h-10 border-border bg-oat/50 text-sm shadow-none placeholder:text-muted-foreground focus-visible:border-primary/50 focus-visible:shadow-none focus-visible:ring-2 focus-visible:ring-primary/15" />
           </div>
+          {showInstall && (
+            <button
+              type="button"
+              onClick={() => void install.start()}
+              title="Install the Nutriyet app"
+              className={cn(navLinkClass(false), "mr-1 gap-1.5 whitespace-nowrap px-1")}
+            >
+              <Download className="size-[18px]" strokeWidth={1.6} aria-hidden />
+              <span className="sr-only min-[1120px]:not-sr-only">Install App</span>
+            </button>
+          )}
           {isLoggedIn ? (
             <Link href="/account" className={iconBtn} aria-label="Account">
               <User strokeWidth={1.6} />
@@ -318,6 +350,8 @@ export function SiteHeader({
           </Link>
         </div>
       </div>
+      {/* Outside the drawer: closing the sheet must not unmount it. */}
+      {install.dialog}
     </header>
   );
 }

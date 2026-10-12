@@ -81,7 +81,18 @@ admin hasn't uploaded anything.
   SW installed on that origin (SW + Cache are per-origin and survive redeploys). Bump
   `VERSION` when changing SW behavior so `activate` purges old caches. Don't reintroduce
   unconditional `cache.put`.
-- PWA install prompt config lives in the `StoreSetting.pwa` blob (`lib/pwa-settings.ts`).
+- **Install is user-initiated only: Menu → Install App.** Nothing pops up by itself.
+  `lib/pwa-install.ts` is the single install store: it captures `beforeinstallprompt`
+  once at bundle load and always `preventDefault()`s it (suppressing Chrome's automatic
+  mini-infobar), registers `appinstalled` once, and tracks standalone mode. The site
+  header (`components/storefront/install-app.tsx`, desktop header + mobile drawer; hidden
+  inside the installed app) calls the native prompt on click when available; otherwise
+  it shows per-browser steps (iOS Share → Add to Home Screen, Android menu, Chrome/Edge
+  address-bar install, Safari Add to Dock, Firefox-desktop "not supported"), or "already
+  installed" once the browser has confirmed an install. "Installed" is only ever claimed
+  from `appinstalled`/standalone. The dialog's title/description come from the
+  `StoreSetting.pwa` blob (Admin → Appearance → Install App); its old enabled/remind/
+  button fields are retired (kept in the blob, unused).
   Push handlers in the SW are additive (see `docs/marketing.md` +
   [guides/push-notifications.md](guides/push-notifications.md)).
 

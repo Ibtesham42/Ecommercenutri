@@ -7,15 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { updatePwaSettings } from "@/lib/actions/admin/pwa";
 import { PwaPromptCard } from "@/components/storefront/pwa-install-prompt";
-import { PWA_REMIND_OPTIONS, type PwaSettings } from "@/lib/pwa-config";
+import type { PwaSettings } from "@/lib/pwa-config";
 
 /**
- * Admin → Appearance: PWA install-prompt settings — copy, reminder interval and
- * a live preview that renders the real storefront card. Saves apply to the
- * storefront immediately (root-layout revalidation), no redeploy.
+ * Admin → Appearance: copy for the storefront's "Install App" instructions.
+ * Installing is user-initiated only (Menu → Install App); nothing pops up by
+ * itself, so the old on/off, button-text and reminder settings are retired —
+ * their stored values are kept untouched in the blob but no longer used.
+ * Saves apply immediately (root-layout revalidation), no redeploy.
  */
 export function PwaPromptSettings({
   initial,
@@ -33,12 +34,10 @@ export function PwaPromptSettings({
   function save() {
     start(async () => {
       const res = await updatePwaSettings(form);
-      if (res.ok) toast.success("Install prompt settings saved");
+      if (res.ok) toast.success("Install App settings saved");
       else toast.error(res.error);
     });
   }
-
-  const field = "h-9 w-full rounded-md border bg-transparent px-3 text-sm";
 
   return (
     <section className="mt-8 rounded-2xl border p-5">
@@ -48,16 +47,14 @@ export function PwaPromptSettings({
             <Smartphone className="size-4" />
           </span>
           <div>
-            <h2 className="font-semibold">App install prompt</h2>
+            <h2 className="font-semibold">Install App</h2>
             <p className="text-xs text-muted-foreground">
-              Invites visitors to install the Nutriyet app (PWA). Never shown once installed.
+              Visitors install the Nutriyet app (PWA) from Menu → Install App — nothing pops up
+              automatically. This title and description head the install instructions shown when
+              their browser needs manual steps.
             </p>
           </div>
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <Switch checked={form.enabled} onCheckedChange={(v) => set("enabled", v)} />
-          {form.enabled ? "Enabled" : "Disabled"}
-        </label>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-2">
@@ -81,45 +78,6 @@ export function PwaPromptSettings({
               onChange={(e) => set("description", e.target.value)}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="pwa-install">Install button</Label>
-              <Input
-                id="pwa-install"
-                maxLength={30}
-                value={form.installText}
-                onChange={(e) => set("installText", e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="pwa-later">Later button</Label>
-              <Input
-                id="pwa-later"
-                maxLength={30}
-                value={form.laterText}
-                onChange={(e) => set("laterText", e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="pwa-remind">Remind again after</Label>
-            <select
-              id="pwa-remind"
-              className={field}
-              value={form.remindDays}
-              onChange={(e) => set("remindDays", Number(e.target.value))}
-            >
-              {PWA_REMIND_OPTIONS.map((d) => (
-                <option key={d} value={d}>
-                  {d} day{d === 1 ? "" : "s"}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-muted-foreground">
-              How long after &ldquo;{form.laterText || "Maybe Later"}&rdquo; before the prompt may
-              appear again.
-            </p>
-          </div>
           <Button onClick={save} disabled={pending} className="gap-2">
             {pending && <Loader2 className="size-4 animate-spin" />}
             Save
@@ -128,11 +86,11 @@ export function PwaPromptSettings({
 
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Live preview
+            Preview (iPhone instructions)
           </p>
           <div className="pointer-events-none rounded-2xl bg-muted/40 p-4">
             <PwaPromptCard
-              mode="native"
+              mode="ios"
               title={form.title || "Install Nutriyet App"}
               description={form.description || "Faster loading, works offline."}
               installText={form.installText || "Install Now"}

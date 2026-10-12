@@ -8,17 +8,19 @@ import { UtilityBar } from "@/components/storefront/utility-bar";
 import { getStoreSettings } from "@/lib/queries/settings";
 import { getCategoryTree } from "@/lib/queries/catalog";
 import { getGrowthSettings } from "@/lib/growth-settings";
+import { getPwaSettings } from "@/lib/pwa-settings";
 import { getCurrentUser } from "@/lib/auth";
 import { getNotifications, getUnreadCount } from "@/lib/queries/notifications";
 import type { BellNotification } from "@/components/account/notification-bell";
 
 /** Everything the shop chrome needs, fetched once per layout render. */
 export async function getChromeData() {
-  const [settings, growth, categoryTree, user] = await Promise.all([
+  const [settings, growth, categoryTree, user, pwa] = await Promise.all([
     getStoreSettings(),
     getGrowthSettings(),
     getCategoryTree(),
     getCurrentUser(),
+    getPwaSettings(),
   ]);
 
   // Notification bell (signed-in users). Best-effort — never blocks the layout.
@@ -37,7 +39,7 @@ export async function getChromeData() {
     unreadCount = unread;
   }
 
-  return { settings, growth, categoryTree, user, notifications, unreadCount };
+  return { settings, growth, categoryTree, user, notifications, unreadCount, pwa };
 }
 
 export type ChromeData = Awaited<ReturnType<typeof getChromeData>>;
@@ -50,7 +52,7 @@ export type ChromeData = Awaited<ReturnType<typeof getChromeData>>;
  * prompt, welcome popup) are passed by the storefront layout as `extras`.
  */
 export function StorefrontChrome({
-  data: { settings, growth, categoryTree, user, notifications, unreadCount },
+  data: { settings, growth, categoryTree, user, notifications, unreadCount, pwa },
   extras,
   children,
 }: {
@@ -99,6 +101,7 @@ export function StorefrontChrome({
         categories={categoryTree}
         freeShippingThreshold={settings.freeShippingThreshold}
         freeShippingEnabled={settings.freeShippingEnabled}
+        installCopy={{ title: pwa.title, description: pwa.description }}
       />
       {/* Bottom padding on mobile clears the fixed bottom tab bar (its 4rem
           height + the iPhone safe-area inset). Removed on md+ (no bottom bar). */}

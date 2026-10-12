@@ -75,8 +75,8 @@ channel that can reach them:
 - **Email** — a branded email. Needs an email address (all accounts have one). Free
   on the Resend free tier.
 - **Push** — a real phone/desktop notification, even when the site is closed. Only
-  reaches customers who clicked "Enable notifications" (Account page or the app
-  install prompt). Completely free (VAPID). See `push-notifications.md`.
+  reaches customers who clicked "Enable notifications" (Account page or the
+  storefront's one-time notifications card). Completely free (VAPID). See `push-notifications.md`.
 - **WhatsApp** — needs Meta WhatsApp Cloud API setup (§8). Recipients need a phone
   number on their profile/address.
 - **SMS** — needs Twilio setup (§8), paid per message. Also needs a phone number.
