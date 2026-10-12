@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import Link from "next/link";
 import { Eye, EyeOff, User, Mail, Lock } from "lucide-react";
 import { registerAction, type AuthActionState } from "@/lib/actions/auth";
 import { Label } from "@/components/ui/label";
@@ -62,7 +63,13 @@ function PasswordField({
   );
 }
 
-export function RegisterForm() {
+export function RegisterForm({
+  callbackUrl = "/account",
+  loginHref = "/login",
+}: {
+  callbackUrl?: string;
+  loginHref?: string;
+}) {
   const [state, action] = useActionState<AuthActionState, FormData>(
     registerAction,
     undefined,
@@ -95,6 +102,14 @@ export function RegisterForm() {
     <form action={action} onSubmit={onSubmit} className="space-y-4 max-sm:space-y-5" noValidate>
       {error && <AuthAlert kind="error">{error}</AuthAlert>}
       {state?.success && <AuthAlert kind="success">{state.success}</AuthAlert>}
+      {/* Came from a flow that needs sign-in (e.g. claiming a Spin & Win offer):
+          take them straight on to it. */}
+      {state?.success && callbackUrl !== "/account" && (
+        <Link href={loginHref} className="block text-center text-sm font-medium text-primary hover:underline">
+          Sign in to continue
+        </Link>
+      )}
+      <input type="hidden" name="callbackUrl" value={callbackUrl} />
 
       <div className="space-y-2">
         <Label htmlFor="name">Full name</Label>

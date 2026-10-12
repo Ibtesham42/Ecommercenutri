@@ -1,3 +1,4 @@
+import { hasLocalDb } from "@/lib/test/local-db-env"; // must stay first: pins DB + blanks live keys
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -10,16 +11,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
  *     npx vitest run lib/spin/service.int.test.ts
  */
 
-const url = process.env.SPIN_TEST_DATABASE_URL;
-const isLocal = !!url && /@(localhost|127\.0\.0\.1)(:\d+)?\//.test(url);
-if (url && !isLocal) throw new Error("SPIN_TEST_DATABASE_URL must point at localhost — refusing to run.");
+const isLocal = hasLocalDb;
 
 vi.mock("next/cache", () => ({
   revalidateTag: vi.fn(),
   unstable_cache: (fn: () => unknown) => fn,
 }));
 
-if (isLocal) process.env.DATABASE_URL = url;
 const ctx = isLocal
   ? { prisma: (await import("@/lib/prisma")).prisma, svc: await import("@/lib/spin/service") }
   : null;
@@ -43,9 +41,13 @@ describe.skipIf(!ctx)("spin service (integration)", () => {
       throw e;
     }
   }
-  const user = (email: string) => prisma.user.create({ data: { email } });
+  // Claiming requires a verified account; most tests use verified users.
+  const user = (email: string, verified = true) =>
+    prisma.user.create({ data: { email, emailVerified: verified ? new Date() : null } });
 
   beforeAll(async () => {
+    // Disposable local DB only (guarded above): clear orders other suites left.
+    await prisma.$executeRawUnsafe(`TRUNCATE "Order" CASCADE`);
     await prisma.spinResult.deleteMany();
     await prisma.spinCampaign.deleteMany();
     await prisma.coupon.deleteMany({ where: { code: { startsWith: "SPIN-" } } });
@@ -210,6 +212,76 @@ describe.skipIf(!ctx)("spin service (integration)", () => {
     expect(reassigned).toBe(true);
     expect(spin.productId).toBe(ids.C);
     expect(spin.percent).toBe(s.spin.percent);
+    expect(spin.reassignedFromProductId).toBe(ids.A); // shown to the shopper
+    const coupon = await prisma.coupon.findUniqueOrThrow({ where: { id: spin.couponId! } });
+    expect(coupon.value).toBe(s.spin.percent); // never a different discount
+    expect(coupon.variantIds).toEqual([ids.c1]); // only an approved variant
+  });
+
+  it("no approved replacement in stock → clear PRIZE_UNAVAILABLE, the win stays held for a retry", async () => {
+    const u = await user("none@spin.test");
+    const s = await spinWheel({ userId: null, anonId: "n0", claimToken: null, allowAnonymousSpin: allow, rng: rngAt(0.01) });
+    await prisma.productVariant.updateMany({ where: { id: { in: [ids.a1, ids.a2, ids.c1] } }, data: { stock: 0 } });
+    expect(await code(claimSpin({ userId: u.id, claimToken: s.claimToken! }))).toBe("PRIZE_UNAVAILABLE");
+    const row = await prisma.spinResult.findUniqueOrThrow({ where: { id: s.spin.id } });
+    expect(row.status).toBe("AWARDED");
+    expect(await prisma.coupon.count({ where: { ownerUserId: u.id } })).toBe(0);
+    expect((await prisma.spinCampaign.findUniqueOrThrow({ where: { id: campaignId } })).claimCount).toBe(0);
+    // Restocked → the same win can now be claimed.
+    await prisma.productVariant.update({ where: { id: ids.c1 }, data: { stock: 40 } });
+    expect(await code(claimSpin({ userId: u.id, claimToken: s.claimToken! }))).toBe("OK");
+  });
+
+  it("a product removed from the campaign's approved list is never awarded at claim", async () => {
+    const u = await user("withdrawn@spin.test");
+    const s = await spinWheel({ userId: null, anonId: "w", claimToken: null, allowAnonymousSpin: allow, rng: rngAt(0.01) });
+    expect(s.spin.productId).toBe(ids.A);
+    await prisma.spinCampaign.update({ where: { id: campaignId }, data: { eligibleVariantIds: [ids.c1] } });
+    const { spin } = await claimSpin({ userId: u.id, claimToken: s.claimToken! });
+    expect(spin.productId).toBe(ids.C);
+  });
+
+  it("claimed-but-unused offers reserve stock: the wheel stops offering a fully promised product", async () => {
+    // Only A eligible, surplus 3 (stock 8 − reserve 5).
+    await prisma.spinCampaign.update({ where: { id: campaignId }, data: { eligibleVariantIds: [ids.a1] } });
+    await prisma.productVariant.update({ where: { id: ids.a1 }, data: { stock: 8 } });
+    for (let i = 0; i < 3; i++) {
+      const u = await user(`res${i}@spin.test`);
+      expect(await code(spinWheel({ userId: u.id, anonId: null, claimToken: null, allowAnonymousSpin: allow }))).toBe("OK");
+    }
+    expect(await code(spinWheel({ userId: null, anonId: "r4", claimToken: null, allowAnonymousSpin: allow }))).toBe("NO_STOCK");
+    // A redeemed (used) offer no longer reserves anything.
+    const one = await prisma.spinResult.findFirstOrThrow({ where: { status: "CLAIMED" } });
+    await prisma.coupon.update({ where: { id: one.couponId! }, data: { usedCount: 1 } });
+    expect(await code(spinWheel({ userId: null, anonId: "r5", claimToken: null, allowAnonymousSpin: allow }))).toBe("OK");
+  });
+
+  it("unverified accounts can't claim; the win is held and claimable after verification", async () => {
+    const u = await user("unverified@spin.test", false);
+    const s = await spinWheel({ userId: null, anonId: "uv", claimToken: null, allowAnonymousSpin: allow, rng: rngAt(0.3) });
+    expect(await code(claimSpin({ userId: u.id, claimToken: s.claimToken! }))).toBe("UNVERIFIED");
+    expect((await prisma.spinResult.findUniqueOrThrow({ where: { id: s.spin.id } })).status).toBe("AWARDED");
+    expect(await prisma.coupon.count({ where: { ownerUserId: u.id } })).toBe(0);
+
+    // A phone saved on the profile without OTP verification doesn't count.
+    await prisma.user.update({ where: { id: u.id }, data: { phone: "+919811111111" } });
+    expect(await code(claimSpin({ userId: u.id, claimToken: s.claimToken! }))).toBe("UNVERIFIED");
+
+    await prisma.user.update({ where: { id: u.id }, data: { phoneVerified: new Date() } });
+    expect(await code(claimSpin({ userId: u.id, claimToken: s.claimToken! }))).toBe("OK");
+  });
+
+  it("an unverified signed-in spin is held on the account, then claimed without a cookie", async () => {
+    const u = await user("held@spin.test", false);
+    const s = await spinWheel({ userId: u.id, anonId: null, claimToken: null, allowAnonymousSpin: allow, rng: rngAt(0.3) });
+    expect(s.spin).toMatchObject({ status: "AWARDED", userId: u.id, couponId: null });
+    // Replays return the held win; still one spin per account.
+    const again = await spinWheel({ userId: u.id, anonId: null, claimToken: null, allowAnonymousSpin: allow });
+    expect(again.spin.id).toBe(s.spin.id);
+    expect(await code(claimSpin({ userId: u.id }))).toBe("UNVERIFIED");
+    await prisma.user.update({ where: { id: u.id }, data: { emailVerified: new Date() } });
+    const { spin } = await claimSpin({ userId: u.id });
+    expect(spin).toMatchObject({ id: s.spin.id, status: "CLAIMED" });
   });
 
   it("refuses to spin when nothing is in stock or no campaign is live", async () => {

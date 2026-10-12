@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Loader2, LogIn, ShoppingBag } from "lucide-react";
+import { ArrowRight, Loader2, LogIn, MailCheck, ShieldCheck, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CopyCouponButton } from "@/components/storefront/copy-coupon-button";
 import { SpinWheel, rotationFor } from "@/components/storefront/spin/spin-wheel";
-import { claimSpinAction, spinAction } from "@/lib/actions/spin";
+import { claimSpinAction, sendSpinVerificationEmail, spinAction } from "@/lib/actions/spin";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { prefersReducedMotion } from "@/lib/motion";
 import type { PublicCampaign, SpinView } from "@/lib/spin/service";
@@ -21,11 +21,15 @@ export function SpinGame({
   initialView,
   signedIn,
   pendingClaim,
+  needsVerification,
+  phoneVerifyAvailable,
 }: {
   campaign: PublicCampaign;
   initialView: SpinView | null;
   signedIn: boolean;
   pendingClaim: boolean;
+  needsVerification: boolean;
+  phoneVerifyAvailable: boolean;
 }) {
   const router = useRouter();
   const percents = campaign.percents;
@@ -36,7 +40,6 @@ export function SpinGame({
     initialView ? (signedIn && pendingClaim ? "claiming" : "done") : "idle",
   );
   const [error, setError] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
   const [rotation, setRotation] = useState(() =>
     initialView ? rotationFor(indexOf(initialView.percent), percents.length, 0, 0) : 0,
   );
@@ -44,6 +47,8 @@ export function SpinGame({
   // Why the last claim attempt failed. Terminal codes end the claim flow; any
   // other failure (network, timeout) offers a retry — never an endless spinner.
   const [claimError, setClaimError] = useState<string | null>(null);
+  // Signed in, but claiming needs a verified email/phone first (server-enforced).
+  const [unverified, setUnverified] = useState(needsVerification);
   const claimedOnce = useRef(false);
 
   async function claim() {
@@ -52,13 +57,11 @@ export function SpinGame({
     setClaimError(null);
     const res = await claimSpinAction();
     if (res.ok) {
-      setView(res.view);
-      if (res.reassigned) {
-        setNote(
-          `The product you won just sold out, so we've moved your ${res.view.percent}% offer to ${res.view.productName}.`,
-        );
-      }
+      setView(res.view); // a moved offer explains itself via view.reassignedFrom
+      setUnverified(false);
       router.refresh();
+    } else if (res.code === "UNVERIFIED") {
+      setUnverified(true); // the verify panel explains + offers the recovery path
     } else {
       setError(res.error);
       setClaimError(res.code ?? "RETRY");
@@ -85,6 +88,7 @@ export function SpinGame({
       setPhase("idle");
       return;
     }
+    if (res.needsVerification) setUnverified(true);
     const reduced = prefersReducedMotion();
     const jitter = (Math.random() - 0.5) * 2; // cosmetic only
     setDuration(reduced ? 0 : SPIN_MS);
@@ -116,8 +120,16 @@ export function SpinGame({
             </p>
           )}
           {phase === "spinning" && <p className="text-[15px] text-muted-foreground">Spinning…</p>}
-          {showResult && <ResultPanel view={view} signedIn={signedIn} claimError={claimError} onClaim={claim} />}
-          {note && <p className="mt-4 rounded-lg bg-oat px-4 py-3 text-sm text-oat-foreground">{note}</p>}
+          {showResult && (
+            <ResultPanel
+              view={view}
+              signedIn={signedIn}
+              unverified={unverified}
+              phoneVerifyAvailable={phoneVerifyAvailable}
+              claimError={claimError}
+              onClaim={claim}
+            />
+          )}
           {error && (
             <p role="alert" className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
               {error}{" "}
@@ -141,7 +153,7 @@ export function SpinGame({
             </Button>
             <p className="mt-3 text-sm text-muted-foreground">
               {signedIn
-                ? "One spin per account. Your offer is saved to your account straight away."
+                ? "One spin per account. Your offer is saved to your account straight away once your email or phone is verified."
                 : `One spin per account. Sign in after you spin to claim — your win is held on this device for ${campaign.claimWindowHours} hours.`}
             </p>
           </div>
@@ -157,14 +169,70 @@ export function SpinGame({
 
 const TERMINAL_CLAIM_ERRORS = new Set(["EXPIRED", "NOT_FOUND", "ALREADY_CLAIMED", "CLAIM_LIMIT"]);
 
+/** Recovery path for the verified-claim rule: verify by email link or phone OTP, then claim. */
+function VerifyToClaim({
+  claimBy,
+  phoneVerifyAvailable,
+  onClaim,
+}: {
+  claimBy: string;
+  phoneVerifyAvailable: boolean;
+  onClaim: () => void;
+}) {
+  const [sending, setSending] = useState(false);
+  const [mail, setMail] = useState<{ ok: boolean; text: string } | null>(null);
+
+  async function sendLink() {
+    setSending(true);
+    const res = await sendSpinVerificationEmail();
+    setMail(res.ok ? { ok: true, text: res.message } : { ok: false, text: res.error });
+    setSending(false);
+  }
+
+  return (
+    <div className="mt-5 rounded-xl border border-border bg-card p-4 sm:p-5">
+      <p className="flex items-center gap-2 font-medium text-foreground">
+        <ShieldCheck className="size-4 text-primary" aria-hidden /> Verify your account to claim
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        To keep offers fair, we save Spin &amp; Win offers only to accounts with a verified email address or
+        phone number. Your win is held for you until {formatDateTime(claimBy)}.
+      </p>
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <Button type="button" variant="outline" onClick={sendLink} disabled={sending} className="h-11 rounded-lg">
+          {sending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <MailCheck className="size-4" aria-hidden />}
+          Email me a verification link
+        </Button>
+        {phoneVerifyAvailable && (
+          <Button asChild variant="outline" className="h-11 rounded-lg">
+            <Link href="/account/profile">Verify my phone number</Link>
+          </Button>
+        )}
+        <Button type="button" onClick={onClaim} className="h-11 rounded-lg">
+          I&apos;ve verified — claim my offer
+        </Button>
+      </div>
+      {mail && (
+        <p role="status" className={`mt-3 text-sm ${mail.ok ? "text-foreground" : "text-destructive"}`}>
+          {mail.text}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ResultPanel({
   view,
   signedIn,
+  unverified,
+  phoneVerifyAvailable,
   claimError,
   onClaim,
 }: {
   view: SpinView;
   signedIn: boolean;
+  unverified: boolean;
+  phoneVerifyAvailable: boolean;
   claimError: string | null;
   onClaim: () => void;
 }) {
@@ -191,6 +259,12 @@ function ResultPanel({
         {view.percent}% off {view.productName}
       </p>
       <p className="mt-1 text-[15px] text-muted-foreground">Applies to {view.productName}{sizes}.</p>
+      {view.reassignedFrom && (
+        <p className="mt-4 rounded-lg bg-oat px-4 py-3 text-sm text-oat-foreground">
+          {view.reassignedFrom} sold out before your offer was claimed, so we moved your {view.percent}% offer
+          to {view.productName} — same discount.
+        </p>
+      )}
 
       {view.status === "AWARDED" && (
         <>
@@ -200,9 +274,12 @@ function ResultPanel({
               {formatDateTime(view.claimBy)}.
             </p>
           )}
+          {signedIn && unverified && (
+            <VerifyToClaim claimBy={view.claimBy} phoneVerifyAvailable={phoneVerifyAvailable} onClaim={onClaim} />
+          )}
           {/* Signed in but not (yet) claimed: the auto-claim failed or never ran.
               Always offer an explicit action rather than a spinner. */}
-          {signedIn && !(claimError && TERMINAL_CLAIM_ERRORS.has(claimError)) && (
+          {signedIn && !unverified && !(claimError && TERMINAL_CLAIM_ERRORS.has(claimError)) && (
             <Button type="button" onClick={onClaim} className="mt-5 h-12 w-full rounded-lg px-6 text-[15px] sm:w-auto">
               {claimError ? "Try again" : "Claim my offer"}
             </Button>

@@ -74,6 +74,9 @@ export type CreditNoteData = {
     logo: string | null;
   };
   items: { productName: string; variantLabel: string; quantity: number; unitPrice: number }[];
+  /** Spin & Win offer discount on the returned units (0 = none) — shown so the
+   *  item total reconciles with the amount refunded. */
+  offerDiscount: number;
   amount: number;
 };
 
@@ -114,6 +117,7 @@ export async function getCreditNoteData(returnId: string): Promise<CreditNoteDat
       quantity: i.quantity,
       unitPrice: i.unitPrice,
     })),
+    offerDiscount: ret.items.reduce((s, i) => s + i.discount, 0),
     amount: cn.amount || ret.refundedAmount,
   };
 }

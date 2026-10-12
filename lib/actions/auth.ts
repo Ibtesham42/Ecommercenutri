@@ -63,9 +63,13 @@ export async function registerAction(
 
     // Best-effort verification email — a misconfigured/unverified email provider
     // must never crash a successful sign-up (the account already exists).
+    // A non-default callback (e.g. /spin) rides along so the link returns there.
+    const next = safeRedirectPath(formData.get("callbackUrl") as string | null, "/account");
     try {
       const token = await createVerificationToken(email);
-      const url = `${env.appUrl}/verify-email?token=${token}`;
+      const url =
+        `${env.appUrl}/verify-email?token=${token}` +
+        (next === "/account" ? "" : `&next=${encodeURIComponent(next)}`);
       await sendEmail({ to: email, ...verificationEmail(url, name) });
     } catch (mailErr) {
       console.error("[register] verification email failed:", mailErr);

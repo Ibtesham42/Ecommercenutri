@@ -7,8 +7,10 @@ import { buildMetadata } from "@/lib/seo";
 import { formatPrice } from "@/lib/format";
 import { productCardSelect } from "@/lib/queries/products";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
+import { isPhoneAuthEnabled } from "@/lib/otp";
 import {
   SPIN_COOKIE,
+  canClaimSpin,
   getLiveCampaign,
   hashToken,
   toPublicCampaign,
@@ -37,15 +39,17 @@ export default async function SpinPage() {
   const [user, campaign, jar] = await Promise.all([getCurrentUser(), getLiveCampaign(), cookies()]);
 
   const token = jar.get(SPIN_COOKIE)?.value;
-  const [userSpin, tokenSpin] = await Promise.all([
+  const [userSpin, tokenSpin, verified] = await Promise.all([
     user && campaign
       ? prisma.spinResult.findUnique({ where: { campaignId_userId: { campaignId: campaign.id, userId: user.id } } })
       : null,
     token ? prisma.spinResult.findUnique({ where: { tokenHash: hashToken(token) } }) : null,
+    user ? canClaimSpin(user.id) : false,
   ]);
-  const { spin, pendingClaim } = resolveSpinPage({
+  const { spin, pendingClaim, needsVerification } = resolveSpinPage({
     liveCampaignId: campaign?.id ?? null,
     signedIn: Boolean(user),
+    verified,
     userSpin,
     tokenSpin,
   });
@@ -79,6 +83,8 @@ export default async function SpinPage() {
               initialView={view}
               signedIn={Boolean(user)}
               pendingClaim={pendingClaim}
+              needsVerification={needsVerification}
+              phoneVerifyAvailable={isPhoneAuthEnabled()}
             />
           ) : view ? (
             // Campaign paused/ended but this browser still holds a win — it
@@ -98,6 +104,8 @@ export default async function SpinPage() {
               initialView={view}
               signedIn={Boolean(user)}
               pendingClaim={pendingClaim}
+              needsVerification={needsVerification}
+              phoneVerifyAvailable={isPhoneAuthEnabled()}
             />
           ) : (
             <EmptyState

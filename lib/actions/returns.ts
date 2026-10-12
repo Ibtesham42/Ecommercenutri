@@ -10,6 +10,7 @@ import {
 } from "@/lib/validations/returns";
 import { getReturnEligibility, generateReturnNumber, transitionReturnStatus } from "@/lib/returns";
 import { canCustomerCancelReturn } from "@/lib/return-status";
+import { returnDiscountShare } from "@/lib/return-refund";
 import { returnStatusEmail } from "@/lib/emails";
 import { sendEmail } from "@/lib/email";
 import { notify } from "@/lib/notifications";
@@ -55,11 +56,15 @@ export async function requestReturn(input: unknown): Promise<ReturnResult> {
     if (sel.quantity > e.returnableQty) {
       return { ok: false, error: `You can return at most ${e.returnableQty} × ${e.productName}.` };
     }
-    refundAmount += e.unitPrice * sel.quantity;
+    // Spin & Win lines refund what was actually paid for them (their offer
+    // discount is deducted); every other line refunds unitPrice × qty as before.
+    const discount = returnDiscountShare(e, e.orderedQty - e.returnableQty, sel.quantity);
+    refundAmount += e.unitPrice * sel.quantity - discount;
     lines.push({
       orderItemId: e.orderItemId,
       quantity: sel.quantity,
       unitPrice: e.unitPrice,
+      discount,
       productName: e.productName,
       variantLabel: e.variantLabel,
       image: e.image,

@@ -157,6 +157,13 @@ function CreditNoteDocument({ data, withLogo }: { data: CreditNoteData; withLogo
           </View>
         ))}
 
+        {data.offerDiscount > 0 ? (
+          <View style={s.tr}>
+            <Text style={s.cItem}>Less: Spin &amp; Win offer discount on these items</Text>
+            <Text style={s.cAmt}>- {rs(data.offerDiscount)}</Text>
+          </View>
+        ) : null}
+
         <View style={s.totalLine}>
           <Text style={s.bold}>Total refunded</Text>
           <Text style={s.bold}>{rs(data.amount)}</Text>

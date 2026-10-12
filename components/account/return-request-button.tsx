@@ -18,6 +18,7 @@ import {
 import { ReturnMediaUpload } from "@/components/account/return-media-upload";
 import { requestReturn } from "@/lib/actions/returns";
 import { formatPrice } from "@/lib/format";
+import { returnLineValue } from "@/lib/return-refund";
 import { cldUrl } from "@/lib/cld";
 import type { ReturnableItem } from "@/lib/returns";
 
@@ -49,8 +50,9 @@ export function ReturnRequestButton({
   const [pending, setPending] = useState(false);
 
   const selected = items.filter((i) => (qty[i.orderItemId] ?? 0) > 0);
+  // Same maths the server stores (Spin & Win lines net of their offer discount).
   const refundAmount = selected.reduce(
-    (s, i) => s + i.unitPrice * (qty[i.orderItemId] ?? 0),
+    (s, i) => s + returnLineValue(i, i.orderedQty - i.returnableQty, qty[i.orderItemId] ?? 0),
     0,
   );
 

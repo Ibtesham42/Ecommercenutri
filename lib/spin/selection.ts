@@ -11,6 +11,10 @@
  *     — so high-stock products are offered more often, low-stock products
  *     proportionally less, and nothing at/below the reserve ever.
  *     `weightCap` stops one huge-stock SKU from monopolising the wheel.
+ *     Outstanding offers — claimed, still usable, not yet redeemed — are
+ *     promises against that same stock, so each one reserves a unit of its
+ *     product: the surplus is reduced by `reserved` before weighting, and a
+ *     product whose surplus is fully promised is not offered at all.
  *  3. The discount tier is drawn independently by its configured weight.
  */
 
@@ -30,6 +34,8 @@ export type SelectionConfig = {
   eligibleVariantIds: readonly string[];
   minStock: number;
   weightCap: number;
+  /** productId → outstanding (claimed, unused, unexpired) offers on it. */
+  reserved?: ReadonlyMap<string, number>;
 };
 
 /** Random source in [0, 1). Injected so tests are deterministic. */
@@ -49,6 +55,8 @@ export function productCandidates(variants: readonly VariantStock[], cfg: Select
   }
   const cap = Math.max(1, cfg.weightCap);
   return [...byProduct.values()]
+    .map((c) => ({ ...c, weight: c.weight - Math.max(0, cfg.reserved?.get(c.productId) ?? 0) }))
+    .filter((c) => c.weight > 0)
     .map((c) => ({ ...c, weight: Math.min(c.weight, cap) }))
     .sort((a, b) => a.productId.localeCompare(b.productId)); // stable order → reproducible draws
 }

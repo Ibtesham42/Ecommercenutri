@@ -13,12 +13,21 @@ import { RegisterForm } from "@/components/auth/register-form";
 import { GoogleButton } from "@/components/auth/google-button";
 import { getCurrentUser } from "@/lib/auth";
 import { isConfigured } from "@/lib/env";
+import { safeRedirectPath } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Sign Up" };
 
-export default async function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ callbackUrl?: string }>;
+}) {
+  // Where to land after sign-up (e.g. /spin to claim a pending win). Default
+  // /account keeps every existing link behaving exactly as before.
+  const callbackUrl = safeRedirectPath((await searchParams).callbackUrl, "/account");
   const user = await getCurrentUser();
-  if (user) redirect("/account");
+  if (user) redirect(callbackUrl);
+  const loginHref = callbackUrl === "/account" ? "/login" : `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`;
 
   return (
     <Card className="max-sm:animate-fade-up max-sm:rounded-3xl max-sm:shadow-elev-2 max-sm:ring-foreground/5 max-sm:[--card-spacing:--spacing(6)]">
@@ -35,7 +44,7 @@ export default async function RegisterPage() {
       <CardContent className="space-y-4">
         {isConfigured.google() && (
           <>
-            <GoogleButton />
+            <GoogleButton callbackUrl={callbackUrl === "/account" ? undefined : callbackUrl} />
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
@@ -46,11 +55,11 @@ export default async function RegisterPage() {
             </div>
           </>
         )}
-        <RegisterForm />
+        <RegisterForm callbackUrl={callbackUrl} loginHref={loginHref} />
       </CardContent>
       <CardFooter className="justify-center text-sm text-muted-foreground">
         Already have an account?&nbsp;
-        <Link href="/login" className="font-medium text-primary hover:underline">
+        <Link href={loginHref} className="font-medium text-primary hover:underline">
           Sign in
         </Link>
       </CardFooter>

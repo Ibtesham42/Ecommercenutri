@@ -34,6 +34,7 @@ export type ReturnableItem = {
   unitPrice: number; // paise
   orderedQty: number;
   returnableQty: number; // ordered minus already-requested (open/approved/refunded)
+  lineDiscount: number; // paise, Spin & Win discount on the whole line (0 = none)
 };
 
 export type ReturnEligibility = {
@@ -119,6 +120,7 @@ export async function getReturnEligibility(orderId: string): Promise<ReturnEligi
       unitPrice: it.price,
       orderedQty: it.quantity,
       returnableQty,
+      lineDiscount: it.discount,
     });
   }
 

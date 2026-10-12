@@ -14,7 +14,7 @@ const jar = {
 };
 vi.mock("next/headers", () => ({
   cookies: async () => jar,
-  headers: async () => new Headers({ "x-forwarded-for": "203.0.113.7" }),
+  headers: async () => new Headers({ "x-forwarded-for": "203.0.113.7", "user-agent": "TestAgent/1.0" }),
 }));
 vi.mock("next/cache", () => ({ unstable_cache: (fn: () => unknown) => fn, revalidateTag: vi.fn() }));
 
@@ -22,8 +22,12 @@ const getCurrentUser = vi.fn();
 vi.mock("@/lib/auth", () => ({ getCurrentUser }));
 
 const checkRateLimit = vi.fn();
-vi.mock("@/lib/rate-limit", () => ({ checkRateLimit, limiters: { spin: {}, spinClaim: {} } }));
+const limiters = { spinIp: { name: "ip" }, spinBrowser: { name: "browser" }, spinClaim: {} };
+vi.mock("@/lib/rate-limit", () => ({ checkRateLimit, limiters }));
 vi.mock("@/lib/recommendations/events", () => ({ trackEvent: vi.fn() }));
+vi.mock("server-only", () => ({}));
+vi.mock("@/lib/tokens", () => ({ createVerificationToken: vi.fn() }));
+vi.mock("@/lib/email", () => ({ sendEmail: vi.fn() }));
 
 const LIVE = {
   id: "camp_live",
@@ -65,7 +69,7 @@ const spinRow = (over: Record<string, unknown> = {}) => ({
 
 const prismaMock = {
   spinCampaign: { findMany: vi.fn() },
-  spinResult: { findUnique: vi.fn(), create: vi.fn() },
+  spinResult: { findUnique: vi.fn(), create: vi.fn(), groupBy: vi.fn() },
   productVariant: { findMany: vi.fn() },
   product: { findUnique: vi.fn() },
   coupon: { findUnique: vi.fn() },
@@ -73,16 +77,18 @@ const prismaMock = {
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 
 const { spinAction } = await import("@/lib/actions/spin");
+const ANON = "5f0c1a2b-3c4d-4e5f-8a9b-0c1d2e3f4a5b"; // a real browser id is a random UUID
 
 beforeEach(() => {
   vi.clearAllMocks();
   cookieStore.clear();
-  cookieStore.set("nut_anon", "anon_1");
+  cookieStore.set("nut_anon", ANON);
   getCurrentUser.mockResolvedValue(null);
   checkRateLimit.mockResolvedValue({ success: true });
   prismaMock.spinCampaign.findMany.mockResolvedValue([LIVE]);
   prismaMock.spinResult.findUnique.mockResolvedValue(null);
   prismaMock.spinResult.create.mockImplementation(async ({ data }) => spinRow(data));
+  prismaMock.spinResult.groupBy.mockResolvedValue([]); // no outstanding offers reserved
   // findMany serves both loadVariantStock (stock fields) and toSpinView (labels).
   prismaMock.productVariant.findMany.mockResolvedValue([
     { id: "v1", productId: "p1", stock: 50, isActive: true, product: { isActive: true }, weightLabel: "100g" },
@@ -98,8 +104,7 @@ describe("spinAction rate limiting (B1)", () => {
     const res = await spinAction();
     expect(res).toMatchObject({ ok: false, code: "RATE_LIMITED" });
     expect(prismaMock.spinResult.create).not.toHaveBeenCalled();
-    expect(checkRateLimit).toHaveBeenCalledWith(expect.anything(), "ip:203.0.113.7");
-    expect(checkRateLimit).toHaveBeenCalledWith(expect.anything(), "anon:anon_1");
+    expect(checkRateLimit).toHaveBeenCalledWith(limiters.spinBrowser, `anon:${ANON}`);
   });
 
   it("does NOT let a forged/garbage cookie bypass the limiter", async () => {
@@ -152,5 +157,39 @@ describe("spinAction rate limiting (B1)", () => {
     const res = await spinAction();
     expect(res.ok).toBe(true);
     expect(checkRateLimit).not.toHaveBeenCalled();
+  });
+});
+
+describe("spin rate limits (Phase 2C): 50/IP/day + 3/browser/day", () => {
+  it("checks the browser limit first; a browser out of spins doesn't use up its IP's allowance", async () => {
+    checkRateLimit.mockImplementation(async (l) => ({ success: l !== limiters.spinBrowser }));
+    expect(await spinAction()).toMatchObject({ ok: false, code: "RATE_LIMITED" });
+    expect(checkRateLimit).toHaveBeenCalledTimes(1);
+    expect(checkRateLimit).not.toHaveBeenCalledWith(limiters.spinIp, expect.anything());
+  });
+
+  it("enforces the per-IP limit even for a fresh browser", async () => {
+    checkRateLimit.mockImplementation(async (l) => ({ success: l !== limiters.spinIp }));
+    expect(await spinAction()).toMatchObject({ ok: false, code: "RATE_LIMITED" });
+    expect(checkRateLimit).toHaveBeenCalledWith(limiters.spinIp, "ip:203.0.113.7");
+    expect(prismaMock.spinResult.create).not.toHaveBeenCalled();
+  });
+
+  it("a missing or malformed browser id does not escape the per-browser limit", async () => {
+    for (const anon of [null, "x", "../../etc", "a".repeat(300)]) {
+      vi.clearAllMocks();
+      checkRateLimit.mockResolvedValue({ success: false });
+      cookieStore.clear();
+      if (anon) cookieStore.set("nut_anon", anon);
+      expect(await spinAction()).toMatchObject({ ok: false, code: "RATE_LIMITED" });
+      const key = checkRateLimit.mock.calls[0]?.[1] as string;
+      expect(key).toMatch(/^fp:[a-f0-9]{32}$/); // IP+UA hash, not the cookie value
+      expect(prismaMock.spinResult.create).not.toHaveBeenCalled();
+    }
+  });
+
+  it("uses the configured daily allowances", async () => {
+    const { SPINS_PER_IP_PER_DAY, SPINS_PER_BROWSER_PER_DAY } = await import("@/lib/spin/limits");
+    expect([SPINS_PER_IP_PER_DAY, SPINS_PER_BROWSER_PER_DAY]).toEqual([50, 3]);
   });
 });

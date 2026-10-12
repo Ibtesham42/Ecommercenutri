@@ -6,23 +6,29 @@
  * Lifecycle: AWARDED (anonymous win, claim token in an httpOnly cookie, hash
  * in the DB) → CLAIMED (attached to an account + personal single-use Coupon)
  * → REDEEMED (an order using that coupon was confirmed). An unclaimed win past
- * its claim window is EXPIRED. Signed-in shoppers go straight to CLAIMED.
+ * its claim window is EXPIRED. Claiming needs a VERIFIED email or phone:
+ * verified signed-in shoppers go straight to CLAIMED; an unverified account's
+ * win is held AWARDED (bound to the account) until it verifies.
  *
  * Concurrency: one spin per (campaign, user) is a DB unique constraint;
  * claims are a conditional `updateMany` on `status: AWARDED` inside a
- * transaction (loser matches 0 rows → rolls back its coupon + claim count);
- * the campaign claim cap uses the same guarded-increment pattern as
- * `confirmOrder`'s coupon usage limit. Redemption-once is the coupon's own
- * `usageLimit: 1`, enforced atomically by `confirmOrder`.
+ * transaction (loser matches 0 rows → rolls back its coupon + claim count).
+ * Claims are serialised by a transaction-scoped advisory lock so the stock
+ * re-check sees every earlier claim's reservation (claims are rare; the lock
+ * is held for a few short queries). The campaign claim cap is a single
+ * guarded increment compared against the row's live `maxClaims` at write
+ * time. Redemption-once is the coupon's own `usageLimit: 1`, enforced
+ * atomically by `confirmOrder`.
  */
 
 import { createHash, randomBytes } from "node:crypto";
 import { customAlphabet } from "nanoid";
 import { Prisma, type SpinCampaign, type SpinResult } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { withDbRetry } from "@/lib/db-retry";
+import { TX_OPTIONS, withDbRetry, withTxRetry } from "@/lib/db-retry";
 import { CACHE_TAGS, cachedQuery } from "@/lib/cache";
 import { resolvePrizes, type PrizeTier } from "@/lib/spin/config";
+import { isPlaceholderEmail } from "@/lib/phone-account";
 import {
   drawPrize,
   productCandidates,
@@ -54,7 +60,9 @@ export type SpinErrorCode =
   | "ALREADY_CLAIMED"
   | "CLAIM_LIMIT"
   | "NOT_FOUND"
-  | "RATE_LIMITED";
+  | "RATE_LIMITED"
+  | "PRIZE_UNAVAILABLE"
+  | "UNVERIFIED";
 
 export class SpinError extends Error {
   constructor(
@@ -74,10 +82,51 @@ const MESSAGES: Record<SpinErrorCode, string> = {
   CLAIM_LIMIT: "All offers for this campaign have been claimed. Thanks for playing!",
   NOT_FOUND: "We couldn't find a win to claim. Give the wheel a spin first.",
   RATE_LIMITED: "You've spun a few times already today. Please sign in to play.",
+  PRIZE_UNAVAILABLE:
+    "The product you won has just sold out, and no other offer product is available right now. " +
+    "Your win is saved — please try claiming again a little later, before your claim deadline.",
+  UNVERIFIED:
+    "Please verify your email address or phone number to claim this offer. Your win is held for you until the claim deadline.",
 };
 
 function fail(code: SpinErrorCode): never {
   throw new SpinError(code, MESSAGES[code]);
+}
+
+// ---------------------------------------------------------------------------
+// Claim eligibility: a verified email or a verified phone
+// ---------------------------------------------------------------------------
+
+export type Claimant = {
+  email: string;
+  emailVerified: Date | null;
+  phone: string | null;
+  phoneVerified: Date | null;
+};
+
+/**
+ * Verified = the address the account holds now was confirmed through the
+ * email link (changing it clears `emailVerified`), or the phone number on the
+ * account was confirmed by OTP. A phone merely saved on the profile, or a
+ * phone-login placeholder email, never counts.
+ */
+export function isVerifiedClaimant(u: Claimant | null): boolean {
+  if (!u) return false;
+  const email = Boolean(u.emailVerified) && !isPlaceholderEmail(u.email);
+  const phone = Boolean(u.phoneVerified) && Boolean(u.phone);
+  return email || phone;
+}
+
+async function loadClaimant(db: Tx, userId: string): Promise<Claimant | null> {
+  return db.user.findUnique({
+    where: { id: userId },
+    select: { email: true, emailVerified: true, phone: true, phoneVerified: true },
+  });
+}
+
+/** Can this account claim Spin & Win offers right now? */
+export async function canClaimSpin(userId: string): Promise<boolean> {
+  return isVerifiedClaimant(await loadClaimant(prisma, userId));
 }
 
 // ---------------------------------------------------------------------------
@@ -167,9 +216,29 @@ async function loadVariantStock(
   }));
 }
 
-function selectionConfig(c: SpinCampaign) {
-  return { eligibleVariantIds: c.eligibleVariantIds, minStock: c.minStock, weightCap: c.weightCap };
+/**
+ * Outstanding offers per product: claimed, coupon still active, unused and
+ * unexpired. Each is a promise of one unit, so selection treats it as reserved
+ * stock (see lib/spin/selection.ts). Counted across campaigns — stock is shared.
+ */
+export async function loadReservations(db: Tx, now: Date): Promise<Map<string, number>> {
+  const rows = await db.spinResult.groupBy({
+    by: ["productId"],
+    where: {
+      status: "CLAIMED",
+      coupon: { isActive: true, usedCount: 0, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+    },
+    _count: { _all: true },
+  });
+  return new Map(rows.map((r) => [r.productId, r._count._all]));
 }
+
+function selectionConfig(c: SpinCampaign, reserved?: ReadonlyMap<string, number>) {
+  return { eligibleVariantIds: c.eligibleVariantIds, minStock: c.minStock, weightCap: c.weightCap, reserved };
+}
+
+/** Arbitrary constant key: every Spin & Win claim takes this lock for its transaction. */
+const CLAIM_LOCK_KEY = 7_220_416_001;
 
 function isUniqueViolation(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
@@ -222,9 +291,15 @@ export async function spinWheel(input: {
     const byToken = await prisma.spinResult.findUnique({ where: { tokenHash: hashToken(input.claimToken) } });
     if (byToken && byToken.campaignId === campaign.id) {
       // Signed in with an unclaimed anonymous win → claim that one, don't re-roll.
+      // Unverified: keep holding it on this device until the account verifies.
       if (input.userId && byToken.status === "AWARDED") {
-        const claimed = await claimSpin({ userId: input.userId, claimToken: input.claimToken, now, rng });
-        return { spin: claimed.spin, created: false };
+        try {
+          const claimed = await claimSpin({ userId: input.userId, claimToken: input.claimToken, now, rng });
+          return { spin: claimed.spin, created: false };
+        } catch (err) {
+          if (err instanceof SpinError && err.code === "UNVERIFIED") return { spin: byToken, created: false };
+          throw err;
+        }
       }
       return { spin: byToken, created: false };
     }
@@ -235,28 +310,36 @@ export async function spinWheel(input: {
   if (!input.userId && !(await input.allowAnonymousSpin())) fail("RATE_LIMITED");
 
   const tiers = resolvePrizes(campaign.prizes);
-  const stock = await loadVariantStock(prisma, campaign.eligibleVariantIds);
-  const prize = drawPrize(stock, selectionConfig(campaign), tiers, rng);
+  const [stock, reserved] = await Promise.all([
+    loadVariantStock(prisma, campaign.eligibleVariantIds),
+    loadReservations(prisma, now),
+  ]);
+  const prize = drawPrize(stock, selectionConfig(campaign, reserved), tiers, rng);
   if (!prize) fail("NO_STOCK");
 
   const expiresAt = new Date(now.getTime() + campaign.claimWindowHours * 3_600_000);
 
   if (input.userId) {
     const userId = input.userId;
+    // Unverified accounts may play, but the win stays AWARDED (bound to the
+    // account — still one spin per campaign) until a verified claim.
+    const verified = await canClaimSpin(userId);
     try {
-      const spin = await prisma.$transaction(async (tx) => {
-        const created = await tx.spinResult.create({
-          data: {
-            campaignId: campaign.id,
-            userId,
-            percent: prize.percent,
-            productId: prize.productId,
-            variantIds: prize.variantIds,
-            expiresAt,
-          },
-        });
-        return claimInTx(tx, created, campaign, userId, now, rng);
-      });
+      const spin = await withTxRetry(() =>
+        prisma.$transaction(async (tx) => {
+          const created = await tx.spinResult.create({
+            data: {
+              campaignId: campaign.id,
+              userId,
+              percent: prize.percent,
+              productId: prize.productId,
+              variantIds: prize.variantIds,
+              expiresAt,
+            },
+          });
+          return verified ? claimInTx(tx, created, campaign, userId, now, rng) : created;
+        }, TX_OPTIONS),
+      );
       return { spin, created: true };
     } catch (err) {
       if (isUniqueViolation(err)) {
@@ -290,23 +373,30 @@ export async function spinWheel(input: {
 // ---------------------------------------------------------------------------
 
 /**
- * Attach an anonymous win to a signed-in account and issue its coupon.
- * Re-validates expiry, the one-per-account rule, the campaign claim cap and
- * live stock (moving the offer to another in-stock eligible product at the
- * same percent if the original sold out meanwhile).
+ * Claim a win for a signed-in, verified account and issue its coupon: the
+ * anonymous win behind `claimToken`, or — without a token — the account's own
+ * held (AWARDED) win. Re-validates verification, expiry, the one-per-account
+ * rule, the campaign claim cap and live stock (moving the offer to another
+ * approved, in-stock product at the same percent if the original sold out).
  */
 export async function claimSpin(input: {
   userId: string;
-  claimToken: string;
+  claimToken?: string | null;
   now?: Date;
   rng?: Rng;
 }): Promise<{ spin: SpinResult; reassigned: boolean }> {
   const now = input.now ?? new Date();
   const rng = input.rng ?? secureRandom;
-  const spin = await prisma.spinResult.findUnique({
-    where: { tokenHash: hashToken(input.claimToken) },
-    include: { campaign: true },
-  });
+  const spin = input.claimToken
+    ? await prisma.spinResult.findUnique({
+        where: { tokenHash: hashToken(input.claimToken) },
+        include: { campaign: true },
+      })
+    : await prisma.spinResult.findFirst({
+        where: { userId: input.userId, status: "AWARDED" },
+        orderBy: { createdAt: "desc" },
+        include: { campaign: true },
+      });
   if (!spin) fail("NOT_FOUND");
   if (spin.status !== "AWARDED") {
     if (spin.userId === input.userId) return { spin, reassigned: false }; // replay
@@ -323,8 +413,8 @@ export async function claimSpin(input: {
 
   const originalProduct = spin.productId;
   try {
-    const claimed = await prisma.$transaction((tx) =>
-      claimInTx(tx, spin, spin.campaign, input.userId, now, rng),
+    const claimed = await withTxRetry(() =>
+      prisma.$transaction((tx) => claimInTx(tx, spin, spin.campaign, input.userId, now, rng), TX_OPTIONS),
     );
     return { spin: claimed, reassigned: claimed.productId !== originalProduct };
   } catch (err) {
@@ -341,26 +431,42 @@ async function claimInTx(
   now: Date,
   rng: Rng,
 ): Promise<SpinResult> {
-  // Never promise stock that isn't there: re-check at claim time.
-  const stock = await loadVariantStock(tx, campaign.eligibleVariantIds);
-  const candidates = productCandidates(stock, selectionConfig(campaign));
+  // Server-side gate, inside the transaction: only a verified account claims.
+  if (!isVerifiedClaimant(await loadClaimant(tx, userId))) fail("UNVERIFIED");
+
+  // Serialise claims so the reservation count below includes every claim that
+  // committed before this one (Read Committed: each statement after the lock
+  // sees them). Released automatically at commit/rollback.
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${CLAIM_LOCK_KEY}::bigint)`;
+
+  // Never promise stock that isn't there: re-check stock, activity, the
+  // campaign's CURRENT approved list and outstanding offers at claim time.
+  const fresh = await tx.spinCampaign.findUniqueOrThrow({ where: { id: campaign.id } });
+  const [stock, reserved] = await Promise.all([
+    loadVariantStock(tx, fresh.eligibleVariantIds),
+    loadReservations(tx, now),
+  ]);
+  const candidates = productCandidates(stock, selectionConfig(fresh, reserved));
   let target = candidates.find((c) => c.productId === spin.productId);
   if (!target) {
+    // The won product sold out / was withdrawn: move the offer — same percent,
+    // never a different discount — to another approved, available product.
+    // None left → roll back; the win stays AWARDED and can be retried.
     const fallback = weightedPick(candidates, rng);
-    if (!fallback) fail("NO_STOCK");
+    if (!fallback) fail("PRIZE_UNAVAILABLE");
     target = fallback;
   }
 
-  // Campaign claim cap — guarded increment against the row's current value.
-  if (campaign.maxClaims != null) {
-    const ok = await tx.spinCampaign.updateMany({
-      where: { id: campaign.id, claimCount: { lt: campaign.maxClaims } },
-      data: { claimCount: { increment: 1 } },
-    });
-    if (ok.count === 0) fail("CLAIM_LIMIT");
-  } else {
-    await tx.spinCampaign.update({ where: { id: campaign.id }, data: { claimCount: { increment: 1 } } });
-  }
+  // Campaign claim cap — one atomic increment compared against the row's live
+  // `maxClaims` at write time (an admin lowering the cap mid-flight counts).
+  const capped = await tx.spinCampaign.updateMany({
+    where: {
+      id: campaign.id,
+      OR: [{ maxClaims: null }, { claimCount: { lt: tx.spinCampaign.fields.maxClaims } }],
+    },
+    data: { claimCount: { increment: 1 } },
+  });
+  if (capped.count === 0) fail("CLAIM_LIMIT");
 
   const product = await tx.product.findUnique({ where: { id: target.productId }, select: { name: true } });
   const coupon = await tx.coupon.create({
@@ -374,10 +480,10 @@ async function claimInTx(
       ownerUserId: userId,
       productIds: [target.productId],
       variantIds: target.variantIds,
-      saleMode: campaign.saleMode,
-      minOrder: campaign.minOrder,
-      maxDiscount: campaign.maxDiscount,
-      expiresAt: new Date(now.getTime() + campaign.offerValidDays * 86_400_000),
+      saleMode: fresh.saleMode,
+      minOrder: fresh.minOrder,
+      maxDiscount: fresh.maxDiscount,
+      expiresAt: new Date(now.getTime() + fresh.offerValidDays * 86_400_000),
       isActive: true,
       isPublic: false,
     },
@@ -396,6 +502,7 @@ async function claimInTx(
       tokenHash: null,
       productId: target.productId,
       variantIds: target.variantIds,
+      ...(target.productId !== spin.productId ? { reassignedFromProductId: spin.productId } : {}),
     },
   });
   if (updated.count === 0) fail("NOT_FOUND");
@@ -429,6 +536,8 @@ export type SpinView = {
   variantLabels: string[];
   claimBy: string; // ISO — claim deadline (AWARDED)
   coupon: { code: string; expiresAt: string | null; used: boolean } | null;
+  /** Name of the originally won product when the offer was moved at claim time. */
+  reassignedFrom: string | null;
 };
 
 export type PublicCampaign = {
@@ -460,7 +569,7 @@ export function toPublicCampaign(c: SpinCampaign): PublicCampaign {
 }
 
 export async function toSpinView(spin: SpinResult, now = new Date()): Promise<SpinView> {
-  const [product, variants, coupon] = await Promise.all([
+  const [product, variants, coupon, original] = await Promise.all([
     prisma.product.findUnique({
       where: { id: spin.productId },
       select: {
@@ -480,6 +589,9 @@ export async function toSpinView(spin: SpinResult, now = new Date()): Promise<Sp
           select: { code: true, expiresAt: true, usedCount: true, isActive: true },
         })
       : null,
+    spin.reassignedFromProductId
+      ? prisma.product.findUnique({ where: { id: spin.reassignedFromProductId }, select: { name: true } })
+      : null,
   ]);
   const status = spin.status === "AWARDED" && spin.expiresAt <= now ? "EXPIRED" : spin.status;
   return {
@@ -494,6 +606,7 @@ export async function toSpinView(spin: SpinResult, now = new Date()): Promise<Sp
     coupon: coupon
       ? { code: coupon.code, expiresAt: coupon.expiresAt?.toISOString() ?? null, used: coupon.usedCount > 0 }
       : null,
+    reassignedFrom: spin.reassignedFromProductId ? (original?.name ?? "The product you won") : null,
   };
 }
 

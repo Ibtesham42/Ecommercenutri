@@ -1,5 +1,6 @@
 "use server";
 
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { razorpay, razorpayEnabled, verifyPaymentSignature } from "@/lib/razorpay";
@@ -28,6 +29,7 @@ import {
   OrderFulfillmentError,
   type PricedLine,
 } from "@/lib/orders";
+import { orderFingerprint, placeOrderWithSingleUseOffer } from "@/lib/spin/checkout-guard";
 import {
   applyCouponSchema,
   createOrderSchema,
@@ -120,6 +122,7 @@ export async function previewOrderPricing(input: unknown): Promise<PricingPrevie
 
   // Optional coupon (only for signed-in users; the cart page has none).
   let discount = 0;
+  let lineDiscounts: number[] | undefined;
   if (parsed.data.couponCode) {
     const user = await getCurrentUser();
     if (user) {
@@ -130,7 +133,10 @@ export async function previewOrderPricing(input: unknown): Promise<PricingPrevie
         await cartContext(priced.lines),
         { shippingFee },
       );
-      if (res.ok) discount = res.discount;
+      if (res.ok) {
+        discount = res.discount;
+        lineDiscounts = res.lineDiscounts;
+      }
     }
   }
 
@@ -148,6 +154,7 @@ export async function previewOrderPricing(input: unknown): Promise<PricingPrevie
     settings,
     discount,
     codFee,
+    lineDiscounts,
   );
   return { ok: true, breakdown, codAvailable, codFee };
 }
@@ -175,6 +182,37 @@ export type CreateOrderResult =
       cod?: boolean;
     }
   | { ok: false; error: string };
+
+type RazorpayCheckout = NonNullable<Extract<CreateOrderResult, { ok: true }>["razorpay"]>;
+
+/** Payload for the client's Razorpay modal, branded with the store's logo, name and color. */
+async function razorpayCheckout(o: {
+  orderId: string;
+  orderNumber: string;
+  razorpayOrderId: string;
+  amount: number;
+  address: { fullName: string; phone: string };
+  email: string;
+}): Promise<RazorpayCheckout> {
+  const store = await getStoreSettings();
+  const brandLogo = cldRasterLogo(store.logo);
+  return {
+    keyId: env.razorpayKeyId,
+    amount: o.amount,
+    currency: "INR",
+    razorpayOrderId: o.razorpayOrderId,
+    orderId: o.orderId,
+    name: store.siteName || siteConfig.name,
+    description: `Order ${o.orderNumber}`,
+    ...(brandLogo ? { image: brandLogo } : {}),
+    themeColor: store.primaryColor || "#00835b",
+    prefill: {
+      name: o.address.fullName,
+      email: o.email,
+      contact: o.address.phone,
+    },
+  };
+}
 
 export async function createOrder(input: unknown): Promise<CreateOrderResult> {
   const user = await getCurrentUser();
@@ -212,6 +250,7 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
 
   // Optional coupon.
   let discount = 0;
+  let lineDiscounts: number[] | undefined;
   let couponId: string | null = null;
   let resolvedCouponCode: string | null = null;
   if (couponCode) {
@@ -220,6 +259,7 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
     });
     if (!result.ok) return { ok: false, error: result.error };
     discount = result.discount;
+    lineDiscounts = result.lineDiscounts;
     couponId = result.coupon.id;
     resolvedCouponCode = result.coupon.code;
   }
@@ -247,6 +287,7 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
     pricingSettings,
     discount,
     codFee,
+    lineDiscounts,
   );
   const shipping = breakdown.shipping;
   const shippingSaved = breakdown.shippingSaved;
@@ -265,40 +306,80 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
     country: address.country,
   };
 
-  const order = await prisma.order.create({
-    data: {
-      orderNumber,
-      userId: user.id,
-      status: "PENDING",
-      paymentStatus: "PENDING",
-      paymentMethod,
-      subtotal: priced.subtotal,
-      discount,
-      shipping,
-      shippingSaved,
-      codFee,
-      tax,
-      total,
-      couponId,
-      couponCode: resolvedCouponCode,
-      affiliateId: attribution?.affiliateId ?? null,
-      referralCode: attribution?.referralCode ?? null,
-      addressId: address.id,
-      shippingAddress,
-      notes: notes ?? null,
-      items: {
-        create: priced.lines.map((l) => ({
-          productId: l.productId,
-          variantId: l.variantId,
-          productName: l.productName,
-          variantLabel: l.variantLabel,
-          image: l.image,
-          price: l.unitPrice,
-          quantity: l.quantity,
-        })),
-      },
+  const orderData = {
+    orderNumber,
+    userId: user.id,
+    status: "PENDING",
+    paymentStatus: "PENDING",
+    paymentMethod,
+    subtotal: priced.subtotal,
+    discount,
+    shipping,
+    shippingSaved,
+    codFee,
+    tax,
+    total,
+    couponId,
+    couponCode: resolvedCouponCode,
+    affiliateId: attribution?.affiliateId ?? null,
+    referralCode: attribution?.referralCode ?? null,
+    addressId: address.id,
+    shippingAddress,
+    notes: notes ?? null,
+    items: {
+      create: priced.lines.map((l, i) => ({
+        productId: l.productId,
+        variantId: l.variantId,
+        productName: l.productName,
+        variantLabel: l.variantLabel,
+        image: l.image,
+        price: l.unitPrice,
+        quantity: l.quantity,
+        // Spin & Win: this line's share of `discount` (drives its refund value).
+        discount: lineDiscounts?.[i] ?? 0,
+      })),
     },
-  });
+  } satisfies Prisma.OrderUncheckedCreateInput;
+
+  // `lineDiscounts` is set only for Spin & Win offers: single-use, so at most
+  // one live order may hold one (see lib/spin/checkout-guard.ts). A retry of
+  // the same online checkout reopens the existing payment instead.
+  let order: { id: string };
+  if (couponId && lineDiscounts) {
+    const placed = await placeOrderWithSingleUseOffer({
+      couponId,
+      userId: user.id,
+      paymentMethod,
+      fingerprint: orderFingerprint({
+        items: priced.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity, price: l.unitPrice })),
+        total,
+        addressId: address.id,
+        paymentMethod,
+      }),
+      create: (tx) => tx.order.create({ data: orderData, select: { id: true } }),
+    });
+    if (placed.kind === "blocked") return { ok: false, error: placed.error };
+    if (placed.kind === "reuse") {
+      if (!(razorpayEnabled && razorpay)) {
+        return { ok: false, error: "Couldn't start payment. Please try again." };
+      }
+      return {
+        ok: true,
+        orderNumber: placed.order.orderNumber,
+        razorpay: await razorpayCheckout({
+          orderId: placed.order.id,
+          orderNumber: placed.order.orderNumber,
+          razorpayOrderId: placed.order.razorpayOrderId,
+          amount: placed.order.total,
+          address,
+          email: user.email ?? "",
+        }),
+      };
+    }
+    order = placed.order;
+  } else {
+    order = await prisma.order.create({ data: orderData, select: { id: true } });
+  }
 
   // Credit a marketing campaign if the buyer arrived via a tracked campaign click.
   await recordCampaignConversion(user.id, total);
@@ -332,28 +413,17 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
         where: { id: order.id },
         data: { razorpayOrderId: rzpOrder.id },
       });
-      // Brand the checkout modal with the store's logo, name and color.
-      const store = await getStoreSettings();
-      const brandLogo = cldRasterLogo(store.logo);
       return {
         ok: true,
         orderNumber,
-        razorpay: {
-          keyId: env.razorpayKeyId,
-          amount: total,
-          currency: "INR",
-          razorpayOrderId: rzpOrder.id,
+        razorpay: await razorpayCheckout({
           orderId: order.id,
-          name: store.siteName || siteConfig.name,
-          description: `Order ${orderNumber}`,
-          ...(brandLogo ? { image: brandLogo } : {}),
-          themeColor: store.primaryColor || "#00835b",
-          prefill: {
-            name: address.fullName,
-            email: user.email ?? "",
-            contact: address.phone,
-          },
-        },
+          orderNumber,
+          razorpayOrderId: rzpOrder.id,
+          amount: total,
+          address,
+          email: user.email ?? "",
+        }),
       };
     } catch (err) {
       console.error("[checkout] Razorpay order failed:", err);

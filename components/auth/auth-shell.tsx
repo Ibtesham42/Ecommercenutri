@@ -304,7 +304,7 @@ export function AuthShell({
           <CardFooter className="flex-col gap-2.5 text-sm text-muted-foreground">
             <span>Don&apos;t have an account?</span>
             <Link
-              href="/register"
+              href={callbackUrl === "/account" ? "/register" : `/register?callbackUrl=${encodeURIComponent(callbackUrl)}`}
               className="btn-rich btn-rich-gold inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-gold/40 bg-gold/10 text-base font-semibold text-gold-foreground shadow-elev-1 transition hover:bg-gold/20 focus-visible:bg-gold/20 dark:text-gold"
             >
               Sign Up <ArrowRight className="size-4" />

@@ -1,5 +1,6 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { redis } from "@/lib/redis";
+import { SPINS_PER_BROWSER_PER_DAY, SPINS_PER_IP_PER_DAY } from "@/lib/spin/limits";
 
 type Window = Parameters<typeof Ratelimit.slidingWindow>[1];
 
@@ -33,8 +34,10 @@ export const limiters = {
   api: makeLimiter(60, "1 m", "rl:api"),
   reviewUpload: makeLimiter(20, "1 m", "rl:review-upload"),
   b2bUpload: makeLimiter(10, "1 m", "rl:b2b-upload"),
-  // New anonymous spins per IP / per anon id — curbs prize-fishing by clearing cookies.
-  spin: makeLimiter(4, "1 d", "rl:spin"),
+  // New anonymous Spin & Win spins (lib/spin/limits.ts): per IP, and per
+  // browser — curbs prize-fishing by clearing cookies.
+  spinIp: makeLimiter(SPINS_PER_IP_PER_DAY, "1 d", "rl:spin-ip"),
+  spinBrowser: makeLimiter(SPINS_PER_BROWSER_PER_DAY, "1 d", "rl:spin-browser"),
   spinClaim: makeLimiter(10, "10 m", "rl:spin-claim"),
 };
 

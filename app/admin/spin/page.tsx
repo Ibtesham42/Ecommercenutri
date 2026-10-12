@@ -3,6 +3,8 @@ import { PageHeader } from "@/components/admin/page-header";
 import { guardSection } from "@/lib/admin-guard";
 import { prisma } from "@/lib/prisma";
 import { resolvePrizes } from "@/lib/spin/config";
+import { loadReservations } from "@/lib/spin/service";
+import { spinFunnel } from "@/lib/spin/stats";
 import {
   SpinManager,
   type SpinCampaignRow,
@@ -14,9 +16,16 @@ export const metadata: Metadata = { title: "Spin & Win", robots: { index: false 
 export default async function AdminSpinPage() {
   await guardSection("coupons");
 
-  const [campaigns, statusCounts, percentCounts, variants] = await Promise.all([
+  const now = new Date();
+  const [campaigns, statusCounts, staleCounts, percentCounts, variants, reserved] = await Promise.all([
     prisma.spinCampaign.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.spinResult.groupBy({ by: ["campaignId", "status"], _count: { _all: true } }),
+    // AWARDED wins already past their claim deadline (not yet marked EXPIRED).
+    prisma.spinResult.groupBy({
+      by: ["campaignId"],
+      where: { status: "AWARDED", expiresAt: { lte: now } },
+      _count: { _all: true },
+    }),
     prisma.spinResult.groupBy({ by: ["campaignId", "percent"], _count: { _all: true } }),
     prisma.productVariant.findMany({
       where: { product: { isActive: true } },
@@ -32,15 +41,19 @@ export default async function AdminSpinPage() {
         product: { select: { id: true, name: true, isActive: true } },
       },
     }),
+    loadReservations(prisma, now),
   ]);
 
   const rows: SpinCampaignRow[] = campaigns.map((c) => {
     const count = (status: string) =>
       statusCounts.find((s) => s.campaignId === c.id && s.status === status)?._count._all ?? 0;
-    const awarded = count("AWARDED");
-    const claimed = count("CLAIMED");
-    const redeemed = count("REDEEMED");
-    const expired = count("EXPIRED");
+    const funnel = spinFunnel({
+      awarded: count("AWARDED"),
+      awardedPastDeadline: staleCounts.find((s) => s.campaignId === c.id)?._count._all ?? 0,
+      claimed: count("CLAIMED"),
+      redeemed: count("REDEEMED"),
+      expired: count("EXPIRED"),
+    });
     return {
       id: c.id,
       name: c.name,
@@ -59,12 +72,7 @@ export default async function AdminSpinPage() {
       maxDiscount: c.maxDiscount,
       saleMode: c.saleMode,
       stats: {
-        spins: awarded + claimed + redeemed + expired,
-        pending: awarded,
-        // Claimed = ever attached to an account (redeemed ones were claimed first).
-        claimed: claimed + redeemed,
-        redeemed,
-        expired,
+        ...funnel,
         byPercent: percentCounts
           .filter((p) => p.campaignId === c.id)
           .map((p) => ({ percent: p.percent, count: p._count._all }))
@@ -82,6 +90,7 @@ export default async function AdminSpinPage() {
     stock: v.stock,
     active: v.isActive && v.product.isActive,
     onSale: v.discountPrice != null && v.discountPrice > 0 && v.discountPrice < v.price,
+    productReserved: reserved.get(v.product.id) ?? 0,
   }));
 
   return (

@@ -8,15 +8,20 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { verifyEmailToken } from "@/lib/actions/auth";
+import { safeRedirectPath } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Verify email" };
 
 export default async function VerifyEmailPage({
   searchParams,
 }: {
-  searchParams: Promise<{ token?: string }>;
+  searchParams: Promise<{ token?: string; next?: string }>;
 }) {
-  const { token } = await searchParams;
+  const { token, next: rawNext } = await searchParams;
+  // Sign-in (or straight through, if already signed in) back to where the
+  // shopper started — e.g. /spin to claim an offer. No `next` → unchanged.
+  const next = safeRedirectPath(rawNext, "/account");
+  const continueHref = next === "/account" ? "/login" : `/login?callbackUrl=${encodeURIComponent(next)}`;
   const result = token
     ? await verifyEmailToken(token)
     : { ok: false, message: "Missing verification token." };
@@ -36,7 +41,7 @@ export default async function VerifyEmailPage({
       <CardContent className="space-y-4 text-center">
         <p className="text-sm text-muted-foreground">{result.message}</p>
         <Link
-          href={result.ok ? "/login" : "/register"}
+          href={result.ok ? continueHref : "/register"}
           className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 max-sm:h-12 max-sm:rounded-xl max-sm:text-base max-sm:font-semibold max-sm:shadow-elev-1 max-sm:transition-transform max-sm:active:scale-[0.98]"
         >
           {result.ok ? "Continue to sign in" : "Back to sign up"}

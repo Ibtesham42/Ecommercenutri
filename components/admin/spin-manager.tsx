@@ -54,6 +54,8 @@ export type SpinVariantOption = {
   stock: number;
   active: boolean;
   onSale: boolean;
+  /** Claimed-but-unused offers on this variant's product (reserved stock). */
+  productReserved: number;
 };
 
 const SALE_MODES: { value: SaleMode; label: string; hint: string }[] = [
@@ -315,7 +317,12 @@ function CampaignEditor({
         variantActive: v.active,
         productActive: v.active,
       })),
-      { eligibleVariantIds: f.eligibleVariantIds, minStock: int(f.minStock) || 0, weightCap: int(f.weightCap) || 1 },
+      {
+        eligibleVariantIds: f.eligibleVariantIds,
+        minStock: int(f.minStock) || 0,
+        weightCap: int(f.weightCap) || 1,
+        reserved: new Map(variants.map((v) => [v.productId, v.productReserved])),
+      },
     );
     const probs = probabilities(cands);
     const names = new Map(variants.map((v) => [v.productId, v.productName]));

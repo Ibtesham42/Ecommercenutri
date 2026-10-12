@@ -13,13 +13,20 @@
  */
 type SpinRef = { campaignId: string; status: string; expiresAt: Date };
 
+/**
+ * `pendingClaim`: auto-claim on load (signed in, verified, a held unexpired
+ * win). `needsVerification`: the same, but the account isn't verified yet —
+ * show the verify-to-claim recovery instead of claiming. A held win is either
+ * this browser's anonymous one or the account's own (spun before verifying).
+ */
 export function resolveSpinPage<T extends SpinRef>(input: {
   liveCampaignId: string | null;
   signedIn: boolean;
+  verified: boolean;
   userSpin: T | null;
   tokenSpin: T | null;
   now?: Date;
-}): { spin: T | null; pendingClaim: boolean } {
+}): { spin: T | null; pendingClaim: boolean; needsVerification: boolean } {
   const now = input.now ?? new Date();
   const t = input.tokenSpin;
   const pending =
@@ -27,8 +34,6 @@ export function resolveSpinPage<T extends SpinRef>(input: {
       ? t
       : null;
   const spin = input.userSpin ?? pending;
-  const pendingClaim = Boolean(
-    input.signedIn && !input.userSpin && pending && pending.expiresAt > now,
-  );
-  return { spin, pendingClaim };
+  const held = Boolean(input.signedIn && spin && spin.status === "AWARDED" && spin.expiresAt > now);
+  return { spin, pendingClaim: held && input.verified, needsVerification: held && !input.verified };
 }

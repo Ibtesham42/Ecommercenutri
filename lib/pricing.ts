@@ -128,24 +128,35 @@ export function computeShipping(
  * Full order breakdown from cart lines, store settings and an optional discount.
  * Inclusive GST: the tax shown is extracted from the discounted goods value and
  * summed per line, so a cart mixing different GST rates is handled correctly.
+ *
+ * By default the discount reduces every line's taxable value in proportion to
+ * its share of the subtotal (order-level coupons). `lineDiscounts` — Spin & Win
+ * only, index-aligned with `lines` — instead attributes the discount to the
+ * lines it was actually earned on, so only those lines' taxable value drops.
+ * It's honoured only when it is consistent (one non-negative share per line,
+ * each within its line's value, summing to the applied discount); otherwise
+ * the proportional default applies.
  */
 export function computeBreakdown(
   lines: PricingLine[],
   s: PricingSettings,
   discount = 0,
   codFee = 0,
+  lineDiscounts?: readonly number[],
 ): PriceBreakdown {
   const subtotal = lines.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
   const safeDiscount = Math.min(Math.max(0, Math.round(discount)), subtotal);
   const safeCodFee = Math.max(0, Math.round(codFee));
   const { charge: shipping, saved: shippingSaved } = computeShipping(lines, subtotal, s);
 
+  const perLine = consistentLineDiscounts(lines, safeDiscount, lineDiscounts);
   const scale = subtotal > 0 ? (subtotal - safeDiscount) / subtotal : 0;
   let tax = 0;
-  for (const l of lines) {
-    const net = l.unitPrice * l.quantity * scale;
+  lines.forEach((l, i) => {
+    const gross = l.unitPrice * l.quantity;
+    const net = perLine ? gross - perLine[i] : gross * scale;
     tax += gstWithin(net, resolveGstRate(l.gstRate, s));
-  }
+  });
 
   const total = Math.max(0, subtotal - safeDiscount + shipping + safeCodFee);
   return {
@@ -157,4 +168,19 @@ export function computeBreakdown(
     codFee: safeCodFee,
     total,
   };
+}
+
+function consistentLineDiscounts(
+  lines: PricingLine[],
+  discount: number,
+  lineDiscounts: readonly number[] | undefined,
+): readonly number[] | null {
+  if (!lineDiscounts || lineDiscounts.length !== lines.length) return null;
+  let sum = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const d = lineDiscounts[i];
+    if (!Number.isInteger(d) || d < 0 || d > lines[i].unitPrice * lines[i].quantity) return null;
+    sum += d;
+  }
+  return sum === discount ? lineDiscounts : null;
 }
