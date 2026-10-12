@@ -85,11 +85,14 @@ export function CheckoutClient({
   razorpayEnabled,
   userName,
   settings = PRICING_DEFAULTS,
+  spinOffer = null,
 }: {
   addresses: AddressData[];
   razorpayEnabled: boolean;
   userName: string;
   settings?: PricingSettings;
+  /** The shopper's claimed, unused Spin & Win coupon — offered as a one-tap apply. */
+  spinOffer?: { code: string; label: string } | null;
 }) {
   const router = useRouter();
   const items = useCart((s) => s.items);
@@ -174,8 +177,8 @@ export function CheckoutClient({
     return <CartEmpty description="Add something wholesome before checking out." />;
   }
 
-  function onApplyCoupon() {
-    const code = couponInput.trim();
+  function onApplyCoupon(override?: string) {
+    const code = (override ?? couponInput).trim();
     if (!code) return;
     startCoupon(async () => {
       const res = await applyCoupon({ code, items: payload });
@@ -470,7 +473,7 @@ export function CheckoutClient({
                   type="button"
                   variant="outline"
                   className="h-11 rounded-lg border-foreground/30 bg-transparent px-4"
-                  onClick={onApplyCoupon}
+                  onClick={() => onApplyCoupon()}
                   disabled={couponPending || !couponInput.trim()}
                 >
                   {couponPending ? <Loader2 className="size-4 animate-spin" aria-label="Applying" /> : "Apply"}
@@ -478,6 +481,24 @@ export function CheckoutClient({
               </div>
             )}
           </div>
+
+          {spinOffer && !coupon && (
+            <button
+              type="button"
+              onClick={() => {
+                setCouponInput(spinOffer.code);
+                onApplyCoupon(spinOffer.code);
+              }}
+              disabled={couponPending}
+              className="mt-3 flex w-full items-center justify-between gap-3 rounded-lg border border-dashed border-primary/40 px-3 py-2.5 text-left text-sm outline-none hover:bg-primary/[0.04] focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+            >
+              <span className="min-w-0">
+                <span className="block font-medium text-foreground">Apply your Spin &amp; Win offer</span>
+                <span className="block truncate text-muted-foreground">{spinOffer.label}</span>
+              </span>
+              <span className="shrink-0 font-medium text-primary">Apply</span>
+            </button>
+          )}
 
           <div className="mt-5 border-t border-border pt-5">
             <OrderTotals breakdown={breakdown} couponCode={coupon?.code} />

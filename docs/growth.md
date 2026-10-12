@@ -68,3 +68,72 @@ header/nav/footer, `robots noindex`, never linked from the user-facing site or s
   (`/admin/survey/export`, English labels).
 - Stats aggregate in JS over one bounded fetch (`lib/queries/survey.ts`) — fine at
   survey scale, keys stay in lockstep with the catalog.
+
+## Spin & Win
+
+Opt-in discount wheel at **`/spin`** (noindex). Entry points are explicit only —
+a quiet band on the homepage (under the top banner) and on `/offers`, rendered by
+`components/storefront/spin/spin-entry.tsx` only while a campaign is live. **Never a popup.**
+
+**Flow.** Spin → result (server-decided) → sign in/up → offer claimed to the account →
+shop the prize product → one-tap apply at checkout. Signed-in shoppers are claimed
+instantly. A win made before signing in is held for `claimWindowHours` via an
+httpOnly `nut_spin` cookie (only its sha256 is stored); it is claimed when the
+shopper returns to `/spin` (login `callbackUrl=/spin`) **or** lands on `/account`
+(`SpinOfferCard`, mirroring the quiz claim — covers email sign-up, which returns to
+login without a callback).
+
+**Data.** `SpinCampaign` (config, admin `/admin/spin`, `coupons` permission) and
+`SpinResult` (one per spin; `AWARDED → CLAIMED → REDEEMED`, or `EXPIRED`). Migration
+`spin_win` is purely additive.
+
+**Redemption = the coupon engine.** A claim mints a personal `Coupon`
+(`SPIN-XXXXXXXX`, `usageLimit 1`, `perUserLimit 1`, `ownerUserId`, `variantIds`,
+`saleMode`, campaign min-order/max-discount, `offerValidDays` expiry). Checkout,
+`previewOrderPricing`, `createOrder` and `confirmOrder`'s atomic usage-limit claim
+handle it unchanged; `confirmOrder` then marks the spin `REDEEMED` (best-effort,
+after commit). Spin coupons are hidden from `/admin/coupons`. One coupon per order,
+so spin offers never combine with another coupon.
+
+New `Coupon` columns (defaults keep every existing coupon identical):
+- `ownerUserId` — only that user may redeem (others get the generic "not valid").
+- `variantIds` — **line-scoped**: discount applies only to those variants' lines
+  (`lib/coupons.ts#lineScopedDiscount`, rounded per unit, capped by `maxDiscount`).
+- `saleMode` (line-scoped only) — `BEST_OF` (default for spin: customer pays the lower
+  of sale price and MRP − %, never both), `EXCLUDE` (skip sale lines), `STACK`.
+
+**Prize selection** (`lib/spin/selection.ts`, pure + tested; server-only):
+1. Candidate variants: in the campaign's eligible list, variant + product active,
+   `stock > minStock` (the reserve).
+2. Product weight = `min(Σ(stock − minStock), weightCap)` — high stock is offered
+   more, low stock proportionally less, at/below reserve never.
+3. Discount tier drawn independently by its weight (`prizes` JSON, resolved by
+   `lib/spin/config.ts#resolvePrizes`). Crypto RNG.
+Stock is re-checked at **claim** (sold-out prize → moved to another in-stock eligible
+product at the same %) and again at checkout (`priceCart`). The browser only ever sees
+the tier percents — never weights or stock. The admin editor previews per-product
+chances with the same functions.
+
+**Eligibility** is stored as variant IDs. New campaigns pre-select the approved
+list (`APPROVED_ELIGIBILITY` name/size matcher) for the admin to review — names are
+a hint only, never the stored rule.
+
+**Abuse controls.** One spin per account per campaign (`@@unique([campaignId, userId])`);
+replays return the existing result (no re-rolls); claims are a conditional
+`updateMany` on `status: AWARDED` in a transaction (loser rolls back its coupon);
+campaign `maxClaims` uses the guarded-increment pattern; new anonymous spins are
+rate-limited per IP and per anon id (`limiters.spin`, 4/day), claims per user.
+Residual: anonymous visitors on fresh IPs can spin more than once, but can still
+claim only one offer per account.
+
+**Lifecycle rules.** Pausing (`isActive=false`) stops new spins and keeps history;
+already-claimed offers stay valid until they expire. Campaigns with spins can't be
+deleted. The newest live campaign is the one played.
+
+**Analytics** (`UserEventType`): `SPIN_ENTRY` (client, entry tap) · `SPIN_START`,
+`SPIN_WIN`, `SPIN_AUTH`, `SPIN_CLAIM`, `SPIN_REDEEM` (server-side only).
+
+**Tests.** `lib/spin/*.test.ts`, `lib/coupons-line-scoped.test.ts`,
+`lib/actions/admin/spin.test.ts` (unit); `lib/spin/service.int.test.ts` runs the
+claim/replay/race/expiry/cap/stock flow against a real Postgres when
+`SPIN_TEST_DATABASE_URL` points at **localhost** (it refuses any other host).

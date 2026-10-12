@@ -30,6 +30,9 @@ const CLIENT_EVENTS = [
   "POPUP_VIEW",
   "POPUP_CONVERT",
   "STICKY_CLICK",
+  // Spin & Win entry tap only — spins/wins/claims/redemptions are recorded
+  // server-side by their authoritative actions.
+  "SPIN_ENTRY",
 ] as const satisfies readonly UserEventType[];
 
 const bodySchema = z.object({

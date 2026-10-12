@@ -8,6 +8,7 @@ import { getPricingSettings } from "@/lib/queries/settings";
 import { CheckoutClient } from "@/components/storefront/checkout-client";
 import { BehaviorTracker } from "@/components/storefront/behavior-tracker";
 import type { AddressData } from "@/components/account/address-form";
+import { getUsableSpinOffer } from "@/lib/spin/service";
 
 export const metadata: Metadata = buildMetadata({
   title: "Checkout",
@@ -19,12 +20,13 @@ export default async function CheckoutPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?callbackUrl=/checkout");
 
-  const [addresses, settings] = await Promise.all([
+  const [addresses, settings, spinOffer] = await Promise.all([
     prisma.address.findMany({
       where: { userId: user.id },
       orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
     }),
     getPricingSettings(),
+    getUsableSpinOffer(user.id).catch(() => null),
   ]);
 
   const data: AddressData[] = addresses.map((a) => ({
@@ -53,6 +55,7 @@ export default async function CheckoutPage() {
         razorpayEnabled={razorpayEnabled}
         userName={user.name ?? ""}
         settings={settings}
+        spinOffer={spinOffer}
       />
     </div>
   );

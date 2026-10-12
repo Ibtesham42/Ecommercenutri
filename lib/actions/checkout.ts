@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { razorpay, razorpayEnabled, verifyPaymentSignature } from "@/lib/razorpay";
 import { siteConfig } from "@/config/site";
 import { env } from "@/lib/env";
-import { validateCoupon } from "@/lib/coupons";
+import { validateCoupon, type CouponLine } from "@/lib/coupons";
 import { resolveAttribution } from "@/lib/affiliate/attribution";
 import { recordCampaignConversion } from "@/lib/marketing/conversion";
 import {
@@ -26,6 +26,7 @@ import {
   markOrderPaid,
   confirmOrder,
   OrderFulfillmentError,
+  type PricedLine,
 } from "@/lib/orders";
 import {
   applyCouponSchema,
@@ -38,16 +39,26 @@ export type CouponPreview =
   | { ok: true; code: string; discount: number; description: string | null }
   | { ok: false; error: string };
 
-/** Product + category ids in the cart — used for coupon product/category restrictions. */
+/** Cart context for coupon rules: product/category restrictions + the re-priced
+ *  lines (line-scoped coupons discount only their eligible variants). */
 async function cartContext(
-  lines: { productId: string }[],
-): Promise<{ productIds: string[]; categoryIds: string[] }> {
+  lines: PricedLine[],
+): Promise<{ productIds: string[]; categoryIds: string[]; lines: CouponLine[] }> {
   const productIds = [...new Set(lines.map((l) => l.productId))];
   const products = await prisma.product.findMany({
     where: { id: { in: productIds } },
     select: { categoryId: true },
   });
-  return { productIds, categoryIds: [...new Set(products.map((p) => p.categoryId))] };
+  return {
+    productIds,
+    categoryIds: [...new Set(products.map((p) => p.categoryId))],
+    lines: lines.map((l) => ({
+      variantId: l.variantId,
+      unitPrice: l.unitPrice,
+      listPrice: l.listPrice,
+      quantity: l.quantity,
+    })),
+  };
 }
 
 /** Live coupon preview shown on the checkout page (re-priced server-side). */

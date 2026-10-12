@@ -1,0 +1,506 @@
+"use client";
+
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2, Pause, Pencil, Play, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { deleteSpinCampaign, saveSpinCampaign, setSpinCampaignActive } from "@/lib/actions/admin/spin";
+import { DEFAULT_PRIZES, isApprovedSuggestion, type PrizeTier } from "@/lib/spin/config";
+import { probabilities, productCandidates } from "@/lib/spin/selection";
+import { formatDateTime, formatPrice, paiseToRupees, rupeesToPaise } from "@/lib/format";
+
+type SaleMode = "STACK" | "BEST_OF" | "EXCLUDE";
+
+export type SpinCampaignRow = {
+  id: string;
+  name: string;
+  isActive: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+  prizes: PrizeTier[];
+  eligibleVariantIds: string[];
+  minStock: number;
+  weightCap: number;
+  claimWindowHours: number;
+  offerValidDays: number;
+  maxClaims: number | null;
+  claimCount: number;
+  minOrder: number | null;
+  maxDiscount: number | null;
+  saleMode: SaleMode;
+  stats: {
+    spins: number;
+    pending: number;
+    claimed: number;
+    redeemed: number;
+    expired: number;
+    byPercent: { percent: number; count: number }[];
+  };
+};
+
+export type SpinVariantOption = {
+  id: string;
+  productId: string;
+  productName: string;
+  weightLabel: string;
+  weightInGrams: number | null;
+  stock: number;
+  active: boolean;
+  onSale: boolean;
+};
+
+const SALE_MODES: { value: SaleMode; label: string; hint: string }[] = [
+  { value: "BEST_OF", label: "Best of (recommended)", hint: "Customer pays the lower of the sale price and the offer price from MRP — never both." },
+  { value: "EXCLUDE", label: "Skip sale items", hint: "Items already on sale get no extra discount." },
+  { value: "STACK", label: "Stack on sale price", hint: "Offer % is taken off the current sale price." },
+];
+
+type FormState = {
+  id?: string;
+  name: string;
+  isActive: boolean;
+  startsAt: string; // datetime-local
+  endsAt: string;
+  prizes: { percent: string; weight: string }[];
+  eligibleVariantIds: string[];
+  minStock: string;
+  weightCap: string;
+  claimWindowHours: string;
+  offerValidDays: string;
+  maxClaims: string;
+  minOrder: string; // rupees
+  maxDiscount: string; // rupees
+  saleMode: SaleMode;
+};
+
+function toLocalInput(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function toForm(c: SpinCampaignRow | null, variants: SpinVariantOption[]): FormState {
+  if (!c) {
+    return {
+      name: "Spin & Win",
+      isActive: false,
+      startsAt: "",
+      endsAt: "",
+      prizes: DEFAULT_PRIZES.map((p) => ({ percent: String(p.percent), weight: String(p.weight) })),
+      // Pre-select the approved list for review — the admin confirms before saving.
+      eligibleVariantIds: variants
+        .filter((v) => v.active && isApprovedSuggestion(v.productName, v.weightLabel, v.weightInGrams))
+        .map((v) => v.id),
+      minStock: "5",
+      weightCap: "200",
+      claimWindowHours: "24",
+      offerValidDays: "7",
+      maxClaims: "",
+      minOrder: "",
+      maxDiscount: "",
+      saleMode: "BEST_OF",
+    };
+  }
+  return {
+    id: c.id,
+    name: c.name,
+    isActive: c.isActive,
+    startsAt: toLocalInput(c.startsAt),
+    endsAt: toLocalInput(c.endsAt),
+    prizes: c.prizes.map((p) => ({ percent: String(p.percent), weight: String(p.weight) })),
+    eligibleVariantIds: c.eligibleVariantIds,
+    minStock: String(c.minStock),
+    weightCap: String(c.weightCap),
+    claimWindowHours: String(c.claimWindowHours),
+    offerValidDays: String(c.offerValidDays),
+    maxClaims: c.maxClaims == null ? "" : String(c.maxClaims),
+    minOrder: c.minOrder == null ? "" : String(paiseToRupees(c.minOrder)),
+    maxDiscount: c.maxDiscount == null ? "" : String(paiseToRupees(c.maxDiscount)),
+    saleMode: c.saleMode,
+  };
+}
+
+const int = (v: string) => Math.round(Number(v));
+const optInt = (v: string) => (v.trim() === "" ? null : Math.round(Number(v)));
+const optPaise = (v: string) => (v.trim() === "" ? null : rupeesToPaise(Number(v)));
+
+function campaignState(c: SpinCampaignRow): { label: string; tone: "default" | "secondary" | "outline" } {
+  const now = Date.now();
+  if (!c.isActive) return { label: "Paused", tone: "outline" };
+  if (c.startsAt && new Date(c.startsAt).getTime() > now) return { label: "Scheduled", tone: "secondary" };
+  if (c.endsAt && new Date(c.endsAt).getTime() <= now) return { label: "Ended", tone: "outline" };
+  if (c.maxClaims != null && c.claimCount >= c.maxClaims) return { label: "All claimed", tone: "outline" };
+  return { label: "Live", tone: "default" };
+}
+
+export function SpinManager({
+  campaigns,
+  variants,
+}: {
+  campaigns: SpinCampaignRow[];
+  variants: SpinVariantOption[];
+}) {
+  const router = useRouter();
+  const [editing, setEditing] = useState<FormState | null>(null);
+  const [pending, start] = useTransition();
+
+  function act(fn: () => Promise<{ ok: boolean; error?: string }>, success: string) {
+    start(async () => {
+      const res = await fn();
+      if (res.ok) {
+        toast.success(success);
+        router.refresh();
+      } else toast.error(res.error ?? "Something went wrong.");
+    });
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          The prize product is drawn server-side, weighted by live stock above the reserve; the discount tier by
+          its weight. Only one campaign should be live at a time — the newest live one is used.
+        </p>
+        <Button onClick={() => setEditing(toForm(null, variants))} className="gap-1.5">
+          <Plus className="size-4" /> New campaign
+        </Button>
+      </div>
+
+      {campaigns.length === 0 && (
+        <div className="rounded-2xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">
+          No campaigns yet. Create one, review the eligible products, then enable it.
+        </div>
+      )}
+
+      {campaigns.map((c) => {
+        const state = campaignState(c);
+        return (
+          <div key={c.id} className="rounded-2xl border bg-card p-4 shadow-elev-1 sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-lg font-semibold">{c.name}</h2>
+                  <Badge variant={state.tone}>{state.label}</Badge>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {c.startsAt ? formatDateTime(c.startsAt) : "No start date"} →{" "}
+                  {c.endsAt ? formatDateTime(c.endsAt) : "no end date"} · {c.eligibleVariantIds.length} eligible
+                  variants · tiers {c.prizes.map((p) => `${p.percent}%`).join(" / ")}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  disabled={pending}
+                  onClick={() =>
+                    act(() => setSpinCampaignActive(c.id, !c.isActive), c.isActive ? "Campaign paused" : "Campaign enabled")
+                  }
+                >
+                  {c.isActive ? <Pause className="size-4" /> : <Play className="size-4" />}
+                  {c.isActive ? "Pause" : "Enable"}
+                </Button>
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setEditing(toForm(c, variants))}>
+                  <Pencil className="size-4" /> Edit
+                </Button>
+                {c.stats.spins === 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 text-destructive"
+                    disabled={pending}
+                    onClick={() => {
+                      if (window.confirm(`Delete "${c.name}"? It has never been played.`)) {
+                        act(() => deleteSpinCampaign(c.id), "Campaign deleted");
+                      }
+                    }}
+                  >
+                    <Trash2 className="size-4" /> Delete
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+              {[
+                ["Spins", c.stats.spins],
+                ["Claimed", c.stats.claimed],
+                ["Redeemed", c.stats.redeemed],
+                ["Awaiting sign-in", c.stats.pending],
+                ["Expired", c.stats.expired],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-xl border p-3">
+                  <dt className="text-xs text-muted-foreground">{label}</dt>
+                  <dd className="mt-1 text-xl font-semibold tabular-nums">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Claims {c.claimCount}
+              {c.maxClaims != null ? ` / ${c.maxClaims}` : " (no cap)"}
+              {c.stats.byPercent.length > 0 &&
+                ` · Awarded: ${c.stats.byPercent.map((p) => `${p.percent}% × ${p.count}`).join(", ")}`}
+              {c.stats.claimed > 0 &&
+                ` · Redemption rate ${Math.round((c.stats.redeemed / c.stats.claimed) * 100)}%`}
+            </p>
+          </div>
+        );
+      })}
+
+      <Dialog open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{editing?.id ? "Edit campaign" : "New campaign"}</DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <CampaignEditor
+              initial={editing}
+              variants={variants}
+              onDone={() => {
+                setEditing(null);
+                router.refresh();
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function CampaignEditor({
+  initial,
+  variants,
+  onDone,
+}: {
+  initial: FormState;
+  variants: SpinVariantOption[];
+  onDone: () => void;
+}) {
+  const [f, setF] = useState<FormState>(initial);
+  const [query, setQuery] = useState("");
+  const [saving, start] = useTransition();
+  const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setF((s) => ({ ...s, [k]: v }));
+
+  const selected = useMemo(() => new Set(f.eligibleVariantIds), [f.eligibleVariantIds]);
+
+  const groups = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const map = new Map<string, { productName: string; items: SpinVariantOption[] }>();
+    for (const v of variants) {
+      if (q && !`${v.productName} ${v.weightLabel}`.toLowerCase().includes(q)) continue;
+      const g = map.get(v.productId) ?? { productName: v.productName, items: [] };
+      g.items.push(v);
+      map.set(v.productId, g);
+    }
+    return [...map.values()];
+  }, [variants, query]);
+
+  // Live preview with the exact selection maths the server uses.
+  const preview = useMemo(() => {
+    const cands = productCandidates(
+      variants.map((v) => ({
+        variantId: v.id,
+        productId: v.productId,
+        stock: v.stock,
+        variantActive: v.active,
+        productActive: v.active,
+      })),
+      { eligibleVariantIds: f.eligibleVariantIds, minStock: int(f.minStock) || 0, weightCap: int(f.weightCap) || 1 },
+    );
+    const probs = probabilities(cands);
+    const names = new Map(variants.map((v) => [v.productId, v.productName]));
+    return cands
+      .map((c, i) => ({ name: names.get(c.productId) ?? c.productId, sizes: c.variantIds.length, p: probs[i] }))
+      .sort((a, b) => b.p - a.p);
+  }, [variants, f.eligibleVariantIds, f.minStock, f.weightCap]);
+
+  const tierWeights = f.prizes.map((p) => Math.max(0, int(p.weight) || 0));
+  const tierTotal = tierWeights.reduce((a, b) => a + b, 0);
+
+  function toggle(id: string, on: boolean) {
+    set("eligibleVariantIds", on ? [...f.eligibleVariantIds, id] : f.eligibleVariantIds.filter((x) => x !== id));
+  }
+
+  function save() {
+    start(async () => {
+      const res = await saveSpinCampaign({
+        id: f.id,
+        name: f.name,
+        isActive: f.isActive,
+        startsAt: f.startsAt ? new Date(f.startsAt).toISOString() : null,
+        endsAt: f.endsAt ? new Date(f.endsAt).toISOString() : null,
+        prizes: f.prizes.map((p) => ({ percent: int(p.percent), weight: int(p.weight) })),
+        eligibleVariantIds: f.eligibleVariantIds,
+        minStock: int(f.minStock),
+        weightCap: int(f.weightCap),
+        claimWindowHours: int(f.claimWindowHours),
+        offerValidDays: int(f.offerValidDays),
+        maxClaims: optInt(f.maxClaims),
+        minOrder: optPaise(f.minOrder),
+        maxDiscount: optPaise(f.maxDiscount),
+        saleMode: f.saleMode,
+      });
+      if (res.ok) {
+        toast.success("Campaign saved");
+        onDone();
+      } else toast.error(res.error);
+    });
+  }
+
+  const field = "space-y-1.5";
+
+  return (
+    <div className="space-y-6">
+      <section className="grid gap-4 sm:grid-cols-2">
+        <div className={`${field} sm:col-span-2`}>
+          <Label htmlFor="spin-name">Campaign name</Label>
+          <Input id="spin-name" value={f.name} onChange={(e) => set("name", e.target.value)} />
+        </div>
+        <div className={field}>
+          <Label htmlFor="spin-start">Starts (optional)</Label>
+          <Input id="spin-start" type="datetime-local" value={f.startsAt} onChange={(e) => set("startsAt", e.target.value)} />
+        </div>
+        <div className={field}>
+          <Label htmlFor="spin-end">Ends (optional)</Label>
+          <Input id="spin-end" type="datetime-local" value={f.endsAt} onChange={(e) => set("endsAt", e.target.value)} />
+        </div>
+        <label className="flex items-center gap-3 sm:col-span-2">
+          <Switch checked={f.isActive} onCheckedChange={(v) => set("isActive", v)} />
+          <span className="text-sm">Enabled (live within its dates)</span>
+        </label>
+      </section>
+
+      <section>
+        <h3 className="text-sm font-semibold">Prize tiers</h3>
+        <p className="mt-1 text-xs text-muted-foreground">Discount % shown on the wheel, and its relative weight. Weight 0 hides the tier.</p>
+        <div className="mt-3 space-y-2">
+          {f.prizes.map((p, i) => (
+            <div key={i} className="flex flex-wrap items-end gap-2">
+              <div className="w-24 space-y-1">
+                <Label htmlFor={`tier-p-${i}`} className="text-xs">Discount %</Label>
+                <Input id={`tier-p-${i}`} type="number" min={1} max={50} value={p.percent}
+                  onChange={(e) => set("prizes", f.prizes.map((x, j) => (j === i ? { ...x, percent: e.target.value } : x)))} />
+              </div>
+              <div className="w-24 space-y-1">
+                <Label htmlFor={`tier-w-${i}`} className="text-xs">Weight</Label>
+                <Input id={`tier-w-${i}`} type="number" min={0} max={1000} value={p.weight}
+                  onChange={(e) => set("prizes", f.prizes.map((x, j) => (j === i ? { ...x, weight: e.target.value } : x)))} />
+              </div>
+              <span className="pb-2 text-sm tabular-nums text-muted-foreground">
+                {tierTotal > 0 ? `${((tierWeights[i] / tierTotal) * 100).toFixed(1)}%` : "—"} chance
+              </span>
+              {f.prizes.length > 2 && (
+                <Button type="button" size="icon" variant="ghost" aria-label={`Remove ${p.percent}% tier`}
+                  onClick={() => set("prizes", f.prizes.filter((_, j) => j !== i))}>
+                  <X className="size-4" />
+                </Button>
+              )}
+            </div>
+          ))}
+          {f.prizes.length < 8 && (
+            <Button type="button" size="sm" variant="outline" className="gap-1.5"
+              onClick={() => set("prizes", [...f.prizes, { percent: "", weight: "10" }])}>
+              <Plus className="size-4" /> Add tier
+            </Button>
+          )}
+        </div>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-3">
+        <div className={`${field} sm:col-span-3`}>
+          <Label htmlFor="spin-sale">With items already on sale</Label>
+          <select id="spin-sale" value={f.saleMode} onChange={(e) => set("saleMode", e.target.value as SaleMode)}
+            className="h-9 w-full rounded-md border bg-transparent px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {SALE_MODES.map((m) => (<option key={m.value} value={m.value}>{m.label}</option>))}
+          </select>
+          <p className="text-xs text-muted-foreground">{SALE_MODES.find((m) => m.value === f.saleMode)?.hint}</p>
+        </div>
+        <NumberField id="spin-min-stock" label="Stock reserve (never offer at/below)" value={f.minStock} onChange={(v) => set("minStock", v)} />
+        <NumberField id="spin-cap" label="Stock weight cap" value={f.weightCap} onChange={(v) => set("weightCap", v)} />
+        <NumberField id="spin-max-claims" label="Max claims (blank = no cap)" value={f.maxClaims} onChange={(v) => set("maxClaims", v)} />
+        <NumberField id="spin-window" label="Claim window (hours)" value={f.claimWindowHours} onChange={(v) => set("claimWindowHours", v)} />
+        <NumberField id="spin-validity" label="Offer valid (days)" value={f.offerValidDays} onChange={(v) => set("offerValidDays", v)} />
+        <div />
+        <NumberField id="spin-min-order" label="Min. order ₹ (optional)" value={f.minOrder} onChange={(v) => set("minOrder", v)} />
+        <NumberField id="spin-max-disc" label="Max. discount ₹ (optional)" value={f.maxDiscount} onChange={(v) => set("maxDiscount", v)} />
+      </section>
+
+      <section>
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold">Eligible products ({f.eligibleVariantIds.length} variants)</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Stored by variant ID. New campaigns pre-select the approved list — review before saving.</p>
+          </div>
+          <Button type="button" size="sm" variant="outline" className="gap-1.5"
+            onClick={() => set("eligibleVariantIds", [...new Set([...f.eligibleVariantIds, ...variants.filter((v) => v.active && isApprovedSuggestion(v.productName, v.weightLabel, v.weightInGrams)).map((v) => v.id)])])}>
+            <Sparkles className="size-4" /> Add approved list
+          </Button>
+        </div>
+        <Input className="mt-3" placeholder="Search products…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search products" />
+        <div className="mt-2 max-h-72 overflow-y-auto rounded-xl border">
+          {groups.map((g) => (
+            <div key={g.productName + g.items[0]?.id} className="border-b p-3 last:border-b-0">
+              <p className="text-sm font-medium">{g.productName}</p>
+              <div className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1.5">
+                {g.items.map((v) => (
+                  <label key={v.id} className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={selected.has(v.id)} onCheckedChange={(on) => toggle(v.id, on === true)} />
+                    <span>{v.weightLabel}</span>
+                    <span className={`text-xs tabular-nums ${v.stock <= (int(f.minStock) || 0) ? "text-destructive" : "text-muted-foreground"}`}>
+                      {v.stock} in stock
+                    </span>
+                    {v.onSale && <span className="text-xs text-muted-foreground">· on sale</span>}
+                    {!v.active && <span className="text-xs text-destructive">· inactive</span>}
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+          {groups.length === 0 && <p className="p-4 text-sm text-muted-foreground">No products match.</p>}
+        </div>
+      </section>
+
+      <section>
+        <h3 className="text-sm font-semibold">Prize product chances (live stock)</h3>
+        {preview.length === 0 ? (
+          <p className="mt-2 text-sm text-destructive">No selected variant has stock above the reserve — the wheel would not spin.</p>
+        ) : (
+          <ul className="mt-2 divide-y rounded-xl border text-sm">
+            {preview.map((p) => (
+              <li key={p.name} className="flex items-center justify-between gap-3 px-3 py-2">
+                <span className="min-w-0 truncate">{p.name} <span className="text-xs text-muted-foreground">({p.sizes} size{p.sizes > 1 ? "s" : ""})</span></span>
+                <span className="tabular-nums">{(p.p * 100).toFixed(1)}%</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {f.minOrder && <p className="mt-2 text-xs text-muted-foreground">Min. order {formatPrice(optPaise(f.minOrder) ?? 0)} applies to the whole order value.</p>}
+      </section>
+
+      <div className="flex justify-end gap-2 border-t pt-4">
+        <Button onClick={save} disabled={saving} className="gap-1.5">
+          {saving && <Loader2 className="size-4 animate-spin" />} Save campaign
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function NumberField({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input id={id} type="number" min={0} value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}

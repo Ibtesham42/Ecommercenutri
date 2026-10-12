@@ -15,6 +15,7 @@ import {
 } from "@/lib/affiliate/commissions";
 import type { CheckoutItem } from "@/lib/validations/checkout";
 import { withDbRetry } from "@/lib/db-retry";
+import { markSpinRedeemed } from "@/lib/spin/service";
 
 export {
   FREE_SHIPPING_THRESHOLD,
@@ -59,6 +60,7 @@ export type PricedLine = {
   variantLabel: string;
   image: string | null;
   unitPrice: number; // paise (effective price)
+  listPrice: number; // paise (MRP — variant.price); line-scoped coupons need it
   quantity: number;
   lineTotal: number; // paise
   gstRate: number | null; // product GST override; null = store default
@@ -129,6 +131,7 @@ export async function priceCart(input: CheckoutItem[]): Promise<PricedCart> {
       variantLabel: v.weightLabel,
       image: v.product.images[0]?.url ?? null,
       unitPrice,
+      listPrice: v.price,
       quantity: item.quantity,
       lineTotal: unitPrice * item.quantity,
       gstRate: v.product.gstRate,
@@ -296,6 +299,18 @@ export async function confirmOrder(
   // Create the affiliate commission (PENDING) if this order was referred. Idempotent
   // and best-effort — never blocks order completion.
   await createOrderCommission(order.id);
+
+  // Spin & Win: the coupon's own usageLimit already made the redemption
+  // single-use inside the transaction above; this only records it.
+  if (order.couponId) {
+    try {
+      if (await markSpinRedeemed(order.couponId)) {
+        await trackEvent({ type: "SPIN_REDEEM", userId: order.userId, source: "spin-win" });
+      }
+    } catch (err) {
+      console.error("[orders] spin redemption bookkeeping failed:", err);
+    }
+  }
 }
 
 /**

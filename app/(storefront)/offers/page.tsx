@@ -3,6 +3,7 @@ import { Tag } from "lucide-react";
 import { getPublicCoupons } from "@/lib/queries/offers";
 import { CopyCouponButton } from "@/components/storefront/copy-coupon-button";
 import { EmptyState } from "@/components/storefront/empty-state";
+import { SpinEntryBand } from "@/components/storefront/spin/spin-entry";
 import {
   CONTENT_PAGE_CLASS,
   PageHeader,
@@ -33,6 +34,8 @@ export default async function OffersPage() {
         title="Offers & coupons"
         lede="Every active discount code, in one place — copy and apply at checkout."
       />
+
+      <SpinEntryBand source="offers" contained={false} className="mt-10 sm:mt-12" />
 
       {coupons.length === 0 ? (
         <EmptyState

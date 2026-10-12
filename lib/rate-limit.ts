@@ -33,6 +33,9 @@ export const limiters = {
   api: makeLimiter(60, "1 m", "rl:api"),
   reviewUpload: makeLimiter(20, "1 m", "rl:review-upload"),
   b2bUpload: makeLimiter(10, "1 m", "rl:b2b-upload"),
+  // New anonymous spins per IP / per anon id — curbs prize-fishing by clearing cookies.
+  spin: makeLimiter(4, "1 d", "rl:spin"),
+  spinClaim: makeLimiter(10, "10 m", "rl:spin-claim"),
 };
 
 export async function checkRateLimit(

@@ -8,7 +8,11 @@ export const metadata: Metadata = { title: "Coupons", robots: { index: false } }
 
 export default async function AdminCouponsPage() {
   await guardSection("coupons");
-  const coupons = await prisma.coupon.findMany({ orderBy: { createdAt: "desc" } });
+  // Personal Spin & Win coupons are managed (and counted) in /admin/spin.
+  const coupons = await prisma.coupon.findMany({
+    where: { spinResult: { is: null } },
+    orderBy: { createdAt: "desc" },
+  });
 
   const rows: CouponRow[] = coupons.map((c) => ({
     id: c.id,

@@ -15,6 +15,7 @@ export const CACHE_TAGS = {
   storeSettings: "store-settings",
   categories: "categories",
   home: "home",
+  spin: "spin",
 } as const;
 
 type Tag = (typeof CACHE_TAGS)[keyof typeof CACHE_TAGS];
@@ -27,6 +28,7 @@ export const MODEL_TAGS: Partial<Record<string, readonly Tag[]>> = {
   Product: [CACHE_TAGS.home],
   HeroSlide: [CACHE_TAGS.home],
   HomeSection: [CACHE_TAGS.home],
+  SpinCampaign: [CACHE_TAGS.spin],
 };
 
 /** Safety net: even a missed invalidation self-heals within this window. */

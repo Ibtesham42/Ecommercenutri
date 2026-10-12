@@ -194,7 +194,7 @@ workflow changes. Don't update files unnecessarily; never duplicate content acro
 | `docs/cms.md` | Hero slider + video + Product Reveal, banners, homepage editor, 3D showcase, blog/legal/contact/track, stories |
 | `docs/affiliates.md` | Affiliate program: attribution, commission engine, payouts, admin |
 | `docs/marketing.md` | Marketing Hub: campaigns, channels (push/WhatsApp/SMS), cron, recurrence, automations |
-| `docs/growth.md` | Conversion features (quiz/popup/bar/trust/coupon) + bilingual consumer survey |
+| `docs/growth.md` | Conversion features (quiz/popup/bar/trust/coupon), Spin & Win (inventory-aware wheel → personal line-scoped coupons) + bilingual consumer survey |
 | `docs/social-automation.md` | AI Marketing Automation Hub: 4-week content strategy, AI generation + claim-safety, planner/publisher, Instagram Graph API, GitHub Actions cron, `/admin/social` |
 | `docs/seo-pwa.md` | SEO manager, favicon system, service worker/PWA, Cloudinary upload + delivery |
 | `docs/jnv-smart-class.md` | JNV Smart Class Portal: isolated education module (`/admin/jnv` RBAC-gated admin, unlisted `/jnv` no-login student portal) — schema, isolation model, routes |

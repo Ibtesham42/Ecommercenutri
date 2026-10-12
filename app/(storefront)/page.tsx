@@ -18,6 +18,7 @@ import { HomeAiBanner } from "@/components/storefront/home/home-ai-banner";
 import { HomeWhyChooseUs } from "@/components/storefront/home/home-why-choose-us";
 import { HomeTestimonials } from "@/components/storefront/home/home-testimonials";
 import { TrustSection } from "@/components/storefront/growth/trust-section";
+import { SpinEntryBand } from "@/components/storefront/spin/spin-entry";
 import { getGrowthSettings } from "@/lib/growth-settings";
 import { heroRevealLive } from "@/lib/hero-reveal";
 import {
@@ -343,6 +344,7 @@ export default async function HomePage() {
         <>
           {showcaseNode}
           <BannerStrip position="homeTop" fullBleed className="py-6" />
+          <SpinEntryBand source="home" className="py-4" />
         </>
       )}
       {visible.map((s) => (
@@ -351,6 +353,7 @@ export default async function HomePage() {
           {/* Stories stay on top; the 3D showcase sits right below them. */}
           {s.key === "stories" && showcaseNode}
           {s.key === "stories" && <BannerStrip position="homeTop" fullBleed className="py-6" />}
+          {s.key === "stories" && <SpinEntryBand source="home" className="py-4" />}
           {s.key === trustAfterKey && <TrustSection />}
         </Fragment>
       ))}

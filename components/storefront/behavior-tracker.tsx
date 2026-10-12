@@ -19,7 +19,8 @@ export type TrackPayload = {
     | "QUIZ_START"
     | "POPUP_VIEW"
     | "POPUP_CONVERT"
-    | "STICKY_CLICK";
+    | "STICKY_CLICK"
+    | "SPIN_ENTRY";
   productId?: string;
   categoryId?: string;
   query?: string;

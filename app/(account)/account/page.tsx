@@ -8,6 +8,7 @@ import { MyHealthScoreCard } from "@/components/account/my-health-score";
 import { claimQuizForCurrentUser } from "@/lib/actions/quiz";
 import { getMyHealthScore } from "@/lib/queries/quiz";
 import { OrderRow } from "@/components/account/order-row";
+import { SpinOfferCard } from "@/components/account/spin-offer-card";
 
 export const metadata: Metadata = { title: "My Account" };
 
@@ -31,6 +32,7 @@ export default async function AccountDashboardPage() {
 
   return (
     <div className="space-y-12">
+      <SpinOfferCard userId={sessionUser!.id} />
       {healthScore && <MyHealthScoreCard data={healthScore} />}
 
       <section aria-labelledby="recent-orders">
