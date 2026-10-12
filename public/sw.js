@@ -9,7 +9,7 @@
  *   must be allowed to redirect — caching/returning that redirect would blank
  *   the page. Only clean same-origin 200s are cached.
  */
-const VERSION = "nutriyet-v4";
+const VERSION = "nutriyet-v5";
 const OFFLINE_URL = "/offline";
 
 self.addEventListener("install", (event) => {
@@ -36,6 +36,9 @@ function shouldBypass(url) {
     url.pathname.startsWith("/admin") ||
     url.pathname.startsWith("/account") ||
     url.pathname.startsWith("/checkout") ||
+    // Spin & Win shows a shopper's personal coupon code — never cache it.
+    url.pathname === "/spin" ||
+    url.pathname.startsWith("/spin/") ||
     url.pathname.includes("/auth")
   );
 }

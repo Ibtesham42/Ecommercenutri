@@ -53,7 +53,8 @@ export type SpinErrorCode =
   | "EXPIRED"
   | "ALREADY_CLAIMED"
   | "CLAIM_LIMIT"
-  | "NOT_FOUND";
+  | "NOT_FOUND"
+  | "RATE_LIMITED";
 
 export class SpinError extends Error {
   constructor(
@@ -72,6 +73,7 @@ const MESSAGES: Record<SpinErrorCode, string> = {
   ALREADY_CLAIMED: "You've already claimed a Spin & Win offer for this campaign.",
   CLAIM_LIMIT: "All offers for this campaign have been claimed. Thanks for playing!",
   NOT_FOUND: "We couldn't find a win to claim. Give the wheel a spin first.",
+  RATE_LIMITED: "You've spun a few times already today. Please sign in to play.",
 };
 
 function fail(code: SpinErrorCode): never {
@@ -187,13 +189,21 @@ export type SpinOutcome = {
 
 /**
  * Spin once. Replays are idempotent: a signed-in user, or an anonymous visitor
- * holding a claim cookie for this campaign, gets their existing result back —
- * never a re-roll.
+ * holding a claim cookie that resolves to a spin in the live campaign, gets
+ * their existing result back — never a re-roll.
+ *
+ * `allowAnonymousSpin` (the rate limiter) is consulted immediately before any
+ * NEW anonymous spin would be created, i.e. after the cookie has been
+ * validated against the DB. A garbage, expired, claimed or stale-campaign
+ * cookie resolves to nothing and therefore goes through the limiter like a
+ * visitor with no cookie at all. Signed-in spins are bounded by the DB's one
+ * spin per (campaign, user) instead.
  */
 export async function spinWheel(input: {
   userId: string | null;
   anonId: string | null;
   claimToken: string | null;
+  allowAnonymousSpin: () => Promise<boolean>;
   now?: Date;
   rng?: Rng;
 }): Promise<SpinOutcome> {
@@ -219,6 +229,10 @@ export async function spinWheel(input: {
       return { spin: byToken, created: false };
     }
   }
+
+  // Past this point a new row will be created. Anonymous creations are
+  // rate-limited no matter what cookie came with the request.
+  if (!input.userId && !(await input.allowAnonymousSpin())) fail("RATE_LIMITED");
 
   const tiers = resolvePrizes(campaign.prizes);
   const stock = await loadVariantStock(prisma, campaign.eligibleVariantIds);

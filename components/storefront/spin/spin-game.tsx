@@ -41,27 +41,39 @@ export function SpinGame({
     initialView ? rotationFor(indexOf(initialView.percent), percents.length, 0, 0) : 0,
   );
   const [duration, setDuration] = useState(0);
+  // Why the last claim attempt failed. Terminal codes end the claim flow; any
+  // other failure (network, timeout) offers a retry — never an endless spinner.
+  const [claimError, setClaimError] = useState<string | null>(null);
   const claimedOnce = useRef(false);
+
+  async function claim() {
+    setPhase("claiming");
+    setError(null);
+    setClaimError(null);
+    const res = await claimSpinAction();
+    if (res.ok) {
+      setView(res.view);
+      if (res.reassigned) {
+        setNote(
+          `The product you won just sold out, so we've moved your ${res.view.percent}% offer to ${res.view.productName}.`,
+        );
+      }
+      router.refresh();
+    } else {
+      setError(res.error);
+      setClaimError(res.code ?? "RETRY");
+      if (res.code === "EXPIRED") setView((v) => (v ? { ...v, status: "EXPIRED" } : v));
+    }
+    setPhase("done");
+  }
 
   // Back from sign-in with an unclaimed win in this browser → claim it.
   useEffect(() => {
     if (!(signedIn && pendingClaim) || claimedOnce.current) return;
     claimedOnce.current = true;
-    void claimSpinAction().then((res) => {
-      if (res.ok) {
-        setView(res.view);
-        if (res.reassigned) {
-          setNote(
-            `The product you won just sold out, so we've moved your ${res.view.percent}% offer to ${res.view.productName}.`,
-          );
-        }
-        router.refresh();
-      } else {
-        setError(res.error);
-      }
-      setPhase("done");
-    });
-  }, [signedIn, pendingClaim, router]);
+    void claim();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signedIn, pendingClaim]);
 
   async function spin() {
     if (phase !== "idle") return;
@@ -104,7 +116,7 @@ export function SpinGame({
             </p>
           )}
           {phase === "spinning" && <p className="text-[15px] text-muted-foreground">Spinning…</p>}
-          {showResult && <ResultPanel view={view} signedIn={signedIn} />}
+          {showResult && <ResultPanel view={view} signedIn={signedIn} claimError={claimError} onClaim={claim} />}
           {note && <p className="mt-4 rounded-lg bg-oat px-4 py-3 text-sm text-oat-foreground">{note}</p>}
           {error && (
             <p role="alert" className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
@@ -143,7 +155,19 @@ export function SpinGame({
   );
 }
 
-function ResultPanel({ view, signedIn }: { view: SpinView; signedIn: boolean }) {
+const TERMINAL_CLAIM_ERRORS = new Set(["EXPIRED", "NOT_FOUND", "ALREADY_CLAIMED", "CLAIM_LIMIT"]);
+
+function ResultPanel({
+  view,
+  signedIn,
+  claimError,
+  onClaim,
+}: {
+  view: SpinView;
+  signedIn: boolean;
+  claimError: string | null;
+  onClaim: () => void;
+}) {
   const sizes = view.variantLabels.length > 0 ? ` (${view.variantLabels.join(" · ")})` : "";
 
   if (view.status === "EXPIRED") {
@@ -170,11 +194,24 @@ function ResultPanel({ view, signedIn }: { view: SpinView; signedIn: boolean }) 
 
       {view.status === "AWARDED" && (
         <>
-          <p className="mt-4 text-[15px] leading-relaxed">
-            {signedIn
-              ? "Saving it to your account…"
-              : `Sign in or create an account to claim it. Your win is held on this device until ${formatDateTime(view.claimBy)}.`}
-          </p>
+          {!signedIn && (
+            <p className="mt-4 text-[15px] leading-relaxed">
+              Sign in or create an account to claim it. Your win is held on this device until{" "}
+              {formatDateTime(view.claimBy)}.
+            </p>
+          )}
+          {/* Signed in but not (yet) claimed: the auto-claim failed or never ran.
+              Always offer an explicit action rather than a spinner. */}
+          {signedIn && !(claimError && TERMINAL_CLAIM_ERRORS.has(claimError)) && (
+            <Button type="button" onClick={onClaim} className="mt-5 h-12 w-full rounded-lg px-6 text-[15px] sm:w-auto">
+              {claimError ? "Try again" : "Claim my offer"}
+            </Button>
+          )}
+          {signedIn && claimError === "ALREADY_CLAIMED" && (
+            <Button asChild variant="outline" className="mt-5 h-11 rounded-lg">
+              <Link href="/account">View my saved offer</Link>
+            </Button>
+          )}
           {!signedIn && (
             <Button asChild className="mt-5 h-12 w-full rounded-lg px-6 text-[15px] sm:w-auto">
               <Link href="/login?callbackUrl=/spin">

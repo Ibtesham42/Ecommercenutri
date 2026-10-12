@@ -14,6 +14,7 @@ import {
   toPublicCampaign,
   toSpinView,
 } from "@/lib/spin/service";
+import { resolveSpinPage } from "@/lib/spin/page-state";
 import { PageBreadcrumb } from "@/components/storefront/page-breadcrumb";
 import { ProductGrid } from "@/components/storefront/product-card";
 import { EmptyState } from "@/components/storefront/empty-state";
@@ -42,9 +43,12 @@ export default async function SpinPage() {
       : null,
     token ? prisma.spinResult.findUnique({ where: { tokenHash: hashToken(token) } }) : null,
   ]);
-  // A pending anonymous win only counts for the campaign it came from.
-  const pending = tokenSpin && tokenSpin.status === "AWARDED" && (!campaign || tokenSpin.campaignId === campaign.id) ? tokenSpin : null;
-  const spin = userSpin ?? pending;
+  const { spin, pendingClaim } = resolveSpinPage({
+    liveCampaignId: campaign?.id ?? null,
+    signedIn: Boolean(user),
+    userSpin,
+    tokenSpin,
+  });
   const view = spin ? await toSpinView(spin) : null;
 
   const [prizeProduct, wishlistIds] =
@@ -74,10 +78,11 @@ export default async function SpinPage() {
               campaign={toPublicCampaign(campaign)}
               initialView={view}
               signedIn={Boolean(user)}
-              pendingClaim={Boolean(pending && !userSpin)}
+              pendingClaim={pendingClaim}
             />
           ) : view ? (
-            // Campaign over but this shopper still has an offer to show.
+            // Campaign paused/ended but this browser still holds a win — it
+            // stays claimable (claims are honoured after a pause).
             <SpinGame
               campaign={{
                 id: "",
@@ -92,7 +97,7 @@ export default async function SpinPage() {
               }}
               initialView={view}
               signedIn={Boolean(user)}
-              pendingClaim={false}
+              pendingClaim={pendingClaim}
             />
           ) : (
             <EmptyState

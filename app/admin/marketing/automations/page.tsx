@@ -13,7 +13,8 @@ export default async function MarketingAutomationsPage() {
   await guardSection("marketing");
   const [rules, coupons, history] = await Promise.all([
     getAutomationRules(),
-    prisma.coupon.findMany({ where: { isActive: true }, select: { id: true, code: true }, orderBy: { code: "asc" }, take: 200 }),
+    // Personal Spin & Win coupons are owner-only — never offer them for campaigns.
+    prisma.coupon.findMany({ where: { isActive: true, spinResult: { is: null } }, select: { id: true, code: true }, orderBy: { code: "asc" }, take: 200 }),
     getAutomationLogs(),
   ]);
 

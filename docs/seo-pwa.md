@@ -70,7 +70,7 @@ admin hasn't uploaded anything.
 ## Service worker — intentionally conservative (`public/sw.js`)
 
 - Network-first for navigations with an `/offline` fallback, cache-first for static
-  assets; **never** intercepts `/api`, `/admin`, `/account`, `/checkout`, or auth.
+  assets; **never** intercepts `/api`, `/admin`, `/account`, `/checkout`, `/spin` (personal coupon codes), or auth.
   Registered in **production only** (`components/service-worker-register.tsx`, which also
   calls `registration.update()`).
 - **Critical invariant (`isCacheable`):** the SW must **only ever cache or serve a clean

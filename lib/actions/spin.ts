@@ -39,22 +39,21 @@ export async function spinAction(): Promise<SpinActionResult> {
     const anonId = jar.get(ANON_COOKIE)?.value ?? null;
     const claimToken = jar.get(SPIN_COOKIE)?.value ?? null;
 
-    // Only NEW anonymous spins are throttled (replays/claims are idempotent);
-    // signed-in accounts are already limited to one spin per campaign by the DB.
-    if (!user && !claimToken) {
+    await trackEvent({ type: "SPIN_START", userId: user?.id ?? null, anonId: user ? null : anonId, source: "spin-win" });
+
+    // The engine calls this only right before creating a NEW anonymous spin —
+    // after it has checked the cookie against the DB — so no cookie value
+    // (valid, stale or forged) can skip the limit for a fresh spin.
+    const allowAnonymousSpin = async () => {
       const ip = await clientIp();
       const [byIp, byAnon] = await Promise.all([
         checkRateLimit(limiters.spin, `ip:${ip}`),
         anonId ? checkRateLimit(limiters.spin, `anon:${anonId}`) : Promise.resolve({ success: true }),
       ]);
-      if (!byIp.success || !byAnon.success) {
-        return { ok: false, error: "You've spun a few times already today. Please sign in to play." };
-      }
-    }
+      return byIp.success && byAnon.success;
+    };
 
-    await trackEvent({ type: "SPIN_START", userId: user?.id ?? null, anonId: user ? null : anonId, source: "spin-win" });
-
-    const outcome = await spinWheel({ userId: user?.id ?? null, anonId, claimToken });
+    const outcome = await spinWheel({ userId: user?.id ?? null, anonId, claimToken, allowAnonymousSpin });
     if (outcome.claimToken) {
       const campaign = await getLiveCampaign();
       jar.set(SPIN_COOKIE, outcome.claimToken, {

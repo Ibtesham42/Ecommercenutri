@@ -30,6 +30,7 @@ describe.skipIf(!ctx)("spin service (integration)", () => {
   const { SpinError, spinWheel, claimSpin, markSpinRedeemed } = ctx.svc;
 
   const rngAt = (x: number) => () => x;
+  const allow = async () => true;
   let campaignId = "";
   const ids = { catId: "", A: "", B: "", C: "", a1: "", a2: "", b1: "", c1: "" };
 
@@ -103,13 +104,13 @@ describe.skipIf(!ctx)("spin service (integration)", () => {
   });
 
   it("anonymous spin is persisted server-side and replays idempotently (no re-roll)", async () => {
-    const first = await spinWheel({ userId: null, anonId: "anon1", claimToken: null, rng: rngAt(0.1) });
+    const first = await spinWheel({ userId: null, anonId: "anon1", claimToken: null, allowAnonymousSpin: allow, rng: rngAt(0.1) });
     expect(first.created).toBe(true);
     expect(first.claimToken).toBeTruthy();
     expect(first.spin.status).toBe("AWARDED");
     expect(first.spin.tokenHash).not.toBe(first.claimToken); // only the hash is stored
 
-    const again = await spinWheel({ userId: null, anonId: "anon1", claimToken: first.claimToken!, rng: rngAt(0.9) });
+    const again = await spinWheel({ userId: null, anonId: "anon1", claimToken: first.claimToken!, allowAnonymousSpin: allow, rng: rngAt(0.9) });
     expect(again.created).toBe(false);
     expect(again.spin.id).toBe(first.spin.id);
     expect(await prisma.spinResult.count()).toBe(1);
@@ -118,14 +119,14 @@ describe.skipIf(!ctx)("spin service (integration)", () => {
   it("never awards an ineligible, low-stock or out-of-stock product", async () => {
     await prisma.productVariant.update({ where: { id: ids.c1 }, data: { stock: 0 } });
     for (let i = 0; i < 20; i++) {
-      const s = await spinWheel({ userId: null, anonId: `a${i}`, claimToken: null, rng: rngAt((i + 0.5) / 20) });
+      const s = await spinWheel({ userId: null, anonId: `a${i}`, claimToken: null, allowAnonymousSpin: allow, rng: rngAt((i + 0.5) / 20) });
       expect(s.spin.productId).toBe(ids.A); // B is at/below reserve, C is sold out
     }
   });
 
   it("sign-in claim attaches the win to the account and issues a personal single-use coupon", async () => {
     const u = await user("claim@spin.test");
-    const s = await spinWheel({ userId: null, anonId: "anon", claimToken: null, rng: rngAt(0.1) });
+    const s = await spinWheel({ userId: null, anonId: "anon", claimToken: null, allowAnonymousSpin: allow, rng: rngAt(0.1) });
     const { spin } = await claimSpin({ userId: u.id, claimToken: s.claimToken! });
     expect(spin).toMatchObject({ status: "CLAIMED", userId: u.id, tokenHash: null });
     const coupon = await prisma.coupon.findUniqueOrThrow({ where: { id: spin.couponId! } });
@@ -147,9 +148,9 @@ describe.skipIf(!ctx)("spin service (integration)", () => {
 
   it("one offer per account: a second anonymous win can't be claimed by the same user", async () => {
     const u = await user("dupe@spin.test");
-    const s1 = await spinWheel({ userId: null, anonId: "x", claimToken: null, rng: rngAt(0.2) });
+    const s1 = await spinWheel({ userId: null, anonId: "x", claimToken: null, allowAnonymousSpin: allow, rng: rngAt(0.2) });
     await claimSpin({ userId: u.id, claimToken: s1.claimToken! });
-    const s2 = await spinWheel({ userId: null, anonId: "y", claimToken: null, rng: rngAt(0.8) });
+    const s2 = await spinWheel({ userId: null, anonId: "y", claimToken: null, allowAnonymousSpin: allow, rng: rngAt(0.8) });
     expect(await code(claimSpin({ userId: u.id, claimToken: s2.claimToken! }))).toBe("ALREADY_CLAIMED");
     expect(await prisma.coupon.count({ where: { ownerUserId: u.id } })).toBe(1);
   });
@@ -157,7 +158,7 @@ describe.skipIf(!ctx)("spin service (integration)", () => {
   it("signed-in spin claims immediately; repeated and concurrent spins return the same single result", async () => {
     const u = await user("direct@spin.test");
     const results = await Promise.all(
-      Array.from({ length: 5 }, (_, i) => spinWheel({ userId: u.id, anonId: null, claimToken: null, rng: rngAt(i / 5) })),
+      Array.from({ length: 5 }, (_, i) => spinWheel({ userId: u.id, anonId: null, claimToken: null, allowAnonymousSpin: allow, rng: rngAt(i / 5) })),
     );
     expect(new Set(results.map((r) => r.spin.id)).size).toBe(1);
     expect(results.filter((r) => r.created)).toHaveLength(1);
@@ -168,7 +169,7 @@ describe.skipIf(!ctx)("spin service (integration)", () => {
 
   it("concurrent claims of one win by two accounts: exactly one succeeds", async () => {
     const [u1, u2] = await Promise.all([user("race1@spin.test"), user("race2@spin.test")]);
-    const s = await spinWheel({ userId: null, anonId: "r", claimToken: null, rng: rngAt(0.3) });
+    const s = await spinWheel({ userId: null, anonId: "r", claimToken: null, allowAnonymousSpin: allow, rng: rngAt(0.3) });
     const outcomes = await Promise.all([
       code(claimSpin({ userId: u1.id, claimToken: s.claimToken! })),
       code(claimSpin({ userId: u2.id, claimToken: s.claimToken! })),
@@ -181,7 +182,7 @@ describe.skipIf(!ctx)("spin service (integration)", () => {
   it("an unclaimed win expires after the claim window", async () => {
     const u = await user("late@spin.test");
     const past = new Date(Date.now() - 48 * 3_600_000);
-    const s = await spinWheel({ userId: null, anonId: "late", claimToken: null, now: past, rng: rngAt(0.5) });
+    const s = await spinWheel({ userId: null, anonId: "late", claimToken: null, allowAnonymousSpin: allow, now: past, rng: rngAt(0.5) });
     expect(await code(claimSpin({ userId: u.id, claimToken: s.claimToken! }))).toBe("EXPIRED");
     expect((await prisma.spinResult.findUniqueOrThrow({ where: { id: s.spin.id } })).status).toBe("EXPIRED");
     expect(await prisma.coupon.count({ where: { ownerUserId: u.id } })).toBe(0);
@@ -190,19 +191,19 @@ describe.skipIf(!ctx)("spin service (integration)", () => {
   it("campaign claim cap is enforced and rolls back cleanly", async () => {
     await prisma.spinCampaign.update({ where: { id: campaignId }, data: { maxClaims: 1 } });
     const [u1, u2] = await Promise.all([user("cap1@spin.test"), user("cap2@spin.test")]);
-    const s1 = await spinWheel({ userId: null, anonId: "c1", claimToken: null, rng: rngAt(0.1) });
-    const s2 = await spinWheel({ userId: null, anonId: "c2", claimToken: null, rng: rngAt(0.1) });
+    const s1 = await spinWheel({ userId: null, anonId: "c1", claimToken: null, allowAnonymousSpin: allow, rng: rngAt(0.1) });
+    const s2 = await spinWheel({ userId: null, anonId: "c2", claimToken: null, allowAnonymousSpin: allow, rng: rngAt(0.1) });
     expect(await code(claimSpin({ userId: u1.id, claimToken: s1.claimToken! }))).toBe("OK");
     expect(await code(claimSpin({ userId: u2.id, claimToken: s2.claimToken! }))).toBe("CLAIM_LIMIT");
     expect(await prisma.coupon.count({ where: { ownerUserId: u2.id } })).toBe(0);
     expect((await prisma.spinResult.findUniqueOrThrow({ where: { id: s2.spin.id } })).status).toBe("AWARDED");
     // Campaign is no longer live once claims are exhausted.
-    expect(await code(spinWheel({ userId: null, anonId: "c3", claimToken: null }))).toBe("NO_CAMPAIGN");
+    expect(await code(spinWheel({ userId: null, anonId: "c3", claimToken: null, allowAnonymousSpin: allow }))).toBe("NO_CAMPAIGN");
   });
 
   it("re-validates stock at claim: a sold-out prize moves to an in-stock product at the same %", async () => {
     const u = await user("moved@spin.test");
-    const s = await spinWheel({ userId: null, anonId: "m", claimToken: null, rng: rngAt(0.01) });
+    const s = await spinWheel({ userId: null, anonId: "m", claimToken: null, allowAnonymousSpin: allow, rng: rngAt(0.01) });
     expect(s.spin.productId).toBe(ids.A);
     await prisma.productVariant.updateMany({ where: { id: { in: [ids.a1, ids.a2] } }, data: { stock: 0 } });
     const { spin, reassigned } = await claimSpin({ userId: u.id, claimToken: s.claimToken!, rng: rngAt(0.5) });
@@ -213,14 +214,14 @@ describe.skipIf(!ctx)("spin service (integration)", () => {
 
   it("refuses to spin when nothing is in stock or no campaign is live", async () => {
     await prisma.productVariant.updateMany({ where: { id: { in: [ids.a1, ids.a2, ids.c1] } }, data: { stock: 2 } });
-    expect(await code(spinWheel({ userId: null, anonId: "n", claimToken: null }))).toBe("NO_STOCK");
+    expect(await code(spinWheel({ userId: null, anonId: "n", claimToken: null, allowAnonymousSpin: allow }))).toBe("NO_STOCK");
     await prisma.spinCampaign.update({ where: { id: campaignId }, data: { isActive: false } });
-    expect(await code(spinWheel({ userId: null, anonId: "n", claimToken: null }))).toBe("NO_CAMPAIGN");
+    expect(await code(spinWheel({ userId: null, anonId: "n", claimToken: null, allowAnonymousSpin: allow }))).toBe("NO_CAMPAIGN");
   });
 
   it("redemption is recorded once", async () => {
     const u = await user("redeem@spin.test");
-    const s = await spinWheel({ userId: u.id, anonId: null, claimToken: null, rng: rngAt(0.4) });
+    const s = await spinWheel({ userId: u.id, anonId: null, claimToken: null, allowAnonymousSpin: allow, rng: rngAt(0.4) });
     expect(await markSpinRedeemed(s.spin.couponId!)).toBe(true);
     expect(await markSpinRedeemed(s.spin.couponId!)).toBe(false);
     expect((await prisma.spinResult.findUniqueOrThrow({ where: { id: s.spin.id } })).status).toBe("REDEEMED");

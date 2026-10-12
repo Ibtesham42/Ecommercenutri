@@ -19,5 +19,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["lib/**/*.test.ts"],
+    // Time-zone tests switch process.env.TZ at runtime, which Node only honours
+    // on a process main thread — not inside the default worker-thread pool.
+    poolMatchGlobs: [["**/hydration.test.ts", "forks"]],
   },
 });

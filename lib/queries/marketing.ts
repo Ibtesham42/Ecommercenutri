@@ -118,7 +118,8 @@ export async function getComposeData() {
   await ensureBuiltInTemplates();
   const [products, coupons, categories, segments, templates] = await Promise.all([
     prisma.product.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" }, take: 500 }),
-    prisma.coupon.findMany({ where: { isActive: true }, select: { id: true, code: true }, orderBy: { code: "asc" }, take: 200 }),
+    // Personal Spin & Win coupons are owner-only — never offer them for campaigns.
+    prisma.coupon.findMany({ where: { isActive: true, spinResult: { is: null } }, select: { id: true, code: true }, orderBy: { code: "asc" }, take: 200 }),
     prisma.category.findMany({ where: { isActive: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.audienceSegment.findMany({ orderBy: { name: "asc" } }),
     prisma.campaignTemplate.findMany({ orderBy: [{ isBuiltIn: "desc" }, { name: "asc" }] }),
