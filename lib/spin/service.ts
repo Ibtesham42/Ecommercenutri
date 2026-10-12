@@ -29,6 +29,7 @@ import { TX_OPTIONS, withDbRetry, withTxRetry } from "@/lib/db-retry";
 import { CACHE_TAGS, cachedQuery } from "@/lib/cache";
 import { resolvePrizes, type PrizeTier } from "@/lib/spin/config";
 import { isPlaceholderEmail } from "@/lib/phone-account";
+import { isEligibilityVerified, playableVariantIds } from "@/lib/spin/eligibility";
 import {
   drawPrize,
   productCandidates,
@@ -83,7 +84,7 @@ const MESSAGES: Record<SpinErrorCode, string> = {
   NOT_FOUND: "We couldn't find a win to claim. Give the wheel a spin first.",
   RATE_LIMITED: "You've spun a few times already today. Please sign in to play.",
   PRIZE_UNAVAILABLE:
-    "The product you won has just sold out, and no other offer product is available right now. " +
+    "The product you won isn't available right now, and neither is any other offer product. " +
     "Your win is saved — please try claiming again a little later, before your claim deadline.",
   UNVERIFIED:
     "Please verify your email address or phone number to claim this offer. Your win is held for you until the claim deadline.",
@@ -133,7 +134,7 @@ export async function canClaimSpin(userId: string): Promise<boolean> {
 // Campaign
 // ---------------------------------------------------------------------------
 
-/** Is the campaign live at `now` (enabled, in window, claims left)? */
+/** Is the campaign live at `now` (enabled, in window, claims left)? Verification is checked separately. */
 export function isCampaignLive(
   c: Pick<SpinCampaign, "isActive" | "startsAt" | "endsAt" | "maxClaims" | "claimCount">,
   now: Date,
@@ -149,7 +150,12 @@ export async function getLiveCampaign(now = new Date()): Promise<SpinCampaign | 
   const rows = await withDbRetry(() =>
     prisma.spinCampaign.findMany({ where: { isActive: true }, orderBy: { createdAt: "desc" } }),
   );
-  return rows.find((c) => isCampaignLive(c, now) && resolvePrizes(c.prizes).some((t) => t.weight > 0)) ?? null;
+  // Never playable without a verified eligibility list (lib/spin/eligibility.ts).
+  return (
+    rows.find(
+      (c) => isCampaignLive(c, now) && isEligibilityVerified(c) && resolvePrizes(c.prizes).some((t) => t.weight > 0),
+    ) ?? null
+  );
 }
 
 // Storefront entry points (homepage band, /offers) only need "is a campaign
@@ -159,9 +165,19 @@ const readActiveCampaignWindows = cachedQuery(
   async () => {
     const rows = await prisma.spinCampaign.findMany({
       where: { isActive: true },
-      select: { isActive: true, startsAt: true, endsAt: true, maxClaims: true, claimCount: true, prizes: true },
+      select: {
+        isActive: true,
+        startsAt: true,
+        endsAt: true,
+        maxClaims: true,
+        claimCount: true,
+        prizes: true,
+        eligibleVariantIds: true,
+        eligibilityVerifiedAt: true,
+        eligibilitySnapshot: true,
+      },
     });
-    return rows.map((r) => ({
+    return rows.filter(isEligibilityVerified).map((r) => ({
       startsAt: r.startsAt?.toISOString() ?? null,
       endsAt: r.endsAt?.toISOString() ?? null,
       maxClaims: r.maxClaims,
@@ -198,15 +214,40 @@ export async function getSpinTeaser(now = new Date()): Promise<{ topPercent: num
   }
 }
 
+/**
+ * Live stock for the campaign's PLAYABLE variants only: verified, and still
+ * the same product + size as when verified (anything else is never offered).
+ */
 async function loadVariantStock(
   db: Tx,
-  variantIds: readonly string[],
+  campaign: Pick<SpinCampaign, "eligibleVariantIds" | "eligibilityVerifiedAt" | "eligibilitySnapshot">,
 ): Promise<VariantStock[]> {
-  if (variantIds.length === 0) return [];
-  const rows = await db.productVariant.findMany({
-    where: { id: { in: [...variantIds] } },
-    select: { id: true, productId: true, stock: true, isActive: true, product: { select: { isActive: true } } },
+  if (campaign.eligibleVariantIds.length === 0) return [];
+  const all = await db.productVariant.findMany({
+    where: { id: { in: [...campaign.eligibleVariantIds] } },
+    select: {
+      id: true,
+      productId: true,
+      stock: true,
+      isActive: true,
+      weightLabel: true,
+      weightInGrams: true,
+      product: { select: { isActive: true, name: true } },
+    },
   });
+  const playable = new Set(
+    playableVariantIds(
+      campaign,
+      all.map((v) => ({
+        variantId: v.id,
+        productId: v.productId,
+        productName: v.product.name,
+        weightLabel: v.weightLabel,
+        weightInGrams: v.weightInGrams,
+      })),
+    ),
+  );
+  const rows = all.filter((v) => playable.has(v.id));
   return rows.map((v) => ({
     variantId: v.id,
     productId: v.productId,
@@ -311,7 +352,7 @@ export async function spinWheel(input: {
 
   const tiers = resolvePrizes(campaign.prizes);
   const [stock, reserved] = await Promise.all([
-    loadVariantStock(prisma, campaign.eligibleVariantIds),
+    loadVariantStock(prisma, campaign),
     loadReservations(prisma, now),
   ]);
   const prize = drawPrize(stock, selectionConfig(campaign, reserved), tiers, rng);
@@ -440,10 +481,11 @@ async function claimInTx(
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(${CLAIM_LOCK_KEY}::bigint)`;
 
   // Never promise stock that isn't there: re-check stock, activity, the
-  // campaign's CURRENT approved list and outstanding offers at claim time.
+  // campaign's CURRENT verified list (exact IDs + sizes) and outstanding
+  // offers at claim time. An unverified campaign has nothing playable.
   const fresh = await tx.spinCampaign.findUniqueOrThrow({ where: { id: campaign.id } });
   const [stock, reserved] = await Promise.all([
-    loadVariantStock(tx, fresh.eligibleVariantIds),
+    loadVariantStock(tx, fresh),
     loadReservations(tx, now),
   ]);
   const candidates = productCandidates(stock, selectionConfig(fresh, reserved));

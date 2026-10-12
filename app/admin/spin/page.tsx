@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/admin/page-header";
 import { guardSection } from "@/lib/admin-guard";
 import { prisma } from "@/lib/prisma";
-import { resolvePrizes } from "@/lib/spin/config";
+import { approvedSuggestionFor, resolvePrizes } from "@/lib/spin/config";
+import { eligibilityDrift, isEligibilityVerified, sizeGrams } from "@/lib/spin/eligibility";
 import { loadReservations } from "@/lib/spin/service";
 import { spinFunnel } from "@/lib/spin/stats";
 import {
   SpinManager,
   type SpinCampaignRow,
+  type SpinEligibleVariant,
   type SpinVariantOption,
 } from "@/components/admin/spin-manager";
 
@@ -44,7 +46,57 @@ export default async function AdminSpinPage() {
     loadReservations(prisma, now),
   ]);
 
+  // Exact catalogue facts for every variant any campaign lists (active or not),
+  // for the verification table + drift check.
+  const listedIds = [...new Set(campaigns.flatMap((c) => c.eligibleVariantIds))];
+  const verifierIds = [...new Set(campaigns.map((c) => c.eligibilityVerifiedById).filter((x): x is string => !!x))];
+  const [listed, verifiers] = await Promise.all([
+    prisma.productVariant.findMany({
+      where: { id: { in: listedIds } },
+      select: {
+        id: true,
+        productId: true,
+        weightLabel: true,
+        weightInGrams: true,
+        stock: true,
+        price: true,
+        isActive: true,
+        product: { select: { name: true, isActive: true } },
+      },
+    }),
+    prisma.user.findMany({ where: { id: { in: verifierIds } }, select: { id: true, name: true, email: true } }),
+  ]);
+  const listedById = new Map(listed.map((v) => [v.id, v]));
+  const verifierName = new Map(verifiers.map((u) => [u.id, u.name || u.email]));
+
   const rows: SpinCampaignRow[] = campaigns.map((c) => {
+    const eligible: SpinEligibleVariant[] = c.eligibleVariantIds.flatMap((id) => {
+      const v = listedById.get(id);
+      if (!v) return [];
+      return [
+        {
+          variantId: v.id,
+          productId: v.productId,
+          productName: v.product.name,
+          weightLabel: v.weightLabel,
+          grams: sizeGrams(v),
+          stock: v.stock,
+          price: v.price,
+          active: v.isActive && v.product.isActive,
+          suggestion: approvedSuggestionFor(v.product.name, v.weightLabel, v.weightInGrams),
+        },
+      ];
+    });
+    const drift = eligibilityDrift(
+      c.eligibilitySnapshot,
+      listed.map((v) => ({
+        variantId: v.id,
+        productId: v.productId,
+        productName: v.product.name,
+        weightLabel: v.weightLabel,
+        weightInGrams: v.weightInGrams,
+      })),
+    );
     const count = (status: string) =>
       statusCounts.find((s) => s.campaignId === c.id && s.status === status)?._count._all ?? 0;
     const funnel = spinFunnel({
@@ -71,6 +123,18 @@ export default async function AdminSpinPage() {
       minOrder: c.minOrder,
       maxDiscount: c.maxDiscount,
       saleMode: c.saleMode,
+      eligible,
+      verification: {
+        verified: isEligibilityVerified(c),
+        verifiedAt: c.eligibilityVerifiedAt?.toISOString() ?? null,
+        verifiedBy: c.eligibilityVerifiedById ? (verifierName.get(c.eligibilityVerifiedById) ?? "a former admin") : null,
+        missing: drift.missing.map((m) => `${m.productName} ${m.weightLabel}`),
+        changed: drift.changed.map(
+          (d) => `${d.was.productName} ${d.was.weightLabel} → ${d.now.productName} ${d.now.weightLabel}`,
+        ),
+        renamed: drift.renamed.map((d) => `${d.was.productName} → ${d.now.productName}`),
+        unlisted: c.eligibleVariantIds.length - eligible.length,
+      },
       stats: {
         ...funnel,
         byPercent: percentCounts

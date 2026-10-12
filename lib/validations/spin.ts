@@ -63,3 +63,10 @@ export const spinCampaignSchema = z
   });
 
 export type SpinCampaignInput = z.input<typeof spinCampaignSchema>;
+
+/** Admin confirmation that the exact variant list was checked against the live catalogue. */
+export const verifyEligibilitySchema = z.object({
+  id: z.string().trim().min(1),
+  variantIds: z.array(z.string().trim().min(1).max(40)).min(1).max(300),
+  confirmed: z.literal(true, { message: "Confirm that you checked every product, size and variant ID." }),
+});

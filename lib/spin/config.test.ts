@@ -26,7 +26,7 @@ describe("resolvePrizes", () => {
   });
 });
 
-describe("approved-list suggestions (admin pre-selection only)", () => {
+describe("approved-list suggestions (reviewer hints only)", () => {
   it("parses weights from labels", () => {
     expect(gramsFromLabel("250g")).toBe(250);
     expect(gramsFromLabel("5 kg")).toBe(5000);

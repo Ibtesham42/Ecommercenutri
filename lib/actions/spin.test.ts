@@ -37,6 +37,8 @@ const LIVE = {
   endsAt: null,
   prizes: [{ percent: 10, weight: 1 }],
   eligibleVariantIds: ["v1"],
+  eligibilityVerifiedAt: new Date(),
+  eligibilitySnapshot: [{ variantId: "v1", productId: "p1", productName: "Makhana", weightLabel: "100g", weightInGrams: 100 }],
   minStock: 5,
   weightCap: 200,
   claimWindowHours: 24,
@@ -91,7 +93,7 @@ beforeEach(() => {
   prismaMock.spinResult.groupBy.mockResolvedValue([]); // no outstanding offers reserved
   // findMany serves both loadVariantStock (stock fields) and toSpinView (labels).
   prismaMock.productVariant.findMany.mockResolvedValue([
-    { id: "v1", productId: "p1", stock: 50, isActive: true, product: { isActive: true }, weightLabel: "100g" },
+    { id: "v1", productId: "p1", stock: 50, isActive: true, product: { isActive: true, name: "Makhana" }, weightLabel: "100g", weightInGrams: 100 },
   ]);
   prismaMock.product.findUnique.mockResolvedValue({ name: "Makhana", slug: "makhana", images: [] });
 });

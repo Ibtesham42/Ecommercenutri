@@ -1,5 +1,6 @@
 import { hasLocalDb } from "@/lib/test/local-db-env"; // must stay first: pins DB + blanks live keys
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { verifiedEligibility } from "@/lib/test/spin-fixtures";
 
 /**
  * Phase 2A end to end on a real (local, disposable) Postgres: the real
@@ -86,7 +87,7 @@ describe.skipIf(!ctx)("Spin & Win orders, GST and refunds (integration)", () => 
         name: "o",
         isActive: true,
         prizes: [{ percent: 20, weight: 1 }],
-        eligibleVariantIds: [ids.spinV],
+        ...(await verifiedEligibility(prisma, [ids.spinV])),
         minStock: 5,
         saleMode: "STACK",
       },

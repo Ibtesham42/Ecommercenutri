@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Pause, Pencil, Play, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { AlertTriangle, Download, Loader2, Pause, Pencil, Play, Plus, ShieldCheck, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,12 +11,27 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { deleteSpinCampaign, saveSpinCampaign, setSpinCampaignActive } from "@/lib/actions/admin/spin";
-import { DEFAULT_PRIZES, isApprovedSuggestion, type PrizeTier } from "@/lib/spin/config";
+import { deleteSpinCampaign, saveSpinCampaign, setSpinCampaignActive, verifySpinEligibility } from "@/lib/actions/admin/spin";
+import { APPROVED_ELIGIBILITY, DEFAULT_PRIZES, approvedSuggestionFor, type PrizeTier } from "@/lib/spin/config";
+import { downloadCsv } from "@/lib/admin/csv-export";
 import { probabilities, productCandidates } from "@/lib/spin/selection";
 import { formatDateTime, formatPrice, paiseToRupees, rupeesToPaise } from "@/lib/format";
 
 type SaleMode = "STACK" | "BEST_OF" | "EXCLUDE";
+
+/** One eligible variant exactly as the catalogue has it now (verification table). */
+export type SpinEligibleVariant = {
+  variantId: string;
+  productId: string;
+  productName: string;
+  weightLabel: string;
+  grams: number | null;
+  stock: number;
+  price: number;
+  active: boolean;
+  /** Approved-list entry this looks like — a hint for the reviewer, never the rule. */
+  suggestion: string | null;
+};
 
 export type SpinCampaignRow = {
   id: string;
@@ -35,6 +50,16 @@ export type SpinCampaignRow = {
   minOrder: number | null;
   maxDiscount: number | null;
   saleMode: SaleMode;
+  eligible: SpinEligibleVariant[];
+  verification: {
+    verified: boolean;
+    verifiedAt: string | null;
+    verifiedBy: string | null;
+    missing: string[]; // verified variants that no longer exist
+    changed: string[]; // verified variants whose product/size changed
+    renamed: string[]; // name-only changes (informational)
+    unlisted: number; // listed IDs not found in the catalogue
+  };
   stats: {
     spins: number;
     pending: number;
@@ -89,7 +114,7 @@ function toLocalInput(iso: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function toForm(c: SpinCampaignRow | null, variants: SpinVariantOption[]): FormState {
+function toForm(c: SpinCampaignRow | null): FormState {
   if (!c) {
     return {
       name: "Spin & Win",
@@ -97,10 +122,8 @@ function toForm(c: SpinCampaignRow | null, variants: SpinVariantOption[]): FormS
       startsAt: "",
       endsAt: "",
       prizes: DEFAULT_PRIZES.map((p) => ({ percent: String(p.percent), weight: String(p.weight) })),
-      // Pre-select the approved list for review — the admin confirms before saving.
-      eligibleVariantIds: variants
-        .filter((v) => v.active && isApprovedSuggestion(v.productName, v.weightLabel, v.weightInGrams))
-        .map((v) => v.id),
+      // Nothing pre-selected: the admin ticks exact variants, then verifies them.
+      eligibleVariantIds: [],
       minStock: "5",
       weightCap: "200",
       claimWindowHours: "24",
@@ -152,6 +175,7 @@ export function SpinManager({
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<FormState | null>(null);
+  const [verifying, setVerifying] = useState<SpinCampaignRow | null>(null);
   const [pending, start] = useTransition();
 
   function act(fn: () => Promise<{ ok: boolean; error?: string }>, success: string) {
@@ -169,16 +193,17 @@ export function SpinManager({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-2xl text-sm text-muted-foreground">
           The prize product is drawn server-side, weighted by live stock above the reserve; the discount tier by
-          its weight. Only one campaign should be live at a time — the newest live one is used.
+          its weight. Only one campaign should be live at a time — the newest live one is used. A campaign can
+          only be enabled after its exact eligible variants are verified against the live catalogue.
         </p>
-        <Button onClick={() => setEditing(toForm(null, variants))} className="gap-1.5">
+        <Button onClick={() => setEditing(toForm(null))} className="gap-1.5">
           <Plus className="size-4" /> New campaign
         </Button>
       </div>
 
       {campaigns.length === 0 && (
         <div className="rounded-2xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">
-          No campaigns yet. Create one, review the eligible products, then enable it.
+          No campaigns yet. Create one (paused), tick the exact eligible variants, verify them, then enable it.
         </div>
       )}
 
@@ -191,19 +216,38 @@ export function SpinManager({
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-lg font-semibold">{c.name}</h2>
                   <Badge variant={state.tone}>{state.label}</Badge>
+                  {c.verification.verified && c.verification.missing.length + c.verification.changed.length === 0 ? (
+                    <Badge variant="secondary" className="gap-1">
+                      <ShieldCheck className="size-3.5" /> Eligibility verified
+                    </Badge>
+                  ) : (
+                    <Badge variant="destructive" className="gap-1">
+                      <AlertTriangle className="size-3.5" />
+                      {c.verification.verified ? "Catalogue changed — re-verify" : "Needs verification"}
+                    </Badge>
+                  )}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {c.startsAt ? formatDateTime(c.startsAt) : "No start date"} →{" "}
                   {c.endsAt ? formatDateTime(c.endsAt) : "no end date"} · {c.eligibleVariantIds.length} eligible
                   variants · tiers {c.prizes.map((p) => `${p.percent}%`).join(" / ")}
                 </p>
+                {c.verification.verifiedAt && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Verified by {c.verification.verifiedBy ?? "an admin"} on {formatDateTime(c.verification.verifiedAt)}
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setVerifying(c)}>
+                  <ShieldCheck className="size-4" /> Verify eligibility
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   className="gap-1.5"
-                  disabled={pending}
+                  disabled={pending || (!c.isActive && !c.verification.verified)}
+                  title={!c.isActive && !c.verification.verified ? "Verify the eligible products first" : undefined}
                   onClick={() =>
                     act(() => setSpinCampaignActive(c.id, !c.isActive), c.isActive ? "Campaign paused" : "Campaign enabled")
                   }
@@ -211,7 +255,7 @@ export function SpinManager({
                   {c.isActive ? <Pause className="size-4" /> : <Play className="size-4" />}
                   {c.isActive ? "Pause" : "Enable"}
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setEditing(toForm(c, variants))}>
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setEditing(toForm(c))}>
                   <Pencil className="size-4" /> Edit
                 </Button>
                 {c.stats.spins === 0 && (
@@ -257,6 +301,23 @@ export function SpinManager({
           </div>
         );
       })}
+
+      <Dialog open={verifying !== null} onOpenChange={(o) => !o && setVerifying(null)}>
+        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Verify eligible products{verifying ? ` — ${verifying.name}` : ""}</DialogTitle>
+          </DialogHeader>
+          {verifying && (
+            <VerifyEligibility
+              campaign={verifying}
+              onDone={() => {
+                setVerifying(null);
+                router.refresh();
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={editing !== null} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-3xl">
@@ -383,7 +444,12 @@ function CampaignEditor({
         </div>
         <label className="flex items-center gap-3 sm:col-span-2">
           <Switch checked={f.isActive} onCheckedChange={(v) => set("isActive", v)} />
-          <span className="text-sm">Enabled (live within its dates)</span>
+          <span className="text-sm">
+            Enabled (live within its dates)
+            <span className="block text-xs text-muted-foreground">
+              Only possible once the eligible products are verified — save it paused first.
+            </span>
+          </span>
         </label>
       </section>
 
@@ -446,12 +512,12 @@ function CampaignEditor({
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <h3 className="text-sm font-semibold">Eligible products ({f.eligibleVariantIds.length} variants)</h3>
-            <p className="mt-1 text-xs text-muted-foreground">Stored by variant ID. New campaigns pre-select the approved list — review before saving.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Stored by exact variant ID — tick each product size yourself; nothing is selected automatically.
+              &ldquo;Approved list?&rdquo; labels are name-based hints only. Changing this list clears the
+              verification, so the campaign stays off until the new list is verified.
+            </p>
           </div>
-          <Button type="button" size="sm" variant="outline" className="gap-1.5"
-            onClick={() => set("eligibleVariantIds", [...new Set([...f.eligibleVariantIds, ...variants.filter((v) => v.active && isApprovedSuggestion(v.productName, v.weightLabel, v.weightInGrams)).map((v) => v.id)])])}>
-            <Sparkles className="size-4" /> Add approved list
-          </Button>
         </div>
         <Input className="mt-3" placeholder="Search products…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search products" />
         <div className="mt-2 max-h-72 overflow-y-auto rounded-xl border">
@@ -467,6 +533,9 @@ function CampaignEditor({
                       {v.stock} in stock
                     </span>
                     {v.onSale && <span className="text-xs text-muted-foreground">· on sale</span>}
+                    {approvedSuggestionFor(v.productName, v.weightLabel, v.weightInGrams) && (
+                      <span className="text-xs text-muted-foreground">· approved list?</span>
+                    )}
                     {!v.active && <span className="text-xs text-destructive">· inactive</span>}
                   </label>
                 ))}
@@ -508,6 +577,170 @@ function NumberField({ id, label, value, onChange }: { id: string; label: string
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <Input id={id} type="number" min={0} value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+/**
+ * Explicit, recorded check of the exact mapping against the live catalogue.
+ * Shows every selected variant with its IDs and size, how it lines up with the
+ * business-approved list (hints), and anything that changed since a previous
+ * verification. Verifying never enables the campaign.
+ */
+function VerifyEligibility({ campaign: c, onDone }: { campaign: SpinCampaignRow; onDone: () => void }) {
+  const [confirmed, setConfirmed] = useState(false);
+  const [saving, start] = useTransition();
+  const v = c.verification;
+  const offList = c.eligible.filter((e) => !e.suggestion);
+  const checklist = APPROVED_ELIGIBILITY.map((a) => ({
+    label: a.label,
+    sizes: a.grams.map((g) => (g >= 1000 ? `${g / 1000} kg` : `${g} g`)).join(", "),
+    matches: c.eligible.filter((e) => e.suggestion === a.label),
+  }));
+
+  function exportCsv() {
+    downloadCsv(
+      `spin-eligibility-${c.id}`,
+      ["Product", "Size", "Grams", "Variant ID", "Product ID", "Stock", "Price (₹)", "Active", "Approved list hint"],
+      c.eligible.map((e) => [
+        e.productName,
+        e.weightLabel,
+        e.grams == null ? "" : String(e.grams),
+        e.variantId,
+        e.productId,
+        String(e.stock),
+        String(paiseToRupees(e.price)),
+        e.active ? "yes" : "no",
+        e.suggestion ?? "not on approved list",
+      ]),
+    );
+  }
+
+  function verify() {
+    start(async () => {
+      const res = await verifySpinEligibility({ id: c.id, variantIds: c.eligibleVariantIds, confirmed });
+      if (res.ok) {
+        toast.success("Eligibility verified. Enable the campaign when you're ready.");
+        onDone();
+      } else toast.error(res.error);
+    });
+  }
+
+  const problems = [
+    ...v.missing.map((m) => `No longer in the catalogue: ${m}`),
+    ...v.changed.map((m) => `Product or size changed: ${m}`),
+    ...(v.unlisted > 0 ? [`${v.unlisted} selected variant ID(s) don't exist any more — edit the campaign to remove them.`] : []),
+  ];
+
+  return (
+    <div className="space-y-5">
+      <p className="text-sm text-muted-foreground">
+        Check every row against the live catalogue — the product, the size and the variant ID. Only these exact
+        variants can ever be offered, and only while their product and size stay as verified. Verifying doesn&apos;t
+        enable the campaign.
+      </p>
+
+      {v.verifiedAt && (
+        <p className="text-sm">
+          Last verified by {v.verifiedBy ?? "an admin"} on {formatDateTime(v.verifiedAt)}
+          {v.verified ? "." : " — the eligible list has changed since, so it needs verifying again."}
+        </p>
+      )}
+      {(problems.length > 0 || v.renamed.length > 0) && (
+        <ul className="space-y-1 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm">
+          {problems.map((p) => (
+            <li key={p} className="text-destructive">{p}</li>
+          ))}
+          {v.renamed.map((r) => (
+            <li key={r} className="text-muted-foreground">Renamed (same product and size): {r}</li>
+          ))}
+        </ul>
+      )}
+
+      <section>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">Selected variants ({c.eligible.length})</h3>
+          <Button type="button" size="sm" variant="outline" className="gap-1.5" onClick={exportCsv} disabled={c.eligible.length === 0}>
+            <Download className="size-4" /> Download CSV
+          </Button>
+        </div>
+        <div className="mt-2 overflow-x-auto rounded-xl border">
+          <table className="w-full min-w-[640px] text-left text-sm">
+            <thead className="bg-muted/50 text-xs text-muted-foreground">
+              <tr>
+                <th className="px-3 py-2 font-medium">Product</th>
+                <th className="px-3 py-2 font-medium">Size</th>
+                <th className="px-3 py-2 font-medium">Variant ID</th>
+                <th className="px-3 py-2 font-medium">Product ID</th>
+                <th className="px-3 py-2 text-right font-medium">Stock</th>
+                <th className="px-3 py-2 font-medium">Approved list (hint)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {c.eligible.map((e) => (
+                <tr key={e.variantId}>
+                  <td className="px-3 py-2">
+                    {e.productName}
+                    {!e.active && <span className="ml-1 text-xs text-destructive">(inactive)</span>}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {e.weightLabel}
+                    {e.grams != null && <span className="text-xs text-muted-foreground"> · {e.grams} g</span>}
+                  </td>
+                  <td className="px-3 py-2 font-mono text-xs">{e.variantId}</td>
+                  <td className="px-3 py-2 font-mono text-xs">{e.productId}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{e.stock}</td>
+                  <td className={`px-3 py-2 text-xs ${e.suggestion ? "text-muted-foreground" : "text-destructive"}`}>
+                    {e.suggestion ?? "Not on the approved list — check"}
+                  </td>
+                </tr>
+              ))}
+              {c.eligible.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-3 py-4 text-muted-foreground">No eligible variants selected. Edit the campaign first.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {offList.length > 0 && (
+          <p className="mt-2 text-xs text-destructive">
+            {offList.length} selected variant{offList.length > 1 ? "s don't" : " doesn't"} look like the approved list.
+            Keep {offList.length > 1 ? "them" : "it"} only if that&apos;s intended.
+          </p>
+        )}
+      </section>
+
+      <section>
+        <h3 className="text-sm font-semibold">Approved list checklist (name hints)</h3>
+        <ul className="mt-2 grid gap-1.5 text-sm sm:grid-cols-2">
+          {checklist.map((a) => (
+            <li key={a.label} className="rounded-lg border px-3 py-2">
+              <span className="font-medium">{a.label}</span>{" "}
+              <span className="text-xs text-muted-foreground">({a.sizes})</span>
+              <div className={`text-xs ${a.matches.length ? "text-muted-foreground" : "text-destructive"}`}>
+                {a.matches.length
+                  ? a.matches.map((m) => `${m.productName} ${m.weightLabel}`).join(" · ")
+                  : "No selected variant looks like this item"}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <label className="flex items-start gap-3 rounded-xl border p-3 text-sm">
+        <Checkbox checked={confirmed} onCheckedChange={(on) => setConfirmed(on === true)} className="mt-0.5" />
+        <span>
+          I checked each product, size and variant ID above against the live catalogue, and these are exactly the
+          variants this campaign may offer.
+        </span>
+      </label>
+
+      <div className="flex justify-end gap-2 border-t pt-4">
+        <Button onClick={verify} disabled={!confirmed || saving || c.eligible.length === 0} className="gap-1.5">
+          {saving ? <Loader2 className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />} Record verification
+        </Button>
+      </div>
     </div>
   );
 }

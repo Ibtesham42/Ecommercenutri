@@ -136,9 +136,29 @@ the shopper can retry until the claim deadline. Checkout re-checks stock again
 the tier percents — never weights or stock. The admin editor previews per-product
 chances with the same functions.
 
-**Eligibility** is stored as variant IDs. New campaigns pre-select the approved
-list (`APPROVED_ELIGIBILITY` name/size matcher) for the admin to review — names are
-a hint only, never the stored rule.
+**Eligibility = exact variant IDs, verified** (`lib/spin/eligibility.ts`). Campaigns
+store only variant IDs; nothing is pre-selected — the admin ticks each product size.
+`APPROVED_ELIGIBILITY` (the business-approved product + size list) is a **hint only**:
+it labels likely matches ("approved list?") and flags selections not on the list, and
+is never used to select or match at runtime. Before a campaign can run, an admin
+(`coupons` permission) opens **Verify eligibility**: a table of every selected
+variant — product, size + grams, variant ID, product ID, stock, active — with the
+approved-list checklist and a CSV download for an independent/offline check, then
+confirms. That records `eligibilityVerifiedAt`, `eligibilityVerifiedById` and an
+`eligibilitySnapshot` (variant ID, product ID, name, weight label, grams).
+Rules, enforced server-side:
+- A campaign is enabled/live only with a verification covering exactly its current
+  list (`isEligibilityVerified` in `getLiveCampaign`, the storefront teaser,
+  `saveSpinCampaign` and `setSpinCampaignActive`). New campaigns are created paused.
+- Changing the eligible list clears the verification (and can't be saved while
+  enabled), so it goes off until the new list is verified. Verifying never enables.
+- Enabling is refused if a verified variant was deleted or its product/size changed
+  since verification; a rename alone is shown but doesn't block.
+- At runtime a variant is offered/claimed only while its product ID and size still
+  match the snapshot (`playableVariantIds`) — a relabelled size drops out silently.
+  Wins held on a campaign whose list was edited can't be claimed until it's re-verified
+  (`PRIZE_UNAVAILABLE`, retryable).
+- Verification records who did it; it does not enforce a second admin (four-eyes).
 
 **Money: GST and refunds (Spin & Win orders only).** `validateCoupon` returns
 `lineDiscounts` for spin coupons (`lineScopedAllocation`: the discount split per cart
@@ -181,12 +201,13 @@ deleted. The newest live campaign is the one played.
 **Analytics** (`UserEventType`): `SPIN_ENTRY` (client, entry tap) · `SPIN_START`,
 `SPIN_WIN`, `SPIN_AUTH`, `SPIN_CLAIM`, `SPIN_REDEEM` (server-side only).
 
-**Tests.** Unit: `lib/spin/*.test.ts`, `lib/spin-financials.test.ts`,
+**Tests.** Unit: `lib/spin/*.test.ts` (incl. `eligibility.test.ts`), `lib/spin-financials.test.ts`,
 `lib/coupons-line-scoped.test.ts`, `lib/actions/spin.test.ts`,
 `lib/actions/admin/spin.test.ts`. Database (`*.int.test.ts`, skipped unless
 `SPIN_TEST_DATABASE_URL` points at **localhost**; `lib/test/local-db-env.ts` refuses
 other hosts and blanks every live key): `service.int` (claim flow, verification,
 reserves), `orders.int` (real `createOrder` → GST → returns → credit note) and
+`lib/actions/admin/spin-eligibility.int` (create → verify → enable → edit clears it),
 `concurrency.int` — **true parallel** races (duplicate spins/claims, claim caps, stock
 allocation, duplicate orders/coupon use, a real deadlock) that assert, via
 `pg_stat_activity`, that the requests really overlapped. Run them one file at a time
@@ -195,7 +216,7 @@ package), never PGlite (single connection):
 
 ```bash
 SPIN_TEST_DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5434/spin_test?sslmode=disable&connection_limit=30" \
-  npx vitest run lib/spin --no-file-parallelism
+  npx vitest run lib/spin lib/actions/admin/spin-eligibility.int.test.ts --no-file-parallelism
 ```
 
 ### Spin & Win — deploy & rollback runbook
@@ -206,8 +227,11 @@ SPIN_TEST_DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5434/spin_test?
 2. `prisma migrate deploy` — `spin_win` then `spin_win_integrity`. Both are additive
    only (new tables/enums/nullable or defaulted columns); old code runs fine on the new
    schema.
-3. Deploy the code. Leave every campaign **inactive** until the eligible variant list
-   has been checked against the live catalogue.
+   Then `spin_eligibility_verification` (also additive; existing campaigns start
+   unverified, so nothing becomes playable).
+3. Deploy the code. Campaigns can't run until an admin verifies the exact eligible
+   variants in `/admin/spin` → **Verify eligibility** (check the table/CSV against the
+   live catalogue), and then enables the campaign.
 
 **Turn it off (no deploy).** In `/admin/spin`, pause the campaign: no new spins or
 entry points, history kept, claimed offers stay valid. To also stop **claimed offers**
@@ -235,8 +259,14 @@ Returns on spin orders requested after a rollback would refund the full line pri
 **Analytics enum.** `SPIN_ENTRY`, `SPIN_START`, `SPIN_WIN`, `SPIN_AUTH`, `SPIN_CLAIM`,
 `SPIN_REDEEM` were added to `UserEventType`. **Never drop enum values**: Postgres can't
 drop a value without rebuilding the type, and existing `UserEvent` rows reference
-them. Old code simply never writes them; analytics queries filtering by type are
-unaffected.
+them. Caution (expected, not tested): code from **before** Spin & Win has a Prisma
+client that doesn't know these values, and Prisma errors when it reads a row whose
+enum value it doesn't know — so analytics/journey screens that read `UserEvent.type`
+over a range containing spin events would likely fail after such a rollback. Prefer
+pausing the campaign to any rollback past the Spin & Win commit; if one is
+unavoidable, roll back to code that still contains the enum values in its schema, or
+plan to remove/convert the `SPIN_*` `UserEvent` rows first (analytics data loss —
+decide explicitly).
 
 **Never** run `prisma migrate reset` or `db push --accept-data-loss` against
 production, and don't delete `SpinResult`/`SpinCampaign` rows that coupons or orders

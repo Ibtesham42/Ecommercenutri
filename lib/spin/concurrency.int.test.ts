@@ -1,5 +1,6 @@
 import { hasLocalDb } from "@/lib/test/local-db-env"; // must stay first: pins DB + blanks live keys
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { verifiedEligibility } from "@/lib/test/spin-fixtures";
 
 /**
  * TRUE CONCURRENCY tests for Spin & Win against a real multi-connection
@@ -118,7 +119,7 @@ describe.skipIf(!ctx)("Spin & Win — true parallel execution (multi-connection 
         name: "cc",
         isActive: true,
         prizes: [{ percent: 15, weight: 1 }],
-        eligibleVariantIds: [ids.a1, ids.c1],
+        ...(await verifiedEligibility(prisma, [ids.a1, ids.c1])),
         minStock: 5,
         weightCap: 1000,
         claimWindowHours: 24,

@@ -39,19 +39,26 @@ export function resolvePrizes(raw: unknown): PrizeTier[] {
 }
 
 /**
- * The approved eligibility list from the business brief. Used ONLY to
- * pre-select matching variants in the admin picker — the campaign itself
- * always stores real variant IDs, which the admin reviews before saving.
+ * The approved eligibility list from the business brief (product + sizes).
+ * HINT ONLY: the admin verification screen uses it to label likely matches
+ * and flag selections that aren't on the list. It never selects anything and
+ * is never the stored rule — campaigns store exact variant IDs, verified by an
+ * admin against the live catalogue (lib/spin/eligibility.ts).
+ * Spices/powders require "powder" and exclude makhana, so flavoured snacks
+ * (e.g. a chilli makhana) aren't suggested as the plain powder.
  */
+const NOT_MAKHANA = "(?!.*makhana)";
+const powder = (name: string) => new RegExp(`^${NOT_MAKHANA}(?=.*(${name}))(?=.*powder)`, "i");
+
 export const APPROVED_ELIGIBILITY: { label: string; match: RegExp[]; grams: number[] }[] = [
-  { label: "Moringa Powder", match: [/moringa/i], grams: [100, 200] },
-  { label: "Turmeric Powder", match: [/turmeric|haldi/i], grams: [100] },
-  { label: "Red Chilli Powder", match: [/chil+i/i], grams: [100] },
-  { label: "Coriander Powder", match: [/coriander|dhania/i], grams: [100] },
-  { label: "Regular Sattu", match: [/sattu/i], grams: [500] },
-  { label: "Amla Powder", match: [/amla/i], grams: [150] },
-  { label: "Tulsi Powder", match: [/tulsi/i], grams: [150] },
-  { label: "Beetroot Powder", match: [/beet/i], grams: [150] },
+  { label: "Moringa Powder", match: [powder("moringa")], grams: [100, 200] },
+  { label: "Turmeric Powder", match: [powder("turmeric|haldi")], grams: [100] },
+  { label: "Red Chilli Powder", match: [powder("chil+i|mirch")], grams: [100] },
+  { label: "Coriander Powder", match: [powder("coriander|dhania")], grams: [100] },
+  { label: "Regular Sattu", match: [/^(?!.*makhana)(?=.*sattu)(?!.*(masala|flavou?r|choco|jaggery|gur|mix))/i], grams: [500] },
+  { label: "Amla Powder", match: [powder("amla")], grams: [150] },
+  { label: "Tulsi Powder", match: [powder("tulsi")], grams: [150] },
+  { label: "Beetroot Powder", match: [powder("beet")], grams: [150] },
   { label: "Regular Makhana", match: [/^(?=.*makhana)(?=.*(regular|plain))(?!.*(phool|premium|rasogul|flour|atta))/i], grams: [250] },
   { label: "Premium Phool Makhana", match: [/^(?=.*makhana)(?=.*(phool|premium))(?!.*(rasogul|flour|atta))/i], grams: [100, 250] },
   { label: "Rasogulla Makhana", match: [/rasogul/i], grams: [100, 250] },
@@ -66,13 +73,23 @@ export function gramsFromLabel(label: string): number | null {
   return Math.round(m[2] === "kg" ? n * 1000 : n);
 }
 
-/** Does a product/variant match the approved list? (admin pre-selection hint only) */
-export function isApprovedSuggestion(productName: string, weightLabel: string, weightInGrams: number | null): boolean {
+/** Which approved-list entry a product/variant looks like (hint only — never eligibility). */
+export function approvedSuggestionFor(
+  productName: string,
+  weightLabel: string,
+  weightInGrams: number | null,
+): string | null {
   const grams = weightInGrams ?? gramsFromLabel(weightLabel) ?? gramsFromLabel(productName);
-  if (grams == null) return false;
-  return APPROVED_ELIGIBILITY.some(
+  if (grams == null) return null;
+  const hit = APPROVED_ELIGIBILITY.find(
     (e) => e.match.some((re) => re.test(productName)) && e.grams.includes(grams),
   );
+  return hit?.label ?? null;
+}
+
+/** Does a product/variant look like an approved-list entry? (hint only) */
+export function isApprovedSuggestion(productName: string, weightLabel: string, weightInGrams: number | null): boolean {
+  return approvedSuggestionFor(productName, weightLabel, weightInGrams) !== null;
 }
 
 /** Wheel segment label, e.g. "15% OFF". */

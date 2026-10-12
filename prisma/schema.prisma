@@ -1888,32 +1888,39 @@ model JnvAnnouncement {
 // redeem it through the existing coupon engine.
 
 model SpinCampaign {
-  id                 String         @id @default(cuid())
-  name               String
+  id                      String         @id @default(cuid())
+  name                    String
   // Paused campaigns keep all history; already-claimed offers stay valid.
-  isActive           Boolean        @default(false)
-  startsAt           DateTime?
-  endsAt             DateTime?
+  isActive                Boolean        @default(false)
+  startsAt                DateTime?
+  endsAt                  DateTime?
   // [{ percent: Int, weight: Int }] — resolved/validated by lib/spin/config.ts.
-  prizes             Json
-  eligibleVariantIds String[]       @default([])
+  prizes                  Json
+  eligibleVariantIds      String[]       @default([])
   // Variants with stock <= minStock are never offered.
-  minStock           Int            @default(5)
+  minStock                Int            @default(5)
   // Per-product selection weight = min(stock - minStock, weightCap).
-  weightCap          Int            @default(200)
+  weightCap               Int            @default(200)
   // Anonymous wins must be claimed (sign in) within this window.
-  claimWindowHours   Int            @default(24)
+  claimWindowHours        Int            @default(24)
   // Claimed offer (coupon) validity.
-  offerValidDays     Int            @default(7)
+  offerValidDays          Int            @default(7)
   // Total claims allowed for the campaign (null = unlimited).
-  maxClaims          Int?
-  claimCount         Int            @default(0)
-  minOrder           Int? // paise
-  maxDiscount        Int? // paise
-  saleMode           CouponSaleMode @default(BEST_OF)
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
-  spins              SpinResult[]
+  maxClaims               Int?
+  claimCount              Int            @default(0)
+  minOrder                Int? // paise
+  maxDiscount             Int? // paise
+  saleMode                CouponSaleMode @default(BEST_OF)
+  // Eligibility verification (lib/spin/eligibility.ts): an admin confirmed the
+  // exact variant IDs + sizes against the live catalogue. Required to go live;
+  // editing eligibleVariantIds clears it. Snapshot: [{ variantId, productId,
+  // productName, weightLabel, weightInGrams }].
+  eligibilityVerifiedAt   DateTime?
+  eligibilityVerifiedById String?
+  eligibilitySnapshot     Json?
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+  spins                   SpinResult[]
 }
 
 enum SpinStatus {
@@ -1924,25 +1931,25 @@ enum SpinStatus {
 }
 
 model SpinResult {
-  id         String       @id @default(cuid())
-  campaignId String
-  campaign   SpinCampaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
-  userId     String?
-  user       User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id                      String       @id @default(cuid())
+  campaignId              String
+  campaign                SpinCampaign @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  userId                  String?
+  user                    User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
   // sha256 of the anonymous claim token held in an httpOnly cookie.
-  tokenHash  String?      @unique
-  anonId     String?
-  percent    Int
-  productId  String
-  variantIds String[]     @default([])
-  status     SpinStatus   @default(AWARDED)
+  tokenHash               String?      @unique
+  anonId                  String?
+  percent                 Int
+  productId               String
+  variantIds              String[]     @default([])
+  status                  SpinStatus   @default(AWARDED)
   // Claim deadline while AWARDED.
-  expiresAt  DateTime
-  couponId   String?      @unique
-  coupon     Coupon?      @relation(fields: [couponId], references: [id], onDelete: SetNull)
-  claimedAt  DateTime?
-  redeemedAt DateTime?
-  createdAt  DateTime     @default(now())
+  expiresAt               DateTime
+  couponId                String?      @unique
+  coupon                  Coupon?      @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  claimedAt               DateTime?
+  redeemedAt              DateTime?
+  createdAt               DateTime     @default(now())
   // Set when the won product was unavailable at claim time and the offer moved
   // (same percent) to another approved, in-stock product — shown to the shopper.
   reassignedFromProductId String?

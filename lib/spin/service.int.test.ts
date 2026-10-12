@@ -1,5 +1,6 @@
 import { hasLocalDb } from "@/lib/test/local-db-env"; // must stay first: pins DB + blanks live keys
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { verifiedEligibility } from "@/lib/test/spin-fixtures";
 
 /**
  * Spin & Win engine against a REAL Postgres (claim flow, replays, races,
@@ -91,7 +92,7 @@ describe.skipIf(!ctx)("spin service (integration)", () => {
           { percent: 10, weight: 1 },
           { percent: 20, weight: 1 },
         ],
-        eligibleVariantIds: [ids.a1, ids.a2, ids.b1, ids.c1],
+        ...(await verifiedEligibility(prisma, [ids.a1, ids.a2, ids.b1, ids.c1])),
         minStock: 5,
         weightCap: 1000,
         claimWindowHours: 24,
@@ -236,14 +237,47 @@ describe.skipIf(!ctx)("spin service (integration)", () => {
     const u = await user("withdrawn@spin.test");
     const s = await spinWheel({ userId: null, anonId: "w", claimToken: null, allowAnonymousSpin: allow, rng: rngAt(0.01) });
     expect(s.spin.productId).toBe(ids.A);
+    // Edited but not yet re-verified: nothing is playable, the win is held.
     await prisma.spinCampaign.update({ where: { id: campaignId }, data: { eligibleVariantIds: [ids.c1] } });
+    expect(await code(claimSpin({ userId: u.id, claimToken: s.claimToken! }))).toBe("PRIZE_UNAVAILABLE");
+    // Re-verified: the offer moves to the approved product, same percent.
+    await prisma.spinCampaign.update({ where: { id: campaignId }, data: await verifiedEligibility(prisma, [ids.c1]) });
     const { spin } = await claimSpin({ userId: u.id, claimToken: s.claimToken! });
     expect(spin.productId).toBe(ids.C);
   });
 
+  it("Phase 3: an unverified campaign is never live, even when enabled", async () => {
+    await prisma.spinCampaign.update({
+      where: { id: campaignId },
+      data: { eligibilityVerifiedAt: null },
+    });
+    expect(await code(spinWheel({ userId: null, anonId: "uv1", claimToken: null, allowAnonymousSpin: allow }))).toBe("NO_CAMPAIGN");
+    // Verified, then the list edited without re-verifying → off again.
+    await prisma.spinCampaign.update({
+      where: { id: campaignId },
+      data: { ...(await verifiedEligibility(prisma, [ids.a1])), eligibleVariantIds: [ids.a1, ids.c1] },
+    });
+    expect(await code(spinWheel({ userId: null, anonId: "uv2", claimToken: null, allowAnonymousSpin: allow }))).toBe("NO_CAMPAIGN");
+  });
+
+  it("Phase 3: a verified variant whose size changed in the catalogue is never offered", async () => {
+    await prisma.spinCampaign.update({ where: { id: campaignId }, data: await verifiedEligibility(prisma, [ids.a1, ids.c1]) });
+    // Same variant ID, relabelled to a different size after verification.
+    await prisma.productVariant.update({ where: { id: ids.a1 }, data: { weightLabel: "1kg" } });
+    try {
+      for (let i = 0; i < 10; i++) {
+        const s = await spinWheel({ userId: null, anonId: `sz${i}`, claimToken: null, allowAnonymousSpin: allow, rng: rngAt((i + 0.5) / 10) });
+        expect(s.spin.productId).toBe(ids.C);
+        expect(s.spin.variantIds).toEqual([ids.c1]);
+      }
+    } finally {
+      await prisma.productVariant.update({ where: { id: ids.a1 }, data: { weightLabel: "100g" } });
+    }
+  });
+
   it("claimed-but-unused offers reserve stock: the wheel stops offering a fully promised product", async () => {
     // Only A eligible, surplus 3 (stock 8 − reserve 5).
-    await prisma.spinCampaign.update({ where: { id: campaignId }, data: { eligibleVariantIds: [ids.a1] } });
+    await prisma.spinCampaign.update({ where: { id: campaignId }, data: await verifiedEligibility(prisma, [ids.a1]) });
     await prisma.productVariant.update({ where: { id: ids.a1 }, data: { stock: 8 } });
     for (let i = 0; i < 3; i++) {
       const u = await user(`res${i}@spin.test`);
