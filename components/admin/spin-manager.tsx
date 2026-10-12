@@ -276,28 +276,34 @@ export function SpinManager({
               </div>
             </div>
 
-            <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-              {[
-                ["Spins", c.stats.spins],
-                ["Claimed", c.stats.claimed],
-                ["Redeemed", c.stats.redeemed],
-                ["Awaiting sign-in", c.stats.pending],
-                ["Expired", c.stats.expired],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-xl border p-3">
-                  <dt className="text-xs text-muted-foreground">{label}</dt>
-                  <dd className="mt-1 text-xl font-semibold tabular-nums">{value}</dd>
+            <dl className="mt-4 grid grid-cols-3 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-6">
+              {(
+                [
+                  ["Spins", c.stats.spins],
+                  ["Awaiting sign-in", c.stats.pending],
+                  ["Claimed", c.stats.claimed],
+                  ["Redeemed", c.stats.redeemed],
+                  ["Expired", c.stats.expired],
+                  c.maxClaims != null
+                    ? ["Claims / cap", `${c.claimCount} / ${c.maxClaims}`]
+                    : ["Claims (no cap)", c.claimCount],
+                ] as const
+              ).map(([label, value]) => (
+                <div key={label} className="bg-card px-3 py-2.5">
+                  <dt className="truncate text-xs text-muted-foreground">{label}</dt>
+                  <dd className="mt-0.5 text-lg font-semibold tabular-nums">{value}</dd>
                 </div>
               ))}
             </dl>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Claims {c.claimCount}
-              {c.maxClaims != null ? ` / ${c.maxClaims}` : " (no cap)"}
-              {c.stats.byPercent.length > 0 &&
-                ` · Awarded: ${c.stats.byPercent.map((p) => `${p.percent}% × ${p.count}`).join(", ")}`}
-              {c.stats.claimed > 0 &&
-                ` · Redemption rate ${Math.round((c.stats.redeemed / c.stats.claimed) * 100)}%`}
-            </p>
+            {(c.stats.byPercent.length > 0 || c.stats.claimed > 0) && (
+              <p className="mt-2.5 text-xs text-muted-foreground">
+                {c.stats.byPercent.length > 0 &&
+                  `Awarded: ${c.stats.byPercent.map((p) => `${p.percent}% × ${p.count}`).join(", ")}`}
+                {c.stats.byPercent.length > 0 && c.stats.claimed > 0 && " · "}
+                {c.stats.claimed > 0 &&
+                  `Redemption rate ${Math.round((c.stats.redeemed / c.stats.claimed) * 100)}%`}
+              </p>
+            )}
           </div>
         );
       })}
@@ -351,6 +357,7 @@ function CampaignEditor({
 }) {
   const [f, setF] = useState<FormState>(initial);
   const [query, setQuery] = useState("");
+  const [selectedOnly, setSelectedOnly] = useState(false);
   const [saving, start] = useTransition();
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setF((s) => ({ ...s, [k]: v }));
 
@@ -361,12 +368,13 @@ function CampaignEditor({
     const map = new Map<string, { productName: string; items: SpinVariantOption[] }>();
     for (const v of variants) {
       if (q && !`${v.productName} ${v.weightLabel}`.toLowerCase().includes(q)) continue;
+      if (selectedOnly && !selected.has(v.id)) continue;
       const g = map.get(v.productId) ?? { productName: v.productName, items: [] };
       g.items.push(v);
       map.set(v.productId, g);
     }
     return [...map.values()];
-  }, [variants, query]);
+  }, [variants, query, selectedOnly, selected]);
 
   // Live preview with the exact selection maths the server uses.
   const preview = useMemo(() => {
@@ -394,6 +402,16 @@ function CampaignEditor({
 
   const tierWeights = f.prizes.map((p) => Math.max(0, int(p.weight) || 0));
   const tierTotal = tierWeights.reduce((a, b) => a + b, 0);
+  // Same rules the server enforces (lib/validations/spin.ts) — shown inline as you type.
+  const tierPercents = f.prizes.map((p) => int(p.percent));
+  const tierProblem =
+    tierTotal === 0
+      ? "At least one tier needs a weight above 0."
+      : new Set(tierPercents).size !== tierPercents.length
+        ? "Each tier needs a different discount %."
+        : tierPercents.some((p) => !Number.isFinite(p) || p < 1 || p > 50)
+          ? "Discounts must be between 1% and 50%."
+          : null;
 
   function toggle(id: string, on: boolean) {
     set("eligibleVariantIds", on ? [...f.eligibleVariantIds, id] : f.eligibleVariantIds.filter((x) => x !== id));
@@ -426,9 +444,10 @@ function CampaignEditor({
   }
 
   const field = "space-y-1.5";
+  const sectionTitle = "text-sm font-semibold text-foreground";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       <section className="grid gap-4 sm:grid-cols-2">
         <div className={`${field} sm:col-span-2`}>
           <Label htmlFor="spin-name">Campaign name</Label>
@@ -453,43 +472,59 @@ function CampaignEditor({
         </label>
       </section>
 
-      <section>
-        <h3 className="text-sm font-semibold">Prize tiers</h3>
-        <p className="mt-1 text-xs text-muted-foreground">Discount % shown on the wheel, and its relative weight. Weight 0 hides the tier.</p>
-        <div className="mt-3 space-y-2">
-          {f.prizes.map((p, i) => (
-            <div key={i} className="flex flex-wrap items-end gap-2">
-              <div className="w-24 space-y-1">
-                <Label htmlFor={`tier-p-${i}`} className="text-xs">Discount %</Label>
-                <Input id={`tier-p-${i}`} type="number" min={1} max={50} value={p.percent}
-                  onChange={(e) => set("prizes", f.prizes.map((x, j) => (j === i ? { ...x, percent: e.target.value } : x)))} />
-              </div>
-              <div className="w-24 space-y-1">
-                <Label htmlFor={`tier-w-${i}`} className="text-xs">Weight</Label>
-                <Input id={`tier-w-${i}`} type="number" min={0} max={1000} value={p.weight}
-                  onChange={(e) => set("prizes", f.prizes.map((x, j) => (j === i ? { ...x, weight: e.target.value } : x)))} />
-              </div>
-              <span className="pb-2 text-sm tabular-nums text-muted-foreground">
-                {tierTotal > 0 ? `${((tierWeights[i] / tierTotal) * 100).toFixed(1)}%` : "—"} chance
-              </span>
-              {f.prizes.length > 2 && (
-                <Button type="button" size="icon" variant="ghost" aria-label={`Remove ${p.percent}% tier`}
-                  onClick={() => set("prizes", f.prizes.filter((_, j) => j !== i))}>
-                  <X className="size-4" />
-                </Button>
-              )}
-            </div>
-          ))}
-          {f.prizes.length < 8 && (
-            <Button type="button" size="sm" variant="outline" className="gap-1.5"
-              onClick={() => set("prizes", [...f.prizes, { percent: "", weight: "10" }])}>
-              <Plus className="size-4" /> Add tier
-            </Button>
-          )}
-        </div>
+      <section className="border-t pt-6">
+        <h3 className={sectionTitle}>Prize tiers</h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          The discount shown on the wheel and how often it&apos;s drawn. Weight 0 hides a tier.
+        </p>
+        <table className="mt-3 w-full max-w-md text-sm">
+          <thead>
+            <tr className="text-left text-xs text-muted-foreground">
+              <th scope="col" className="pb-1.5 font-medium">Discount %</th>
+              <th scope="col" className="pb-1.5 font-medium">Weight</th>
+              <th scope="col" className="pb-1.5 text-right font-medium">Chance</th>
+              <th scope="col" className="w-10 pb-1.5"><span className="sr-only">Remove</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {f.prizes.map((p, i) => (
+              <tr key={i}>
+                <td className="py-1 pr-2">
+                  <Input id={`tier-p-${i}`} type="number" min={1} max={50} value={p.percent} aria-label={`Tier ${i + 1} discount %`}
+                    className="h-9 w-24 tabular-nums"
+                    onChange={(e) => set("prizes", f.prizes.map((x, j) => (j === i ? { ...x, percent: e.target.value } : x)))} />
+                </td>
+                <td className="py-1 pr-2">
+                  <Input id={`tier-w-${i}`} type="number" min={0} max={1000} value={p.weight} aria-label={`Tier ${i + 1} weight`}
+                    className="h-9 w-24 tabular-nums"
+                    onChange={(e) => set("prizes", f.prizes.map((x, j) => (j === i ? { ...x, weight: e.target.value } : x)))} />
+                </td>
+                <td className="py-1 text-right tabular-nums text-muted-foreground">
+                  {tierTotal > 0 ? `${((tierWeights[i] / tierTotal) * 100).toFixed(1)}%` : "—"}
+                </td>
+                <td className="py-1 text-right">
+                  {f.prizes.length > 2 && (
+                    <Button type="button" size="icon" variant="ghost" className="size-9" aria-label={`Remove ${p.percent || "this"}% tier`}
+                      onClick={() => set("prizes", f.prizes.filter((_, j) => j !== i))}>
+                      <X className="size-4" />
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {tierProblem && <p role="alert" className="mt-2 text-xs text-destructive">{tierProblem}</p>}
+        {f.prizes.length < 8 && (
+          <Button type="button" size="sm" variant="outline" className="mt-3 gap-1.5"
+            onClick={() => set("prizes", [...f.prizes, { percent: "", weight: "10" }])}>
+            <Plus className="size-4" /> Add tier
+          </Button>
+        )}
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-3">
+      <section className="grid gap-4 border-t pt-6 sm:grid-cols-3">
+        <h3 className={`${sectionTitle} sm:col-span-3`}>Rules &amp; limits</h3>
         <div className={`${field} sm:col-span-3`}>
           <Label htmlFor="spin-sale">With items already on sale</Label>
           <select id="spin-sale" value={f.saleMode} onChange={(e) => set("saleMode", e.target.value as SaleMode)}
@@ -508,10 +543,10 @@ function CampaignEditor({
         <NumberField id="spin-max-disc" label="Max. discount ₹ (optional)" value={f.maxDiscount} onChange={(v) => set("maxDiscount", v)} />
       </section>
 
-      <section>
+      <section className="border-t pt-6">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h3 className="text-sm font-semibold">Eligible products ({f.eligibleVariantIds.length} variants)</h3>
+            <h3 className={sectionTitle}>Eligible products ({f.eligibleVariantIds.length} variants)</h3>
             <p className="mt-1 text-xs text-muted-foreground">
               Stored by exact variant ID — tick each product size yourself; nothing is selected automatically.
               &ldquo;Approved list?&rdquo; labels are name-based hints only. Changing this list clears the
@@ -519,14 +554,20 @@ function CampaignEditor({
             </p>
           </div>
         </div>
-        <Input className="mt-3" placeholder="Search products…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search products" />
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Input className="h-9 sm:flex-1" placeholder="Search products…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search products" />
+          <label className="flex h-9 shrink-0 items-center gap-2 text-sm">
+            <Switch checked={selectedOnly} onCheckedChange={setSelectedOnly} aria-label="Show selected variants only" />
+            Selected only
+          </label>
+        </div>
         <div className="mt-2 max-h-72 overflow-y-auto rounded-xl border">
           {groups.map((g) => (
             <div key={g.productName + g.items[0]?.id} className="border-b p-3 last:border-b-0">
               <p className="text-sm font-medium">{g.productName}</p>
               <div className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1.5">
                 {g.items.map((v) => (
-                  <label key={v.id} className="flex items-center gap-2 text-sm">
+                  <label key={v.id} className="flex min-h-8 items-center gap-2 text-sm">
                     <Checkbox checked={selected.has(v.id)} onCheckedChange={(on) => toggle(v.id, on === true)} />
                     <span>{v.weightLabel}</span>
                     <span className={`text-xs tabular-nums ${v.stock <= (int(f.minStock) || 0) ? "text-destructive" : "text-muted-foreground"}`}>
@@ -542,12 +583,16 @@ function CampaignEditor({
               </div>
             </div>
           ))}
-          {groups.length === 0 && <p className="p-4 text-sm text-muted-foreground">No products match.</p>}
+          {groups.length === 0 && (
+            <p className="p-4 text-sm text-muted-foreground">
+              {selectedOnly && f.eligibleVariantIds.length === 0 ? "No variants selected yet." : "No products match."}
+            </p>
+          )}
         </div>
       </section>
 
-      <section>
-        <h3 className="text-sm font-semibold">Prize product chances (live stock)</h3>
+      <section className="border-t pt-6">
+        <h3 className={sectionTitle}>Prize product chances (live stock)</h3>
         {preview.length === 0 ? (
           <p className="mt-2 text-sm text-destructive">No selected variant has stock above the reserve — the wheel would not spin.</p>
         ) : (
@@ -563,8 +608,13 @@ function CampaignEditor({
         {f.minOrder && <p className="mt-2 text-xs text-muted-foreground">Min. order {formatPrice(optPaise(f.minOrder) ?? 0)} applies to the whole order value.</p>}
       </section>
 
-      <div className="flex justify-end gap-2 border-t pt-4">
-        <Button onClick={save} disabled={saving} className="gap-1.5">
+      {/* Sticky save bar: always reachable in a long form. */}
+      <div className="sticky bottom-0 -mx-4 -mb-4 flex items-center justify-between gap-3 border-t bg-popover/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-popover/85">
+        <p className="min-w-0 truncate text-xs text-muted-foreground">
+          {f.eligibleVariantIds.length} variant{f.eligibleVariantIds.length === 1 ? "" : "s"} · {f.prizes.length} tiers
+          {f.isActive ? " · enabled" : " · paused"}
+        </p>
+        <Button onClick={save} disabled={saving || Boolean(tierProblem)} className="shrink-0 gap-1.5">
           {saving && <Loader2 className="size-4 animate-spin" />} Save campaign
         </Button>
       </div>

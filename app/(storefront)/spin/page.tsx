@@ -55,28 +55,34 @@ export default async function SpinPage() {
   });
   const view = spin ? await toSpinView(spin) : null;
 
-  const [prizeProduct, wishlistIds] =
-    view && view.status !== "EXPIRED"
-      ? await Promise.all([
-          prisma.product.findFirst({ where: { id: view.productId, isActive: true }, select: productCardSelect }),
-          getWishlistProductIds(),
-        ])
-      : [null, [] as string[]];
+  // The product grid is for an offer that can still be used — never for an
+  // expired win or an offer that's already been redeemed.
+  const offerUsable =
+    view !== null &&
+    (view.status === "AWARDED" || (view.status === "CLAIMED" && !view.coupon?.used));
+  const [prizeProduct, wishlistIds] = offerUsable
+    ? await Promise.all([
+        prisma.product.findFirst({ where: { id: view.productId, isActive: true }, select: productCardSelect }),
+        getWishlistProductIds(),
+      ])
+    : [null, [] as string[]];
+
+  const header = (
+    <header>
+      <p className="eyebrow">Spin &amp; Win</p>
+      <h1 className="mt-3 font-heading text-title text-balance text-foreground">One spin, one honest offer</h1>
+      <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted-foreground sm:mt-4 sm:text-lg">
+        Spin once for a discount on one of our selected natural foods. The offer applies only to the product you
+        win — not your whole cart.
+      </p>
+    </header>
+  );
 
   return (
     <div className="bg-card">
-      <section className="shop-container pt-6 pb-14 sm:pt-8 md:pb-18 lg:pb-24">
+      <section className="shop-container pt-6 pb-12 sm:pt-8 md:pb-16 lg:pb-20">
         <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "Spin & Win" }]} />
-        <header className="mt-6 max-w-2xl sm:mt-8">
-          <p className="eyebrow">Spin &amp; Win</p>
-          <h1 className="mt-3 font-heading text-title text-foreground">One spin, one honest offer</h1>
-          <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground sm:text-lg">
-            Spin once for a discount on one of our selected natural foods. The offer applies only to
-            the product you win — not your whole cart.
-          </p>
-        </header>
-
-        <div className="mt-10 sm:mt-12">
+        <div className="mt-6 sm:mt-8 lg:mt-10">
           {campaign ? (
             <SpinGame
               campaign={toPublicCampaign(campaign)}
@@ -85,10 +91,12 @@ export default async function SpinPage() {
               pendingClaim={pendingClaim}
               needsVerification={needsVerification}
               phoneVerifyAvailable={isPhoneAuthEnabled()}
+              header={header}
             />
           ) : view ? (
             // Campaign paused/ended but this browser still holds a win — it
-            // stays claimable (claims are honoured after a pause).
+            // stays claimable (claims are honoured after a pause). No wheel:
+            // the offer is shown on its own.
             <SpinGame
               campaign={{
                 id: "",
@@ -106,14 +114,20 @@ export default async function SpinPage() {
               pendingClaim={pendingClaim}
               needsVerification={needsVerification}
               phoneVerifyAvailable={isPhoneAuthEnabled()}
+              header={header}
+              showWheel={false}
             />
           ) : (
-            <EmptyState
-              icon={Gift}
-              title="Spin & Win isn't running right now"
-              description="Keep an eye on this space — new offers are added from time to time."
-              action={{ label: "Browse offers", href: "/offers" }}
-            />
+            <div className="max-w-2xl">
+              {header}
+              <EmptyState
+                icon={Gift}
+                title="Spin & Win isn't running right now"
+                description="New offers are added from time to time — keep an eye on this space."
+                action={{ label: "Browse offers", href: "/offers" }}
+                className="mt-8"
+              />
+            </div>
           )}
         </div>
       </section>
@@ -125,7 +139,9 @@ export default async function SpinPage() {
               Your offer applies to
             </h2>
             <p className="mt-2 text-[15px] text-muted-foreground">
-              Add it to your cart — the discount is applied at checkout once your offer is claimed.
+              {view?.status === "AWARDED"
+                ? "Add it to your cart — the discount applies at checkout once your offer is claimed."
+                : "Add it to your cart and apply your code at checkout."}
             </p>
             <ProductGrid
               products={[prizeProduct]}
@@ -138,21 +154,39 @@ export default async function SpinPage() {
 
       {campaign && (
         <section aria-labelledby="spin-terms" className="border-t border-border">
-          <div className="shop-container py-10 sm:py-12">
-            <h2 id="spin-terms" className="font-heading text-subheading font-medium text-foreground">
-              How it works
-            </h2>
-            <ul className="mt-4 grid max-w-3xl gap-2 text-sm leading-relaxed text-muted-foreground">
-              <li>· One spin per account for this campaign. Your result is decided and saved securely by us.</li>
-              <li>· The discount applies only to the product you win, in the sizes shown, while stock lasts.</li>
-              <li>· {SALE_RULE[campaign.saleMode]}</li>
-              <li>
-                · Claimed offers are valid for {campaign.offerValidDays} days, single use, and can&apos;t be
-                combined with another coupon.
-                {campaign.minOrder ? ` Minimum order ${formatPrice(campaign.minOrder)}.` : ""}
-                {campaign.maxDiscount ? ` Maximum discount ${formatPrice(campaign.maxDiscount)}.` : ""}
-              </li>
-            </ul>
+          <div className="shop-container grid gap-10 py-10 sm:py-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
+            <div>
+              <h2 id="spin-terms" className="font-heading text-subheading font-medium text-foreground">
+                How it works
+              </h2>
+              <ol className="mt-5 grid gap-5 sm:grid-cols-3 sm:gap-6 lg:grid-cols-1 lg:gap-5">
+                {[
+                  ["Spin once", "Your result is decided and saved securely by us — one spin per account."],
+                  ["Claim it", "Sign in with a verified email or phone, and the offer is saved to your account."],
+                  ["Use it at checkout", `Apply your code within ${campaign.offerValidDays} days — it's single use.`],
+                ].map(([title, body], i) => (
+                  <li key={title} className="flex gap-3.5">
+                    <span className="grid size-7 shrink-0 place-items-center rounded-full border border-border text-sm font-medium text-foreground tabular-nums">
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[15px] font-medium text-foreground">{title}</span>
+                      <span className="mt-0.5 block text-sm leading-relaxed text-muted-foreground">{body}</span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <div>
+              <h3 className="font-heading text-subheading font-medium text-foreground">Offer terms</h3>
+              <ul className="mt-5 list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground marker:text-border">
+                <li>The discount applies only to the product you win, in the sizes shown, while stock lasts.</li>
+                <li>{SALE_RULE[campaign.saleMode]}</li>
+                <li>One offer per order — it can&apos;t be combined with another coupon.</li>
+                {campaign.minOrder ? <li>Minimum order {formatPrice(campaign.minOrder)}.</li> : null}
+                {campaign.maxDiscount ? <li>Maximum discount {formatPrice(campaign.maxDiscount)}.</li> : null}
+              </ul>
+            </div>
           </div>
         </section>
       )}

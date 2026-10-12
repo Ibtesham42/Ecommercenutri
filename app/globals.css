@@ -952,6 +952,15 @@
     font-size: 16px;
   }
 }
+/* Tablets (md–lg): no tab bar, but PDP/cart/checkout render a fixed sticky
+   action bar that would cover the footer's last lines at the page end (below
+   md the footer already pads for the tab bar). Keyed on the bar being on the
+   page, not on it being shown, so the page height doesn't jump as it toggles. */
+@media (48rem <= width < 64rem) {
+  body:has([data-sticky-bar]) footer[data-heat="footer"] {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+}
 /* Lift the floating WhatsApp button (md+) above a visible sticky action bar
    (PDP / cart / checkout render one below lg) so it never covers the CTA. */
 @media (width < 64rem) {

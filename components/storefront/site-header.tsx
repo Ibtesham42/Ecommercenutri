@@ -325,7 +325,7 @@ export function SiteHeader({
               className={cn(navLinkClass(false), "mr-1 gap-1.5 whitespace-nowrap px-1")}
             >
               <Download className="size-[18px]" strokeWidth={1.6} aria-hidden />
-              <span className="sr-only min-[1120px]:not-sr-only">Install App</span>
+              <span className="max-[1119px]:sr-only">Install App</span>
             </button>
           )}
           {isLoggedIn ? (
