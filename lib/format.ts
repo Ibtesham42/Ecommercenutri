@@ -46,10 +46,17 @@ export function truncate(input: string, max = 160): string {
   return input.slice(0, max - 1).trimEnd() + "…";
 }
 
+// Pinned to IST: without a timeZone the output follows the machine's zone, so a
+// UTC server (Vercel) and an IST browser disagree near midnight. That shows the
+// wrong date in server HTML and breaks hydration of client components (React
+// #418 on /account). The store is India-only, so IST is the business zone.
+const TIME_ZONE = "Asia/Kolkata";
+
 const dateFmt = new Intl.DateTimeFormat("en-IN", {
   day: "numeric",
   month: "short",
   year: "numeric",
+  timeZone: TIME_ZONE,
 });
 
 export function formatDate(date: Date | string | number): string {
@@ -62,6 +69,7 @@ const dateTimeFmt = new Intl.DateTimeFormat("en-IN", {
   year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: TIME_ZONE,
 });
 
 export function formatDateTime(date: Date | string | number): string {
