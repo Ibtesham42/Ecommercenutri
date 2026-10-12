@@ -106,9 +106,10 @@ describe("saveSpinCampaign validation", () => {
 });
 
 describe("Phase 3 — campaigns stay off until the exact eligibility is verified", () => {
-  it("a brand-new campaign can't be created enabled", async () => {
+  it("a brand-new campaign can't be created enabled (and is told why)", async () => {
     const res = await saveSpinCampaign({ ...valid, isActive: true });
     expect(res.ok).toBe(false);
+    expect(!res.ok && res.error).toMatch(/^New campaigns start paused/);
     expect(prismaMock.spinCampaign.create).not.toHaveBeenCalled();
   });
 
@@ -146,7 +147,8 @@ describe("Phase 3 — campaigns stay off until the exact eligibility is verified
   it("editing the eligible list clears the verification (and can't keep it enabled)", async () => {
     catalogue.push({ id: "v2", productId: "p2", weightLabel: "100g", weightInGrams: 100, name: "Turmeric Powder" });
     prismaMock.spinCampaign.findUnique.mockResolvedValue(verifiedCampaign());
-    expect((await saveSpinCampaign({ ...valid, id: "camp", isActive: true, eligibleVariantIds: ["v1", "v2"] })).ok).toBe(false);
+    const live = await saveSpinCampaign({ ...valid, id: "camp", isActive: true, eligibleVariantIds: ["v1", "v2"] });
+    expect(!live.ok && live.error).toMatch(/^Changing the eligible products/);
     expect(prismaMock.spinCampaign.update).not.toHaveBeenCalled();
 
     const res = await saveSpinCampaign({ ...valid, id: "camp", eligibleVariantIds: ["v1", "v2"] });

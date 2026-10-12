@@ -95,7 +95,9 @@ export async function saveSpinCampaign(input: unknown): Promise<AdminResult<{ id
         ok: false,
         error: keepVerification
           ? blocker
-          : "Changing the eligible products needs a fresh verification: turn “Enabled” off, save, then verify the list.",
+          : !d.id
+            ? "New campaigns start paused: save it with “Enabled” off, verify the eligible products, then enable it."
+            : "Changing the eligible products needs a fresh verification: turn “Enabled” off, save, then verify the list.",
       };
     }
   }

@@ -259,14 +259,15 @@ Returns on spin orders requested after a rollback would refund the full line pri
 **Analytics enum.** `SPIN_ENTRY`, `SPIN_START`, `SPIN_WIN`, `SPIN_AUTH`, `SPIN_CLAIM`,
 `SPIN_REDEEM` were added to `UserEventType`. **Never drop enum values**: Postgres can't
 drop a value without rebuilding the type, and existing `UserEvent` rows reference
-them. Caution (expected, not tested): code from **before** Spin & Win has a Prisma
-client that doesn't know these values, and Prisma errors when it reads a row whose
-enum value it doesn't know — so analytics/journey screens that read `UserEvent.type`
-over a range containing spin events would likely fail after such a rollback. Prefer
-pausing the campaign to any rollback past the Spin & Win commit; if one is
-unavoidable, roll back to code that still contains the enum values in its schema, or
-plan to remove/convert the `SPIN_*` `UserEvent` rows first (analytics data loss —
-decide explicitly).
+them. **Rollback hazard (confirmed in a local Postgres 18 rehearsal):** code from
+**before** Spin & Win has a Prisma client that doesn't know these values. Once any
+`SPIN_*` event exists, that client fails on unfiltered `UserEvent` reads —
+`findMany`/`groupBy` over event types throw `Value 'SPIN_START' not found in enum
+'UserEventType'` — so analytics/journey screens break. Reads filtered to known types,
+counts and coupon reads still work. Prefer pausing the campaign to any rollback past
+the Spin & Win commit; if one is unavoidable, roll back only to code whose schema
+still contains these values, or remove/convert the `SPIN_*` `UserEvent` rows first
+(analytics data loss — decide explicitly).
 
 **Never** run `prisma migrate reset` or `db push --accept-data-loss` against
 production, and don't delete `SpinResult`/`SpinCampaign` rows that coupons or orders
