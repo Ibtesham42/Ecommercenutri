@@ -111,6 +111,7 @@ export default async function ProductsPage({
           wishlistedIds={wishlistIds}
           priorityCount={2}
           className={CATALOG_GRID_CLASS}
+          listOnMobile
         />
       </CatalogShell>
     </>

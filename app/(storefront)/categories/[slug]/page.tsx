@@ -128,7 +128,7 @@ export default async function CategoryPage({
           action: { label: "Browse all products", href: "/products" },
         }}
       >
-        <ProductGrid products={result.products} wishlistedIds={wishlistIds} className={CATALOG_GRID_CLASS} />
+        <ProductGrid products={result.products} wishlistedIds={wishlistIds} className={CATALOG_GRID_CLASS} listOnMobile />
       </CatalogShell>
     </>
   );

@@ -93,6 +93,7 @@ export default async function NewArrivalsPage({
           wishlistedIds={wishlistIds}
           priorityCount={2}
           className={CATALOG_GRID_CLASS}
+          listOnMobile
         />
       </CatalogShell>
     </>

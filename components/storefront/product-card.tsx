@@ -24,6 +24,7 @@ export function ProductCard({
   wishlisted,
   priority,
   showBestSellerBadge = true,
+  listOnMobile = false,
 }: {
   product: ProductCardData;
   wishlisted?: boolean;
@@ -31,18 +32,30 @@ export function ProductCard({
   priority?: boolean;
   /** Off inside a "Best sellers" section, where the badge would repeat on every card. */
   showBestSellerBadge?: boolean;
+  /** Catalog listings: below `sm` the card becomes a row (photo left, details right). */
+  listOnMobile?: boolean;
 }) {
   const image = product.images[0];
   const view = productCardView(product, { showBestSeller: showBestSellerBadge });
+  const row = listOnMobile;
 
   return (
     <article
-      className="pcard group relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card has-[.pcard-link:focus-visible]:outline-2 has-[.pcard-link:focus-visible]:outline-offset-4 has-[.pcard-link:focus-visible]:outline-ring"
+      className={cn(
+        "pcard group relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card has-[.pcard-link:focus-visible]:outline-2 has-[.pcard-link:focus-visible]:outline-offset-4 has-[.pcard-link:focus-visible]:outline-ring",
+        row &&
+          "max-sm:grid max-sm:grid-cols-[7.5rem_minmax(0,1fr)] max-sm:grid-rows-[auto_1fr] max-sm:gap-x-3.5 max-sm:p-2.5",
+      )}
       data-heat="product-card"
     >
       {/* First in the DOM, second on screen (flex order): keyboard and screen
           readers meet the product name before the image's controls. */}
-      <h3 className="order-2 px-3 pt-3 font-sans text-sm font-semibold leading-snug text-foreground sm:px-3.5 sm:pt-3.5 sm:text-[15px]">
+      <h3
+        className={cn(
+          "order-2 px-3 pt-3 font-sans text-sm font-semibold leading-snug text-foreground sm:px-3.5 sm:pt-3.5 sm:text-[15px]",
+          row && "max-sm:col-start-2 max-sm:row-start-1 max-sm:px-0 max-sm:pt-1 max-sm:pr-9",
+        )}
+      >
         <Link
           href={`/products/${product.slug}`}
           className="pcard-link line-clamp-2 outline-none after:absolute after:inset-0 after:z-10 after:content-[''] group-hover:text-primary"
@@ -50,13 +63,18 @@ export function ProductCard({
           {product.name}
         </Link>
       </h3>
-      <div className="pcard-media relative order-1 aspect-square overflow-hidden bg-(--pcard-media)">
+      <div
+        className={cn(
+          "pcard-media relative order-1 aspect-square overflow-hidden bg-(--pcard-media)",
+          row && "max-sm:col-start-1 max-sm:row-span-2 max-sm:row-start-1 max-sm:self-start max-sm:rounded-lg",
+        )}
+      >
         {image ? (
           <BlurImage
             src={image.url}
             alt={image.alt ?? product.name}
             fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            sizes={row ? "(max-width: 640px) 120px, (max-width: 1024px) 33vw, 25vw" : "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"}
             priority={priority}
             className={cn(
               "object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03]",
@@ -84,7 +102,12 @@ export function ProductCard({
         <WishlistButton productId={product.id} initial={wishlisted} appearance="overlay" />
       </div>
 
-      <div className="order-3 flex flex-1 flex-col px-3 pb-3 sm:px-3.5 sm:pb-3.5">
+      <div
+        className={cn(
+          "order-3 flex flex-1 flex-col px-3 pb-3 sm:px-3.5 sm:pb-3.5",
+          row && "max-sm:col-start-2 max-sm:row-start-2 max-sm:px-0 max-sm:pb-0",
+        )}
+      >
         {(view.sizeLabel || view.lowStock) && (
           <p className="mt-1 text-xs text-muted-foreground">
             {view.sizeLabel}
@@ -111,8 +134,8 @@ export function ProductCard({
           off={view.off}
           fromPrice={view.fromPrice}
         />
-        <div className="relative z-20 pt-3">
-          <QuickAddButton product={product} />
+        <div className={cn("relative z-20 pt-3", row && "max-sm:flex max-sm:justify-end max-sm:pt-2")}>
+          <QuickAddButton product={product} className={row ? "max-sm:w-auto max-sm:px-4" : undefined} />
         </div>
       </div>
     </article>
@@ -125,6 +148,7 @@ export function ProductGrid({
   className,
   priorityCount = 0,
   showBestSellerBadge,
+  listOnMobile = false,
 }: {
   products: ProductCardData[];
   wishlistedIds?: Set<string>;
@@ -133,11 +157,13 @@ export function ProductGrid({
   /** LCP hint: eagerly load the first N card images (pass only for the section actually rendered first on the page). */
   priorityCount?: number;
   showBestSellerBadge?: boolean;
+  /** Catalog listings: one card per row (photo left) below `sm`. */
+  listOnMobile?: boolean;
 }) {
   const showBadge = showBestSellerBadge ?? bestSellerBadgeMeaningful(products);
   return (
     <div className="@container">
-      <div className={cn(PRODUCT_GRID_CLASS, className)}>
+      <div className={cn(PRODUCT_GRID_CLASS, listOnMobile && "max-sm:grid-cols-1 max-sm:gap-y-3", className)}>
         {products.map((p, i) => (
           // Fade each card up as it scrolls into view (staggered per row).
           // Reveal is reduced-motion gated + passes RSC children straight through.
@@ -147,6 +173,7 @@ export function ProductGrid({
               wishlisted={wishlistedIds?.has(p.id)}
               priority={i < priorityCount}
               showBestSellerBadge={showBadge}
+              listOnMobile={listOnMobile}
             />
           </Reveal>
         ))}

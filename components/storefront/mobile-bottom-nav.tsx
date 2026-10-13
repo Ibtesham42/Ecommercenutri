@@ -20,9 +20,9 @@ function prewarm() {
 }
 
 /**
- * Sticky bottom tab bar — mobile only (`md:hidden`). Five equal-weight,
- * calm tabs (Home/Shop/Search/Wishlist/Account; Cart lives in the header): no
- * raised center button, no pill fills — thin line icons, clear labels.
+ * Sticky bottom tab bar — mobile only (`md:hidden`). Home/Shop/[Search]/
+ * Wishlist/Account (Cart lives in the header): thin line icons with labels,
+ * and search as a raised brand-green circle in the centre (per the mockup).
  * AI stays reachable (search overlay's "Ask Nutriyet AI" row, header nav,
  * drawer "Discover" group) without visually dominating primary navigation.
  *
@@ -73,14 +73,18 @@ export function MobileBottomNav({ isLoggedIn = false }: { isLoggedIn?: boolean }
             <ShoppingBag className="size-[22px]" strokeWidth={1.6} />
           </Tab>
 
-          <TabButton
-            ref={searchTriggerRef}
-            label="Search"
-            onClick={() => setSearchOpen(true)}
-            onPointerDown={prewarm}
-          >
-            <Search className="size-[22px]" strokeWidth={1.6} />
-          </TabButton>
+          <div className="flex justify-center">
+            <button
+              ref={searchTriggerRef}
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              onPointerDown={prewarm}
+              aria-label="Open search"
+              className="-mt-7 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-elev-2 ring-4 ring-background transition-colors hover:bg-primary/90"
+            >
+              <Search className="size-6" strokeWidth={1.8} />
+            </button>
+          </div>
 
           <Tab href="/account/wishlist" label="Wishlist" active={isActive("/account/wishlist")}>
             <Heart className="size-[22px]" strokeWidth={1.6} />
@@ -144,32 +148,3 @@ function Tab({
   );
 }
 
-function TabButton({
-  label,
-  onClick,
-  onPointerDown,
-  children,
-  ref,
-}: {
-  label: string;
-  onClick: () => void;
-  onPointerDown?: () => void;
-  children: React.ReactNode;
-  ref?: React.Ref<HTMLButtonElement>;
-}) {
-  const chrome = tabChrome(false);
-  return (
-    <button
-      ref={ref}
-      type="button"
-      onClick={onClick}
-      onPointerDown={onPointerDown}
-      aria-label={`Open ${label.toLowerCase()}`}
-      className={chrome.link}
-    >
-      {children}
-      <span>{label}</span>
-      <span className={chrome.indicator} />
-    </button>
-  );
-}

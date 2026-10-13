@@ -177,7 +177,7 @@ export default async function SearchPage({
           </div>
         }
       >
-        <ProductGrid products={products} wishlistedIds={wishlistIds} priorityCount={2} className={CATALOG_GRID_CLASS} />
+        <ProductGrid products={products} wishlistedIds={wishlistIds} priorityCount={2} className={CATALOG_GRID_CLASS} listOnMobile />
       </CatalogShell>
     </>
   );

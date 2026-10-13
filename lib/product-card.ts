@@ -8,10 +8,11 @@ import { discountPercent, effectivePrice } from "@/lib/format";
 export const PRODUCT_GRID_CLASS =
   "grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-6 sm:gap-y-12 @xl:grid-cols-3 @4xl:grid-cols-4";
 
-/** Catalog pages (no sidebar below `lg`): pin 3 columns across 576–1023px, where
- *  the container queries alone would give 2 (narrow) or 4 (near 1000px). `!`
- *  because media vs container query rules have no reliable relative order. */
-export const CATALOG_GRID_CLASS = "min-[36rem]:max-lg:grid-cols-3!";
+/** Catalog pages (no sidebar below `lg`): pin 3 columns across 640–1023px, where
+ *  the container queries alone would give 2 (narrow) or 4 (near 1000px); below
+ *  `sm` catalog grids are one-per-row lists (`listOnMobile`). `!` because media
+ *  vs container query rules have no reliable relative order. */
+export const CATALOG_GRID_CLASS = "sm:max-lg:grid-cols-3!";
 
 /** A "Bestseller" badge only means something when it singles a product out:
  *  when most products in a grid carry the flag, the badge is just noise. */
