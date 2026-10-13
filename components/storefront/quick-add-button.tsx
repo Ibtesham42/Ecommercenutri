@@ -56,17 +56,16 @@ export function QuickAddButton({
       label={outOfStock ? "Sold out" : "Add to cart"}
       addedLabel="Added"
       srContext={product.name}
-      variant="outline"
+      variant={outOfStock ? "outline" : "default"}
       size="sm"
       iconClassName="size-4 max-[359px]:hidden"
       className={cn(
-        // 44px on touch, 40px where there's a precise pointer. Outlined in the
-        // brand green (fills on hover): repeated on every card, a solid bar
-        // outweighed the product photography.
-        "h-11 w-full gap-1.5 rounded-lg text-[13px] font-medium sm:text-sm [@media(hover:hover)_and_(pointer:fine)]:h-10",
+        // 44px on touch, 40px where there's a precise pointer. Solid brand
+        // green; the card's border keeps it from outweighing the photo.
+        "h-11 w-full gap-1.5 rounded-lg text-[13px] font-semibold sm:text-sm [@media(hover:hover)_and_(pointer:fine)]:h-10",
         outOfStock
-          ? "border-border bg-transparent text-muted-foreground disabled:opacity-100"
-          : "border-primary/40 bg-transparent text-primary hover:border-primary hover:bg-primary hover:text-primary-foreground",
+          ? "border border-border bg-transparent text-muted-foreground disabled:opacity-100"
+          : "bg-primary text-primary-foreground hover:bg-primary/90",
         className,
       )}
     />

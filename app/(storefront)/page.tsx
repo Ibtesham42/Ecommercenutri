@@ -160,22 +160,21 @@ export default async function HomePage() {
           ctaHref={content.categories.ctaHref}
         />
         <Reveal>
-          {/* Uniform square photo tiles (not small circles): the category
-              imagery leads, the name sits quietly underneath. Phones scroll a
-              rail of ~2.5 tiles; tablet 3-up; desktop one row of 6. Built from
-              utilities, not `.scroll-rail` — that class is unlayered and would
-              beat `sm:grid`. */}
-          <ul className="-mx-4 flex snap-x snap-mandatory scroll-px-4 overflow-x-auto overscroll-x-contain px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0 gap-3 sm:grid sm:grid-cols-3 sm:gap-5 sm:overflow-visible lg:grid-cols-6">
-            {categories.slice(0, content.categories.limit ?? 6).map((c) => (
-              <li key={c.slug} className="w-[38vw] max-w-44 shrink-0 snap-start sm:w-auto sm:max-w-none">
+          {/* Circular photo tiles with the name underneath. Phones scroll a rail
+              of ~3.5 circles; from sm up one centred, wrapping row (any count
+              stays balanced). Built from utilities, not `.scroll-rail` — that
+              class is unlayered and would beat the sm: overrides. */}
+          <ul className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto overscroll-x-contain px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:justify-center sm:gap-x-6 sm:gap-y-8 sm:overflow-visible sm:px-0 lg:justify-between lg:gap-x-4">
+            {categories.slice(0, content.categories.limit ?? 8).map((c) => (
+              <li key={c.slug} className="w-[24vw] max-w-28 shrink-0 snap-start text-center sm:w-32 sm:max-w-none lg:w-[8.5rem]">
                 <Link href={`/categories/${c.slug}`} className="group block">
-                  <span className="relative grid aspect-square place-items-center overflow-hidden rounded-xl bg-oat">
+                  <span className="relative mx-auto grid aspect-square place-items-center overflow-hidden rounded-full bg-oat ring-1 ring-border transition-shadow group-hover:ring-2 group-hover:ring-primary/35">
                     {c.image ? (
                       <BlurImage
                         src={c.image}
                         alt=""
                         fill
-                        sizes="(min-width: 1024px) 200px, (min-width: 640px) 30vw, 38vw"
+                        sizes="(min-width: 640px) 136px, 24vw"
                         className="object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.03]"
                       />
                     ) : (

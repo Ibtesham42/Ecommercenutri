@@ -14,8 +14,8 @@ import type { ProductCardData } from "@/lib/queries/products";
 const BADGE_LABEL = { soldOut: "Sold out", bestSeller: "Bestseller" } as const;
 
 /**
- * The storefront product card: image-first on a warm oat surface, no box, one
- * quiet badge at most, then name → size → rating → price → Add to cart.
+ * The storefront product card: a quiet bordered card — photo on top, one
+ * badge at most, then name → size → rating → price → a solid Add to cart.
  * The name link is stretched over the whole card (one tab stop to the PDP);
  * wishlist, quick view and add-to-cart sit above it on their own layer.
  */
@@ -37,12 +37,12 @@ export function ProductCard({
 
   return (
     <article
-      className="pcard group relative flex h-full flex-col rounded-xl has-[.pcard-link:focus-visible]:outline-2 has-[.pcard-link:focus-visible]:outline-offset-4 has-[.pcard-link:focus-visible]:outline-ring"
+      className="pcard group relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card has-[.pcard-link:focus-visible]:outline-2 has-[.pcard-link:focus-visible]:outline-offset-4 has-[.pcard-link:focus-visible]:outline-ring"
       data-heat="product-card"
     >
       {/* First in the DOM, second on screen (flex order): keyboard and screen
           readers meet the product name before the image's controls. */}
-      <h3 className="order-2 pt-3 font-heading text-[15px] font-medium leading-snug text-foreground sm:pt-3.5 sm:text-base">
+      <h3 className="order-2 px-3 pt-3 font-sans text-sm font-semibold leading-snug text-foreground sm:px-3.5 sm:pt-3.5 sm:text-[15px]">
         <Link
           href={`/products/${product.slug}`}
           className="pcard-link line-clamp-2 outline-none after:absolute after:inset-0 after:z-10 after:content-[''] group-hover:text-primary"
@@ -50,7 +50,7 @@ export function ProductCard({
           {product.name}
         </Link>
       </h3>
-      <div className="pcard-media relative order-1 aspect-square overflow-hidden rounded-xl bg-(--pcard-media)">
+      <div className="pcard-media relative order-1 aspect-square overflow-hidden bg-(--pcard-media)">
         {image ? (
           <BlurImage
             src={image.url}
@@ -80,11 +80,11 @@ export function ProductCard({
           <QuickViewButton productId={product.id} productName={product.name} wishlisted={wishlisted} />
         </div>
       </div>
-      <div className="absolute right-0.5 top-0.5 z-20">
+      <div className="absolute right-1 top-1 z-20">
         <WishlistButton productId={product.id} initial={wishlisted} appearance="overlay" />
       </div>
 
-      <div className="order-3 flex flex-1 flex-col">
+      <div className="order-3 flex flex-1 flex-col px-3 pb-3 sm:px-3.5 sm:pb-3.5">
         {(view.sizeLabel || view.lowStock) && (
           <p className="mt-1 text-xs text-muted-foreground">
             {view.sizeLabel}
@@ -105,7 +105,7 @@ export function ProductCard({
           </p>
         )}
         <ProductPrice
-          className="mt-auto pt-2.5"
+          className="mt-auto pt-2"
           price={view.price}
           mrp={view.mrp}
           off={view.off}

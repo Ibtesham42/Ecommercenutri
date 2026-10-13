@@ -343,10 +343,10 @@
     box-shadow 0.25s ease;
 }
 
-/* Product card system (Phase 4). The card also renders outside the shop scope
+/* Product card system. The card also renders outside the shop scope
    (account wishlist, :root tokens), so its editorial colours fall back there.
-   Hover elevation sits on the image tile only, for real pointers; it's not motion,
-   so it isn't reduced-motion gated (the image zoom is, via motion-safe:). */
+   Hover elevation lifts the whole bordered card, for real pointers; it's not
+   motion, so it isn't reduced-motion gated (the image zoom is, via motion-safe:). */
 .pcard,
 .pcard-price {
   --pcard-media: var(--oat, var(--muted));
@@ -355,12 +355,13 @@
      (raw terracotta is ~4.4:1 on cream); mixing with foreground works in dark too. */
   --pcard-accent-text: color-mix(in oklab, var(--pcard-accent) 82%, var(--foreground));
 }
-.pcard-media {
-  transition: box-shadow 0.3s ease;
+.pcard {
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
 }
 @media (hover: hover) {
-  .pcard:hover .pcard-media {
+  .pcard:hover {
     box-shadow: var(--elev-2);
+    border-color: color-mix(in oklab, var(--primary) 25%, var(--border));
   }
 }
 
