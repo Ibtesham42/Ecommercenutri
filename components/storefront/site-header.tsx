@@ -145,7 +145,7 @@ export function SiteHeader({
                             <AccordionItem value="categories" className="border-b-0">
                               <AccordionTrigger
                                 className={cn(
-                                  "py-3.5 font-heading text-[1.375rem] font-normal leading-tight hover:no-underline",
+                                  "py-3.5 font-heading text-xl font-normal leading-tight hover:no-underline",
                                   active ? "text-primary" : "text-foreground",
                                 )}
                               >
@@ -207,7 +207,7 @@ export function SiteHeader({
                           onClick={close}
                           aria-current={active ? "page" : undefined}
                           className={cn(
-                            "block py-3.5 font-heading text-[1.375rem] leading-tight transition-colors",
+                            "block py-3.5 font-heading text-xl leading-tight transition-colors",
                             active ? "text-primary" : "text-foreground hover:text-primary",
                           )}
                         >
@@ -221,7 +221,7 @@ export function SiteHeader({
                 <DrawerGroup label="Collections" items={DRAWER_COLLECTIONS} onNavigate={close} />
                 <DrawerGroup label="Help" items={DRAWER_HELP} onNavigate={close} />
 
-                <div className="mt-auto space-y-4 border-t border-border bg-oat/50 px-5 py-5">
+                <div className="mt-auto space-y-4 border-t border-border bg-muted/70 px-5 py-5">
                   <DeliverTo
                     className="px-0 py-0 text-sm hover:bg-transparent"
                     freeShippingThreshold={freeShippingThreshold}
@@ -234,6 +234,14 @@ export function SiteHeader({
                   >
                     <User className="size-4" strokeWidth={1.75} />
                     {isLoggedIn ? "My account" : "Sign in or create account"}
+                  </Link>
+                  <Link
+                    href="/account/wishlist"
+                    onClick={close}
+                    className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary"
+                  >
+                    <Heart className="size-4" strokeWidth={1.75} />
+                    Wishlist
                   </Link>
                   {showInstall && (
                     <button
@@ -275,10 +283,9 @@ export function SiteHeader({
         />
 
         <div className="flex items-center justify-end" data-heat="search-bar">
+          {/* Wishlist lives in the bottom tab bar (and the drawer on pages
+              without it), so the row stays three calm controls. */}
           <MobileSearchTrigger variant="icon" className={iconBtn} />
-          <Link href="/account/wishlist" className={iconBtn} aria-label="Wishlist">
-            <Heart strokeWidth={1.6} />
-          </Link>
           <Link href="/cart" className={cn(iconBtn, "-mr-1")} aria-label="Cart">
             <CartIcon />
           </Link>
@@ -286,7 +293,7 @@ export function SiteHeader({
       </div>
 
       {/* --------------------------------------------------------- desktop -- */}
-      <div className="mx-auto hidden h-20 w-full max-w-7xl items-center gap-6 px-4 lg:flex xl:gap-10">
+      <div className="shop-container hidden h-[4.5rem] items-center gap-5 lg:flex xl:gap-10">
         <Logo
           logoUrl={logoUrl}
           name={siteName}
@@ -294,7 +301,7 @@ export function SiteHeader({
           {...logoSize}
         />
 
-        <nav aria-label="Primary" data-heat="header-nav" className="flex items-center gap-5 xl:gap-7 2xl:gap-9">
+        <nav aria-label="Primary" data-heat="header-nav" className="flex items-center gap-3 xl:gap-7 2xl:gap-9">
           {PRIMARY_NAV.map((item) => {
             const active = isActiveNav(item.href);
             if (item.href === "/categories" && categories.length > 0) {
@@ -314,15 +321,15 @@ export function SiteHeader({
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
-          <div className="mr-2 w-52 xl:mr-4 xl:w-80 2xl:w-96" data-heat="search-bar">
-            <SearchBox inputClassName="h-10 border-border bg-oat/50 text-sm shadow-none placeholder:text-muted-foreground focus-visible:border-primary/50 focus-visible:shadow-none focus-visible:ring-2 focus-visible:ring-primary/15" />
+          <div className="w-48 xl:mr-3 xl:w-72 2xl:w-80" data-heat="search-bar">
+            <SearchBox placeholder="Search products…" inputClassName="h-10 border-border bg-card pl-10 pr-9 text-sm shadow-none placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:shadow-none focus-visible:ring-2 focus-visible:ring-primary/12" />
           </div>
           {showInstall && (
             <button
               type="button"
               onClick={() => void install.start()}
               title="Install the Nutriyet app"
-              className={cn(navLinkClass(false), "mr-1 gap-1.5 whitespace-nowrap px-1")}
+              className={cn(navLinkClass(false), "mr-1 min-w-10 justify-center gap-1.5 whitespace-nowrap px-1")}
             >
               <Download className="size-[18px]" strokeWidth={1.6} aria-hidden />
               <span className="max-[1119px]:sr-only">Install App</span>

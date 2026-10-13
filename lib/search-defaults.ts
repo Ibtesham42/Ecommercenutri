@@ -7,8 +7,8 @@
 export const POPULAR_SEARCHES = [
   "Makhana",
   "Flavoured makhana",
-  "Almonds",
-  "Protein",
-  "Seeds",
-  "Dry fruits",
+  "Moringa",
+  "Sattu",
+  "Spices",
+  "Atta",
 ];

@@ -421,7 +421,7 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
             ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search for makhana, almonds, protein…"
+            placeholder="Search makhana, spices, sattu…"
             className={cn(
               "h-12 w-full rounded-full border border-input bg-background pl-11 text-base text-foreground outline-none transition-[box-shadow,border-color] placeholder:text-muted-foreground/80",
               "focus-visible:border-primary/40 focus-visible:shadow-elev-2 focus-visible:ring-4 focus-visible:ring-primary/15",

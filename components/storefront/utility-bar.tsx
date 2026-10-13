@@ -34,8 +34,8 @@ export function UtilityBar({
   const shipping = <p className="truncate text-center sm:text-left">{shippingLine}</p>;
 
   return (
-    <div className="bg-surface-deep text-[12.5px] text-surface-deep-foreground/85">
-      <div className="mx-auto flex h-8 w-full max-w-7xl items-center justify-center gap-6 px-4 sm:justify-between lg:h-9">
+    <div className="bg-surface-deep text-xs tracking-[0.01em] text-surface-deep-foreground/85">
+      <div className="shop-container flex h-8 items-center justify-center gap-6 sm:justify-between">
         <div className="min-w-0 flex-1 sm:flex-none">
           {offerText ? (
             <OfferBar text={offerText} variant="inline" fallback={shipping} />
@@ -45,7 +45,7 @@ export function UtilityBar({
         </div>
         <nav aria-label="Customer service" className="hidden items-center lg:flex">
           <DeliverTo
-            className="mr-3 px-0 py-0 text-[12.5px] text-surface-deep-foreground/85 hover:bg-transparent hover:text-surface-deep-foreground [&_.text-foreground]:text-surface-deep-foreground [&_svg]:text-current"
+            className="mr-3 px-0 py-0 text-xs text-surface-deep-foreground/85 hover:bg-transparent hover:text-surface-deep-foreground [&_.text-foreground]:text-surface-deep-foreground [&_svg]:text-current"
             freeShippingThreshold={freeShippingThreshold}
             freeShippingEnabled={freeShippingEnabled}
           />

@@ -74,7 +74,7 @@ export function CategoryMegaMenu({
           </NavigationMenuTrigger>
           <NavigationMenuContent className="!overflow-hidden !rounded-xl !border-border !p-0 !shadow-elev-3">
             <div className="grid w-[min(92vw,54rem)] grid-cols-[11rem_1fr] bg-popover">
-              <div className="border-r border-border bg-oat/60 px-6 py-6">
+              <div className="border-r border-border bg-muted/60 px-6 py-6">
                 <p className="eyebrow">Shop</p>
                 <ul className="mt-4 space-y-3">
                   {COLLECTIONS.map((c) => (
@@ -104,7 +104,7 @@ export function CategoryMegaMenu({
                     </Link>
                   </NavigationMenuLink>
                 </div>
-                <ul className="mt-5 grid grid-cols-3 gap-x-6 gap-y-6">
+                <ul className="mt-5 grid grid-cols-3 gap-x-6 gap-y-5">
                   {categories.map((category) => (
                     <li key={category.id} className="min-w-0">
                       <NavigationMenuLink asChild>
@@ -112,14 +112,14 @@ export function CategoryMegaMenu({
                           href={`/categories/${category.slug}`}
                           className="group flex flex-row items-center gap-3 rounded-sm p-0 hover:bg-transparent focus:bg-transparent"
                         >
-                          <CategoryThumb name={category.name} image={category.image} />
-                          <span className="min-w-0 font-heading text-base font-medium leading-snug text-foreground group-hover:text-primary">
+                          <CategoryThumb name={category.name} image={category.image} className="size-11" />
+                          <span className="min-w-0 text-[15px] font-medium leading-snug text-foreground transition-colors group-hover:text-primary">
                             {category.name}
                           </span>
                         </Link>
                       </NavigationMenuLink>
                       {category.children.length > 0 && (
-                        <ul className="mt-2 space-y-1 pl-[3.75rem]">
+                        <ul className="mt-2 space-y-1 pl-14">
                           {category.children.map((child) => (
                             <li key={child.id}>
                               <NavigationMenuLink asChild>
