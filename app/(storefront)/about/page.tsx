@@ -5,6 +5,8 @@ import { siteConfig } from "@/config/site";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/storefront/page-header";
+import { BlurImage } from "@/components/storefront/blur-image";
+import { MITHILA_QUOTE, getStoryPhoto } from "@/components/storefront/home/story-band";
 
 export const metadata: Metadata = buildMetadata({
   title: "About us",
@@ -28,7 +30,8 @@ const VALUES = [
   { icon: Sparkles, title: "A little help when you want it", desc: "Our AI assistant is there if you have a question — never required, never the point." },
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const photo = await getStoryPhoto();
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(aboutSchema)} />
@@ -55,16 +58,38 @@ export default function AboutPage() {
         />
       </div>
 
-      {/* From the heart of Mithila — the brand's roots as a colour-block band. */}
+      {/* From the heart of Mithila — the brand's roots: a real harvest photograph
+          from our Journal beside the quote (typographic panel if there's none). */}
       <section className="bg-oat">
         <div className="shop-container shop-section">
-          <figure className="max-w-4xl rounded-2xl bg-surface-deep px-7 py-10 text-surface-deep-foreground sm:px-12 sm:py-14">
-            <p className="eyebrow !text-gold">From the heart of Mithila</p>
-            <blockquote className="mt-5 font-heading text-[1.6rem] leading-snug font-normal sm:text-[2rem]">
-              Makhana has been grown in the Mithila region for generations. We bring that heritage to
-              your everyday kitchen — alongside spices and staples chosen with the same care.
-            </blockquote>
-          </figure>
+          {photo?.coverImage ? (
+            <div className="grid items-center gap-8 md:grid-cols-2 lg:gap-20">
+              <figure>
+                <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-muted lg:aspect-square">
+                  <BlurImage src={photo.coverImage} alt="" fill sizes="(min-width: 768px) 45vw, 100vw" className="object-cover" />
+                </div>
+                <figcaption className="mt-3 text-sm text-muted-foreground">
+                  From the journal ·{" "}
+                  <Link href={`/blog/${photo.slug}`} className="text-foreground underline-offset-4 hover:underline">
+                    {photo.title}
+                  </Link>
+                </figcaption>
+              </figure>
+              <div className="max-w-lg">
+                <p className="eyebrow">From the heart of Mithila</p>
+                <blockquote className="mt-5 border-l-2 border-sage-deep/50 pl-5 font-heading text-[1.5rem] leading-snug font-normal text-foreground sm:text-[1.85rem]">
+                  {MITHILA_QUOTE}
+                </blockquote>
+              </div>
+            </div>
+          ) : (
+            <figure className="max-w-4xl rounded-2xl bg-surface-deep px-7 py-10 text-surface-deep-foreground sm:px-12 sm:py-14">
+              <p className="eyebrow !text-gold">From the heart of Mithila</p>
+              <blockquote className="mt-5 font-heading text-[1.6rem] leading-snug font-normal sm:text-[2rem]">
+                {MITHILA_QUOTE}
+              </blockquote>
+            </figure>
+          )}
         </div>
       </section>
 
@@ -76,7 +101,7 @@ export default function AboutPage() {
               key={v.title}
               className="border-b border-border py-7 sm:border-b-0 sm:border-l sm:px-8 sm:py-2 sm:first:border-l-0 sm:first:pl-0"
             >
-              <v.icon className="size-6 text-terracotta" strokeWidth={1.5} aria-hidden />
+              <v.icon className="size-6 text-sage-deep" strokeWidth={1.5} aria-hidden />
               <h2 className="mt-4 font-heading text-subheading font-medium">{v.title}</h2>
               <p className="mt-2 max-w-xs text-[15px] leading-relaxed text-muted-foreground">{v.desc}</p>
             </li>

@@ -234,7 +234,7 @@ export function CartView({
         {publicCoupons.length > 0 && (
           <div className="mt-6 border-t border-border pt-5 text-sm">
             <p className="flex items-center gap-1.5 font-medium">
-              <Gift className="size-4 text-terracotta" strokeWidth={1.75} /> Offers you can use
+              <Gift className="size-4 text-sage-deep" strokeWidth={1.75} /> Offers you can use
             </p>
             <ul className="mt-2.5 space-y-1.5">
               {publicCoupons.map((c) => (

@@ -79,7 +79,7 @@ export default function CorporateGiftingPage() {
                 <span className="font-heading text-subheading text-muted-foreground tabular-nums">
                   0{i + 1}
                 </span>
-                <step.icon className="size-5 text-terracotta" strokeWidth={1.5} aria-hidden />
+                <step.icon className="size-5 text-sage-deep" strokeWidth={1.5} aria-hidden />
               </span>
               <h3 className="mt-4 text-[15px] font-semibold">{step.title}</h3>
               <p className="mt-1.5 text-[15px] leading-relaxed text-muted-foreground">{step.desc}</p>

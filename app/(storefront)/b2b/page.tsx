@@ -247,7 +247,7 @@ export default async function B2BPage() {
             <ul className="mt-8 grid gap-x-8 sm:grid-cols-2">
               {extras.map((e) => (
                 <li key={e.title} className="border-t border-border py-5">
-                  <e.icon className="size-5 text-terracotta" strokeWidth={1.5} aria-hidden />
+                  <e.icon className="size-5 text-sage-deep" strokeWidth={1.5} aria-hidden />
                   <h3 className="mt-3 text-[15px] font-medium text-foreground">{e.title}</h3>
                   <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{e.desc}</p>
                 </li>

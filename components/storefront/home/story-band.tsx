@@ -3,7 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { BlurImage } from "@/components/storefront/blur-image";
 import { getBlogPosts } from "@/lib/queries/blog";
 
-const MITHILA_QUOTE =
+export const MITHILA_QUOTE =
   "Makhana has been grown in the Mithila region for generations. We bring that heritage to your everyday kitchen — alongside spices and staples chosen with the same care.";
 
 /**
@@ -13,9 +13,15 @@ const MITHILA_QUOTE =
  * credited and linked to its article. With no such post, the visual falls back
  * to a typographic pull-quote panel (never a stock or generated image).
  */
-export async function StoryBand() {
+/** The brand-story photograph (also used on /about): the latest published
+ *  Journal post tagged "Makhana" that has a cover, or null. */
+export async function getStoryPhoto() {
   const posts = await getBlogPosts();
-  const photo = posts.find((p) => p.coverImage && p.tag?.trim().toLowerCase() === "makhana") ?? null;
+  return posts.find((p) => p.coverImage && p.tag?.trim().toLowerCase() === "makhana") ?? null;
+}
+
+export async function StoryBand() {
+  const photo = await getStoryPhoto();
 
   return (
     <section className="bg-oat" data-heat="story">

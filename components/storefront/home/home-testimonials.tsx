@@ -13,7 +13,7 @@ export function HomeTestimonials({ content }: { content: TestimonialsContent }) 
         <div className="-mx-4 flex snap-x snap-mandatory scroll-px-4 overflow-x-auto overscroll-x-contain px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0 gap-6 sm:grid sm:grid-cols-3 sm:gap-8 sm:overflow-visible">
           {content.items.map((t, i) => (
             <figure key={i} className="w-[78vw] max-w-sm shrink-0 snap-start sm:w-auto sm:max-w-none">
-              <span aria-hidden className="block font-heading text-5xl leading-none text-terracotta/60">
+              <span aria-hidden className="block font-heading text-5xl leading-none text-sage-deep/50">
                 &ldquo;
               </span>
               <blockquote className="-mt-2 font-heading text-lg leading-snug text-foreground">

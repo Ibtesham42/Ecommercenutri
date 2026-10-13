@@ -96,7 +96,7 @@ export default async function CheckoutSuccessPage({
             className="group mt-10 flex items-center gap-4 rounded-xl border border-border bg-card p-5 transition-colors hover:border-foreground/30"
           >
             <span className="grid size-11 shrink-0 place-items-center rounded-full bg-oat">
-              <Sparkles className="size-5 text-terracotta" strokeWidth={1.75} aria-hidden />
+              <Sparkles className="size-5 text-sage-deep" strokeWidth={1.75} aria-hidden />
             </span>
             <span className="min-w-0 flex-1">
               <span className="block font-heading text-subheading">

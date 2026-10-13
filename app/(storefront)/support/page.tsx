@@ -80,7 +80,7 @@ export default async function SupportPage() {
         {RESOURCES.map((r) => (
           <li key={r.title} className="border-t border-border">
             <Link href={r.href} className="group flex items-start gap-4 py-6 outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <r.icon className="mt-0.5 size-5 shrink-0 text-terracotta" strokeWidth={1.5} aria-hidden />
+              <r.icon className="mt-0.5 size-5 shrink-0 text-sage-deep" strokeWidth={1.5} aria-hidden />
               <span className="min-w-0">
                 <span className="flex items-center gap-1.5 font-heading text-subheading font-medium group-hover:text-primary">
                   {r.title}
