@@ -16,11 +16,14 @@ export function SpinWheel({
   rotation,
   durationMs,
   highlightIndex = null,
+  className,
 }: {
   percents: number[];
   rotation: number;
   durationMs: number;
   highlightIndex?: number | null;
+  /** Sizing lives with the parent layout (the wheel is a square of its width). */
+  className?: string;
 }) {
   const n = Math.max(percents.length, 1);
   const seg = 360 / n;
@@ -33,20 +36,23 @@ export function SpinWheel({
   };
 
   return (
-    <div
-      className="relative mx-auto aspect-square w-full max-w-[17.5rem] min-[400px]:max-w-[19rem] sm:max-w-[23rem] lg:max-w-none"
-      aria-hidden
-    >
-      {/* Pointer */}
+    <div className={cn("relative mx-auto aspect-square", className)} aria-hidden>
+      {/* Pointer — static, overlapping the rim at 12 o'clock. */}
       <svg
-        viewBox="0 0 24 22"
-        className="absolute top-0 left-1/2 z-10 w-[9%] -translate-x-1/2 -translate-y-[30%] drop-shadow-[0_1px_1px_rgb(0_0_0/0.18)]"
+        viewBox="0 0 28 30"
+        className="absolute top-0 left-1/2 z-10 w-[11%] -translate-x-1/2 -translate-y-[38%] drop-shadow-[0_2px_2px_rgb(0_0_0/0.2)]"
       >
-        <path d="M12 21 L2 3.5 Q12 0 22 3.5 Z" className="fill-primary stroke-card" strokeWidth={1.5} strokeLinejoin="round" />
+        <path
+          d="M14 28.5 L3 9 A11.5 11.5 0 1 1 25 9 Z"
+          className="fill-primary stroke-card"
+          strokeWidth={2}
+          strokeLinejoin="round"
+        />
+        <circle cx={14} cy={11.5} r={3.6} className="fill-card" />
       </svg>
       {/* overflow-hidden: the rotated square SVG's bounding box grows with the
           angle (up to √2×) — clip it to the circle or it causes page overflow. */}
-      <div className="size-full overflow-hidden rounded-full bg-card p-[3%] shadow-elev-2 ring-1 ring-border">
+      <div className="size-full overflow-hidden rounded-full bg-card p-[3.5%] shadow-elev-2 ring-1 ring-border">
         <svg
           viewBox="0 0 200 200"
           className="size-full motion-reduce:!transition-none"
@@ -62,7 +68,7 @@ export function SpinWheel({
             const [x2, y2] = point(end, r);
             const large = seg > 180 ? 1 : 0;
             const mid = start + seg / 2;
-            const [tx, ty] = point(mid, r * 0.64);
+            const [tx, ty] = point(mid, r * 0.62);
             const won = highlightIndex === i;
             const d =
               n === 1
@@ -77,7 +83,7 @@ export function SpinWheel({
                     won ? "fill-primary" : i % 2 === 0 ? "fill-oat" : "fill-card",
                   )}
                 />
-                <path d={`M ${r} ${r} L ${x1} ${y1}`} className="stroke-border" strokeWidth={0.75} />
+                {n > 1 && <path d={`M ${r} ${r} L ${x1} ${y1}`} className="stroke-border" strokeWidth={0.75} />}
                 <g transform={`rotate(${mid} ${tx} ${ty})`}>
                   <text
                     x={tx}
@@ -104,11 +110,17 @@ export function SpinWheel({
             );
           })}
           <circle cx={r} cy={r} r={r - 1} fill="none" className="stroke-primary/70" strokeWidth={2} />
+          {/* Rim pegs on the segment boundaries. */}
+          {n > 1 &&
+            percents.map((p, i) => {
+              const [px, py] = point(i * seg, r - 6);
+              return <circle key={`peg-${p}`} cx={px} cy={py} r={2.4} className="fill-card stroke-primary/60" strokeWidth={1} />;
+            })}
         </svg>
       </div>
-      {/* Hub (static, doesn't rotate) */}
-      <div className="absolute top-1/2 left-1/2 grid size-[19%] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-[3px] border-card bg-primary text-[10px] font-semibold tracking-[0.16em] text-primary-foreground uppercase shadow-elev-1 sm:text-[11px]">
-        Spin
+      {/* Hub — static and purely decorative; the spin control is the button below the wheel. */}
+      <div className="absolute top-1/2 left-1/2 grid size-[15%] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-[3px] border-card bg-primary shadow-elev-1">
+        <span className="size-[34%] rounded-full bg-card/90" />
       </div>
     </div>
   );

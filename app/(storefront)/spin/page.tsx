@@ -67,11 +67,15 @@ export default async function SpinPage() {
       ])
     : [null, [] as string[]];
 
-  const header = (
+  // With the wheel on screen, phones drop the intro paragraph: the stage's own
+  // caption says the same thing, and it keeps wheel + Spin button above the fold.
+  const header = (withWheel: boolean) => (
     <header>
       <p className="eyebrow">Spin &amp; Win</p>
-      <h1 className="mt-3 font-heading text-title text-balance text-foreground">One spin, one honest offer</h1>
-      <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted-foreground sm:mt-4 sm:text-lg">
+      <h1 className="mt-2 font-heading text-title text-balance text-foreground sm:mt-3">One spin, one honest offer</h1>
+      <p
+        className={`mt-3 max-w-xl text-[15px] leading-relaxed text-muted-foreground sm:mt-4 sm:text-lg ${withWheel ? "max-sm:hidden" : ""}`}
+      >
         Spin once for a discount on one of our selected natural foods. The offer applies only to the product you
         win — not your whole cart.
       </p>
@@ -80,9 +84,9 @@ export default async function SpinPage() {
 
   return (
     <div className="bg-card">
-      <section className="shop-container pt-6 pb-12 sm:pt-8 md:pb-16 lg:pb-20">
+      <section className="shop-container pt-5 pb-12 sm:pt-8 md:pb-16 lg:pb-20">
         <PageBreadcrumb items={[{ name: "Home", href: "/" }, { name: "Spin & Win" }]} />
-        <div className="mt-6 sm:mt-8 lg:mt-10">
+        <div className="mt-5 sm:mt-8 lg:mt-10">
           {campaign ? (
             <SpinGame
               campaign={toPublicCampaign(campaign)}
@@ -91,7 +95,7 @@ export default async function SpinPage() {
               pendingClaim={pendingClaim}
               needsVerification={needsVerification}
               phoneVerifyAvailable={isPhoneAuthEnabled()}
-              header={header}
+              header={header(true)}
             />
           ) : view ? (
             // Campaign paused/ended but this browser still holds a win — it
@@ -114,12 +118,12 @@ export default async function SpinPage() {
               pendingClaim={pendingClaim}
               needsVerification={needsVerification}
               phoneVerifyAvailable={isPhoneAuthEnabled()}
-              header={header}
+              header={header(false)}
               showWheel={false}
             />
           ) : (
             <div className="max-w-2xl">
-              {header}
+              {header(false)}
               <EmptyState
                 icon={Gift}
                 title="Spin & Win isn't running right now"

@@ -30,10 +30,9 @@ const SPIN_MS = 4800;
 type Phase = "idle" | "requesting" | "spinning" | "claiming" | "done";
 
 /**
- * The /spin game: page header + wheel + one panel that walks the shopper
- * through every state (spin → result → sign in / verify → saved code → used).
- * Mobile: header, wheel, panel. Desktop: header and panel on the left, the
- * wheel (the visual focus) on the right. `showWheel` is false when the
+ * The /spin game: page header + stage (wheel with its Spin button directly
+ * beneath) + one panel that walks the shopper through every state (spin →
+ * result → sign in / verify → saved code → used). `showWheel` is false when the
  * campaign has ended but this browser still holds a win — the offer is shown
  * on its own rather than on a one-segment wheel.
  */
@@ -144,72 +143,116 @@ export function SpinGame({
   const highlight = showResult && view.status !== "EXPIRED" ? indexOf(view.percent) : null;
   const topPercent = Math.max(0, ...percents);
 
+  // Phones: when the wheel stops, bring the result into view if it landed
+  // below the fold. Desktop shows it beside the wheel, so nothing moves there.
+  const resultRef = useRef<HTMLDivElement>(null);
+  const settledFromSpin = useRef(false);
+  useEffect(() => {
+    if (phase === "spinning") settledFromSpin.current = true;
+    if (phase !== "done" || !settledFromSpin.current) return;
+    settledFromSpin.current = false;
+    const el = resultRef.current;
+    if (!el || window.matchMedia("(min-width: 1024px)").matches) return;
+    if (el.getBoundingClientRect().top > window.innerHeight * 0.6) {
+      el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+    }
+  }, [phase]);
+
+  const result = (
+    <div ref={resultRef} aria-live="polite" className="min-w-0 scroll-mt-24">
+      {phase === "claiming" && (
+        <p className="flex items-center gap-2.5 text-[15px] text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" aria-hidden /> Saving your offer to your account…
+        </p>
+      )}
+      {phase === "spinning" && <p className="sr-only">Spinning…</p>}
+      {showResult && (
+        <ResultPanel
+          view={view}
+          signedIn={signedIn}
+          unverified={unverified}
+          phoneVerifyAvailable={phoneVerifyAvailable}
+          claimError={claimError}
+          claimMessage={claimError ? error : null}
+          onClaim={claim}
+        />
+      )}
+    </div>
+  );
+
+  // No wheel (campaign ended, this browser still holds a win): the offer alone.
+  if (!showWheel) {
+    return (
+      <div className="grid max-w-2xl gap-y-8">
+        {header}
+        {result}
+      </div>
+    );
+  }
+
+  // Layout: the wheel and its Spin button are ONE unit (the stage) so the
+  // control can never drift away from the game. Phones: header → stage →
+  // result. Desktop: header + result on the left, the stage on the right; the
+  // 1fr spacer rows centre the left column against the stage.
   return (
-    <div
-      className={cn(
-        "grid gap-y-8",
-        showWheel
-          ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,25rem)] lg:grid-rows-[1fr_auto_auto_1fr] lg:gap-x-16 xl:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] xl:gap-x-24"
-          : "max-w-2xl",
-      )}
-    >
-      {header && <div className={showWheel ? "lg:col-start-1 lg:row-start-2" : undefined}>{header}</div>}
+    <div className="grid gap-y-6 sm:gap-y-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:grid-rows-[1fr_auto_auto_1fr] lg:gap-x-16 xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] xl:gap-x-24">
+      {header && <div className="lg:col-start-1 lg:row-start-2">{header}</div>}
 
-      {showWheel && (
-        <div className="lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:self-center">
-          <SpinWheel percents={percents} rotation={rotation} durationMs={duration} highlightIndex={highlight} />
-        </div>
-      )}
+      <div className="flex flex-col items-center sm:rounded-2xl sm:border sm:border-border/70 sm:bg-oat/40 sm:px-8 sm:pt-10 sm:pb-8 lg:col-start-2 lg:pt-12 lg:row-span-4 lg:row-start-1 lg:self-center lg:px-10">
+        {/* Phones: sized from the viewport height too, so wheel + button fit the
+            first screen (below the header) without scrolling. */}
+        <SpinWheel
+          percents={percents}
+          rotation={rotation}
+          durationMs={duration}
+          highlightIndex={highlight}
+          className="w-[clamp(13.5rem,calc(100svh-26.5rem),20rem)] max-w-full sm:w-[22rem] lg:w-full"
+        />
 
-      <div className={cn("min-w-0", showWheel && "lg:col-start-1 lg:row-start-3")}>
-        <div aria-live="polite">
-          {phase === "claiming" && (
-            <p className="flex items-center gap-2.5 text-[15px] text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" aria-hidden /> Saving your offer to your account…
+        {/* Fixed-height control slot directly under the wheel: the button, and
+            then its "used" state, occupy the same box — nothing jumps. */}
+        <div className="mt-6 flex h-13 w-full max-w-[20rem] items-center justify-center sm:mt-8 sm:max-w-[22rem]">
+          {view ? (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle2 className="size-4 text-primary" aria-hidden /> Spin used — one per account
             </p>
-          )}
-          {phase === "spinning" && <p className="sr-only">Spinning…</p>}
-          {showResult && (
-            <ResultPanel
-              view={view}
-              signedIn={signedIn}
-              unverified={unverified}
-              phoneVerifyAvailable={phoneVerifyAvailable}
-              claimError={claimError}
-              claimMessage={claimError ? error : null}
-              onClaim={claim}
-            />
-          )}
-          {!view && error && (
-            <Notice tone={toneFor(errorCode)} role="alert">
-              {error}{" "}
-              <Link href="/products" className="font-medium whitespace-nowrap underline underline-offset-4">
-                Continue shopping
-              </Link>
-            </Notice>
-          )}
-        </div>
-
-        {!view && (
-          <div className={error ? "mt-6" : ""}>
+          ) : (
             <Button
               type="button"
               onClick={spin}
               disabled={busy}
-              className="h-12 w-full rounded-lg px-8 text-[15px] sm:w-auto"
+              aria-describedby="spin-rules"
+              className="h-full w-full rounded-xl text-base font-semibold disabled:opacity-80"
             >
               {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
               {busy ? "Spinning…" : "Spin the wheel"}
             </Button>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-              {topPercent > 0 && <>Win up to {topPercent}% off one selected product. </>}
+          )}
+        </div>
+
+        {!view && (
+          <div className="mt-4 w-full max-w-[20rem] text-center sm:max-w-[22rem]">
+            {error && (
+              <Notice tone={toneFor(errorCode)} role="alert" className="mb-4 text-left">
+                {error}{" "}
+                <Link href="/products" className="font-medium whitespace-nowrap underline underline-offset-4">
+                  Continue shopping
+                </Link>
+              </Notice>
+            )}
+            <p id="spin-rules" className="text-sm leading-relaxed text-pretty text-muted-foreground">
+              {topPercent > 0 && (
+                <span className="block font-medium text-foreground">Win up to {topPercent}% off one selected product</span>
+              )}
               {signedIn
-                ? "One spin per account — your offer is saved to your account once your email or phone is verified."
-                : `One spin per account. Sign in afterwards to claim — your win is held on this device for ${campaign.claimWindowHours} hours.`}
+                ? "One spin per account. Your offer is saved once your email or phone is verified."
+                : `One spin per account. Sign in afterwards to claim — your win is held here for ${campaign.claimWindowHours} hours.`}
             </p>
           </div>
         )}
       </div>
+
+      <div className="min-w-0 lg:col-start-1 lg:row-start-3">{result}</div>
     </div>
   );
 }
