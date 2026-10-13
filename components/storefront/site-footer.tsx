@@ -66,7 +66,7 @@ export async function SiteFooter() {
     >
       {/* Newsletter CTA */}
       <div className="border-b border-white/10">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-10 md:flex-row md:items-center md:justify-between">
+        <div className="shop-container flex flex-col gap-6 py-10 md:flex-row md:items-center md:justify-between">
           <div className="max-w-md">
             <h3 className="font-heading text-2xl font-semibold">
               Eat clean, stay in the know
@@ -83,7 +83,7 @@ export async function SiteFooter() {
       {/* Trust bar — bare icons, no per-item tile (matches the homepage trust
           band + PDP purchase panel's restrained treatment). */}
       <div className="border-b border-white/10">
-        <div className="mx-auto grid w-full max-w-7xl grid-cols-2 gap-x-4 gap-y-4 px-4 py-6 lg:grid-cols-4 lg:divide-x lg:divide-white/10">
+        <div className="shop-container grid grid-cols-2 gap-x-4 gap-y-4 py-6 lg:grid-cols-4 lg:divide-x lg:divide-white/10">
           {trustItems.map((t) => (
             <div key={t.label} className="flex items-center gap-2.5 lg:px-5 lg:first:pl-0">
               <t.icon className="size-[18px] shrink-0 text-gold" strokeWidth={1.75} />
@@ -93,7 +93,7 @@ export async function SiteFooter() {
         </div>
       </div>
 
-      <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-10 px-4 py-12 md:grid-cols-[1.5fr_repeat(3,1fr)]">
+      <div className="shop-container grid grid-cols-1 gap-10 py-12 md:grid-cols-[1.5fr_repeat(3,1fr)]">
         <div className="space-y-4">
           <Logo
             logoUrl={store.logo}
@@ -161,7 +161,7 @@ export async function SiteFooter() {
       </div>
 
       <div className="border-t border-white/10">
-        <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-2 px-4 py-5 text-sm text-surface-deep-foreground/60 sm:flex-row">
+        <div className="shop-container flex flex-col items-center justify-between gap-2 py-5 text-sm text-surface-deep-foreground/60 sm:flex-row">
           <p>
             © {new Date().getFullYear()} {store.siteName}. All rights reserved.
           </p>

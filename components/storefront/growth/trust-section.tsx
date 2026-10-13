@@ -36,7 +36,7 @@ export async function TrustSection() {
 
   return (
     <section className="border-y border-border bg-background" aria-label="Why shop with us">
-      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:py-10">
+      <div className="shop-container py-8 sm:py-10">
         {numbers.length > 0 && (
           <div className="mb-6 grid grid-cols-3 gap-3 sm:mb-8">
             {numbers.map((n) => (

@@ -8,11 +8,11 @@ import type { TestimonialsContent } from "@/lib/validations/admin";
 export function HomeTestimonials({ content }: { content: TestimonialsContent }) {
   return (
     <section className="bg-oat">
-      <div className="shop-section mx-auto w-full max-w-7xl px-4">
+      <div className="shop-container shop-section">
         <SectionHeading title={content.title} subtitle={content.subtitle} />
-        <div className="scroll-rail -mx-4 gap-6 px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-8 sm:px-0">
+        <div className="-mx-4 flex snap-x snap-mandatory scroll-px-4 overflow-x-auto overscroll-x-contain px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0 gap-6 sm:grid sm:grid-cols-3 sm:gap-8 sm:overflow-visible">
           {content.items.map((t, i) => (
-            <figure key={i} className="w-[78vw] max-w-sm shrink-0 sm:w-auto sm:max-w-none">
+            <figure key={i} className="w-[78vw] max-w-sm shrink-0 snap-start sm:w-auto sm:max-w-none">
               <span aria-hidden className="block font-heading text-5xl leading-none text-terracotta/60">
                 &ldquo;
               </span>

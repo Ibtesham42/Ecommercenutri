@@ -71,7 +71,7 @@ export function EditorialHero({
 
   return (
     <section aria-label="Welcome" className="bg-background" data-heat="hero-slider">
-      <div className="mx-auto grid w-full max-w-7xl items-center gap-8 px-4 pt-6 pb-12 md:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] md:gap-10 md:py-12 lg:gap-16 lg:py-10">
+      <div className="shop-container grid items-center gap-8 pt-6 pb-12 md:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] md:gap-10 md:py-12 lg:gap-16 lg:py-10">
         {/* Copy */}
         <div className="max-w-xl">
           {content.eyebrow && <p className="eyebrow">{content.eyebrow}</p>}
@@ -119,7 +119,7 @@ export function EditorialHero({
         {/* Media */}
         {count > 0 && (
           <div
-            className="mx-auto w-full max-w-[28rem] md:max-w-none lg:mx-0 lg:w-fit lg:justify-self-end"
+            className="mx-auto w-full max-w-[19rem] sm:max-w-[24rem] md:max-w-none lg:mx-0 lg:w-fit lg:justify-self-end"
             aria-roledescription="carousel"
             aria-label="Featured products"
             onMouseEnter={() => setPaused(true)}

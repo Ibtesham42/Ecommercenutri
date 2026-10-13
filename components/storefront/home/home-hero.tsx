@@ -21,7 +21,7 @@ export function HomeHero({ content }: { content: HeroContent }) {
       )}
       style={styled ? style : undefined}
     >
-      <div className="mx-auto grid w-full max-w-7xl items-center gap-10 px-4 py-16 max-sm:py-10 md:grid-cols-2 md:py-24">
+      <div className="shop-container grid items-center gap-10 py-16 max-sm:py-10 md:grid-cols-2 md:py-24">
         <div className="space-y-6">
           {content.eyebrow && (
             <Badge

@@ -14,7 +14,7 @@ export async function JournalSection() {
   const feature = posts.length === 1;
 
   return (
-    <section className="shop-section mx-auto w-full max-w-7xl px-4" data-heat="journal">
+    <section className="shop-container shop-section" data-plain data-heat="journal">
       <SectionHeading
         eyebrow="Journal"
         title="From our kitchen"

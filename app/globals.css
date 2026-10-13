@@ -1030,6 +1030,12 @@
     padding-block: 6.5rem;
   }
 }
+/* Two plain (ground-colour) sections in a row would stack both paddings into a
+   ~200px gap; they share one gap instead. Homepage order is admin-defined, so
+   this is keyed on adjacency, not on specific sections. */
+[data-surface="shop"] .shop-section[data-plain] + .shop-section[data-plain] {
+  padding-top: 0;
+}
 /* Small uppercase label above a heading ("AUTHENTICALLY INDIAN", "OUR STORY"). */
 @utility eyebrow {
   font-family: var(--font-sans);

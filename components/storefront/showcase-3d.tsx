@@ -154,7 +154,7 @@ export function Showcase3D({ items }: { items: ShowcaseDisplayItem[] }) {
       </div>
 
       {/* Copy overlay */}
-      <div className="relative z-10 mx-auto flex min-h-[inherit] w-full max-w-7xl items-center px-4 py-12">
+      <div className="shop-container relative z-10 flex min-h-[inherit] items-center py-12">
         <div
           key={item.id}
           className={cn(

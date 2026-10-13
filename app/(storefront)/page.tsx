@@ -152,7 +152,7 @@ export default async function HomePage() {
     hero: <HomeHero content={content.hero} />,
 
     categories: (
-      <section className="shop-section mx-auto w-full max-w-7xl px-4" data-heat="categories">
+      <section className="shop-container shop-section" data-plain data-heat="categories">
         <SectionHeading
           title={content.categories.title}
           subtitle={content.categories.subtitle}
@@ -160,26 +160,31 @@ export default async function HomePage() {
           ctaHref={content.categories.ctaHref}
         />
         <Reveal>
-          <ul className="scroll-rail -mx-4 gap-5 px-4 pb-1 sm:mx-0 sm:flex sm:flex-wrap sm:gap-x-10 sm:gap-y-8 sm:px-0">
+          {/* Uniform square photo tiles (not small circles): the category
+              imagery leads, the name sits quietly underneath. Phones scroll a
+              rail of ~2.5 tiles; tablet 3-up; desktop one row of 6. Built from
+              utilities, not `.scroll-rail` — that class is unlayered and would
+              beat `sm:grid`. */}
+          <ul className="-mx-4 flex snap-x snap-mandatory scroll-px-4 overflow-x-auto overscroll-x-contain px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0 gap-3 sm:grid sm:grid-cols-3 sm:gap-5 sm:overflow-visible lg:grid-cols-6">
             {categories.slice(0, content.categories.limit ?? 6).map((c) => (
-              <li key={c.slug} className="w-24 shrink-0 snap-start sm:w-32">
-                <Link href={`/categories/${c.slug}`} className="group flex flex-col items-center gap-3 text-center">
-                  <span className="relative grid size-24 place-items-center overflow-hidden rounded-full bg-oat ring-1 ring-border transition-shadow group-hover:ring-primary/40 sm:size-32">
+              <li key={c.slug} className="w-[38vw] max-w-44 shrink-0 snap-start sm:w-auto sm:max-w-none">
+                <Link href={`/categories/${c.slug}`} className="group block">
+                  <span className="relative grid aspect-square place-items-center overflow-hidden rounded-xl bg-oat">
                     {c.image ? (
                       <BlurImage
                         src={c.image}
                         alt=""
                         fill
-                        sizes="128px"
-                        className="object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-105"
+                        sizes="(min-width: 1024px) 200px, (min-width: 640px) 30vw, 38vw"
+                        className="object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.03]"
                       />
                     ) : (
-                      <span aria-hidden className="font-heading text-3xl text-oat-foreground">
+                      <span aria-hidden className="font-heading text-4xl text-oat-foreground">
                         {c.name.charAt(0)}
                       </span>
                     )}
                   </span>
-                  <span className="text-sm font-medium leading-snug text-foreground group-hover:text-primary sm:text-[15px]">
+                  <span className="mt-3 block text-sm font-medium leading-snug text-foreground transition-colors group-hover:text-primary sm:text-[15px]">
                     {c.name}
                   </span>
                 </Link>
@@ -192,7 +197,7 @@ export default async function HomePage() {
 
     featured:
       featured.length > 0 ? (
-        <section className="shop-section mx-auto w-full max-w-7xl px-4">
+        <section className="shop-container shop-section" data-plain>
           <SectionHeading
             title={content.featured.title}
             subtitle={content.featured.subtitle}
@@ -211,8 +216,7 @@ export default async function HomePage() {
 
     bestSellers:
       bestSellers.length > 0 ? (
-        <section className="bg-oat">
-          <div className="shop-section mx-auto w-full max-w-7xl px-4">
+        <section className="shop-container shop-section" data-plain>
             <SectionHeading
               title={content.bestSellers.title}
               subtitle={content.bestSellers.subtitle}
@@ -227,13 +231,12 @@ export default async function HomePage() {
                 showBestSellerBadge={false}
               />
             </Reveal>
-          </div>
         </section>
       ) : null,
 
     deals:
       deals.length >= MIN_RAIL_ITEMS ? (
-        <section className="shop-section mx-auto w-full max-w-7xl px-4">
+        <section className="shop-container shop-section" data-plain>
           <SectionHeading
             title={content.deals.title}
             subtitle={content.deals.subtitle}
@@ -256,13 +259,13 @@ export default async function HomePage() {
         title={content.recommended.title}
         subtitle={content.recommended.subtitle}
         excludeProductIds={[...featured, ...bestSellers].map((p) => p.id)}
-        className="shop-section mx-auto w-full max-w-7xl px-4"
+        className="shop-container shop-section"
       />
     ),
 
     trending:
       trendingFresh.length >= MIN_RAIL_ITEMS ? (
-        <section className="shop-section mx-auto w-full max-w-7xl px-4">
+        <section className="shop-container shop-section" data-plain>
           <SectionHeading
             title={content.trending.title}
             subtitle={content.trending.subtitle}
@@ -278,7 +281,7 @@ export default async function HomePage() {
     combos:
       combos.length > 0 ? (
         <section className="border-y border-border">
-          <div className="shop-section mx-auto w-full max-w-7xl space-y-12 px-4 max-sm:space-y-9">
+          <div className="shop-container shop-section space-y-12 max-sm:space-y-9">
             <SectionHeading
               title={content.combos.title}
               subtitle={content.combos.subtitle}
@@ -324,6 +327,12 @@ export default async function HomePage() {
       visible[0]?.key
     : null;
 
+  // The Spin & Win teaser follows the hero when one is shown (a promo strip
+  // above the brand hero reads as an ad, not a homepage); otherwise it keeps
+  // its place at the top.
+  const heroKey = visible.find((s) => s.key === "hero" || s.key === "heroSlider")?.key;
+  const spinBand = <SpinEntryBand source="home" className="py-4 sm:py-6" />;
+
   const showcaseNode = showcase.enabled ? (
     <Showcase3D items={showcase.items} />
   ) : null;
@@ -344,7 +353,7 @@ export default async function HomePage() {
         <>
           {showcaseNode}
           <BannerStrip position="homeTop" fullBleed className="py-6" />
-          <SpinEntryBand source="home" className="py-4" />
+          {!heroKey && spinBand}
         </>
       )}
       {visible.map((s) => (
@@ -353,8 +362,9 @@ export default async function HomePage() {
           {/* Stories stay on top; the 3D showcase sits right below them. */}
           {s.key === "stories" && showcaseNode}
           {s.key === "stories" && <BannerStrip position="homeTop" fullBleed className="py-6" />}
-          {s.key === "stories" && <SpinEntryBand source="home" className="py-4" />}
+          {s.key === "stories" && !heroKey && spinBand}
           {s.key === trustAfterKey && <TrustSection />}
+          {s.key === heroKey && spinBand}
         </Fragment>
       ))}
     </>

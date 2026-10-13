@@ -94,7 +94,7 @@ export function CatalogSkeleton({
 /** Heading + grid skeleton for a homepage/section loading state. */
 export function SectionSkeleton({ count = 4 }: { count?: number }) {
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-10">
+    <div className="shop-container py-10">
       <div className="mb-8 space-y-2">
         <Skeleton className="h-7 w-56" />
         <Skeleton className="h-4 w-72" />

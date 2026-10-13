@@ -17,7 +17,7 @@ export function HomeAiBanner({ content }: { content: AiBannerContent }) {
 
   return (
     <section data-heat="ai-assistant" style={styled ? style : undefined} className={cn(!styled && "bg-background")}>
-      <div className="mx-auto w-full max-w-7xl px-4">
+      <div className="shop-container">
         <div className="flex flex-col gap-6 border-y border-border py-10 md:flex-row md:items-center md:justify-between md:gap-12 md:py-12">
           <div className="max-w-2xl">
             {content.eyebrow && <p className="eyebrow">{content.eyebrow}</p>}
