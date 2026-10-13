@@ -60,7 +60,11 @@ function useHoverZoom() {
  * Product gallery. One scroll-snap track at every width (so there's a single
  * priority/LCP image): swipeable with dots on mobile; on md+ the track is
  * driven by thumbnails and magnifies under the cursor. Images sit whole
- * (object-contain) on an oat tile, never cropped. Any image opens the lightbox.
+ * (object-contain), never cropped, inset on a neutral matte so mixed ratios
+ * (portrait shots, square packshots, certificates) read as framed, not
+ * letterboxed. Portrait 4:5 frame from md (most product photos are portrait);
+ * on lg the height is capped to the viewport so the thumbnail strip stays in
+ * view; square on phones to keep the buy box close. Any image opens the lightbox.
  */
 export function ProductGallery({
   images,
@@ -125,7 +129,7 @@ export function ProductGallery({
         <div
           ref={trackRef}
           onScroll={onTrackScroll}
-          className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-xl bg-oat [scrollbar-width:none] md:overflow-hidden [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-xl bg-muted [scrollbar-width:none] md:overflow-hidden [&::-webkit-scrollbar]:hidden"
         >
           {shots.map((img, i) => (
             <button
@@ -137,24 +141,26 @@ export function ProductGallery({
                 setOpen(true);
               }}
               aria-label={`Open image ${i + 1} of ${count} full screen`}
-              className="relative aspect-square w-full shrink-0 snap-center cursor-zoom-in overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+              className="relative aspect-square w-full shrink-0 snap-center cursor-zoom-in overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset md:aspect-[4/5] lg:aspect-auto lg:h-[min(44rem,calc(100svh-17rem))] lg:min-h-[28rem]"
             >
-              <BlurImage
-                src={img.url}
-                alt={altFor(img, i)}
-                fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                priority={i === 0}
-                className={cn(
-                  "object-contain transition-transform duration-200 ease-out",
-                  i === active && hoverZoom.origin && "scale-[2]",
-                )}
-                style={
-                  i === active && hoverZoom.origin
-                    ? { transformOrigin: `${hoverZoom.origin.x}% ${hoverZoom.origin.y}%` }
-                    : undefined
-                }
-              />
+              <span className="absolute inset-3 sm:inset-5">
+                <BlurImage
+                  src={img.url}
+                  alt={altFor(img, i)}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  priority={i === 0}
+                  className={cn(
+                    "object-contain transition-transform duration-200 ease-out",
+                    i === active && hoverZoom.origin && "scale-[2]",
+                  )}
+                  style={
+                    i === active && hoverZoom.origin
+                      ? { transformOrigin: `${hoverZoom.origin.x}% ${hoverZoom.origin.y}%` }
+                      : undefined
+                  }
+                />
+              </span>
             </button>
           ))}
         </div>
@@ -187,7 +193,7 @@ export function ProductGallery({
                 aria-label={`View image ${i + 1}`}
                 aria-current={i === active ? "true" : undefined}
                 className={cn(
-                  "relative size-[4.5rem] shrink-0 overflow-hidden rounded-lg border bg-oat transition outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "relative size-[4.5rem] shrink-0 overflow-hidden rounded-lg border bg-muted transition outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   i === active ? "border-foreground/70" : "border-transparent opacity-70 hover:opacity-100",
                 )}
               >
