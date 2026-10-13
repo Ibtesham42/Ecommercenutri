@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { productCardView } from "@/lib/product-card";
+import { bestSellerBadgeMeaningful, productCardView } from "@/lib/product-card";
 
 const v = (weightLabel: string, price: number, discountPrice: number | null, stock: number, isDefault = false) => ({
   weightLabel,
@@ -48,5 +48,17 @@ describe("productCardView", () => {
     expect(productCardView({ isBestSeller: false, variants: [v("80g", 249, null, 6, true)] }).lowStock).toBeNull();
     const soldOut = productCardView({ isBestSeller: false, variants: [v("80g", 249, null, 0, true)] });
     expect(soldOut).toMatchObject({ outOfStock: true, lowStock: null });
+  });
+});
+
+describe("bestSellerBadgeMeaningful", () => {
+  const p = (isBestSeller: boolean) => ({ isBestSeller });
+  it("shows the badge when bestsellers are a minority (or exactly half)", () => {
+    expect(bestSellerBadgeMeaningful([p(true), p(false), p(false)])).toBe(true);
+    expect(bestSellerBadgeMeaningful([p(true), p(false)])).toBe(true);
+  });
+  it("hides it when most products carry the flag, or there are none", () => {
+    expect(bestSellerBadgeMeaningful([p(true), p(true), p(false)])).toBe(false);
+    expect(bestSellerBadgeMeaningful([])).toBe(false);
   });
 });

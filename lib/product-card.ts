@@ -3,14 +3,22 @@ import { discountPercent, effectivePrice } from "@/lib/format";
 /** Product grid columns follow the space the grid actually gets (container
  *  queries — wrap in `@container`), so a PLP beside a filter sidebar and a
  *  full-width homepage section both land on comfortable card widths:
- *  2 → 3 (≥576px) → 4 (≥896px) → 5 (≥1152px). Shared by grid + skeleton. */
+ *  2 → 3 (≥576px) → 4 (≥896px). Capped at 4: five-up made cards small and
+ *  left ragged last rows for the usual 8-product sections. Shared by grid + skeleton. */
 export const PRODUCT_GRID_CLASS =
-  "grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 sm:gap-y-10 @xl:grid-cols-3 @4xl:grid-cols-4 @6xl:grid-cols-5";
+  "grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-6 sm:gap-y-12 @xl:grid-cols-3 @4xl:grid-cols-4";
 
 /** Catalog pages (no sidebar below `lg`): pin 3 columns across 576–1023px, where
  *  the container queries alone would give 2 (narrow) or 4 (near 1000px). `!`
  *  because media vs container query rules have no reliable relative order. */
 export const CATALOG_GRID_CLASS = "min-[36rem]:max-lg:grid-cols-3!";
+
+/** A "Bestseller" badge only means something when it singles a product out:
+ *  when most products in a grid carry the flag, the badge is just noise. */
+export function bestSellerBadgeMeaningful(products: readonly { isBestSeller: boolean }[]): boolean {
+  if (products.length === 0) return false;
+  return products.filter((p) => p.isBestSeller).length * 2 <= products.length;
+}
 
 /** Stock at or below this shows a quiet "Only N left" note (real stock, never invented). */
 export const LOW_STOCK_THRESHOLD = 5;

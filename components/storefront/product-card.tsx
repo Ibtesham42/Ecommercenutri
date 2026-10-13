@@ -8,7 +8,7 @@ import { ProductPrice } from "@/components/storefront/product-price";
 import { Reveal } from "@/components/storefront/reveal";
 import { ProductRailScroller } from "@/components/storefront/product-rail-scroller";
 import { cn } from "@/lib/utils";
-import { PRODUCT_GRID_CLASS, productCardView } from "@/lib/product-card";
+import { PRODUCT_GRID_CLASS, bestSellerBadgeMeaningful, productCardView } from "@/lib/product-card";
 import type { ProductCardData } from "@/lib/queries/products";
 
 const BADGE_LABEL = { soldOut: "Sold out", bestSeller: "Bestseller" } as const;
@@ -134,6 +134,7 @@ export function ProductGrid({
   priorityCount?: number;
   showBestSellerBadge?: boolean;
 }) {
+  const showBadge = showBestSellerBadge ?? bestSellerBadgeMeaningful(products);
   return (
     <div className="@container">
       <div className={cn(PRODUCT_GRID_CLASS, className)}>
@@ -145,7 +146,7 @@ export function ProductGrid({
               product={p}
               wishlisted={wishlistedIds?.has(p.id)}
               priority={i < priorityCount}
-              showBestSellerBadge={showBestSellerBadge}
+              showBestSellerBadge={showBadge}
             />
           </Reveal>
         ))}

@@ -56,17 +56,17 @@ export function QuickAddButton({
       label={outOfStock ? "Sold out" : "Add to cart"}
       addedLabel="Added"
       srContext={product.name}
-      variant={outOfStock ? "outline" : "default"}
+      variant="outline"
       size="sm"
       iconClassName="size-4 max-[359px]:hidden"
       className={cn(
-        // 44px on touch, 40px where there's a precise pointer. Explicit text
-        // colour: AddToCartButton's "added" state would otherwise tint the
-        // label primary — invisible on a primary fill.
+        // 44px on touch, 40px where there's a precise pointer. Outlined in the
+        // brand green (fills on hover): repeated on every card, a solid bar
+        // outweighed the product photography.
         "h-11 w-full gap-1.5 rounded-lg text-[13px] font-medium sm:text-sm [@media(hover:hover)_and_(pointer:fine)]:h-10",
         outOfStock
           ? "border-border bg-transparent text-muted-foreground disabled:opacity-100"
-          : "border-transparent text-primary-foreground",
+          : "border-primary/40 bg-transparent text-primary hover:border-primary hover:bg-primary hover:text-primary-foreground",
         className,
       )}
     />
