@@ -86,14 +86,14 @@ lowercase with `[slug]`/`(group)` · server actions verb-first (`createOrder`).
   `aria-*` on icon buttons), theme tokens only (`bg-primary`, `text-muted-foreground`,
   `border`, `accent`) — never hard-code hex. Dark mode via `next-themes`.
 - **Two token contexts.** The customer storefront uses the editorial design system scoped to
-  `[data-surface="shop"]` (warm cream, deep forest `--primary oklch(0.4 0.058 160)`, oat,
-  earthy text, restrained terracotta/gold, quieter radius + elevation) — set by the shared
-  `StorefrontChrome` wrapper (used by the `(storefront)` AND `(account)` layouts) and mirrored
-  onto `<html>` by `SurfaceScope` (portals). Admin, JNV and auth keep the `:root`/`.dark`
-  tokens (jade `oklch(0.55 0.15 168)`) and must stay untouched by storefront work. Never
-  restyle via `:root`; add to the scoped block. Opt-in utilities: `shop-container`,
-  `shop-section`, `shop-form`, `eyebrow`, `text-display/title/heading/subheading`, `bg-oat`,
-  `text-terracotta`. Full sets in `app/globals.css`.
+  `[data-surface="shop"]` (ivory, deep forest `--primary oklch(0.38 0.066 158)`, oat, muted sage,
+  charcoal text, terracotta for prices only, quieter radius + elevation) — set by the shared
+  `StorefrontChrome` wrapper (used by the `(storefront)` AND `(account)` layouts; the `(auth)`
+  layout sets the same scope) and mirrored onto `<html>` by `SurfaceScope` (portals). Admin and
+  JNV keep the `:root`/`.dark` tokens (jade `oklch(0.55 0.15 168)`) and must stay untouched by
+  storefront work. Never restyle via `:root`; add to the scoped block. Opt-in utilities:
+  `shop-container`, `shop-section`, `shop-form`, `eyebrow`, `text-display/title/heading/subheading`,
+  `bg-oat`, `bg-sage`/`text-sage-deep`, `text-terracotta`. Full sets in `app/globals.css`.
 - Premium language: `shadow-elev-1/2/3` (+`hover-lift`), `rounded-xl/2xl`, `animate-fade-up`,
   `Reveal` (`[data-reveal]` scroll-reveal), `.shimmer`, `BlurImage` (blur-up, no CLS),
   `EmptyState`, `skeletons.tsx` + route `loading.tsx`. **All motion is

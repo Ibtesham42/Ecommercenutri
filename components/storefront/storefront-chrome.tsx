@@ -1,5 +1,6 @@
 import { SiteHeader } from "@/components/storefront/site-header";
 import { SurfaceScope } from "@/components/storefront/surface-scope";
+import { ShopThemeVars } from "@/components/storefront/shop-theme-vars";
 import { SiteFooter } from "@/components/storefront/site-footer";
 import { AnnouncementBar } from "@/components/storefront/announcement-bar";
 import { WhatsAppButton } from "@/components/storefront/whatsapp-button";
@@ -60,25 +61,10 @@ export function StorefrontChrome({
   extras?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  // Admin-chosen theme colors override the brand palette across the storefront.
-  const themeVars = [
-    settings.primaryColor && `--primary:${settings.primaryColor};--ring:${settings.primaryColor};`,
-    settings.secondaryColor && `--secondary:${settings.secondaryColor};`,
-  ]
-    .filter(Boolean)
-    .join("");
-
   return (
     <div data-surface="shop" className="flex min-h-dvh flex-col">
       <SurfaceScope />
-      {themeVars && (
-        // Also target the scope, or its own --primary would beat the admin's choice.
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `:root,.dark,[data-surface="shop"],.dark[data-surface="shop"],.dark [data-surface="shop"]{${themeVars}}`,
-          }}
-        />
-      )}
+      <ShopThemeVars settings={settings} />
       <UtilityBar
         offerText={growth.stickyBarEnabled ? growth.stickyText : null}
         freeShippingThreshold={settings.freeShippingThreshold}

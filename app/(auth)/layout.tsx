@@ -1,4 +1,6 @@
 import { Logo } from "@/components/storefront/logo";
+import { ShopThemeVars } from "@/components/storefront/shop-theme-vars";
+import { SurfaceScope } from "@/components/storefront/surface-scope";
 import { getStoreSettings } from "@/lib/queries/settings";
 
 export default async function AuthLayout({
@@ -9,7 +11,13 @@ export default async function AuthLayout({
   // Use the admin-configured website logo (Appearance settings) — never hardcoded.
   const settings = await getStoreSettings();
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center overflow-x-clip bg-background px-4 py-10 max-sm:px-5 max-sm:pb-[max(2.5rem,env(safe-area-inset-bottom))] max-sm:pt-[max(3rem,env(safe-area-inset-top))]">
+    // Same design scope as the storefront, so sign-in doesn't switch palettes mid-journey.
+    <div
+      data-surface="shop"
+      className="flex min-h-dvh flex-col items-center justify-center overflow-x-clip bg-background px-4 py-10 max-sm:px-5 max-sm:pb-[max(2.5rem,env(safe-area-inset-bottom))] max-sm:pt-[max(3rem,env(safe-area-inset-top))]"
+    >
+      <SurfaceScope />
+      <ShopThemeVars settings={settings} />
       <Logo
         className="mb-6 text-2xl max-sm:mb-8"
         logoUrl={settings.logo}

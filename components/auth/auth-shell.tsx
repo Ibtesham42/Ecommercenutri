@@ -154,8 +154,8 @@ export function AuthShell({
               Continue
             </Button>
 
-            <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
-              <ShieldCheck className="size-3.5 shrink-0 text-primary" />
+            <p className="text-center text-xs text-balance text-muted-foreground">
+              <ShieldCheck className="mr-1.5 inline size-3.5 -translate-y-px text-primary" aria-hidden />
               We&apos;ll text you a one-time code — no password needed.
             </p>
 
