@@ -28,7 +28,7 @@ assistant, Razorpay payments, Instagram-style stories, full account + admin expe
 | ORM / DB       | **Prisma 6** + **Neon PostgreSQL** (pooled `DATABASE_URL` + direct `DIRECT_URL`) |
 | Auth           | **NextAuth v5 (Auth.js)** — Google OAuth + Credentials, JWT session |
 | Email          | **Resend** · Payments: **Razorpay** · Media: **Cloudinary**         |
-| AI             | **Groq** via **Vercel AI SDK v6** (`llama-3.3-70b-versatile`)       |
+| AI             | **Groq** via **Vercel AI SDK v6** (`openai/gpt-oss-120b`)           |
 | Cache / limits | **Upstash Redis** (`@upstash/ratelimit`, fail-open)                 |
 | Validation     | **Zod v4** · Forms: **React Hook Form** · Toasts: **sonner** · Icons: **lucide-react** |
 
@@ -146,9 +146,10 @@ lowercase with `[slug]`/`(group)` · server actions verb-first (`createOrder`).
    (`app/brand-icon/`, `app/brand-apple-icon/`, `app/brand-og-image/`) that
    `generateMetadata()` falls back to only when nothing's uploaded. `/favicon.ico` is
    served by rewrite → route.
-3. **Groq `llama-3.3-70b-versatile` doesn't support `json_schema`** — use `generateText`
-   + defensive JSON parse, never `generateObject`. Chat streams plain text
-   (`toTextStreamResponse`), fallbacks carry `X-AI-Fallback: 1`.
+3. **Groq AI: `generateText` + defensive JSON parse, never `generateObject`** (no reliable
+   `json_schema`). Chat streams plain text and waits for the first token before committing,
+   so model errors return a fallback (`X-AI-Fallback: 1`), never an empty reply. Retired
+   model ids are remapped in `lib/groq.ts` — Groq retiring llama-3.3 once blanked the chat.
 4. **Analytics identity:** one shopper = one id (`nut_cid` client id preferred over
    cookie); engagement engine starts on first paint AND first interaction; impression IO
    threshold `[0, 0.5]`; confidence gating before ranking/AI. (`docs/analytics.md`)

@@ -14,8 +14,10 @@ and RAG added later without touching callers.
 - **Settings** (`lib/ai/settings.ts`): `getAISettings()` folds the single-row **`AISetting`**
   table over env defaults (model, temperature, maxTokens, system prompt, feature flags).
   `recordAIUsage(tokens)` meters usage. **The API key is never in the DB** — only in
-  `GROQ_API_KEY`; model from `GROQ_MODEL` (default `llama-3.3-70b-versatile`). Never
-  hardcode the model.
+  `GROQ_API_KEY`; model from `GROQ_MODEL` (default `openai/gpt-oss-120b`). Never
+  hardcode the model. `lib/groq.ts#resolveGroqModelId` remaps Groq-retired ids (e.g. a
+  stale `llama-3.3-70b-versatile` in the AISetting row or env) to the default, and runs
+  gpt-oss at `reasoningEffort: "low"` so reasoning doesn't eat `maxTokens`.
 - **Retrieval seam (RAG-ready)** (`lib/ai/retrieval.ts`): `retrieveProductContext()`
   returns `ContextChunk[]` from keyword catalog lookup today. Swap the body for vector
   search later — callers are unchanged.
@@ -27,7 +29,8 @@ and RAG added later without touching callers.
 - **Orchestration** (`lib/ai/chat.ts`): `runAssistantStream()` resolves settings/flags,
   grounds with context, returns a `streamText` result, exposes `onFinish(text, tokens)`
   (used by the route for metering + history).
-- The HTTP route (`app/api/ai/chat/route.ts`) returns `toTextStreamResponse()` — chat
+- The HTTP route (`app/api/ai/chat/route.ts`) awaits the first text chunk before returning
+  (a model error otherwise reached shoppers as an empty 200), then relays the stream — chat
   streams as **plain text** consumed via `fetch`/`ReadableStream` in
   `components/storefront/ai-chat.tsx`, NOT the `useChat`/UIMessage protocol (robust across
   AI SDK versions). Friendly fallbacks/limits carry an `X-AI-Fallback: 1` header so the
@@ -39,8 +42,8 @@ and RAG added later without touching callers.
 
 ## Structured output warning
 
-**Groq `llama-3.3-70b-versatile` does NOT support the `json_schema` response format**, so
-AI SDK `generateObject` fails on it. Use **`generateText` + defensive JSON parse** for
+Groq models have not reliably supported the `json_schema` response format (the retired
+`llama-3.3-70b-versatile` never did), so AI SDK `generateObject` is not used. Use **`generateText` + defensive JSON parse** for
 structured output (see `lib/ai/search.ts`, `lib/marketing/ai.ts`). Don't reintroduce
 `generateObject` without checking model support.
 

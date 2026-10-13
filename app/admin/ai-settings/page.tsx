@@ -6,7 +6,8 @@ import {
   type AISettingsValues,
 } from "@/components/admin/ai-settings-form";
 import { prisma } from "@/lib/prisma";
-import { isConfigured, env } from "@/lib/env";
+import { isConfigured } from "@/lib/env";
+import { resolveGroqModelId } from "@/lib/groq";
 
 export const metadata: Metadata = { title: "AI Settings", robots: { index: false } };
 
@@ -17,7 +18,8 @@ export default async function AISettingsPage() {
   const setting = await prisma.aISetting.findUnique({ where: { id: "singleton" } });
 
   const initial: AISettingsValues = {
-    model: setting?.model ?? env.groqModel,
+    // The effective id — a retired model saved here is remapped at call time.
+    model: resolveGroqModelId(setting?.model),
     isEnabled: setting?.isEnabled ?? true,
     assistantEnabled: setting?.assistantEnabled ?? true,
     searchEnabled: setting?.searchEnabled ?? true,

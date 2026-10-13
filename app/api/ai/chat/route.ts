@@ -31,6 +31,8 @@ const FALLBACK = {
   unavailable:
     "The AI assistant isn't configured yet. Meanwhile, browse our products or email support@nutriyet.in and we'll gladly help.",
   not_found: "Sorry, I couldn't find that product. Please try another one.",
+  failed:
+    "Sorry, I couldn't answer just now. Please try again in a moment, or email support@nutriyet.in.",
   rate_limited:
     "You're sending messages a little too fast. Please wait a moment and try again.",
 } as const;
@@ -114,35 +116,43 @@ export async function POST(req: Request) {
   if (!stream.ok) {
     // Keyless philosophy: the reco engine is pure DB — when the model isn't
     // configured we can still answer a shoppable question with real products.
-    if (stream.reason === "unavailable" && recoPromise) {
-      const reco = await recoPromise;
-      if (reco && reco.primary.length > 0) {
-        const friendly =
-          "Here's what we recommend from our store based on what you asked — every pick below is in stock right now.";
-        return new Response(`${friendly}${RECO_MARKER}${JSON.stringify(reco)}`, {
-          status: 200,
-          headers: { "Content-Type": "text/plain; charset=utf-8", "X-AI-Fallback": "1" },
-        });
-      }
+    if (stream.reason === "unavailable") {
+      const reco = await recoFallback(recoPromise);
+      if (reco) return reco;
     }
     return fallbackResponse(FALLBACK[stream.reason]);
   }
 
-  if (!recoPromise) {
-    return stream.result.toTextStreamResponse();
+  // Wait for the first text before committing to a 200 stream: a model error
+  // (retired id, outage) otherwise surfaces as an empty reply with no fallback.
+  const textIter = stream.result.textStream[Symbol.asyncIterator]();
+  let first: string | null = null;
+  try {
+    for (let r = await textIter.next(); !r.done; r = await textIter.next()) {
+      if (r.value) {
+        first = r.value;
+        break;
+      }
+    }
+  } catch (err) {
+    console.error("[ai] chat stream failed before first token:", err);
+  }
+  if (first === null) {
+    return (await recoFallback(recoPromise)) ?? fallbackResponse(FALLBACK.failed);
   }
 
   // Pipe the model text through, then append the reco payload as a trailer the
   // client splits on RECO_MARKER. Card data never comes from the model.
   const encoder = new TextEncoder();
-  const textStream = stream.result.textStream;
+  const firstChunk = first;
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        for await (const chunk of textStream) {
-          controller.enqueue(encoder.encode(chunk));
+        controller.enqueue(encoder.encode(firstChunk));
+        for (let r = await textIter.next(); !r.done; r = await textIter.next()) {
+          controller.enqueue(encoder.encode(r.value));
         }
-        const reco = await recoPromise;
+        const reco = recoPromise ? await recoPromise : null;
         if (reco && (reco.primary.length > 0 || reco.crossSell.length > 0)) {
           controller.enqueue(encoder.encode(`${RECO_MARKER}${JSON.stringify(reco)}`));
         }
@@ -156,5 +166,19 @@ export async function POST(req: Request) {
 
   return new Response(body, {
     headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+}
+
+/** Answer a shoppable question with in-stock picks when the model can't. */
+async function recoFallback(
+  recoPromise: ReturnType<typeof getGroundedRecommendations> | null,
+): Promise<Response | null> {
+  const reco = recoPromise ? await recoPromise : null;
+  if (!reco || reco.primary.length === 0) return null;
+  const friendly =
+    "Here's what we recommend from our store based on what you asked — every pick below is in stock right now.";
+  return new Response(`${friendly}${RECO_MARKER}${JSON.stringify(reco)}`, {
+    status: 200,
+    headers: { "Content-Type": "text/plain; charset=utf-8", "X-AI-Fallback": "1" },
   });
 }
