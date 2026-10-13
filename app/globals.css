@@ -24,15 +24,19 @@
   --color-oat: var(--oat);
   --color-oat-foreground: var(--oat-foreground);
   --color-terracotta: var(--terracotta);
+  --color-sage: var(--sage);
+  --color-sage-foreground: var(--sage-foreground);
+  --color-sage-deep: var(--sage-deep);
   /* Editorial type scale — fluid, so no breakpoint variants are needed.
-     text-display 40→72px · text-title 32→48 · text-heading 26→36 · text-subheading 18→22. */
-  --text-display: clamp(2.5rem, 1.55rem + 3.4vw, 4.5rem);
-  --text-display--line-height: 1.02;
+     text-display 36→68px · text-title 28→46 · text-heading 24→34 · text-subheading 18→22.
+     Phone minimums are deliberately modest: headings must never dominate a 360px screen. */
+  --text-display: clamp(2.25rem, 1.5rem + 3.2vw, 4.25rem);
+  --text-display--line-height: 1.04;
   --text-display--letter-spacing: -0.025em;
-  --text-title: clamp(2rem, 1.55rem + 1.6vw, 3rem);
-  --text-title--line-height: 1.08;
+  --text-title: clamp(1.75rem, 1.4rem + 1.6vw, 2.875rem);
+  --text-title--line-height: 1.1;
   --text-title--letter-spacing: -0.02em;
-  --text-heading: clamp(1.625rem, 1.35rem + 1vw, 2.25rem);
+  --text-heading: clamp(1.5rem, 1.3rem + 0.9vw, 2.125rem);
   --text-heading--line-height: 1.15;
   --text-heading--letter-spacing: -0.015em;
   --text-subheading: clamp(1.125rem, 1.02rem + 0.4vw, 1.375rem);
@@ -816,71 +820,90 @@
    Appended last on purpose: equal-specificity rules here win on source order.
    ========================================================================= */
 [data-surface="shop"] {
-  --background: oklch(0.966 0.013 84); /* warm cream ≈ #F7F2E9 */
-  --foreground: oklch(0.24 0.022 160); /* deep green-black ink */
-  --card: oklch(0.993 0.005 85);
-  --card-foreground: oklch(0.24 0.022 160);
-  --popover: oklch(0.993 0.005 85);
-  --popover-foreground: oklch(0.24 0.022 160);
-  --primary: oklch(0.4 0.058 160); /* deep forest/pine ≈ #2F4A3B */
-  --primary-foreground: oklch(0.975 0.012 85);
-  --brand: oklch(0.4 0.058 160);
-  --brand-foreground: oklch(0.975 0.012 85);
-  --secondary: oklch(0.935 0.021 80); /* oat */
-  --secondary-foreground: oklch(0.32 0.028 60);
-  --muted: oklch(0.945 0.016 82);
-  --muted-foreground: oklch(0.47 0.027 62); /* earthy brown-grey, ~5:1 on cream */
-  --accent: oklch(0.93 0.022 82); /* hover wash: oat, never mint */
-  --accent-foreground: oklch(0.3 0.04 160);
-  --surface-deep: oklch(0.31 0.042 160); /* utility bar / footer chrome */
-  --surface-deep-foreground: oklch(0.95 0.015 85);
-  --gold: oklch(0.77 0.105 80); /* muted — ratings / small highlights only */
+  /* Grounds — ivory page, near-white cards; beige (oat) and sage are SECTION
+     accents used sparingly, never as alternating bands everywhere. */
+  --background: oklch(0.984 0.005 90); /* warm ivory ≈ #FBFAF6 */
+  --foreground: oklch(0.24 0.012 155); /* charcoal with a green undertone ≈ #1F2420 */
+  --card: oklch(0.997 0.002 90);
+  --card-foreground: oklch(0.24 0.012 155);
+  --popover: oklch(0.997 0.002 90);
+  --popover-foreground: oklch(0.24 0.012 155);
+  /* Brand — deep forest for actions + brand marks only. */
+  --primary: oklch(0.38 0.066 158); /* ≈ #234A39 */
+  --primary-foreground: oklch(0.985 0.005 90);
+  --brand: oklch(0.38 0.066 158);
+  --brand-foreground: oklch(0.985 0.005 90);
+  --secondary: oklch(0.955 0.015 82); /* soft natural beige */
+  --secondary-foreground: oklch(0.3 0.02 70);
+  --muted: oklch(0.962 0.005 90);
+  --muted-foreground: oklch(0.48 0.012 100); /* neutral warm grey, ≥5:1 on every ground */
+  --accent: oklch(0.948 0.009 110); /* hover wash: neutral, never mint */
+  --accent-foreground: oklch(0.28 0.04 158);
+  --surface-deep: oklch(0.285 0.045 158); /* utility bar / footer chrome */
+  --surface-deep-foreground: oklch(0.955 0.01 90);
+  --gold: oklch(0.77 0.1 80); /* ratings / tiny highlights only */
   --gold-foreground: oklch(0.3 0.05 65);
-  --oat: oklch(0.935 0.021 80);
-  --oat-foreground: oklch(0.32 0.028 60);
-  --terracotta: oklch(0.56 0.115 45); /* eyebrows, sale prices */
-  --border: oklch(0.885 0.019 80); /* warm hairline */
-  --input: oklch(0.885 0.019 80);
-  --ring: oklch(0.4 0.058 160);
-  --radius: 0.55rem; /* sm≈5px · lg≈9px · xl≈12px · 2xl≈16px — quieter than 0.8rem */
-  /* Quieter, warm-tinted elevation (shared by shadow-elev-* via var()). */
-  --elev-1: 0 1px 2px oklch(0.3 0.03 60 / 0.06);
-  --elev-2: 0 1px 2px oklch(0.3 0.03 60 / 0.05), 0 6px 16px oklch(0.3 0.03 60 / 0.07);
-  --elev-3: 0 2px 6px oklch(0.3 0.03 60 / 0.06), 0 14px 32px oklch(0.3 0.03 60 / 0.1);
+  --oat: oklch(0.955 0.015 82);
+  --oat-foreground: oklch(0.3 0.02 70);
+  /* Muted sage — the secondary natural accent: pale section ground, quiet
+     green details (eyebrows, icons) that tie the page body to the brand. */
+  --sage: oklch(0.95 0.013 140); /* ≈ #ECF0E9 — grey-green, not mint */
+  --sage-foreground: oklch(0.28 0.04 158);
+  --sage-deep: oklch(0.47 0.05 155); /* eyebrows, small icons */
+  --terracotta: oklch(0.54 0.11 42); /* sale prices + savings only */
+  --border: oklch(0.912 0.008 95); /* neutral warm hairline */
+  --input: oklch(0.885 0.01 95);
+  --ring: oklch(0.38 0.066 158);
+  --radius: 0.55rem; /* sm≈5px · lg≈9px · xl≈12px · 2xl≈16px */
+  /* Quiet, neutral elevation (shared by shadow-elev-* via var()). */
+  --elev-1: 0 1px 2px oklch(0.25 0.02 155 / 0.06);
+  --elev-2: 0 1px 2px oklch(0.25 0.02 155 / 0.05), 0 6px 16px oklch(0.25 0.02 155 / 0.07);
+  --elev-3: 0 2px 6px oklch(0.25 0.02 155 / 0.06), 0 14px 32px oklch(0.25 0.02 155 / 0.1);
   background-color: var(--background);
   color: var(--foreground);
 }
 .dark[data-surface="shop"],
 .dark [data-surface="shop"] {
-  --background: oklch(0.185 0.012 155);
-  --foreground: oklch(0.94 0.014 85);
-  --card: oklch(0.225 0.014 155);
-  --card-foreground: oklch(0.94 0.014 85);
-  --popover: oklch(0.225 0.014 155);
-  --popover-foreground: oklch(0.94 0.014 85);
-  --primary: oklch(0.74 0.075 155); /* sage — readable on the dark ground */
+  --background: oklch(0.18 0.01 155);
+  --foreground: oklch(0.945 0.008 90);
+  --card: oklch(0.215 0.012 155);
+  --card-foreground: oklch(0.945 0.008 90);
+  --popover: oklch(0.215 0.012 155);
+  --popover-foreground: oklch(0.945 0.008 90);
+  --primary: oklch(0.76 0.07 155); /* sage — readable on the dark ground */
   --primary-foreground: oklch(0.18 0.02 155);
-  --brand: oklch(0.74 0.075 155);
+  --brand: oklch(0.76 0.07 155);
   --brand-foreground: oklch(0.18 0.02 155);
-  --secondary: oklch(0.27 0.014 150);
-  --secondary-foreground: oklch(0.92 0.014 85);
-  --muted: oklch(0.255 0.013 150);
-  --muted-foreground: oklch(0.74 0.022 80);
-  --accent: oklch(0.29 0.016 150);
-  --accent-foreground: oklch(0.94 0.014 85);
-  --surface-deep: oklch(0.235 0.028 158);
-  --surface-deep-foreground: oklch(0.94 0.014 85);
+  --secondary: oklch(0.255 0.012 120);
+  --secondary-foreground: oklch(0.93 0.01 90);
+  --muted: oklch(0.245 0.011 150);
+  --muted-foreground: oklch(0.74 0.012 100);
+  --accent: oklch(0.28 0.014 150);
+  --accent-foreground: oklch(0.945 0.008 90);
+  --surface-deep: oklch(0.23 0.028 158);
+  --surface-deep-foreground: oklch(0.945 0.008 90);
   --gold: oklch(0.8 0.095 80);
   --gold-foreground: oklch(0.22 0.04 65);
-  --oat: oklch(0.255 0.013 140);
-  --oat-foreground: oklch(0.92 0.014 85);
-  --terracotta: oklch(0.7 0.105 45);
-  --border: oklch(0.32 0.014 150);
-  --input: oklch(0.32 0.014 150);
-  --ring: oklch(0.74 0.075 155);
+  --oat: oklch(0.245 0.012 110);
+  --oat-foreground: oklch(0.93 0.01 90);
+  --sage: oklch(0.25 0.02 155);
+  --sage-foreground: oklch(0.93 0.015 150);
+  --sage-deep: oklch(0.76 0.06 152);
+  --terracotta: oklch(0.72 0.1 45);
+  --border: oklch(0.31 0.012 150);
+  --input: oklch(0.33 0.012 150);
+  --ring: oklch(0.76 0.07 155);
   --elev-1: 0 1px 3px oklch(0 0 0 / 0.35);
   --elev-2: 0 6px 18px oklch(0 0 0 / 0.4);
   --elev-3: 0 14px 36px oklch(0 0 0 / 0.5);
+}
+/* Editorial type on the storefront: balanced heading lines, readable body
+   measure, lining figures for prices. */
+[data-surface="shop"] :is(h1, h2, h3) {
+  text-wrap: balance;
+}
+[data-surface="shop"] p {
+  text-wrap: pretty;
 }
 
 /* Chrome utilities above hard-code the old pine-teal and decorative sheens;
@@ -1013,7 +1036,7 @@
   font-size: 0.75rem;
   line-height: 1rem;
   font-weight: 600;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--terracotta);
+  color: var(--sage-deep, var(--primary));
 }
