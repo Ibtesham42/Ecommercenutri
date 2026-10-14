@@ -52,7 +52,7 @@ export function ProductAiAssistant({
   }
 
   return (
-    <div className="rounded-xl bg-oat p-4 sm:p-5">
+    <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
       <div className="flex items-center gap-2 text-sm font-medium text-foreground">
         <Sparkles aria-hidden className="size-4 text-primary" />
         Ask AI about {productName}

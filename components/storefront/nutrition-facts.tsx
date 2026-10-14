@@ -5,7 +5,7 @@ export function NutritionFacts({
 }) {
   if (!facts?.length) return null;
   return (
-    <div>
+    <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
       <h3 className="flex items-baseline justify-between border-b-2 border-foreground pb-2 font-heading text-lg font-medium">
         Nutrition <span className="font-sans text-xs font-normal text-muted-foreground">per 100g</span>
       </h3>

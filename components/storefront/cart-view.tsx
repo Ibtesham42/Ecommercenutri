@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Minus, Plus, Trash2, ShieldCheck, ArrowLeft, ArrowRight, Gift } from "lucide-react";
+import { Minus, Plus, Trash2, ShieldCheck, ArrowLeft, ArrowRight, Gift, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CartEmpty } from "@/components/storefront/cart/cart-empty";
 import { OrderTotals } from "@/components/storefront/cart/order-totals";
@@ -96,7 +96,11 @@ export function CartView({
       <div className="min-w-0">
         {/* Free-delivery progress nudge */}
         {freeShippingProgress !== null && (
-          <div className="mb-2 rounded-xl bg-oat px-4 py-3.5 text-sm text-oat-foreground">
+          <div className="mb-4 flex gap-3 rounded-xl bg-oat px-4 py-3.5 text-sm text-oat-foreground">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-card text-sage-deep">
+              <Truck aria-hidden className="size-4" strokeWidth={1.75} />
+            </span>
+            <div className="min-w-0 flex-1 self-center">
             {shipping > 0 ? (
               <>
                 <p>
@@ -123,16 +127,20 @@ export function CartView({
             ) : (
               <p className="font-medium">You&apos;ve unlocked Free Delivery</p>
             )}
+            </div>
           </div>
         )}
 
         <h2 className="sr-only">Items in your cart</h2>
-        <ul className="divide-y divide-border border-b border-border">
+        <ul className="space-y-3">
           {items.map((item) => (
-            <li key={item.variantId} className="flex gap-4 py-5 sm:gap-5">
+            <li
+              key={item.variantId}
+              className="flex gap-3.5 rounded-xl border border-border bg-card p-2.5 sm:gap-5 sm:p-3.5"
+            >
               <Link
                 href={`/products/${item.slug}`}
-                className="relative size-24 shrink-0 overflow-hidden rounded-lg bg-oat sm:size-28"
+                className="relative size-24 shrink-0 overflow-hidden rounded-lg bg-muted sm:size-28"
                 tabIndex={-1}
                 aria-hidden
               >
@@ -147,12 +155,12 @@ export function CartView({
                 )}
               </Link>
 
-              <div className="flex min-w-0 flex-1 flex-col">
+              <div className="flex min-w-0 flex-1 flex-col py-0.5 pr-1">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <Link
                       href={`/products/${item.slug}`}
-                      className="line-clamp-2 text-[15px] font-medium leading-snug hover:underline hover:underline-offset-4"
+                      className="line-clamp-2 text-sm font-semibold leading-snug hover:underline hover:underline-offset-4 sm:text-[15px]"
                     >
                       {item.name}
                     </Link>
@@ -166,7 +174,7 @@ export function CartView({
                 </div>
 
                 <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-                  <div className="flex items-center rounded-lg border border-border">
+                  <div className="flex items-center rounded-lg border border-border bg-background">
                     <button
                       type="button"
                       className={stepBtn}

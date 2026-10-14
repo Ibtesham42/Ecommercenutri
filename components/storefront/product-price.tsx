@@ -44,8 +44,11 @@ export function ProductPrice({
           </s>
           <span
             className={cn(
-              "font-medium text-(--pcard-accent-text)",
-              size === "xl" ? "text-base" : size === "lg" ? "text-sm" : "text-xs",
+              "font-medium",
+              size === "xl"
+                ? "self-center rounded-full bg-sage px-2.5 py-0.5 text-sm text-sage-deep"
+                : "text-(--pcard-accent-text)",
+              size === "lg" ? "text-sm" : size === "md" && "text-xs",
             )}
           >
             {off}% off

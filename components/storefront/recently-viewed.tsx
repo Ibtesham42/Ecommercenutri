@@ -61,8 +61,8 @@ export function RecentlyViewed({
           name/image/price, so there's no rating, size or add-to-cart here). */}
       <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-5">
         {items.slice(0, 5).map((p) => (
-          <Link key={p.slug} href={`/products/${p.slug}`} className="pcard group rounded-xl">
-            <div className="pcard-media relative aspect-square overflow-hidden rounded-xl bg-(--pcard-media)">
+          <Link key={p.slug} href={`/products/${p.slug}`} className="pcard group flex flex-col overflow-hidden rounded-xl border border-border bg-card pb-3">
+            <div className="pcard-media relative aspect-square overflow-hidden bg-(--pcard-media)">
               {p.image && (
                 <Image
                   src={p.image}
@@ -73,11 +73,11 @@ export function RecentlyViewed({
                 />
               )}
             </div>
-            <p className="mt-2.5 line-clamp-2 font-heading text-[15px] font-medium leading-snug group-hover:text-primary">
+            <p className="line-clamp-2 px-3 pt-3 text-sm font-semibold leading-snug group-hover:text-primary sm:text-[15px]">
               {p.name}
             </p>
             {p.price != null && (
-              <p className="mt-1 text-sm font-semibold tabular-nums">{formatPrice(p.price)}</p>
+              <p className="px-3 pt-1 text-sm font-semibold tabular-nums">{formatPrice(p.price)}</p>
             )}
           </Link>
         ))}

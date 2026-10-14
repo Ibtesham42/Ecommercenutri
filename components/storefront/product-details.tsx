@@ -34,7 +34,7 @@ export function ProductDetails({
           nutrition && "lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-start lg:gap-16",
         )}
       >
-        <div className="max-w-3xl border-t border-border">
+        <div className="max-w-3xl rounded-xl border border-border bg-card px-4 sm:px-6">
           <Detail title="Description">{description}</Detail>
           {benefits && (
             <Detail title="Benefits">
@@ -47,7 +47,7 @@ export function ProductDetails({
             </Detail>
           )}
         </div>
-        {nutrition && <div className="mt-10 space-y-5 lg:mt-0">{nutrition}</div>}
+        {nutrition && <div className="mt-6 space-y-5 lg:mt-0">{nutrition}</div>}
       </div>
     </section>
   );
@@ -55,7 +55,7 @@ export function ProductDetails({
 
 function Detail({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <details open className="group border-b border-border">
+    <details open className="group border-b border-border last:border-b-0">
       <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
         <h3 className="font-heading text-lg font-medium text-foreground">{title}</h3>
         <ChevronDown

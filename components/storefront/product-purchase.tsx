@@ -48,7 +48,7 @@ type Highlight = { label: string; value: string };
 const trustBadges = [
   { icon: BadgeCheck, label: "100% Authentic" },
   { icon: ShieldCheck, label: "Secure payments" },
-  { icon: Truck, label: "Fast delivery" },
+  { icon: Truck, label: "Pan-India delivery" },
   { icon: RotateCcw, label: "Easy returns" },
 ];
 
@@ -164,12 +164,15 @@ export function ProductPurchase({
   const addClass =
     "h-12 gap-2 rounded-lg border-transparent text-[15px] font-medium text-primary-foreground";
   const buyClass =
-    "h-12 rounded-lg border-foreground/70 bg-transparent text-[15px] font-medium text-foreground hover:bg-foreground hover:text-background";
+    "h-12 rounded-lg border-foreground/20 bg-background text-[15px] font-medium text-foreground hover:bg-oat";
 
   return (
     <div>
+      {/* Buy box: price, size and actions share one bordered card (the same
+          surface as the product cards). */}
+      <div className="mt-6 rounded-xl border border-border bg-card p-4 sm:p-5">
       {/* Price */}
-      <div className="mt-5">
+      <div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <ProductPrice size="xl" price={price} mrp={variant?.price} off={off} />
           {variant?.badge && (
@@ -217,8 +220,8 @@ export function ProductPurchase({
                 className={cn(
                   "flex min-h-12 min-w-[6.5rem] flex-col items-start justify-center rounded-lg border px-4 py-2 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   isActive
-                    ? "border-primary bg-background ring-1 ring-primary"
-                    : "border-border hover:border-foreground/40",
+                    ? "border-primary bg-primary/[0.06] ring-1 ring-primary"
+                    : "border-border bg-background hover:border-foreground/40",
                   disabled && "cursor-not-allowed opacity-50",
                 )}
               >
@@ -235,7 +238,7 @@ export function ProductPurchase({
       {/* Quantity + actions */}
       <div ref={actionsRef} className="mt-6 space-y-2.5">
         <div className="flex gap-2.5">
-          <div role="group" aria-label="Quantity" className="flex shrink-0 items-center rounded-lg border border-border">
+          <div role="group" aria-label="Quantity" className="flex shrink-0 items-center rounded-lg border border-border bg-background">
             <button
               type="button"
               className={stepBtn}
@@ -275,16 +278,17 @@ export function ProductPurchase({
           <WishlistButton
             productId={productId}
             initial={wishlisted}
-            className="size-12 shrink-0 rounded-lg border border-border hover:bg-oat"
+            className="size-12 shrink-0 rounded-lg border border-border bg-background hover:bg-oat"
           />
         </div>
         {lowStock && <p className="text-sm text-muted-foreground">Only {lowStock} left</p>}
       </div>
+      </div>
 
       {/* Delivery */}
-      <ul className="mt-7 space-y-3 border-t border-border pt-5 text-sm">
+      <ul className="mt-4 space-y-3 rounded-xl bg-oat px-4 py-4 text-sm text-oat-foreground sm:px-5">
         <li className="flex items-start gap-3">
-          <Truck aria-hidden className="mt-0.5 size-4 shrink-0 text-foreground/70" strokeWidth={1.75} />
+          <Truck aria-hidden className="mt-0.5 size-4 shrink-0 text-sage-deep" strokeWidth={1.75} />
           <p>
             <span className="font-medium">{delivery ? `Get it ${delivery}` : "Delivery in 3–5 business days"}</span>
             <span className="block text-xs text-muted-foreground">
@@ -293,7 +297,7 @@ export function ProductPurchase({
           </p>
         </li>
         <li className="flex items-start gap-3">
-          <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-foreground/70" strokeWidth={1.75} />
+          <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-sage-deep" strokeWidth={1.75} />
           <p>
             {freeShipping || effectiveDelivery === 0 ? (
               <>
@@ -328,9 +332,9 @@ export function ProductPurchase({
 
       {/* Nutrition highlights — read as a spec line, not badges. */}
       {highlights.length > 0 && (
-        <dl className="mt-5 grid grid-cols-3 divide-x divide-border border-y border-border py-3">
+        <dl className="mt-4 grid grid-cols-3 gap-2">
           {highlights.map((h) => (
-            <div key={h.label} className="min-w-0 px-3 first:pl-0">
+            <div key={h.label} className="min-w-0 rounded-lg border border-border bg-card px-3 py-2.5">
               <dt className="truncate text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{h.label}</dt>
               <dd className="mt-0.5 truncate text-sm font-medium">{h.value}</dd>
             </div>
@@ -338,10 +342,12 @@ export function ProductPurchase({
         </dl>
       )}
 
-      <ul className="mt-5 grid grid-cols-2 gap-x-4 gap-y-2.5">
+      <ul className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4 sm:gap-x-2">
         {trustBadges.map((b) => (
-          <li key={b.label} className="flex items-center gap-2 text-xs text-muted-foreground">
-            <b.icon className="size-4 shrink-0 text-foreground/60" strokeWidth={1.6} aria-hidden />
+          <li key={b.label} className="flex items-center gap-2 text-xs text-foreground/80 sm:flex-col sm:gap-1.5 sm:text-center">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-sage text-sage-deep">
+              <b.icon className="size-4" strokeWidth={1.75} aria-hidden />
+            </span>
             {b.label}
           </li>
         ))}

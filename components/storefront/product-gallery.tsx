@@ -120,7 +120,8 @@ export function ProductGallery({
     img.alt ?? (i === 0 ? name : `${name} — image ${i + 1}`);
 
   return (
-    <div>
+    // Pinned beside the buy box on md+ so the column never runs empty.
+    <div className="md:sticky md:top-24">
       <div
         className="relative"
         onMouseMove={hoverZoom.onMouseMove}
@@ -129,7 +130,7 @@ export function ProductGallery({
         <div
           ref={trackRef}
           onScroll={onTrackScroll}
-          className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-xl bg-muted [scrollbar-width:none] md:overflow-hidden [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-xl border border-border bg-card [scrollbar-width:none] md:overflow-hidden [&::-webkit-scrollbar]:hidden"
         >
           {shots.map((img, i) => (
             <button
@@ -193,8 +194,8 @@ export function ProductGallery({
                 aria-label={`View image ${i + 1}`}
                 aria-current={i === active ? "true" : undefined}
                 className={cn(
-                  "relative size-[4.5rem] shrink-0 overflow-hidden rounded-lg border bg-muted transition outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  i === active ? "border-foreground/70" : "border-transparent opacity-70 hover:opacity-100",
+                  "relative size-[4.5rem] shrink-0 overflow-hidden rounded-lg border bg-card transition outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  i === active ? "border-primary ring-1 ring-primary" : "border-border opacity-75 hover:opacity-100",
                 )}
               >
                 <BlurImage src={img.url} alt="" fill sizes="72px" className="object-contain" />
