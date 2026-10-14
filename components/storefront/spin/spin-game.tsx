@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -12,8 +13,10 @@ import {
   Loader2,
   LogIn,
   MailCheck,
+  RotateCw,
   ShieldCheck,
   ShoppingBag,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,6 +48,7 @@ export function SpinGame({
   phoneVerifyAvailable,
   header,
   showWheel = true,
+  logoUrl = null,
 }: {
   campaign: PublicCampaign;
   initialView: SpinView | null;
@@ -54,6 +58,8 @@ export function SpinGame({
   phoneVerifyAvailable: boolean;
   header?: React.ReactNode;
   showWheel?: boolean;
+  /** Brand logo for the wheel hub. */
+  logoUrl?: string | null;
 }) {
   const router = useRouter();
   const percents = campaign.percents;
@@ -158,24 +164,30 @@ export function SpinGame({
     }
   }, [phase]);
 
+  // The result is a white "voucher" card on the stage; the live region itself
+  // is always mounted so screen readers hear each state change.
+  const cardClass =
+    "relative rounded-2xl bg-card px-5 py-6 text-card-foreground shadow-(--spin-card-shadow) sm:px-7 sm:py-7";
   const result = (
     <div ref={resultRef} aria-live="polite" className="min-w-0 scroll-mt-24">
       {phase === "claiming" && (
-        <p className="flex items-center gap-2.5 text-[15px] text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" aria-hidden /> Saving your offer to your account…
-        </p>
+        <div className={cn(cardClass, "flex items-center gap-3 text-[15px] text-muted-foreground")}>
+          <Loader2 className="size-5 animate-spin text-primary" aria-hidden /> Saving your offer to your account…
+        </div>
       )}
       {phase === "spinning" && <p className="sr-only">Spinning…</p>}
       {showResult && (
-        <ResultPanel
-          view={view}
-          signedIn={signedIn}
-          unverified={unverified}
-          phoneVerifyAvailable={phoneVerifyAvailable}
-          claimError={claimError}
-          claimMessage={claimError ? error : null}
-          onClaim={claim}
-        />
+        <div className={cardClass}>
+          <ResultPanel
+            view={view}
+            signedIn={signedIn}
+            unverified={unverified}
+            phoneVerifyAvailable={phoneVerifyAvailable}
+            claimError={claimError}
+            claimMessage={claimError ? error : null}
+            onClaim={claim}
+          />
+        </div>
       )}
     </div>
   );
@@ -183,7 +195,7 @@ export function SpinGame({
   // No wheel (campaign ended, this browser still holds a win): the offer alone.
   if (!showWheel) {
     return (
-      <div className="grid max-w-2xl gap-y-8">
+      <div className="grid max-w-2xl gap-y-7 sm:gap-y-9">
         {header}
         {result}
       </div>
@@ -195,10 +207,10 @@ export function SpinGame({
   // result. Desktop: header + result on the left, the stage on the right; the
   // 1fr spacer rows centre the left column against the stage.
   return (
-    <div className="grid gap-y-6 sm:gap-y-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:grid-rows-[1fr_auto_auto_1fr] lg:gap-x-16 xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] xl:gap-x-24">
+    <div className="grid gap-y-6 sm:gap-y-9 lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)] lg:grid-rows-[1fr_auto_auto_1fr] lg:gap-x-16 lg:gap-y-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,29rem)] xl:gap-x-24">
       {header && <div className="lg:col-start-1 lg:row-start-2">{header}</div>}
 
-      <div className="flex flex-col items-center sm:rounded-2xl sm:border sm:border-border/70 sm:bg-oat/40 sm:px-8 sm:pt-10 sm:pb-8 lg:col-start-2 lg:pt-12 lg:row-span-4 lg:row-start-1 lg:self-center lg:px-10">
+      <div className="flex flex-col items-center lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:self-center">
         {/* Phones: sized from the viewport height too, so wheel + button fit the
             first screen (below the header) without scrolling. */}
         <SpinWheel
@@ -206,15 +218,16 @@ export function SpinGame({
           rotation={rotation}
           durationMs={duration}
           highlightIndex={highlight}
-          className="w-[clamp(13.5rem,calc(100svh-26.5rem),20rem)] max-w-full sm:w-[22rem] lg:w-full"
+          logoUrl={logoUrl}
+          className="w-[clamp(12rem,calc(100svh-27.5rem),20.5rem)] max-w-full sm:w-[23rem] lg:w-full"
         />
 
         {/* Fixed-height control slot directly under the wheel: the button, and
             then its "used" state, occupy the same box — nothing jumps. */}
-        <div className="mt-6 flex h-13 w-full max-w-[20rem] items-center justify-center sm:mt-8 sm:max-w-[22rem]">
+        <div className="mt-6 flex h-13 w-full max-w-[20.5rem] items-center justify-center sm:mt-8 sm:h-14 sm:max-w-[23rem]">
           {view ? (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CheckCircle2 className="size-4 text-primary" aria-hidden /> Spin used — one per account
+            <p className="flex items-center gap-2 text-sm text-(--spin-fg-muted)">
+              <CheckCircle2 className="size-4 text-(--spin-gold)" aria-hidden /> Spin used — one per account
             </p>
           ) : (
             <Button
@@ -222,16 +235,20 @@ export function SpinGame({
               onClick={spin}
               disabled={busy}
               aria-describedby="spin-rules"
-              className="h-full w-full rounded-xl text-base font-semibold disabled:opacity-80"
+              className="h-full w-full gap-2.5 rounded-xl border-(--spin-gold-deep)/40 bg-(--spin-gold) text-base font-semibold tracking-[0.01em] text-(--spin-gold-fg) shadow-[0_8px_18px_-8px_rgb(0_0_0/0.5)] hover:bg-(--spin-gold-hover) focus-visible:border-(--spin-fg) focus-visible:ring-(--spin-fg)/45 disabled:opacity-90"
             >
-              {busy && <Loader2 className="size-4 animate-spin" aria-hidden />}
+              {busy ? (
+                <Loader2 className="size-[18px] animate-spin" aria-hidden />
+              ) : (
+                <RotateCw className="size-[18px]" strokeWidth={2.25} aria-hidden />
+              )}
               {busy ? "Spinning…" : "Spin the wheel"}
             </Button>
           )}
         </div>
 
         {!view && (
-          <div className="mt-4 w-full max-w-[20rem] text-center sm:max-w-[22rem]">
+          <div className="mt-4 w-full max-w-[20.5rem] text-center sm:max-w-[23rem]">
             {error && (
               <Notice tone={toneFor(errorCode)} role="alert" className="mb-4 text-left">
                 {error}{" "}
@@ -240,9 +257,9 @@ export function SpinGame({
                 </Link>
               </Notice>
             )}
-            <p id="spin-rules" className="text-sm leading-relaxed text-pretty text-muted-foreground">
+            <p id="spin-rules" className="text-sm leading-relaxed text-pretty text-(--spin-fg-muted)">
               {topPercent > 0 && (
-                <span className="block font-medium text-foreground">Win up to {topPercent}% off one selected product</span>
+                <span className="block font-medium text-(--spin-fg)">Win up to {topPercent}% off one selected product</span>
               )}
               {signedIn
                 ? "One spin per account. Your offer is saved once your email or phone is verified."
@@ -284,10 +301,11 @@ function toneFor(code: string | null | undefined): Tone {
 }
 
 const TONE: Record<Tone, { box: string; icon: LucideIcon; iconClass: string }> = {
-  info: { box: "border-border bg-oat/60 text-foreground", icon: Info, iconClass: "text-muted-foreground" },
-  success: { box: "border-primary/25 bg-primary/5 text-foreground", icon: CheckCircle2, iconClass: "text-primary" },
-  warning: { box: "border-gold/45 bg-gold/10 text-foreground", icon: Clock, iconClass: "text-gold-foreground" },
-  error: { box: "border-destructive/30 bg-destructive/5 text-destructive", icon: AlertCircle, iconClass: "" },
+  // Opaque grounds: an idle-state notice sits directly on the dark stage.
+  info: { box: "border-border bg-oat text-foreground", icon: Info, iconClass: "text-muted-foreground" },
+  success: { box: "border-primary/20 bg-sage text-foreground", icon: CheckCircle2, iconClass: "text-primary" },
+  warning: { box: "border-gold/60 bg-oat text-foreground", icon: Clock, iconClass: "text-gold-foreground" },
+  error: { box: "border-destructive/30 bg-card text-destructive", icon: AlertCircle, iconClass: "" },
 };
 
 function Notice({
@@ -312,7 +330,17 @@ function Notice({
 }
 
 const primaryBtn = "h-12 w-full rounded-lg px-6 text-[15px] sm:w-auto";
-const secondaryBtn = "h-12 w-full rounded-lg border-foreground/20 bg-transparent px-6 text-[15px] sm:w-auto";
+const secondaryBtn = "h-12 w-full rounded-lg border-foreground/20 bg-transparent px-6 text-[15px] hover:bg-oat sm:w-auto";
+
+/** Voucher tear line across the card, notched in the stage colour at both edges. */
+function Perforation() {
+  return (
+    <div aria-hidden className="relative -mx-5 mt-5 border-t-2 border-dashed border-border sm:-mx-7 sm:mt-6">
+      <span className="absolute -top-[9px] -left-2 size-4 rounded-full bg-(--spin-ground)" />
+      <span className="absolute -top-[9px] -right-2 size-4 rounded-full bg-(--spin-ground)" />
+    </div>
+  );
+}
 
 function ResultPanel({
   view,
@@ -333,21 +361,44 @@ function ResultPanel({
 }) {
   const sizes = view.variantLabels.length > 0 ? view.variantLabels.join(" · ") : null;
   const used = view.status === "REDEEMED" || Boolean(view.coupon?.used);
-  const eyebrow =
-    view.status === "EXPIRED" ? "Win expired" : used ? "Offer used" : view.status === "AWARDED" ? "You won" : "Your offer";
+  const expired = view.status === "EXPIRED";
+  const eyebrow = expired ? "Win expired" : used ? "Offer used" : view.status === "AWARDED" ? "You won" : "Your offer";
 
   return (
     <div>
-      <p className="eyebrow">{eyebrow}</p>
-      <h2 className="mt-2 font-heading text-heading leading-tight font-medium text-foreground">
-        {view.percent}% off {view.productName}
-      </h2>
-      <p className="mt-1.5 text-[15px] text-muted-foreground">
-        On {view.productName}
-        {sizes ? ` (${sizes})` : ""} only — not the rest of your cart.
+      {/* The prize: product photo + offer, the face of the voucher. */}
+      <div className="flex items-center gap-4 sm:gap-5">
+        {view.image && (
+          <div
+            className={cn(
+              "relative size-[4.5rem] shrink-0 overflow-hidden rounded-xl border border-border bg-muted sm:size-24",
+              (expired || used) && "opacity-60 grayscale",
+            )}
+          >
+            <Image src={view.image} alt="" fill sizes="96px" className="object-cover" />
+          </div>
+        )}
+        <div className="min-w-0">
+          <p className="eyebrow flex items-center gap-1.5">
+            {!expired && !used && <Sparkles className="size-3.5" aria-hidden />}
+            {eyebrow}
+          </p>
+          <h2 className="mt-1.5 font-heading text-heading leading-none font-medium text-foreground">
+            {view.percent}% off
+            <span className="mt-2 block font-sans text-[15px] leading-snug font-semibold tracking-normal sm:text-base">
+              {view.productName}
+            </span>
+          </h2>
+        </div>
+      </div>
+      <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+        {sizes ? <span className="text-foreground">{sizes}</span> : null}
+        {sizes ? " · " : ""}On this product only — not the rest of your cart.
       </p>
 
-      {view.reassignedFrom && view.status !== "EXPIRED" && (
+      <Perforation />
+
+      {view.reassignedFrom && !expired && (
         <Notice tone="info" className="mt-5">
           {view.reassignedFrom} sold out before your offer was claimed, so we moved your {view.percent}% offer to{" "}
           {view.productName} — same discount.
@@ -355,7 +406,7 @@ function ResultPanel({
       )}
 
       {/* ---- expired ---- */}
-      {view.status === "EXPIRED" && (
+      {expired && (
         <>
           <Notice tone="info" className="mt-5">
             This win wasn&apos;t claimed by {formatDateTime(view.claimBy)}, so it has expired.
@@ -372,8 +423,14 @@ function ResultPanel({
       {view.status === "AWARDED" && !signedIn && (
         <>
           <p className="mt-5 text-[15px] leading-relaxed text-foreground">
-            Sign in or create an account to claim it. We&apos;ll hold this win on this device until{" "}
-            <span className="font-medium whitespace-nowrap">{formatDateTime(view.claimBy)}</span>.
+            Sign in or create an account to claim it — it&apos;s then saved to your account.
+          </p>
+          <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
+            <Clock className="mt-0.5 size-4 shrink-0 text-sage-deep" aria-hidden />
+            <span>
+              Held on this device until{" "}
+              <span className="font-medium whitespace-nowrap text-foreground">{formatDateTime(view.claimBy)}</span>
+            </span>
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button asChild className={primaryBtn}>
@@ -394,10 +451,14 @@ function ResultPanel({
 
       {view.status === "AWARDED" && signedIn && !unverified && (
         <>
-          {claimError && claimMessage && (
+          {claimError && claimMessage ? (
             <Notice tone={toneFor(claimError)} role="alert" className="mt-5">
               {claimMessage}
             </Notice>
+          ) : (
+            <p className="mt-5 text-[15px] leading-relaxed text-foreground">
+              Claim it to save the offer and get your code.
+            </p>
           )}
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
             {/* Signed in but not (yet) claimed: the auto-claim failed or never ran.
@@ -421,25 +482,43 @@ function ResultPanel({
         </>
       )}
 
-      {/* ---- claimed: the code ---- */}
-      {view.coupon && view.status !== "EXPIRED" && (
+      {/* ---- claimed: the code + what to do next ---- */}
+      {view.coupon && !expired && (
         <>
           {used ? (
             <Notice tone="success" className="mt-5">
               You&apos;ve used this offer — thank you for shopping with us.
             </Notice>
           ) : (
-            <div className="mt-6 rounded-xl border border-border bg-card px-4 py-4 sm:px-5">
-              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Your code</p>
-              <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3">
-                <span className="font-mono text-xl font-semibold tracking-[0.14em] text-foreground">{view.coupon.code}</span>
-                <CopyCouponButton code={view.coupon.code} />
+            <>
+              <div className="mt-5 rounded-xl border-2 border-dashed border-gold/70 bg-oat px-4 py-4 sm:px-5">
+                <p className="text-xs font-semibold tracking-[0.14em] text-oat-foreground/80 uppercase">Your code</p>
+                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3">
+                  <span className="font-mono text-xl font-semibold tracking-[0.14em] text-primary sm:text-2xl">
+                    {view.coupon.code}
+                  </span>
+                  <CopyCouponButton code={view.coupon.code} />
+                </div>
+                <p className="mt-2 flex items-center gap-1.5 text-sm text-oat-foreground/80">
+                  <CheckCircle2 className="size-3.5 shrink-0 text-primary" aria-hidden />
+                  Saved to your account · single use
+                  {view.coupon.expiresAt ? ` · valid till ${formatDate(view.coupon.expiresAt)}` : ""}
+                </p>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Saved to your account · single use
-                {view.coupon.expiresAt ? ` · valid till ${formatDate(view.coupon.expiresAt)}` : ""}
-              </p>
-            </div>
+              <ol className="mt-5 space-y-2.5 text-sm text-foreground">
+                {[
+                  `Add ${view.productName}${sizes ? ` (${sizes})` : ""} to your cart.`,
+                  `Apply ${view.coupon.code} at checkout — the discount comes off that product.`,
+                ].map((step, i) => (
+                  <li key={i} className="flex gap-3">
+                    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground tabular-nums">
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0 pt-0.5 leading-snug">{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </>
           )}
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
             {!used && view.productSlug && (
@@ -488,7 +567,7 @@ function VerifyToClaim({
   }
 
   return (
-    <div className="mt-6 border-t border-border pt-5">
+    <div className="mt-5">
       <p className="flex items-center gap-2 text-[15px] font-medium text-foreground">
         <ShieldCheck className="size-4 text-primary" aria-hidden /> Verify your account to claim
       </p>

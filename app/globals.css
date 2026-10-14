@@ -1047,3 +1047,35 @@
   text-transform: uppercase;
   color: var(--sage-deep, var(--primary));
 }
+/* Spin & Win stage (/spin): a fixed deep-forest promotional surface — the
+   same in light and dark mode, like the footer chrome. Wheel segments use a
+   small jewel-tone set drawn from the brand (saffron/gold, jade, ivory,
+   terracotta, sage, beetroot) that alternates light/dark so neighbours
+   always separate; each pairs with a text colour at ≥4.5:1. */
+.spin-stage {
+  --spin-ground: oklch(0.3 0.05 162);
+  --spin-ground-raised: oklch(0.34 0.052 162);
+  --spin-fg: oklch(0.975 0.008 90);
+  --spin-fg-muted: oklch(0.86 0.025 140);
+  --spin-gold: oklch(0.8 0.11 80);
+  --spin-gold-hover: oklch(0.84 0.105 82);
+  --spin-gold-deep: oklch(0.63 0.1 72);
+  --spin-gold-fg: oklch(0.24 0.045 65);
+  --spin-ink: oklch(0.26 0.045 160);
+  --spin-s1: oklch(0.82 0.115 80);
+  --spin-s1-fg: oklch(0.26 0.05 62);
+  --spin-s2: oklch(0.48 0.08 178);
+  --spin-s2-fg: oklch(0.985 0.006 90);
+  --spin-s3: oklch(0.965 0.016 88);
+  --spin-s3-fg: oklch(0.3 0.06 158);
+  --spin-s4: oklch(0.54 0.12 40);
+  --spin-s4-fg: oklch(0.985 0.006 90);
+  --spin-s5: oklch(0.86 0.05 145);
+  --spin-s5-fg: oklch(0.28 0.05 158);
+  --spin-s6: oklch(0.42 0.09 10);
+  --spin-s6-fg: oklch(0.985 0.006 90);
+  --spin-wheel-shadow: 0 22px 44px -18px oklch(0.12 0.03 160 / 0.7), 0 4px 10px oklch(0.12 0.03 160 / 0.25);
+  --spin-card-shadow: 0 18px 40px -20px oklch(0.12 0.03 160 / 0.55);
+  background-color: var(--spin-ground);
+  color: var(--spin-fg);
+}
