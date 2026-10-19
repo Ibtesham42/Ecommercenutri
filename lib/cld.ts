@@ -9,7 +9,8 @@ export function cldUrl(
   opts: {
     w?: number;
     h?: number;
-    crop?: "fill" | "fit";
+    /** "limit" = fit inside w×h but never upscale (keeps the original pixels). */
+    crop?: "fill" | "fit" | "limit";
     /** Focal point for cropping. "auto" = Cloudinary smart content detection. */
     gravity?: "auto" | "center" | "face";
     /** Device pixel ratio. "auto" serves a sharper image on retina screens. */

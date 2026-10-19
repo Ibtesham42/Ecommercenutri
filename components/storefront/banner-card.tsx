@@ -18,16 +18,21 @@ export type BannerCardData = {
   videoUrl?: string | null;
 };
 
+// Upper bounds per breakpoint (generous, for future higher-res uploads). With
+// c_limit Cloudinary keeps the aspect ratio and never upscales, so the original
+// pixels are delivered as-is — no soft enlargement, no cropping.
 const DIMS = {
-  desktop: { w: 1600, h: 600 },
-  tablet: { w: 1200, h: 500 },
-  mobile: { w: 900, h: 700 },
+  desktop: { w: 2560, h: 1280 },
+  tablet: { w: 1600, h: 1000 },
+  mobile: { w: 1200, h: 1500 },
 } as const;
 
-// Fit the WHOLE image (c_fit, never cropped) + retina + auto format/quality, so
-// any uploaded aspect ratio shows in full without zooming or chopping artwork.
 const opt = (src: string, dim: { w: number; h: number }) =>
-  cldUrl(src, { ...dim, crop: "fit", dpr: "auto" });
+  cldUrl(src, { ...dim, crop: "limit" });
+
+/** Aspect hint (the uploaded banners are 1600×529, ≈3:1) so the box reserves
+ *  space before the image loads; the image's real ratio takes over on load. */
+const ASPECT_HINT = { width: 1600, height: 529 } as const;
 
 function resolveVariants(b: BannerCardData) {
   // Mobile falls back to the desktop image; dark falls back to light.
@@ -81,10 +86,14 @@ function TextOverlay({ banner }: { banner: BannerCardData }) {
   );
 }
 
-// Responsive banner height: comfortable on phones, taller on large screens so
-// uploaded artwork + content read well on every device. `object-contain` shows
-// the whole image; the blurred backdrop fills any letterbox space.
-const imgClass = "relative z-[1] h-52 w-full object-contain sm:h-60 md:h-56 lg:h-72";
+// The artwork sets the height: full width at its own aspect ratio, so it fills
+// the frame edge to edge with no letterbox at any width and is never cropped or
+// stretched. Only an unusually tall upload hits the max-height cap (tighter on
+// phones, so a portrait mobile image never swallows the screen; 1:1 and 4:5
+// mobile banners still show in full), where `object-contain` keeps it whole and
+// the blurred backdrop fills the sides.
+const imgClass =
+  "relative z-[1] block h-auto max-h-[min(34rem,62svh)] w-full object-contain sm:max-h-[min(42rem,80svh)]";
 // Video fills the frame (object-cover) — the video is the full visual.
 const videoClass = "relative z-[1] block h-52 w-full object-cover sm:h-60 md:h-56 lg:h-72";
 
@@ -159,7 +168,7 @@ export function BannerCard({
           : v.lightDesktop;
     media = (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={src} alt={banner.title ?? "Promotion"} className={imgClass} />
+      <img src={src} alt={banner.title ?? "Promotion"} width={ASPECT_HINT.width} height={ASPECT_HINT.height} className={imgClass} />
     );
   } else {
     media = (
@@ -176,7 +185,9 @@ export function BannerCard({
         <img
           src={v.lightMobile}
           alt={banner.title ?? "Promotion"}
-          sizes="(min-width: 1280px) 1280px, 100vw"
+          width={ASPECT_HINT.width}
+          height={ASPECT_HINT.height}
+          sizes="100vw"
           className={imgClass}
           loading="lazy"
         />
