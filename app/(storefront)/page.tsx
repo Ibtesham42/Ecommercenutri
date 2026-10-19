@@ -183,7 +183,7 @@ export default async function HomePage() {
                       </span>
                     )}
                   </span>
-                  <span className="mt-3 block text-sm font-medium leading-snug text-foreground transition-colors group-hover:text-primary sm:text-[15px]">
+                  <span className="mt-2 block text-sm font-medium leading-snug text-foreground transition-colors group-hover:text-primary sm:mt-2.5 sm:text-[15px]">
                     {c.name}
                   </span>
                 </Link>

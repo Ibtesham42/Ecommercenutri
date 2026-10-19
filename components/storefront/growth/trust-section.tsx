@@ -35,10 +35,12 @@ export async function TrustSection() {
     numbers.push({ icon: Users, value: `${nf.format(stats.returningCustomers)}+`, label: "Returning Customers" });
 
   return (
-    <section className="border-y border-border bg-background" aria-label="Why shop with us">
-      <div className="shop-container py-8 sm:py-10">
+    // `trust-strip` lets globals.css trim the neighbouring sections' padding so the
+    // strip reads as a compact band between them, not a section of its own.
+    <section className="trust-strip border-y border-border bg-background" aria-label="Why shop with us">
+      <div className="shop-container py-4 sm:py-5">
         {numbers.length > 0 && (
-          <div className="mb-6 grid grid-cols-3 gap-3 sm:mb-8">
+          <div className="mb-4 grid grid-cols-3 gap-3 sm:mb-5">
             {numbers.map((n) => (
               <div key={n.label} className="p-2 text-center">
                 <n.icon className="mx-auto size-5 text-primary" strokeWidth={1.6} />
@@ -48,18 +50,20 @@ export async function TrustSection() {
             ))}
           </div>
         )}
-        {/* Product promises as one cohesive band (not 6 stamped cards): bare
-            gold icons with a refined thin stroke, hairline dividers on desktop
-            for rhythm — reads like a considered statement of values, not a
-            template grid. */}
-        <ul className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 lg:grid-cols-6 lg:gap-x-0 lg:divide-x lg:divide-border/60">
+        {/* Product promises as one compact band (not 6 stamped cards): bare
+            thin-stroke icons, hairline dividers from md up. Phones: 2 rows × 3,
+            icon above label. md+: one row; lg+: icon beside label, so the strip
+            is a single short line. */}
+        <ul className="grid grid-cols-3 gap-x-2 gap-y-3 md:grid-cols-6 md:gap-x-0 md:divide-x md:divide-border/60">
           {BADGES.map((b) => (
             <li
               key={b.label}
-              className="flex flex-col items-center gap-2 px-2 text-center lg:px-5"
+              className="flex flex-col items-center justify-center gap-1 px-1 text-center md:px-2 lg:flex-row lg:gap-2 lg:px-3 lg:text-left"
             >
-              <b.icon className="size-5 text-primary" strokeWidth={1.6} aria-hidden />
-              <span className="text-xs font-medium leading-snug text-foreground/80 sm:text-[13px]">{b.label}</span>
+              <b.icon className="size-4 shrink-0 text-primary lg:size-[18px]" strokeWidth={1.6} aria-hidden />
+              <span className="text-[11px] font-medium leading-tight text-balance text-foreground/80 sm:text-xs lg:text-[13px] lg:leading-snug">
+                {b.label}
+              </span>
             </li>
           ))}
         </ul>

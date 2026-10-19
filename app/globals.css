@@ -1037,6 +1037,28 @@
 [data-surface="shop"] .shop-section[data-plain] + .shop-section[data-plain] {
   padding-top: 0;
 }
+/* The trust strip is a compact band between two sections: trim the padding that
+   faces it (a full section gap on both sides made it read as a section of its
+   own and pushed the next products far down). Adjacency-keyed — the strip's
+   position is admin-defined. Browsers without :has() keep the full gap above. */
+[data-surface="shop"] .shop-section:has(+ .trust-strip) {
+  padding-bottom: 2rem;
+  @media (width >= 48rem) {
+    padding-bottom: 2.5rem;
+  }
+  @media (width >= 64rem) {
+    padding-bottom: 3rem;
+  }
+}
+[data-surface="shop"] .trust-strip + .shop-section {
+  padding-top: 2.25rem;
+  @media (width >= 48rem) {
+    padding-top: 3rem;
+  }
+  @media (width >= 64rem) {
+    padding-top: 3.5rem;
+  }
+}
 /* Small uppercase label above a heading ("AUTHENTICALLY INDIAN", "OUR STORY"). */
 @utility eyebrow {
   font-family: var(--font-sans);
