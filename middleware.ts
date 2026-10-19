@@ -1,6 +1,12 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/lib/auth.config";
+import {
+  REF_AT_COOKIE,
+  REF_COOKIE,
+  REF_COOKIE_OPTIONS,
+  normalizeRefCode,
+} from "@/lib/affiliate/ref-cookie";
 
 const { auth } = NextAuth(authConfig);
 
@@ -32,14 +38,12 @@ export default auth((req) => {
 
   // Affiliate referral capture: persist `?ref=<code>` into the nut_ref cookie (edge,
   // cookie-only — the click row is logged by the client beacon / the /ref route).
-  const ref = nextUrl.searchParams.get("ref");
+  // The admin's attribution window is enforced at checkout against `nut_ref_at`.
+  const ref = normalizeRefCode(nextUrl.searchParams.get("ref"));
   const finalize = (res: NextResponse): NextResponse => {
-    if (ref && /^[A-Za-z0-9]{2,40}$/.test(ref)) {
-      res.cookies.set("nut_ref", ref, {
-        maxAge: 60 * 60 * 24 * 30, // 30-day attribution window
-        path: "/",
-        sameSite: "lax",
-      });
+    if (ref) {
+      res.cookies.set(REF_COOKIE, ref, REF_COOKIE_OPTIONS);
+      res.cookies.set(REF_AT_COOKIE, String(Date.now()), REF_COOKIE_OPTIONS);
     }
     return withSecurityHeaders(res);
   };

@@ -1,16 +1,15 @@
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { getAffiliateSettings } from "@/lib/queries/settings";
+import { REF_AT_COOKIE, REF_COOKIE, normalizeRefCode, withinRefWindow } from "@/lib/affiliate/ref-cookie";
 
-export const REF_COOKIE = "nut_ref";
-
-/** Read the referral code from the request cookie (server contexts only). */
-export async function readRefCookie(): Promise<string | null> {
+/** Read the referral code + click time from the request cookies (server contexts only). */
+async function readRefCookies(): Promise<{ code: string | null; at: string | null }> {
   try {
     const c = await cookies();
-    return c.get(REF_COOKIE)?.value || null;
+    return { code: normalizeRefCode(c.get(REF_COOKIE)?.value), at: c.get(REF_AT_COOKIE)?.value ?? null };
   } catch {
-    return null;
+    return { code: null, at: null };
   }
 }
 
@@ -18,13 +17,14 @@ export type Attribution = { affiliateId: string; referralCode: string };
 
 /**
  * Resolve which affiliate (if any) gets credit for an order. The coupon-owning
- * affiliate wins (precedence); otherwise the last-click referral cookie. Self-
- * referrals (the affiliate buying through their own link/coupon) are never credited.
+ * affiliate wins (precedence); otherwise the last-click referral cookie, if the
+ * click is inside the admin's attribution window (`affiliateCookieDays`). Only
+ * APPROVED affiliates qualify. Self-referrals (the affiliate buying through their
+ * own link/coupon) are never credited.
  */
 export async function resolveAttribution(opts: {
   buyerUserId: string;
   couponId?: string | null;
-  refCode?: string | null;
 }): Promise<Attribution | null> {
   const settings = await getAffiliateSettings();
   if (!settings.affiliateEnabled) return null;
@@ -42,8 +42,8 @@ export async function resolveAttribution(opts: {
   }
 
   // 2) Last-click referral cookie.
-  const code = opts.refCode ?? (await readRefCookie());
-  if (code) {
+  const { code, at } = await readRefCookies();
+  if (code && withinRefWindow(at, settings.affiliateCookieDays)) {
     const aff = await prisma.affiliate.findFirst({
       where: { code, status: "APPROVED" },
       select: { id: true, code: true, userId: true },

@@ -29,8 +29,7 @@ export async function GET(request: Request) {
     { header: "Role", value: (r) => AFFILIATE_ROLE_LABEL[r.role] },
     { header: "Status", value: (r) => AFFILIATE_STATUS_LABEL[r.status] },
     { header: "Clicks", value: (r) => r._count.clicks },
-    { header: "Orders", value: (r) => r._count.orders },
-    { header: "Commissions", value: (r) => r._count.commissions },
+    { header: "Referred orders (confirmed)", value: (r) => r._count.commissions },
     { header: "Joined", value: (r) => r.createdAt.toISOString() },
   ]);
 

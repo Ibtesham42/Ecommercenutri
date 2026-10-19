@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { recordClick } from "@/lib/affiliate/clicks";
 import { checkRateLimit, limiters } from "@/lib/rate-limit";
+import { normalizeRefCode } from "@/lib/affiliate/ref-cookie";
 
 export const runtime = "nodejs";
 
@@ -22,7 +23,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
   const parsed = bodySchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ ok: false }, { status: 400 });
+  const code = parsed.success ? normalizeRefCode(parsed.data.code) : null;
+  if (!parsed.success || !code) return NextResponse.json({ ok: false }, { status: 400 });
 
   const anonId = req.headers.get("cookie")?.match(/(?:^|;\s*)nut_anon=([^;]+)/)?.[1] ?? null;
   const user = await getCurrentUser();
@@ -31,7 +33,7 @@ export async function POST(req: Request) {
   if (!rl.success) return NextResponse.json({ ok: false }, { status: 429 });
 
   await recordClick({
-    code: parsed.data.code,
+    code,
     anonId,
     userId: user?.id ?? null,
     landingPath: parsed.data.landingPath ?? "/",

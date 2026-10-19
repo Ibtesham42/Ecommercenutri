@@ -29,7 +29,11 @@ type Values = {
 export function AffiliateApplyForm({ defaultName }: { defaultName?: string | null }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
-  const { register, handleSubmit } = useForm<Values>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<Values>({
     defaultValues: {
       role: "INFLUENCER",
       displayName: defaultName ?? "",
@@ -108,9 +112,20 @@ export function AffiliateApplyForm({ defaultName }: { defaultName?: string | nul
       </div>
 
       <label className="flex items-start gap-2 text-sm text-muted-foreground">
-        <input type="checkbox" className="mt-1" {...register("agree", { required: true })} />
-        I agree to the affiliate program terms and to share content honestly.
+        <input
+          type="checkbox"
+          className="mt-1"
+          aria-invalid={!!errors.agree}
+          aria-describedby={errors.agree ? "agree-error" : undefined}
+          {...register("agree", { required: "Please accept the program terms to apply." })}
+        />
+        I agree to the program terms above and to share content honestly.
       </label>
+      {errors.agree && (
+        <p id="agree-error" role="alert" className="-mt-2 text-sm text-destructive">
+          {errors.agree.message}
+        </p>
+      )}
 
       <Button type="submit" disabled={saving} className="gap-2">
         {saving && <Loader2 className="size-4 animate-spin" />}

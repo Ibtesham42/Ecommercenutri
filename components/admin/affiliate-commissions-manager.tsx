@@ -23,6 +23,8 @@ import {
 } from "@/lib/actions/admin/affiliates";
 import { formatPrice, formatDate } from "@/lib/format";
 import { COMMISSION_STATUS_LABEL } from "@/lib/affiliate/labels";
+import type { OrderStatus } from "@prisma/client";
+import { statusLabel } from "@/lib/order-status";
 import type { AdminResult } from "@/lib/actions/admin/types";
 
 export type CommissionRow = {
@@ -34,9 +36,11 @@ export type CommissionRow = {
   createdAt: string;
   order: { orderNumber: string; status: string };
   affiliate: { id: string; code: string; displayName: string };
+  refundedAfterPayout: boolean;
 };
 
 export type CommissionSummary = {
+  review: { amount: number; count: number };
   pending: { amount: number; count: number };
   approved: { amount: number; count: number };
   paid: { amount: number; count: number };
@@ -50,7 +54,7 @@ const STATUS_VARIANT: Record<string, "secondary" | "default" | "destructive" | "
   CANCELLED: "destructive",
 };
 
-const FILTERS = ["ALL", "PENDING", "APPROVED", "PAID", "CANCELLED"] as const;
+const FILTERS = ["ALL", "PENDING", "APPROVED", "PAID", "CANCELLED", "REVIEW"] as const;
 
 export function AffiliateCommissionsManager({
   commissions,
@@ -121,6 +125,14 @@ export function AffiliateCommissionsManager({
         </p>
       </div>
 
+      {summary.review.count > 0 && (
+        <div role="status" className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
+          <strong>{summary.review.count}</strong> paid commission{summary.review.count === 1 ? "" : "s"} (
+          {formatPrice(summary.review.amount)}) belong to orders refunded after the payout. Nothing is deducted
+          automatically — review them under <em>Refunded after payout</em> and settle any recovery manually.
+        </div>
+      )}
+
       {/* Summary */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {cards.map((c) => (
@@ -144,7 +156,11 @@ export function AffiliateCommissionsManager({
               variant={status === f || (f === "ALL" && status === "ALL") ? "default" : "outline"}
               onClick={() => setParam("status", f)}
             >
-              {f === "ALL" ? "All" : COMMISSION_STATUS_LABEL[f as keyof typeof COMMISSION_STATUS_LABEL]}
+              {f === "ALL"
+                ? "All"
+                : f === "REVIEW"
+                  ? `Refunded after payout (${summary.review.count})`
+                  : COMMISSION_STATUS_LABEL[f as keyof typeof COMMISSION_STATUS_LABEL]}
             </Button>
           ))}
         </div>
@@ -175,10 +191,10 @@ export function AffiliateCommissionsManager({
               <div className="flex flex-wrap items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">
-                    <Link href={`/admin/orders`} className="hover:underline">
+                    <Link href={`/admin/orders/${c.order.orderNumber}`} className="hover:underline">
                       #{c.order.orderNumber}
                     </Link>{" "}
-                    <span className="text-xs text-muted-foreground">· {c.order.status}</span>
+                    <span className="text-xs text-muted-foreground">· order {statusLabel(c.order.status as OrderStatus).toLowerCase()}</span>
                   </p>
                   <p className="text-xs text-muted-foreground">
                     <Link href={`/admin/affiliates/${c.affiliate.id}`} className="hover:underline">
@@ -198,6 +214,11 @@ export function AffiliateCommissionsManager({
                 <Badge variant={STATUS_VARIANT[c.status] ?? "secondary"}>
                   {COMMISSION_STATUS_LABEL[c.status as keyof typeof COMMISSION_STATUS_LABEL]}
                 </Badge>
+                {c.refundedAfterPayout && (
+                  <Badge variant="outline" className="border-amber-500/60 text-amber-700 dark:text-amber-400">
+                    Refunded after payout · review
+                  </Badge>
+                )}
                 <div className="flex gap-1.5">
                   {c.status === "PENDING" && (
                     <Button

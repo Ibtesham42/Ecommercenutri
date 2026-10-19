@@ -15,10 +15,65 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { saveMarketingAsset, deleteMarketingAsset } from "@/lib/actions/admin/affiliates";
+import { saveMarketingAsset, deleteMarketingAsset, verifyMarketingUpload } from "@/lib/actions/admin/affiliates";
+import { MARKETING_UPLOAD_ACCEPT, checkMarketingFile } from "@/lib/affiliate/marketing-upload-rules";
 import { MARKETING_ASSET_TYPES } from "@/lib/validations/affiliate";
 import { MARKETING_ASSET_LABEL } from "@/lib/affiliate/labels";
 import { cldUrl } from "@/lib/cld";
+
+type Signed = {
+  cloudName?: string;
+  apiKey?: string;
+  timestamp?: number;
+  signature?: string;
+  folder?: string;
+  allowed_formats?: string;
+  error?: string;
+};
+
+/**
+ * Upload straight from the browser to Cloudinary with a server-issued signature —
+ * the bytes never touch our serverless function (Vercel's ~4.5 MB body cap would
+ * break videos and PDFs). Credentials + signing stay server-side.
+ */
+async function directUpload(file: File, onProgress: (pct: number) => void): Promise<string> {
+  const sigRes = await fetch("/api/admin/affiliate-asset", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: file.name, type: file.type, size: file.size }),
+  });
+  const sig = (await sigRes.json().catch(() => ({}))) as Signed;
+  if (!sigRes.ok || !sig.signature || !sig.cloudName) throw new Error(sig.error ?? "Could not start the upload.");
+
+  const form = new FormData();
+  form.append("file", file);
+  form.append("api_key", sig.apiKey ?? "");
+  form.append("timestamp", String(sig.timestamp));
+  form.append("signature", sig.signature);
+  // Signed params must be resent verbatim.
+  if (sig.folder) form.append("folder", sig.folder);
+  if (sig.allowed_formats) form.append("allowed_formats", sig.allowed_formats);
+
+  return new Promise<string>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `https://api.cloudinary.com/v1_1/${sig.cloudName}/auto/upload`);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      let up: { secure_url?: string; error?: { message?: string } } = {};
+      try {
+        up = JSON.parse(xhr.responseText);
+      } catch {
+        /* handled below */
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && up.secure_url) resolve(up.secure_url);
+      else reject(new Error(up.error?.message ?? "Upload failed."));
+    };
+    xhr.onerror = () => reject(new Error("Network error during upload."));
+    xhr.send(form);
+  });
+}
 
 type Asset = {
   id: string;
@@ -40,6 +95,7 @@ export function MarketingKitManager({
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   const [title, setTitle] = useState("");
   const [type, setType] = useState<string>("PRODUCT_IMAGE");
@@ -49,14 +105,16 @@ export function MarketingKitManager({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    const problem = checkMarketingFile(file);
+    if (problem) return void toast.error(problem);
     setUploading(true);
+    setProgress(0);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/admin/affiliate-asset", { method: "POST", body: fd });
-      const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
-      if (!res.ok || !json.url) throw new Error(json.error || "Upload failed");
-      setFileUrl(json.url);
+      const url = await directUpload(file, setProgress);
+      // The server re-checks the stored file (size can't be enforced by the signature).
+      const verified = await verifyMarketingUpload(url);
+      if (!verified.ok) throw new Error(verified.error);
+      setFileUrl(url);
       if (!title) setTitle(file.name.replace(/\.[^.]+$/, ""));
       toast.success("Uploaded");
     } catch (err) {
@@ -132,16 +190,19 @@ export function MarketingKitManager({
                   <label className="inline-flex">
                     <input
                       type="file"
-                      accept="image/*,video/*,application/pdf"
+                      accept={MARKETING_UPLOAD_ACCEPT}
                       className="hidden"
                       onChange={onPick}
                       disabled={uploading}
                     />
                     <span className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border bg-background px-3 py-2 text-sm font-medium hover:bg-accent">
                       {uploading ? <Loader2 className="size-4 animate-spin" /> : <UploadCloud className="size-4" />}
-                      {fileUrl ? "Replace file" : "Upload image / video / PDF"}
+                      {uploading ? `Uploading… ${progress}%` : fileUrl ? "Replace file" : "Upload image / video / PDF"}
                     </span>
                   </label>
+                )}
+                {cloudinaryReady && (
+                  <p className="text-xs text-muted-foreground">JPG, PNG, WebP, GIF, MP4, MOV, WebM or PDF, up to 25 MB.</p>
                 )}
                 <Input
                   placeholder="…or paste a file URL"

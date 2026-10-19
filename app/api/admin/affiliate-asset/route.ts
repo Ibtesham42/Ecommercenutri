@@ -1,12 +1,25 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requirePermission } from "@/lib/auth";
-import { uploadImage, cloudinaryEnabled } from "@/lib/cloudinary";
+import { cloudinaryEnabled } from "@/lib/cloudinary";
+import { signMarketingUpload } from "@/lib/affiliate/marketing-upload";
+import { checkMarketingFile } from "@/lib/affiliate/marketing-upload-rules";
 
 export const runtime = "nodejs";
 
-const MAX_BYTES = 25 * 1024 * 1024;
+const bodySchema = z.object({
+  name: z.string().min(1).max(200),
+  type: z.string().max(100),
+  size: z.number().int().nonnegative(),
+});
 
-/** Marketing-kit asset upload (images, video, PDF) → Cloudinary. */
+/**
+ * Marketing-kit upload, step 1: returns a short-lived signature so the browser
+ * uploads the file DIRECTLY to Cloudinary. File bytes never pass through this
+ * function (Vercel's ~4.5 MB body cap would break videos/PDFs). Takes only the
+ * file's name/type/size for a pre-flight check; the signature itself restricts
+ * folder + formats, and `verifyMarketingUpload` re-checks the stored file.
+ */
 export async function POST(request: Request) {
   try {
     await requirePermission("affiliates");
@@ -20,29 +33,12 @@ export async function POST(request: Request) {
     );
   }
 
-  let file: File | null = null;
-  try {
-    const form = await request.formData();
-    const f = form.get("file");
-    file = f instanceof File ? f : null;
-  } catch {
-    return NextResponse.json({ error: "Could not read the upload." }, { status: 400 });
-  }
-  if (!file) return NextResponse.json({ error: "No file received." }, { status: 400 });
-  if (file.size > MAX_BYTES) {
-    return NextResponse.json({ error: "File is too large (max 25 MB)." }, { status: 413 });
-  }
-  if (!/^(image|video)\/|^application\/pdf/.test(file.type)) {
-    return NextResponse.json({ error: "Use an image, video or PDF." }, { status: 415 });
-  }
+  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: "Could not read the file details." }, { status: 400 });
+  const problem = checkMarketingFile(parsed.data);
+  if (problem) return NextResponse.json({ error: problem }, { status: 400 });
 
-  try {
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const dataUri = `data:${file.type};base64,${buffer.toString("base64")}`;
-    const url = await uploadImage(dataUri, "nutriyet/marketing");
-    return NextResponse.json({ url });
-  } catch (err) {
-    console.error("[affiliate-asset] upload failed:", err);
-    return NextResponse.json({ error: "Upload failed. Please try again." }, { status: 500 });
-  }
+  const signed = signMarketingUpload();
+  if (!signed) return NextResponse.json({ error: "Could not sign the upload." }, { status: 500 });
+  return NextResponse.json(signed);
 }

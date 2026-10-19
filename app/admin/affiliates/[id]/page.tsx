@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Info } from "lucide-react";
 import { guardSection } from "@/lib/admin-guard";
 import { getAdminAffiliate } from "@/lib/queries/affiliate";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import {
   AFFILIATE_ROLE_LABEL,
   AFFILIATE_STATUS_LABEL,
   COMMISSION_STATUS_LABEL,
+  PAYOUT_STATUS_LABEL,
 } from "@/lib/affiliate/labels";
 
 export const metadata: Metadata = { title: "Affiliate", robots: { index: false } };
@@ -33,7 +34,7 @@ export default async function AdminAffiliateDetailPage({
   const { id } = await params;
   const data = await getAdminAffiliate(id);
   if (!data) notFound();
-  const { affiliate: a, balances, stats } = data;
+  const { affiliate: a, balances, stats, risk } = data;
 
   const commissionLabel = a.commissionType
     ? a.commissionType === "PERCENT"
@@ -71,16 +72,33 @@ export default async function AdminAffiliateDetailPage({
         commissionValue={a.commissionValue}
       />
 
+      {risk.length > 0 && (
+        <section aria-label="Review flags" className="space-y-1.5 rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
+          <p className="font-semibold">Worth a look</p>
+          {risk.map((r) => (
+            <p key={r.text} className="flex items-start gap-2 text-muted-foreground">
+              {r.level === "warn" ? (
+                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />
+              ) : (
+                <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+              )}
+              {r.text}
+            </p>
+          ))}
+          <p className="text-xs text-muted-foreground">Heuristics only. Nothing is blocked automatically.</p>
+        </section>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Clicks" value={String(stats.clicks)} />
-        <Stat label="Orders" value={String(stats.orders)} />
-        <Stat label="Revenue" value={formatPrice(stats.revenue)} />
-        <Stat label="Available" value={formatPrice(balances.available)} />
-        <Stat label="Pending commission" value={formatPrice(balances.pending)} />
-        <Stat label="Approved" value={formatPrice(balances.approved)} />
-        <Stat label="Paid" value={formatPrice(balances.paid)} />
+        <Stat label="Referred orders" value={String(stats.orders)} />
+        <Stat label="Referred sales" value={formatPrice(stats.revenue)} />
         <Stat label="Commission rate" value={commissionLabel} />
+        <Stat label="Pending" value={formatPrice(balances.pending)} />
+        <Stat label="Ready to pay" value={formatPrice(balances.available)} />
+        <Stat label="In payout" value={formatPrice(balances.approved - balances.available)} />
+        <Stat label="Paid" value={formatPrice(balances.paid)} />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
@@ -94,8 +112,13 @@ export default async function AdminAffiliateDetailPage({
               {a.commissions.map((c) => (
                 <li key={c.id} className="flex items-center justify-between gap-3 py-2">
                   <div className="min-w-0">
-                    <p className="font-medium">#{c.order.orderNumber}</p>
-                    <p className="text-xs text-muted-foreground">{formatDate(c.createdAt)}</p>
+                    <Link href={`/admin/orders/${c.order.orderNumber}`} className="font-medium hover:underline">
+                      #{c.order.orderNumber}
+                    </Link>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(c.createdAt)} · on {formatPrice(c.base)}
+                      {c.status === "PENDING" && c.matureAt ? ` · payable ${formatDate(c.matureAt)}` : ""}
+                    </p>
                   </div>
                   <Badge variant={c.status === "PAID" || c.status === "APPROVED" ? "default" : c.status === "CANCELLED" ? "destructive" : "secondary"}>
                     {COMMISSION_STATUS_LABEL[c.status]}
@@ -137,6 +160,33 @@ export default async function AdminAffiliateDetailPage({
             ) : (
               <p className="text-muted-foreground">No coupon yet (created on approval).</p>
             )}
+          </div>
+
+          <div className="rounded-2xl border p-5 text-sm">
+            <h2 className="mb-2 font-semibold">Payouts</h2>
+            {a.payouts.length === 0 ? (
+              <p className="text-muted-foreground">No payouts yet.</p>
+            ) : (
+              <ul className="divide-y">
+                {a.payouts.map((p) => (
+                  <li key={p.id} className="flex items-center justify-between gap-2 py-2">
+                    <div className="min-w-0">
+                      <p className="font-medium tabular-nums">{formatPrice(p.amount)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDate(p.createdAt)} · {p._count.commissions} commission{p._count.commissions === 1 ? "" : "s"}
+                        {p.reference ? ` · ref ${p.reference}` : ""}
+                      </p>
+                    </div>
+                    <Badge variant={p.status === "PAID" ? "default" : p.status === "REJECTED" ? "destructive" : "secondary"}>
+                      {PAYOUT_STATUS_LABEL[p.status]}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link href="/admin/affiliates/payouts" className="mt-2 inline-block text-xs text-primary hover:underline">
+              Manage payouts
+            </Link>
           </div>
 
           {a.payoutMethod && (

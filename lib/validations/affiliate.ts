@@ -63,16 +63,40 @@ export const applyAffiliateSchema = z.object({
   agree: z.boolean().refine((v) => v === true, "Please accept the program terms."),
 });
 
-export const payoutDetailsSchema = z.object({
-  payoutMethod: z.enum(PAYOUT_METHODS),
-  upiId: z.string().max(80).optional().default(""),
-  bankName: z.string().max(80).optional().default(""),
-  bankAccount: z.string().max(40).optional().default(""),
-  bankIfsc: z.string().max(20).optional().default(""),
-  accountName: z.string().max(80).optional().default(""),
-});
+const trimmed = (max: number) => z.string().trim().max(max).optional().default("");
+
+/** Payout destination — must be complete for the chosen method, or a payout could
+ *  be requested with nowhere to send it. RazorpayX isn't offered to affiliates yet. */
+export const payoutDetailsSchema = z
+  .object({
+    payoutMethod: z.enum(PAYOUT_METHODS),
+    upiId: trimmed(80),
+    bankName: trimmed(80),
+    bankAccount: z.string().overwrite((v) => v.replace(/\s+/g, "")).max(40).optional().default(""),
+    bankIfsc: z.string().trim().toUpperCase().max(20).optional().default(""),
+    accountName: trimmed(80),
+  })
+  .superRefine((d, ctx) => {
+    const fail = (path: string, message: string) => ctx.addIssue({ code: "custom", path: [path], message });
+    if (d.payoutMethod === "RAZORPAYX") {
+      fail("payoutMethod", "RazorpayX payouts aren't available yet — choose UPI or bank transfer.");
+    } else if (d.payoutMethod === "UPI") {
+      if (!/^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$/.test(d.upiId)) {
+        fail("upiId", "Enter a valid UPI ID, e.g. name@okbank.");
+      }
+    } else {
+      if (d.accountName.length < 2) fail("accountName", "Enter the account holder's name.");
+      if (!/^\d{9,18}$/.test(d.bankAccount)) fail("bankAccount", "Enter a valid account number (9–18 digits).");
+      if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(d.bankIfsc)) fail("bankIfsc", "Enter a valid IFSC code, e.g. HDFC0001234.");
+    }
+  });
 
 // --- Admin --------------------------------------------------------------------
+
+/** A PERCENT commission above 100% would pay out more than the sale. */
+const percentCap = (type: string | null | undefined, value: number | null | undefined) =>
+  type !== "PERCENT" || value == null || value <= 100;
+const PERCENT_CAP_MSG = { message: "A percentage commission can't be more than 100%.", path: ["commissionValue"] };
 
 export const approveAffiliateSchema = z.object({
   affiliateId: z.string().min(1),
@@ -80,7 +104,7 @@ export const approveAffiliateSchema = z.object({
   commissionValue: z.coerce.number().int().min(0).optional(),
   couponCode: z.string().max(20).optional().default(""),
   couponPercent: z.coerce.number().int().min(1).max(100).optional(),
-});
+}).refine((d) => percentCap(d.commissionType, d.commissionValue), PERCENT_CAP_MSG);
 
 export const rejectAffiliateSchema = z.object({
   affiliateId: z.string().min(1),
@@ -98,7 +122,7 @@ export const setCommissionSchema = z.object({
   affiliateId: z.string().min(1),
   commissionType: z.enum(["PERCENT", "FIXED"]).nullable().optional(),
   commissionValue: z.coerce.number().int().min(0).nullable().optional(),
-});
+}).refine((d) => percentCap(d.commissionType, d.commissionValue), PERCENT_CAP_MSG);
 
 export const commissionRuleSchema = z.object({
   id: z.string().optional(),
@@ -109,7 +133,7 @@ export const commissionRuleSchema = z.object({
   type: z.enum(["PERCENT", "FIXED"]),
   value: z.coerce.number().int().min(0),
   isActive: z.boolean().default(true),
-});
+}).refine((d) => percentCap(d.type, d.value), { ...PERCENT_CAP_MSG, path: ["value"] });
 
 export const ruleIdSchema = z.object({ id: z.string().min(1) });
 
@@ -120,12 +144,19 @@ export const cancelCommissionSchema = z.object({
   reason: z.string().max(300).optional().default(""),
 });
 
-export const payoutIdSchema = z.object({ payoutId: z.string().min(1) });
+/** Required only to act on a payout whose affiliate isn't active (suspended):
+ *  the admin's explicit, recorded reason for paying anyway. */
+const overrideReason = z.string().trim().min(5, "Give a reason (5+ characters) for paying a suspended affiliate.").max(300).optional();
+
+export const payoutIdSchema = z.object({ payoutId: z.string().min(1), overrideReason });
 
 export const markPayoutPaidSchema = z.object({
   payoutId: z.string().min(1),
   method: z.enum(PAYOUT_METHODS),
-  reference: z.string().max(120).optional().default(""),
+  // Marking paid records money that has already moved — the transfer's own
+  // reference (bank UTR / UPI transaction id) is the proof, so it's required.
+  reference: z.string().trim().min(4, "Add the transfer reference (bank UTR or UPI transaction ID).").max(120),
+  overrideReason,
 });
 
 export const rejectPayoutSchema = z.object({
@@ -139,6 +170,9 @@ export const affiliateSettingsSchema = z.object({
   affiliateDefaultCommissionType: z.enum(["PERCENT", "FIXED"]).default("PERCENT"),
   affiliateDefaultCommissionValue: z.coerce.number().int().min(0).default(10),
   affiliateMinPayout: z.coerce.number().int().min(0).default(50000),
+}).refine((d) => percentCap(d.affiliateDefaultCommissionType, d.affiliateDefaultCommissionValue), {
+  ...PERCENT_CAP_MSG,
+  path: ["affiliateDefaultCommissionValue"],
 });
 
 export const marketingAssetSchema = z.object({

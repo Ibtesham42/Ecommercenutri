@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getReturnSettings } from "@/lib/queries/settings";
 import { refundPayment } from "@/lib/razorpay";
 import { ensureCreditNote } from "@/lib/credit-notes";
+import { syncCommissionWithRefunds } from "@/lib/affiliate/commissions";
 
 const DAY_MS = 86_400_000;
 const rmaId = customAlphabet("ACDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
@@ -300,6 +301,8 @@ export async function processRefund(
   });
 
   await ensureCreditNote(returnId);
+  // Refunded units no longer earn the referring affiliate anything (best-effort).
+  await syncCommissionWithRefunds(order.id);
   return reloadReturn(returnId);
 }
 

@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { defaultCouponCode } from "@/lib/affiliate/codes";
-import { matureCommissions } from "@/lib/affiliate/commissions";
+import { matureCommissions, syncPayoutAmount } from "@/lib/affiliate/commissions";
+import { appendPayoutAudit, rejectionAuditText } from "@/lib/affiliate/payout-audit";
+import { verifyMarketingUpload as verifyStoredUpload } from "@/lib/affiliate/marketing-upload";
 import { notify } from "@/lib/notifications";
 import { sendEmail } from "@/lib/email";
 import { affiliateStatusEmail, payoutEmail, payoutUpdateEmail, commissionEmail } from "@/lib/emails";
@@ -54,6 +56,12 @@ export async function approveAffiliate(input: unknown): Promise<AdminResult> {
     include: { user: { select: { email: true, name: true } } },
   });
   if (!aff) return { ok: false, error: "Affiliate not found." };
+  if (aff.status !== "PENDING" && aff.status !== "REJECTED") {
+    return {
+      ok: false,
+      error: aff.status === "APPROVED" ? "This affiliate is already approved." : "Reactivate a suspended affiliate instead.",
+    };
+  }
 
   // Create the affiliate's coupon if it doesn't have one yet.
   let couponId = aff.couponId;
@@ -77,6 +85,14 @@ export async function approveAffiliate(input: unknown): Promise<AdminResult> {
     });
     couponId = coupon.id;
     couponCode = code;
+  } else {
+    // A returning partner keeps their code; make sure it works again.
+    const coupon = await prisma.coupon.update({
+      where: { id: couponId },
+      data: { isActive: true },
+      select: { code: true },
+    });
+    couponCode = coupon.code;
   }
 
   await prisma.affiliate.update({
@@ -118,10 +134,18 @@ export async function rejectAffiliate(input: unknown): Promise<AdminResult> {
     include: { user: { select: { email: true, name: true } } },
   });
   if (!aff) return { ok: false, error: "Affiliate not found." };
+  if (aff.status !== "PENDING") {
+    return { ok: false, error: "Only a pending application can be rejected. Suspend an active affiliate instead." };
+  }
 
-  await prisma.affiliate.update({
-    where: { id: aff.id },
-    data: { status: "REJECTED", rejectionReason: parsed.data.reason },
+  await prisma.$transaction(async (tx) => {
+    await tx.affiliate.update({
+      where: { id: aff.id },
+      data: { status: "REJECTED", rejectionReason: parsed.data.reason },
+    });
+    if (aff.couponId) {
+      await tx.coupon.update({ where: { id: aff.couponId }, data: { isActive: false } });
+    }
   });
   await notifyAffiliate(aff.userId, "Affiliate application declined", parsed.data.reason);
   if (aff.user.email) {
@@ -139,7 +163,7 @@ export async function rejectAffiliate(input: unknown): Promise<AdminResult> {
 }
 
 export async function suspendAffiliate(input: unknown): Promise<AdminResult> {
-  await requirePermission("affiliates");
+  const admin = await requirePermission("affiliates");
   const parsed = suspendAffiliateSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid request." };
 
@@ -148,6 +172,7 @@ export async function suspendAffiliate(input: unknown): Promise<AdminResult> {
     include: { user: { select: { email: true, name: true } } },
   });
   if (!aff) return { ok: false, error: "Affiliate not found." };
+  if (aff.status !== "APPROVED") return { ok: false, error: "Only an active affiliate can be suspended." };
 
   await prisma.$transaction(async (tx) => {
     await tx.affiliate.update({
@@ -157,6 +182,7 @@ export async function suspendAffiliate(input: unknown): Promise<AdminResult> {
     if (aff.couponId) {
       await tx.coupon.update({ where: { id: aff.couponId }, data: { isActive: false } });
     }
+    await auditOpenPayouts(tx, aff.id, admin.email, `Affiliate suspended (${parsed.data.reason}). Payout on hold until an admin decides.`);
   });
   await notifyAffiliate(aff.userId, "Affiliate account suspended", parsed.data.reason);
   if (aff.user.email) {
@@ -174,14 +200,15 @@ export async function suspendAffiliate(input: unknown): Promise<AdminResult> {
 }
 
 export async function reactivateAffiliate(input: unknown): Promise<AdminResult> {
-  await requirePermission("affiliates");
+  const admin = await requirePermission("affiliates");
   const parsed = affiliateIdSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "We couldn't identify that affiliate. Refresh the page and try again." };
   const aff = await prisma.affiliate.findUnique({
     where: { id: parsed.data.affiliateId },
-    select: { id: true, couponId: true },
+    select: { id: true, couponId: true, status: true, userId: true },
   });
   if (!aff) return { ok: false, error: "Affiliate not found." };
+  if (aff.status !== "SUSPENDED") return { ok: false, error: "Only a suspended affiliate can be reactivated." };
   await prisma.$transaction(async (tx) => {
     await tx.affiliate.update({
       where: { id: aff.id },
@@ -190,7 +217,11 @@ export async function reactivateAffiliate(input: unknown): Promise<AdminResult> 
     if (aff.couponId) {
       await tx.coupon.update({ where: { id: aff.couponId }, data: { isActive: true } });
     }
+    // Lifting the hold changes nothing else: the same single payout still needs its
+    // normal approve → mark-paid steps (it is never auto-approved or duplicated).
+    await auditOpenPayouts(tx, aff.id, admin.email, "Affiliate reactivated. Hold lifted; payout still needs normal approval.");
   });
+  await notifyAffiliate(aff.userId, "Affiliate account reactivated", "Good news — your affiliate account is active again.");
   revalidate(aff.id);
   return { ok: true };
 }
@@ -263,13 +294,14 @@ export async function bulkAffiliateAction(
   ids: string[],
   action: AffiliateBulkAction,
 ): Promise<AdminResult<BulkOutcome>> {
-  await requirePermission("affiliates");
+  const admin = await requirePermission("affiliates");
   if (!Array.isArray(ids) || ids.length === 0) return { ok: false, error: "Nothing selected." };
   if (!AFFILIATE_BULK_ACTIONS.includes(action)) return { ok: false, error: "Unknown action." };
 
   const suspend = action === "suspend";
   const affs = await prisma.affiliate.findMany({
-    where: { id: { in: ids }, status: suspend ? { not: "SUSPENDED" } : "SUSPENDED" },
+    // Suspend applies to active partners only (a pending application is rejected instead).
+    where: { id: { in: ids }, status: suspend ? "APPROVED" : "SUSPENDED" },
     select: { id: true, userId: true, couponId: true },
   });
   if (affs.length === 0) {
@@ -286,6 +318,16 @@ export async function bulkAffiliateAction(
     });
     if (couponIds.length) {
       await tx.coupon.updateMany({ where: { id: { in: couponIds } }, data: { isActive: !suspend } });
+    }
+    for (const a of affs) {
+      await auditOpenPayouts(
+        tx,
+        a.id,
+        admin.email,
+        suspend
+          ? "Affiliate suspended (bulk action). Payout on hold until an admin decides."
+          : "Affiliate reactivated (bulk action). Hold lifted; payout still needs normal approval.",
+      );
     }
   });
 
@@ -383,10 +425,11 @@ export async function approveCommission(input: unknown): Promise<AdminResult> {
   if (!c) return { ok: false, error: "Commission not found." };
   if (c.status !== "PENDING") return { ok: false, error: "Only pending commissions can be approved." };
 
-  await prisma.commission.update({
-    where: { id: c.id },
+  const res = await prisma.commission.updateMany({
+    where: { id: c.id, status: "PENDING" },
     data: { status: "APPROVED" },
   });
+  if (res.count === 0) return { ok: false, error: "This commission changed meanwhile. Refresh and try again." };
 
   await notifyAffiliate(
     c.affiliate.userId,
@@ -424,10 +467,16 @@ export async function cancelCommission(input: unknown): Promise<AdminResult> {
   if (c.status === "PAID") return { ok: false, error: "A paid commission can't be cancelled." };
   if (c.status === "CANCELLED") return { ok: false, error: "This commission is already cancelled." };
 
-  await prisma.commission.update({
-    where: { id: c.id },
-    data: { status: "CANCELLED", payoutId: null },
+  const cancelled = await prisma.$transaction(async (tx) => {
+    const res = await tx.commission.updateMany({
+      where: { id: c.id, status: { in: ["PENDING", "APPROVED"] } },
+      data: { status: "CANCELLED", payoutId: null },
+    });
+    // Keep the open payout it was in (if any) from paying it out.
+    if (res.count > 0 && c.payoutId) await syncPayoutAmount(tx, c.payoutId);
+    return res.count > 0;
   });
+  if (!cancelled) return { ok: false, error: "This commission changed meanwhile. Refresh and try again." };
 
   await notifyAffiliate(
     c.affiliate.userId,
@@ -436,30 +485,74 @@ export async function cancelCommission(input: unknown): Promise<AdminResult> {
   );
 
   revalidatePath("/admin/affiliates/commissions");
+  revalidatePath("/admin/affiliates/payouts");
   revalidatePath("/account/affiliate");
   return { ok: true };
 }
 
 // --- Payouts ------------------------------------------------------------------
 
+/**
+ * A payout whose affiliate isn't active (suspended) is ON HOLD: nothing moves it
+ * forward unless an admin explicitly overrides with a reason, which is written
+ * to the payout's audit trail. Rejecting stays available without an override.
+ */
+function holdCheck(affiliateStatus: string, overrideReason?: string): { error?: string; note: string } {
+  if (affiliateStatus === "APPROVED") return { note: "" };
+  if (!overrideReason) {
+    return {
+      error: "This affiliate is suspended, so the payout is on hold. Reject it, or continue with a recorded reason.",
+      note: "",
+    };
+  }
+  return { note: ` while affiliate ${affiliateStatus.toLowerCase()} (override: ${overrideReason})` };
+}
+
+type PayoutTx = Pick<typeof prisma, "payout">;
+
+/** Append one audit line to each open payout of an affiliate. */
+async function auditOpenPayouts(tx: PayoutTx, affiliateId: string, actor: string, text: string): Promise<void> {
+  const open = await tx.payout.findMany({
+    where: { affiliateId, status: { in: ["REQUESTED", "APPROVED", "PROCESSING"] } },
+    select: { id: true, notes: true },
+  });
+  for (const p of open) {
+    await tx.payout.update({ where: { id: p.id }, data: { notes: appendPayoutAudit(p.notes, actor, text) } });
+  }
+}
+
 export async function approvePayout(input: unknown): Promise<AdminResult> {
-  await requirePermission("affiliates");
+  const admin = await requirePermission("affiliates");
   const parsed = payoutIdSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "We couldn't identify that payout. Refresh the page and try again." };
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "We couldn't identify that payout." };
 
   const payout = await prisma.payout.findUnique({
     where: { id: parsed.data.payoutId },
-    include: { affiliate: { select: { userId: true, user: { select: { email: true, name: true } } } } },
+    include: { affiliate: { select: { userId: true, status: true, user: { select: { email: true, name: true } } } } },
   });
   if (!payout) return { ok: false, error: "Payout not found." };
   if (payout.status !== "REQUESTED") {
     return { ok: false, error: "Only a requested payout can be approved." };
   }
+  const hold = holdCheck(payout.affiliate.status, parsed.data.overrideReason);
+  if (hold.error) return { ok: false, error: hold.error };
+  const notes = appendPayoutAudit(payout.notes, admin.email, `Approved${hold.note}`);
 
-  await prisma.payout.update({
-    where: { id: payout.id },
-    data: { status: "APPROVED" },
+  const amount = await prisma.$transaction(async (tx) => {
+    await syncPayoutAmount(tx, payout.id);
+    const fresh = await tx.payout.findUniqueOrThrow({ where: { id: payout.id }, select: { amount: true } });
+    if (fresh.amount <= 0) return 0;
+    const res = await tx.payout.updateMany({
+      where: { id: payout.id, status: "REQUESTED" },
+      data: { status: "APPROVED", notes },
+    });
+    return res.count > 0 ? fresh.amount : null;
   });
+  if (amount === 0) {
+    return { ok: false, error: "Every commission in this payout was cancelled. Reject it instead." };
+  }
+  if (amount === null) return { ok: false, error: "This payout changed meanwhile. Refresh and try again." };
+  payout.amount = amount;
 
   await notifyAffiliate(
     payout.affiliate.userId,
@@ -483,7 +576,7 @@ export async function approvePayout(input: unknown): Promise<AdminResult> {
 }
 
 export async function rejectPayout(input: unknown): Promise<AdminResult> {
-  await requirePermission("affiliates");
+  const admin = await requirePermission("affiliates");
   const parsed = rejectPayoutSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Please keep the rejection reason under 300 characters." };
 
@@ -493,18 +586,22 @@ export async function rejectPayout(input: unknown): Promise<AdminResult> {
   });
   if (!payout) return { ok: false, error: "Payout not found." };
   if (payout.status === "PAID") return { ok: false, error: "A paid payout can't be rejected." };
+  if (payout.status === "REJECTED") return { ok: false, error: "This payout is already rejected." };
 
-  await prisma.$transaction(async (tx) => {
-    await tx.payout.update({
-      where: { id: payout.id },
-      data: { status: "REJECTED", notes: parsed.data.reason || null },
+  const rejected = await prisma.$transaction(async (tx) => {
+    const res = await tx.payout.updateMany({
+      where: { id: payout.id, status: { in: ["REQUESTED", "APPROVED", "PROCESSING"] } },
+      data: { status: "REJECTED", notes: appendPayoutAudit(payout.notes, admin.email, rejectionAuditText(parsed.data.reason)) },
     });
+    if (res.count === 0) return false;
     // Release the commissions back to the available pool.
     await tx.commission.updateMany({
-      where: { payoutId: payout.id },
+      where: { payoutId: payout.id, status: { not: "PAID" } },
       data: { payoutId: null },
     });
+    return true;
   });
+  if (!rejected) return { ok: false, error: "This payout changed meanwhile. Refresh and try again." };
 
   await notifyAffiliate(
     payout.affiliate.userId,
@@ -535,30 +632,61 @@ export async function rejectPayout(input: unknown): Promise<AdminResult> {
 }
 
 export async function markPayoutPaid(input: unknown): Promise<AdminResult> {
-  await requirePermission("affiliates");
+  const admin = await requirePermission("affiliates");
   const parsed = markPayoutPaidSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid request." };
   const d = parsed.data;
 
   const payout = await prisma.payout.findUnique({
     where: { id: d.payoutId },
-    include: { affiliate: { select: { userId: true, user: { select: { email: true, name: true } } } } },
+    include: { affiliate: { select: { userId: true, status: true, user: { select: { email: true, name: true } } } } },
   });
   if (!payout) return { ok: false, error: "Payout not found." };
   if (payout.status === "PAID") return { ok: false, error: "This payout is already paid." };
+  const hold = holdCheck(payout.affiliate.status, d.overrideReason);
+  if (hold.error) return { ok: false, error: hold.error };
+  if (payout.status !== "APPROVED" && payout.status !== "PROCESSING") {
+    return {
+      ok: false,
+      error:
+        payout.status === "REJECTED"
+          ? "This payout was rejected and its commissions went back to the affiliate's balance."
+          : "Approve this payout before marking it paid.",
+    };
+  }
 
-  await prisma.$transaction(async (tx) => {
-    await tx.payout.update({
-      where: { id: d.payoutId },
-      data: { status: "PAID", method: d.method, reference: d.reference || null, paidAt: new Date() },
+  // Record what was actually transferred: the total is re-derived from the payout's
+  // still-valid commissions, and only those flip to PAID, atomically with the
+  // payout and only once (a double-click matches 0 rows the second time).
+  const paidAmount = await prisma.$transaction(async (tx) => {
+    await syncPayoutAmount(tx, d.payoutId);
+    const fresh = await tx.payout.findUniqueOrThrow({ where: { id: d.payoutId }, select: { amount: true } });
+    if (fresh.amount <= 0) return 0;
+    const now = new Date();
+    const res = await tx.payout.updateMany({
+      where: { id: d.payoutId, status: { in: ["APPROVED", "PROCESSING"] } },
+      data: {
+        status: "PAID",
+        method: d.method,
+        reference: d.reference,
+        paidAt: now,
+        notes: appendPayoutAudit(payout.notes, admin.email, `Marked paid ${formatPrice(fresh.amount)} via ${d.method}, ref ${d.reference}${hold.note}`),
+      },
     });
+    if (res.count === 0) return null;
     await tx.commission.updateMany({
-      where: { payoutId: d.payoutId },
-      data: { status: "PAID", paidAt: new Date() },
+      where: { payoutId: d.payoutId, status: "APPROVED" },
+      data: { status: "PAID", paidAt: now },
     });
+    return fresh.amount;
   });
+  if (paidAmount === 0) {
+    return { ok: false, error: "Every commission in this payout was cancelled. Reject it instead." };
+  }
+  if (paidAmount === null) return { ok: false, error: "This payout changed meanwhile. Refresh and try again." };
+  payout.amount = paidAmount;
 
-  await notifyAffiliate(payout.affiliate.userId, "Payout processed 🏦", `Your payout of ₹${(payout.amount / 100).toFixed(2)} has been processed.`);
+  await notifyAffiliate(payout.affiliate.userId, "Payout processed 🏦", `Your payout of ${formatPrice(payout.amount)} has been sent (reference ${d.reference}).`);
   if (payout.affiliate.user.email) {
     try {
       await sendEmail({
@@ -582,11 +710,23 @@ export async function markPayoutPaid(input: unknown): Promise<AdminResult> {
 
 // --- Marketing kit ------------------------------------------------------------
 
+/** Marketing-kit upload, step 3 (step 2 is the browser's direct upload): check the
+ *  file Cloudinary actually stored; an oversized / disallowed one is deleted. */
+export async function verifyMarketingUpload(url: unknown): Promise<AdminResult> {
+  await requirePermission("affiliates");
+  if (typeof url !== "string" || !url) return { ok: false, error: "Upload failed." };
+  const problem = await verifyStoredUpload(url);
+  return problem ? { ok: false, error: problem } : { ok: true };
+}
+
 export async function saveMarketingAsset(input: unknown): Promise<AdminResult> {
   await requirePermission("affiliates");
   const parsed = marketingAssetSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid asset." };
   const d = parsed.data;
+  // Never trust that step 3 ran: re-verify our own uploads on save.
+  const problem = await verifyStoredUpload(d.fileUrl);
+  if (problem) return { ok: false, error: problem };
   const data = {
     title: d.title,
     description: d.description || null,
@@ -607,7 +747,9 @@ export async function saveMarketingAsset(input: unknown): Promise<AdminResult> {
 
 export async function deleteMarketingAsset(id: string): Promise<AdminResult> {
   await requirePermission("affiliates");
-  await prisma.marketingAsset.delete({ where: { id } });
+  if (typeof id !== "string" || !id) return { ok: false, error: "We couldn't identify that asset." };
+  const res = await prisma.marketingAsset.deleteMany({ where: { id } });
+  if (res.count === 0) return { ok: false, error: "That asset was already removed." };
   revalidatePath("/admin/affiliates/marketing-kit");
   revalidatePath("/account/affiliate");
   return { ok: true };

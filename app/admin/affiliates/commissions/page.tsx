@@ -27,6 +27,7 @@ export default async function AffiliateCommissionsPage({
     matureAt: c.matureAt ? c.matureAt.toISOString() : null,
     createdAt: c.createdAt.toISOString(),
     order: { orderNumber: c.order.orderNumber, status: c.order.status },
+    refundedAfterPayout: c.refundedAfterPayout,
     affiliate: {
       id: c.affiliate.id,
       code: c.affiliate.code,

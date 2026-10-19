@@ -42,7 +42,7 @@ export default async function AdminAffiliatesPage({
     email: a.user.email ?? "",
     role: a.role,
     clicks: a._count.clicks,
-    orders: a._count.orders,
+    orders: a._count.commissions,
     status: a.status,
     createdAt: a.createdAt.toISOString(),
   }));

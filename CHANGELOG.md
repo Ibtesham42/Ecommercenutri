@@ -3,6 +3,55 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [Affiliate program audit] — 2026-10-19
+
+End-to-end audit of registration → attribution → commission → refunds →
+payouts, with a real-DB integration suite (`lib/affiliate/lifecycle.int.test.ts`,
+18 scenarios) + unit tests (`lib/affiliate/rules.test.ts`). No schema change.
+
+### Fixed
+- **Payouts:** a REJECTED (or never-approved) payout could be marked paid —
+  double payment, since rejection had already returned its commissions to the
+  balance. Mark-paid now requires APPROVED/PROCESSING + a transfer reference,
+  re-derives the amount from still-valid commissions and flips only those to PAID.
+- **Payouts:** concurrent payout requests could create two payouts sharing
+  commissions; the amount was computed outside the transaction. Now claim-then-size
+  in one transaction.
+- **Refunds:** refunded returns never touched the commission (partial returns kept
+  full commission; whole-order returns left it pending forever). New
+  `syncCommissionWithRefunds`, called from `processRefund`.
+- **Maturation:** commissions became payable while a return was still open; a
+  concurrent cancel could be flipped back to APPROVED.
+- **Voids:** a commission cancelled inside an open payout stayed in its total.
+- **Attribution:** the admin's "cookie days" setting was ignored (hard-coded 30);
+  now enforced server-side via `nut_ref_at`.
+- **Security:** `/ref/[code]?to=//evil.example` was an open redirect.
+- **Eligibility:** an affiliate suspended between checkout and payment confirmation
+  still earned; payout details could be saved blank (UPI with no UPI ID).
+- **Admin review:** status changes weren't guarded (re-approve, reject an active
+  partner, bulk-suspend pending applicants); approving a returning partner left
+  their coupon deactivated; rejecting left it active.
+- **Dashboards:** abandoned / failed-payment checkouts counted as referred orders and
+  inflated conversion; "revenue" included refunded orders and shipping. All counts now
+  derive from non-cancelled commissions.
+- Apply form silently ignored submit when the terms box was unticked.
+
+### Changed
+- Affiliate dashboard: earnings first (pending / ready / in payout / paid),
+  plain-language commission state per order, live program terms, payout confirm
+  dialog + in-progress state, payout references in history.
+- Admin: payouts filter + approve → mark-paid flow with destination, reference and
+  confirmation; affiliate detail shows payouts and heuristic review flags;
+  commission rows link to their order.
+- Refunds after a commission was paid are flagged ("Refunded after payout" filter +
+  review flag) — never auto-deducted. Suspended affiliates see the earned balance they
+  keep. Commission base/policy documented in `docs/affiliates.md`.
+- Suspension puts an open payout on hold — approve/mark-paid need a recorded override
+  reason; every payout decision is written to an attributed audit trail (`Payout.notes`).
+- **Marketing-kit uploads** now go browser → Cloudinary with a signed, folder- and
+  format-pinned upload, then a server-side size/format check (was proxied through the
+  serverless function, so files over ~4.5 MB failed on Vercel despite a "25 MB" limit).
+
 ## [Storefront de-templating pass] — 2026-10-05 → 2026-10-07
 
 A presentational-only pass to make the storefront read as an editorial

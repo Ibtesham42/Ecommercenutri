@@ -53,12 +53,14 @@ function resolveLineRate(
 type OrderForCommission = {
   subtotal: number;
   discount: number;
-  items: { productId: string | null; price: number; quantity: number }[];
+  items: { id: string; productId: string | null; price: number; quantity: number; discount: number }[];
 };
 
-/** Compute the total commission for an order (Σ per-line rate × line subtotal after
- *  pro-rata discount). PERCENT = % of the line's post-discount value; FIXED = value
- *  per unit. Excludes tax (GST is inclusive) and shipping. */
+/** Compute the total commission for an order (Σ per-line rate × line value after
+ *  discount). PERCENT = % of the line's post-discount value; FIXED = value per unit,
+ *  never more than the line itself. Excludes shipping and COD fees; item prices are
+ *  GST-inclusive, so no tax is added on top. A line-allocated discount (Spin & Win)
+ *  stays on its line; an order-level coupon is spread pro rata. */
 async function computeForOrder(
   order: OrderForCommission,
   affiliate: AffiliateForRate,
@@ -77,24 +79,30 @@ async function computeForOrder(
   });
   const settings = await getAffiliateSettings();
 
+  const lineAllocated = order.items.some((i) => i.discount > 0);
   let amount = 0;
   let base = 0;
-  const meta: Record<string, unknown>[] = [];
+  const meta: CommissionLineMeta[] = [];
   for (const line of order.items) {
     const lineSubtotal = line.price * line.quantity;
-    const lineAfterDiscount =
-      order.subtotal > 0
-        ? lineSubtotal - Math.round(order.discount * (lineSubtotal / order.subtotal))
-        : lineSubtotal;
+    const lineAfterDiscount = Math.max(
+      0,
+      lineAllocated
+        ? lineSubtotal - line.discount
+        : order.subtotal > 0
+          ? lineSubtotal - Math.round(order.discount * (lineSubtotal / order.subtotal))
+          : lineSubtotal,
+    );
     const categoryId = line.productId ? (catMap.get(line.productId) ?? null) : null;
     const rate = resolveLineRate(affiliate, line.productId, categoryId, rules, settings);
     const lineCommission =
       rate.type === "PERCENT"
-        ? Math.round((lineAfterDiscount * rate.value) / 100)
-        : rate.value * line.quantity;
+        ? Math.round((lineAfterDiscount * Math.min(rate.value, 100)) / 100)
+        : Math.min(rate.value * line.quantity, lineAfterDiscount);
     amount += lineCommission;
     base += lineAfterDiscount;
     meta.push({
+      orderItemId: line.id,
       productId: line.productId,
       qty: line.quantity,
       lineAfterDiscount,
@@ -103,7 +111,48 @@ async function computeForOrder(
       lineCommission,
     });
   }
-  return { amount, base, meta: meta as Prisma.InputJsonValue };
+  return { amount, base, meta: meta as unknown as Prisma.InputJsonValue };
+}
+
+/** One line of `Commission.meta` — the per-line math frozen at creation. Older rows
+ *  have no `orderItemId`; they're matched by product. */
+type CommissionLineMeta = {
+  orderItemId?: string;
+  productId: string | null;
+  qty: number;
+  lineAfterDiscount: number;
+  rateType: CommissionType;
+  rateValue: number;
+  lineCommission: number;
+};
+
+function readMeta(meta: Prisma.JsonValue | null): CommissionLineMeta[] | null {
+  if (!Array.isArray(meta)) return null;
+  const lines = meta as unknown as CommissionLineMeta[];
+  return lines.every((l) => l && typeof l.qty === "number" && l.qty > 0 && typeof l.lineCommission === "number")
+    ? lines
+    : null;
+}
+
+type Tx = Pick<typeof prisma, "commission" | "payout">;
+
+/** Open payouts can still change; PAID / REJECTED ones are history. */
+const OPEN_PAYOUT = ["REQUESTED", "APPROVED", "PROCESSING"] as const;
+
+/**
+ * Re-derive an open payout's amount from the APPROVED commissions still attached to
+ * it, so a commission cancelled or reduced after the request is never paid out.
+ * No-op for closed payouts.
+ */
+export async function syncPayoutAmount(tx: Tx, payoutId: string): Promise<void> {
+  const agg = await tx.commission.aggregate({
+    where: { payoutId, status: "APPROVED" },
+    _sum: { amount: true },
+  });
+  await tx.payout.updateMany({
+    where: { id: payoutId, status: { in: [...OPEN_PAYOUT] } },
+    data: { amount: agg._sum.amount ?? 0 },
+  });
 }
 
 /**
@@ -122,7 +171,7 @@ export async function createOrderCommission(orderId: string): Promise<void> {
         couponCode: true,
         subtotal: true,
         discount: true,
-        items: { select: { productId: true, price: true, quantity: true } },
+        items: { select: { id: true, productId: true, price: true, quantity: true, discount: true } },
       },
     });
     if (!order?.affiliateId) return;
@@ -135,9 +184,12 @@ export async function createOrderCommission(orderId: string): Promise<void> {
 
     const affiliate = await prisma.affiliate.findUnique({
       where: { id: order.affiliateId },
-      select: { id: true, userId: true, role: true, commissionType: true, commissionValue: true },
+      select: { id: true, userId: true, status: true, role: true, commissionType: true, commissionValue: true },
     });
     if (!affiliate || affiliate.userId === order.userId) return; // gone or self-referral
+    // Attribution is stamped at checkout; an affiliate suspended before the payment
+    // confirmed doesn't earn on it.
+    if (affiliate.status !== "APPROVED") return;
 
     const { amount, base, meta } = await computeForOrder(order, affiliate);
     if (amount <= 0) return;
@@ -202,12 +254,21 @@ export async function setCommissionMature(orderId: string, deliveredAt: Date): P
   }
 }
 
-/** Void an order's commission when it's cancelled/refunded (unless already PAID). */
+/** Void an order's commission when it's cancelled/refunded (unless already PAID),
+ *  releasing it from any open payout so that payout's total stays honest. */
 export async function voidCommission(orderId: string): Promise<void> {
   try {
-    await prisma.commission.updateMany({
-      where: { orderId, status: { in: ["PENDING", "APPROVED"] } },
-      data: { status: "CANCELLED" },
+    const c = await prisma.commission.findUnique({
+      where: { orderId },
+      select: { id: true, payoutId: true },
+    });
+    if (!c) return;
+    await prisma.$transaction(async (tx) => {
+      const res = await tx.commission.updateMany({
+        where: { id: c.id, status: { in: ["PENDING", "APPROVED"] } },
+        data: { status: "CANCELLED", payoutId: null },
+      });
+      if (res.count > 0 && c.payoutId) await syncPayoutAmount(tx, c.payoutId);
     });
   } catch (err) {
     console.error("[affiliate] voidCommission failed:", err);
@@ -215,9 +276,113 @@ export async function voidCommission(orderId: string): Promise<void> {
 }
 
 /**
+ * Bring an order's commission in line with its refunded returns: each refunded unit
+ * comes off at its line's frozen per-unit commission. Recomputed from the
+ * creation-time `meta` on every call, so it's idempotent across several partial
+ * refunds; a fully refunded order voids the commission. PAID commissions are left
+ * alone — clawing back money already paid out is a manual business decision.
+ */
+export async function syncCommissionWithRefunds(orderId: string): Promise<void> {
+  try {
+    const c = await prisma.commission.findUnique({
+      where: { orderId },
+      select: {
+        id: true,
+        amount: true,
+        base: true,
+        status: true,
+        payoutId: true,
+        meta: true,
+        affiliate: { select: { userId: true } },
+      },
+    });
+    if (!c || c.status === "CANCELLED") return;
+    if (c.status === "PAID") {
+      // Policy: never auto-deduct or go negative. The admin Commissions page lists
+      // these under "Refunded after payout" (REFUNDED_AFTER_PAYOUT) for review.
+      console.warn(`[affiliate] order ${orderId} refunded after commission ${c.id} was paid; flagged for manual review`);
+      return;
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        status: true,
+        items: { select: { id: true, productId: true } },
+        returns: {
+          where: { refundStatus: "COMPLETED" },
+          select: { items: { select: { orderItemId: true, quantity: true } } },
+        },
+      },
+    });
+    if (!order) return;
+    if (order.status === "RETURNED" || order.status === "CANCELLED" || order.status === "REFUNDED") {
+      await voidCommission(orderId);
+      return;
+    }
+    const lines = readMeta(c.meta);
+    if (!lines) {
+      console.warn(`[affiliate] commission ${c.id} has no line breakdown; refund adjustment skipped`);
+      return;
+    }
+
+    // Refunded units per order line, and per product for rows without orderItemId.
+    const productOf = new Map(order.items.map((i) => [i.id, i.productId ?? ""]));
+    const byItem = new Map<string, number>();
+    const byProduct = new Map<string, number>();
+    for (const r of order.returns) {
+      for (const it of r.items) {
+        byItem.set(it.orderItemId, (byItem.get(it.orderItemId) ?? 0) + it.quantity);
+        const pid = productOf.get(it.orderItemId) ?? "";
+        byProduct.set(pid, (byProduct.get(pid) ?? 0) + it.quantity);
+      }
+    }
+
+    let amount = 0;
+    let base = 0;
+    for (const l of lines) {
+      let refunded: number;
+      if (l.orderItemId) {
+        refunded = byItem.get(l.orderItemId) ?? 0;
+      } else {
+        const pid = l.productId ?? "";
+        refunded = Math.min(byProduct.get(pid) ?? 0, l.qty);
+        byProduct.set(pid, (byProduct.get(pid) ?? 0) - refunded);
+      }
+      const kept = Math.max(0, l.qty - refunded);
+      amount += Math.round((l.lineCommission * kept) / l.qty);
+      base += Math.round((l.lineAfterDiscount * kept) / l.qty);
+    }
+
+    if (amount <= 0) {
+      await voidCommission(orderId);
+      return;
+    }
+    if (amount === c.amount && base === c.base) return;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.commission.updateMany({
+        where: { id: c.id, status: { in: ["PENDING", "APPROVED"] } },
+        data: { amount, base },
+      });
+      if (c.payoutId) await syncPayoutAmount(tx, c.payoutId);
+    });
+    await notify(c.affiliate.userId, {
+      type: "AFFILIATE_UPDATE",
+      title: "Commission adjusted",
+      body: `Part of a referred order was returned, so that commission is now ${formatPrice(amount)} (was ${formatPrice(c.amount)}).`,
+      link: "/account/affiliate",
+    });
+  } catch (err) {
+    console.error("[affiliate] syncCommissionWithRefunds failed:", err);
+  }
+}
+
+/**
  * Flip matured PENDING commissions → APPROVED (payable). Idempotent; safe to call on
  * read (dashboard / admin) and from a manual sweep. Returns the count matured. This
- * is the single function a future Vercel Cron would call.
+ * is the single function a future Vercel Cron would call. An order with a return
+ * still in progress is held until the return is resolved.
  */
 export async function matureCommissions(): Promise<number> {
   const now = new Date();
@@ -225,18 +390,23 @@ export async function matureCommissions(): Promise<number> {
     where: {
       status: "PENDING",
       matureAt: { not: null, lte: now },
-      order: { status: "DELIVERED" },
+      order: {
+        status: "DELIVERED",
+        returns: { none: { status: { notIn: ["REFUNDED", "REJECTED", "CANCELLED"] } } },
+      },
     },
     select: { id: true, amount: true, affiliate: { select: { userId: true } } },
   });
-  if (due.length === 0) return 0;
 
-  await prisma.commission.updateMany({
-    where: { id: { in: due.map((d) => d.id) } },
-    data: { status: "APPROVED" },
-  });
-
+  let matured = 0;
   for (const c of due) {
+    // Re-check the status at write time so a concurrent cancel is never undone.
+    const res = await prisma.commission.updateMany({
+      where: { id: c.id, status: "PENDING" },
+      data: { status: "APPROVED" },
+    });
+    if (res.count === 0) continue;
+    matured += 1;
     await notify(c.affiliate.userId, {
       type: "AFFILIATE_UPDATE",
       title: "Commission approved",
@@ -244,7 +414,7 @@ export async function matureCommissions(): Promise<number> {
       link: "/account/affiliate",
     });
   }
-  return due.length;
+  return matured;
 }
 
 export type AffiliateBalances = {

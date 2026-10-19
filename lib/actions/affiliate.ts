@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import type { ZodError } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { applyAffiliateSchema, payoutDetailsSchema } from "@/lib/validations/affiliate";
@@ -9,6 +10,7 @@ import { generateAffiliateCode, generatePayoutNumber } from "@/lib/affiliate/cod
 import { affiliateBalances, matureCommissions } from "@/lib/affiliate/commissions";
 import { getAffiliateSettings } from "@/lib/queries/settings";
 import { formatPrice } from "@/lib/format";
+import { appendPayoutAudit } from "@/lib/affiliate/payout-audit";
 
 export type AffiliateActionResult = { ok: true } | { ok: false; error: string };
 
@@ -85,7 +87,15 @@ export async function applyAffiliate(input: unknown): Promise<AffiliateActionRes
     await prisma.affiliate.update({ where: { id: existing.id }, data: profile });
   } else {
     const code = await generateAffiliateCode(d.displayName || user.email || "aff");
-    await prisma.affiliate.create({ data: { ...profile, userId: user.id, code } });
+    try {
+      await prisma.affiliate.create({ data: { ...profile, userId: user.id, code } });
+    } catch (err) {
+      // A double-submit lost the race to its twin (userId / code are unique).
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        return { ok: false, error: "You already have an affiliate application." };
+      }
+      throw err;
+    }
   }
 
   revalidatePath("/account/affiliate");
@@ -121,6 +131,8 @@ export async function updatePayoutDetails(input: unknown): Promise<AffiliateActi
   return { ok: true };
 }
 
+class PayoutRaceLost extends Error {}
+
 /** Request a payout of the available (approved, unpaid) commission balance. */
 export async function requestPayout(): Promise<AffiliateActionResult> {
   const user = await getCurrentUser();
@@ -128,7 +140,7 @@ export async function requestPayout(): Promise<AffiliateActionResult> {
 
   const aff = await prisma.affiliate.findUnique({
     where: { userId: user.id },
-    select: { id: true, status: true, payoutMethod: true },
+    select: { id: true, code: true, status: true, payoutMethod: true },
   });
   if (!aff || aff.status !== "APPROVED") {
     return { ok: false, error: "Your affiliate account isn't active." };
@@ -136,6 +148,12 @@ export async function requestPayout(): Promise<AffiliateActionResult> {
   if (!aff.payoutMethod) {
     return { ok: false, error: "Add your payout details (UPI / bank) first." };
   }
+
+  const open = await prisma.payout.findFirst({
+    where: { affiliateId: aff.id, status: { in: ["REQUESTED", "APPROVED", "PROCESSING"] } },
+    select: { id: true },
+  });
+  if (open) return { ok: false, error: "You already have a payout request in progress." };
 
   // Sweep matured commissions first so the balance is up to date.
   await matureCommissions();
@@ -149,36 +167,38 @@ export async function requestPayout(): Promise<AffiliateActionResult> {
     };
   }
 
-  const commissions = await prisma.commission.findMany({
-    where: { affiliateId: aff.id, status: "APPROVED", payoutId: null },
-    select: { id: true },
-  });
-  if (commissions.length === 0) {
-    return { ok: false, error: "No approved commissions are available for payout." };
-  }
-
-  // Check there isn't already an open payout request.
-  const open = await prisma.payout.findFirst({
-    where: { affiliateId: aff.id, status: { in: ["REQUESTED", "APPROVED", "PROCESSING"] } },
-    select: { id: true },
-  });
-  if (open) return { ok: false, error: "You already have a payout request in progress." };
-
-  await prisma.$transaction(async (tx) => {
+  // Claim the commissions and size the payout from what was actually claimed, in
+  // one transaction. A concurrent request (double-tap, two tabs) blocks on the row
+  // locks, re-evaluates `payoutId: null`, claims nothing and rolls back — so a
+  // commission can never sit in two payouts, and the amount always matches.
+  const claimed = await prisma.$transaction(async (tx) => {
     const payout = await tx.payout.create({
       data: {
         payoutNumber: generatePayoutNumber(),
         affiliateId: aff.id,
-        amount: balances.available,
+        amount: 0,
         status: "REQUESTED",
         method: aff.payoutMethod,
+        notes: appendPayoutAudit(null, `affiliate ${aff.code}`, "Requested"),
       },
     });
-    await tx.commission.updateMany({
-      where: { id: { in: commissions.map((c) => c.id) } },
+    const res = await tx.commission.updateMany({
+      where: { affiliateId: aff.id, status: "APPROVED", payoutId: null },
       data: { payoutId: payout.id },
     });
+    const sum = await tx.commission.aggregate({
+      where: { payoutId: payout.id },
+      _sum: { amount: true },
+    });
+    const amount = sum._sum.amount ?? 0;
+    if (res.count === 0 || amount < settings.affiliateMinPayout) throw new PayoutRaceLost();
+    await tx.payout.update({ where: { id: payout.id }, data: { amount } });
+    return amount;
+  }).catch((err) => {
+    if (err instanceof PayoutRaceLost) return null;
+    throw err;
   });
+  if (claimed == null) return { ok: false, error: "You already have a payout request in progress." };
 
   revalidatePath("/account/affiliate");
   revalidatePath("/admin/affiliates");
