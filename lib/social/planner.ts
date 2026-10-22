@@ -256,7 +256,7 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
       // ENTIRE planDuePosts() call — silently skipping every OTHER campaign
       // due in the same cron tick, not just this one slot. Now it's confined
       // to this slot: log with full context, count it as skipped, and let the
-      // loop keep going. The cron retries every 30 min, so the slot recovers
+      // loop keep going. The next cron run retries it, so the slot recovers
       // on its own; only the surrounding campaigns should never be blocked by it.
       try {
         const templateGuidance = await pickTemplateGuidance(slot.pillar, rotation);
@@ -281,7 +281,7 @@ export async function planDuePosts(now = new Date()): Promise<PlanReport> {
         );
         if (!gen.ok) {
           // AI_RATE_LIMITED means the model is configured but out of budget. The
-          // slot is deliberately left unplanned: the cron fires every 30 minutes,
+          // slot is deliberately left unplanned: the cron fires again later today,
           // so a later pass will fill it with a REAL post rather than persisting
           // the flat keyless fallback and publishing it as if it were genuine.
           if (gen.error === "AI_RATE_LIMITED") {

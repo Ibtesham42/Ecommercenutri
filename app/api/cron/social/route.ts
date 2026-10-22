@@ -11,7 +11,7 @@ export const maxDuration = 60;
 /**
  * AI Marketing cron: plans the day's due posts from enabled campaigns, then
  * publishes any scheduled posts whose time has arrived. Driven by GitHub Actions
- * (every ~30 min) so it runs with the admin's machine off. Guarded by
+ * (5x/day, IST 08:05/09:05/13:05/18:05/21:05) so it runs with the admin's machine off. Guarded by
  * `CRON_SECRET` (sent as `Authorization: Bearer <secret>`); open in dev only —
  * in production a missing secret refuses the run (see lib/cron-auth.ts).
  */

@@ -8,7 +8,7 @@
 ## What it does
 
 An admin picks products + a schedule and turns automation on. A free scheduler
-(GitHub Actions cron) then, every ~30 min:
+(GitHub Actions cron) then, 5 times a day (IST 08:05, 09:05, 13:05, 18:05, 21:05):
 
 1. **Plans** the day's due slots (morning/evening) into `SocialPost` rows,
    generating unique copy from real product data.
@@ -166,11 +166,14 @@ instead of Cloudinary URL chains:
 - **Endpoint:** `GET|POST /api/cron/social` — runs `planDuePosts` then
   `publishDuePosts`. Guarded by `CRON_SECRET` (`Authorization: Bearer <secret>`);
   open when unset (dev). Mirrors `/api/cron/marketing`.
-- **Trigger:** `.github/workflows/social-cron.yml` — GitHub Actions cron every
-  30 min (Vercel Hobby crons are once/day, so this covers separate morning +
+- **Trigger:** `.github/workflows/social-cron.yml` — GitHub Actions cron 5x/day
+  (Vercel Hobby crons are once/day, so this covers separate morning +
   evening times). Needs repo secrets `SITE_URL` + `CRON_SECRET`. The endpoint is
   idempotent, so drift/extra runs are safe. `cron-job.org` pointed at the same
-  URL is an equivalent alternative.
+  URL is an equivalent alternative. **Keep it sparse:** every run wakes Neon;
+  the old every-30-min schedule kept the DB from scaling to zero and exhausted
+  the free compute quota (homepage 500, 2026-10-22). Times line up with the
+  default 09:00/18:00 slots; a custom campaign time posts at the next run.
 
 ## Admin (`/admin/social`)
 

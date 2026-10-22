@@ -2,7 +2,7 @@ name: AI Marketing social cron
 
 # Free, laptop-independent scheduler for the AI Marketing Automation Hub.
 # Pings the site's social cron endpoint, which plans due posts and publishes any
-# that are scheduled. Runs every 30 minutes; can also be triggered manually.
+# that are scheduled. Runs 5x/day (see schedule); can also be triggered manually.
 #
 # Required repository secrets (Settings → Secrets and variables → Actions):
 #   SITE_URL     e.g. https://nutriyet.in   (no trailing slash)
@@ -13,7 +13,11 @@ name: AI Marketing social cron
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    # 5 runs/day at IST 08:05 (plan), 09:05 + 18:05 (default post times),
+    # 13:05 + 21:05 (retries / custom times). Each run wakes the Neon DB, so
+    # every-30-min pings kept it from ever scaling to zero and exhausted the
+    # free compute-hour quota (site down 2026-10-22). Keep this sparse.
+    - cron: "35 2,3,7,12,15 * * *"
   workflow_dispatch: {}
 
 concurrency:

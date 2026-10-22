@@ -5,13 +5,17 @@ import { Radio, ShoppingCart, PackageCheck, IndianRupee } from "lucide-react";
 import { getLiveSnapshot, type LiveSnapshot } from "@/lib/actions/admin/insights";
 
 const POLL_MS = 45_000;
+// Each poll wakes the Neon DB; a forgotten visible tab must not keep it awake
+// around the clock (compute quota). Polling resumes on the next interaction.
+const IDLE_MS = 10 * 60_000;
 
 type Snap = Extract<LiveSnapshot, { ok: true }>;
 
 /**
  * Real-time strip: live visitors, today's orders/revenue and the latest
  * cart-adds/orders. Polls a guarded server action every 45s, pauses while the
- * tab is hidden, and silently keeps the last snapshot on failures.
+ * tab is hidden or after 10 min without interaction, and silently keeps the
+ * last snapshot on failures.
  */
 export function LiveStrip() {
   const [snap, setSnap] = useState<Snap | null>(null);
@@ -19,7 +23,9 @@ export function LiveStrip() {
 
   useEffect(() => {
     let disposed = false;
+    let lastActive = Date.now();
     const refresh = async () => {
+      if (Date.now() - lastActive > IDLE_MS) return stop();
       const res = await getLiveSnapshot().catch(() => null);
       if (!disposed && res?.ok) setSnap(res);
     };
@@ -34,13 +40,24 @@ export function LiveStrip() {
         timer.current = null;
       }
     };
-    const onVisibility = () => (document.hidden ? stop() : start());
+    const onVisibility = () => {
+      lastActive = Date.now();
+      if (document.hidden) stop();
+      else start();
+    };
+    const onActivity = () => {
+      lastActive = Date.now();
+      if (!document.hidden) start();
+    };
+    const activityEvents = ["pointerdown", "keydown", "scroll"] as const;
     document.addEventListener("visibilitychange", onVisibility);
+    for (const ev of activityEvents) window.addEventListener(ev, onActivity, { passive: true });
     start();
     return () => {
       disposed = true;
       stop();
       document.removeEventListener("visibilitychange", onVisibility);
+      for (const ev of activityEvents) window.removeEventListener(ev, onActivity);
     };
   }, []);
 

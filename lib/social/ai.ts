@@ -482,7 +482,7 @@ Recent hashtags to avoid overusing: ${recentHashtags.length ? recentHashtags.joi
     // configured and merely rate-limited (Groq's daily token budget is 100k and a
     // busy day exhausts it), silently substituting that flat templated copy means
     // a low-quality post gets planned and published as if it were the real thing.
-    // Better to plan nothing: the cron runs every 30 minutes and the budget
+    // Better to plan nothing: the cron runs again within hours and the budget
     // resets, so the slot gets a REAL post on a later pass.
     if (isRateLimit(e)) {
       return { ok: false, error: "AI_RATE_LIMITED" };
