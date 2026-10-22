@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { discountPercent, minVariantPrice } from "@/lib/format";
@@ -161,16 +162,18 @@ export async function getQuickViewProduct(id: string): Promise<QuickViewProductD
   );
 }
 
-export async function getProductBySlug(
-  slug: string,
-): Promise<ProductDetailData | null> {
-  return withDbRetry(() =>
-    prisma.product.findFirst({
-      where: { slug, isActive: true },
-      include: productDetailInclude,
-    }),
-  );
-}
+/** Per-request dedupe only (React `cache`): the PDP's generateMetadata and page
+ *  both call this, which was two identical heavy reads per view. Not a data
+ *  cache — every request still reads live stock and prices. */
+export const getProductBySlug = cache(
+  async (slug: string): Promise<ProductDetailData | null> =>
+    withDbRetry(() =>
+      prisma.product.findFirst({
+        where: { slug, isActive: true },
+        include: productDetailInclude,
+      }),
+    ),
+);
 
 export async function getRelatedProducts(
   productId: string,

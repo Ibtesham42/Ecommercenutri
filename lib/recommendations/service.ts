@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { CACHE_TAGS, cachedQuery } from "@/lib/cache";
 import {
   productCardSelect,
   minVariantPrice,
@@ -41,19 +42,31 @@ async function orderedActiveProducts(
   return out;
 }
 
+/** Rankings are slow-moving aggregates over all orders/events, so only the
+ *  ordered product ids are cached (1h); cards are always re-read live, so
+ *  price, stock and isActive are never stale. */
+const RANKING_TTL_SECONDS = 3600;
+const RANKING_MAX_IDS = 60;
+
+const bestSellerRanking = cachedQuery(
+  async (): Promise<string[]> => {
+    const grouped = await prisma.orderItem.groupBy({
+      by: ["productId"],
+      where: { productId: { not: null }, order: { paymentStatus: "PAID" } },
+      _sum: { quantity: true },
+      orderBy: { _sum: { quantity: "desc" } },
+      take: RANKING_MAX_IDS,
+    });
+    return grouped.map((g) => g.productId).filter((id): id is string => !!id);
+  },
+  "best-seller-ranking",
+  [CACHE_TAGS.home],
+  RANKING_TTL_SECONDS,
+);
+
 /** Best sellers, derived from real paid-order quantities. */
 export async function bestSellers(limit = 8): Promise<ProductCardData[]> {
-  const grouped = await prisma.orderItem.groupBy({
-    by: ["productId"],
-    where: { productId: { not: null }, order: { paymentStatus: "PAID" } },
-    _sum: { quantity: true },
-    orderBy: { _sum: { quantity: "desc" } },
-    take: limit * 3,
-  });
-  const ranked = await orderedActiveProducts(
-    grouped.map((g) => g.productId),
-    limit,
-  );
+  const ranked = await orderedActiveProducts(await bestSellerRanking(), limit);
   if (ranked.length >= limit) return ranked;
 
   // Top up with the flagged best-sellers / featured so the strip is never thin.
@@ -211,6 +224,31 @@ export async function trending(
   opts: { windowDays?: number; limit?: number } = {},
 ): Promise<ProductCardData[]> {
   const { windowDays = 7, limit = 8 } = opts;
+  const products = await orderedActiveProducts(await trendingRanking(windowDays)(), limit);
+  if (products.length >= Math.min(limit, 4)) return products;
+
+  // Cold start: fall back to best sellers.
+  return bestSellers(limit);
+}
+
+const trendingRankings = new Map<number, () => Promise<string[]>>();
+
+/** Cached (see RANKING_TTL_SECONDS) trending product ids for a window. */
+function trendingRanking(windowDays: number): () => Promise<string[]> {
+  let ranker = trendingRankings.get(windowDays);
+  if (!ranker) {
+    ranker = cachedQuery(
+      () => rankTrending(windowDays),
+      `trending-ranking:${windowDays}`,
+      [CACHE_TAGS.home],
+      RANKING_TTL_SECONDS,
+    );
+    trendingRankings.set(windowDays, ranker);
+  }
+  return ranker;
+}
+
+async function rankTrending(windowDays: number): Promise<string[]> {
   const since = new Date(Date.now() - windowDays * 86_400_000);
 
   const [views, orders, wishes] = await Promise.all([
@@ -243,12 +281,10 @@ export async function trending(
   for (const o of orders) add(o.productId, (o._sum.quantity ?? 0) * 4);
   for (const w of wishes) add(w.productId, w._count.productId * 2);
 
-  const ranked = [...score.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
-  const products = await orderedActiveProducts(ranked, limit);
-  if (products.length >= Math.min(limit, 4)) return products;
-
-  // Cold start: fall back to best sellers.
-  return bestSellers(limit);
+  return [...score.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, RANKING_MAX_IDS)
+    .map(([id]) => id);
 }
 
 /**

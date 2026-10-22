@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getInsights } from "@/lib/queries/insights";
+import { getTopSearches } from "@/lib/queries/insights";
 import { bestSellers } from "@/lib/recommendations/service";
 import { getCategories } from "@/lib/queries/catalog";
 import { minVariantPrice } from "@/lib/queries/products";
@@ -16,21 +16,16 @@ export const dynamic = "force-dynamic";
  *     terms are a future backlog item.
  *   - popular:  best-selling products (id/name/slug/image/price/rating).
  *   - categories: active category chips.
- * Escape hatch if getInsights ever gets heavy: replace with a lean
- * `UserEvent` groupBy on SEARCH only.
  */
 export async function GET() {
   try {
-    const [insights, popularProducts, categories] = await Promise.all([
-      getInsights(14).catch(() => null),
+    const [topSearches, popularProducts, categories] = await Promise.all([
+      getTopSearches(14, 8).catch(() => []),
       bestSellers(6).catch(() => []),
       getCategories().catch(() => []),
     ]);
 
-    const trending =
-      insights && insights.topSearches.length > 0
-        ? insights.topSearches.slice(0, 8).map((t) => t.query)
-        : POPULAR_SEARCHES;
+    const trending = topSearches.length > 0 ? topSearches.map((t) => t.query) : POPULAR_SEARCHES;
 
     const popular = popularProducts.map((p) => ({
       id: p.id,

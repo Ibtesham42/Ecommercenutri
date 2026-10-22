@@ -43,12 +43,19 @@ export const CACHE_TTL_SECONDS = 300;
  *   throwing "incrementalCache missing".
  *
  * Results are JSON-serialised: return no `Date`s (they come back as strings).
+ * `revalidateSeconds` lengthens the TTL for slow-moving, untagged aggregates
+ * (e.g. best-seller rankings) — each miss wakes the Neon compute.
  */
-export function cachedQuery<T>(fn: () => Promise<T>, key: string, tags: readonly Tag[]): () => Promise<T> {
+export function cachedQuery<T>(
+  fn: () => Promise<T>,
+  key: string,
+  tags: readonly Tag[],
+  revalidateSeconds: number = CACHE_TTL_SECONDS,
+): () => Promise<T> {
   // Pass `fn` itself, never a wrapper: Next keys the entry on fn.toString(),
   // so a code change to the query yields a new key and a deploy can't serve a
   // stale shape from the (cross-deploy) data cache.
-  const cached = unstable_cache(fn, [key], { tags: [...tags], revalidate: CACHE_TTL_SECONDS });
+  const cached = unstable_cache(fn, [key], { tags: [...tags], revalidate: revalidateSeconds });
   // React cache(): unstable_cache doesn't dedupe concurrent misses, so right
   // after an invalidation every getter in one render would each hit the DB
   // (seen: 12 reads of the settings row in a single request). One per render.

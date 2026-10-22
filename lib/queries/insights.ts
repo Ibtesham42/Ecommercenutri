@@ -58,6 +58,25 @@ async function viewsByType(
     }));
 }
 
+/** Most-searched queries in the window. Exported on its own so the storefront
+ *  search overlay runs this one groupBy, not the whole admin insights batch. */
+export async function getTopSearches(
+  windowDays: number,
+  limit = 8,
+): Promise<{ query: string; count: number }[]> {
+  const since = new Date(Date.now() - windowDays * 86_400_000);
+  const grouped = await prisma.userEvent.groupBy({
+    by: ["query"],
+    where: { type: "SEARCH", query: { not: null }, createdAt: { gte: since } },
+    _count: { query: true },
+    orderBy: { _count: { query: "desc" } },
+    take: limit,
+  });
+  return grouped
+    .filter((g) => g.query)
+    .map((g) => ({ query: g.query!, count: g._count.query }));
+}
+
 export async function getInsights(windowDays = 30): Promise<Insights> {
   const since = new Date(Date.now() - windowDays * 86_400_000);
 
@@ -69,7 +88,7 @@ export async function getInsights(windowDays = 30): Promise<Insights> {
     mostViewed,
     mostCartAdded,
     purchasedGrouped,
-    searchGrouped,
+    topSearches,
     paidOrdersByUser,
     recentOrders,
   ] = await Promise.all([
@@ -86,13 +105,7 @@ export async function getInsights(windowDays = 30): Promise<Insights> {
       orderBy: { _sum: { quantity: "desc" } },
       take: 8,
     }),
-    prisma.userEvent.groupBy({
-      by: ["query"],
-      where: { type: "SEARCH", query: { not: null }, createdAt: { gte: since } },
-      _count: { query: true },
-      orderBy: { _count: { query: "desc" } },
-      take: 8,
-    }),
+    getTopSearches(windowDays, 8),
     prisma.order.groupBy({
       by: ["userId"],
       where: { paymentStatus: "PAID" },
@@ -111,10 +124,6 @@ export async function getInsights(windowDays = 30): Promise<Insights> {
     name: g.productName,
     count: g._sum.quantity ?? 0,
   }));
-
-  const topSearches = searchGrouped
-    .filter((g) => g.query)
-    .map((g) => ({ query: g.query!, count: g._count.query }));
 
   // Frequently-bought-together pairs (co-occurrence within an order), JS-aggregated.
   const pairCounts = new Map<string, FbtPair>();

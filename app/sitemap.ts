@@ -1,10 +1,41 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/prisma";
 import { siteConfig } from "@/config/site";
+import { CACHE_TAGS, cachedQuery } from "@/lib/cache";
 
 // Generated at request time so it always reflects the live catalog and never
 // needs database access during the build.
 export const dynamic = "force-dynamic";
+
+// lastModified as ISO strings: cached results must not contain Dates.
+const toEntries = (rows: { slug: string; updatedAt: Date }[]) =>
+  rows.map((r) => ({ slug: r.slug, updatedAt: r.updatedAt.toISOString() }));
+
+/** Crawlers refetch the sitemap often and every uncached fetch woke the
+ *  database. Product/Category writes invalidate this immediately (home /
+ *  categories tags); a newly published blog post appears within the hour. */
+const getSitemapEntries = cachedQuery(
+  async () => {
+    const [products, categories, posts] = await Promise.all([
+      prisma.product.findMany({
+        where: { isActive: true },
+        select: { slug: true, updatedAt: true },
+      }),
+      prisma.category.findMany({
+        where: { isActive: true },
+        select: { slug: true, updatedAt: true },
+      }),
+      prisma.blogPost.findMany({
+        where: { isPublished: true, publishedAt: { lte: new Date() } },
+        select: { slug: true, updatedAt: true },
+      }),
+    ]);
+    return { products: toEntries(products), categories: toEntries(categories), posts: toEntries(posts) };
+  },
+  "sitemap-entries",
+  [CACHE_TAGS.home, CACHE_TAGS.categories],
+  3600,
+);
 
 /** Dynamic sitemap: static pages + all active products and categories. */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -37,20 +68,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   try {
-    const [products, categories, posts] = await Promise.all([
-      prisma.product.findMany({
-        where: { isActive: true },
-        select: { slug: true, updatedAt: true },
-      }),
-      prisma.category.findMany({
-        where: { isActive: true },
-        select: { slug: true, updatedAt: true },
-      }),
-      prisma.blogPost.findMany({
-        where: { isPublished: true, publishedAt: { lte: new Date() } },
-        select: { slug: true, updatedAt: true },
-      }),
-    ]);
+    const { products, categories, posts } = await getSitemapEntries();
 
     const productRoutes: MetadataRoute.Sitemap = products.map((p) => ({
       url: `${base}/products/${p.slug}`,
