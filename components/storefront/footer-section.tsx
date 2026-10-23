@@ -43,7 +43,7 @@ export function FooterSection({
         </button>
         <span className="max-md:hidden">{title}</span>
       </h3>
-      <div id={panelId} className={cn("md:mt-4 md:block", open ? "pb-5" : "max-md:hidden")}>
+      <div id={panelId} className={cn("md:mt-4 md:block", open ? "pb-3" : "max-md:hidden")}>
         {children}
       </div>
     </div>

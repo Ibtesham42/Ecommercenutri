@@ -41,7 +41,7 @@ export function NewsletterForm({
     return (
       <div
         className={cn(
-          "flex h-12 w-full max-w-md items-center gap-2.5 rounded-xl border px-4 text-sm font-medium motion-safe:animate-fade-in",
+          "flex min-h-12 w-full max-w-md items-center gap-2.5 rounded-xl border px-4 py-3 text-sm font-medium motion-safe:animate-fade-in",
           light
             ? "border-primary/20 bg-sage text-sage-foreground"
             : "border-gold/40 bg-gold/10 text-surface-deep-foreground",
@@ -58,7 +58,15 @@ export function NewsletterForm({
   const inputId = `newsletter-${source}`;
 
   return (
-    <form onSubmit={onSubmit} className="flex w-full max-w-md items-center gap-2">
+    <form
+      onSubmit={onSubmit}
+      // On the light card, phones stack the field over a full-width button so the
+      // input never gets squeezed to a clipped placeholder.
+      className={cn(
+        "flex w-full max-w-md items-center gap-2",
+        light && "max-sm:max-w-none max-sm:flex-col max-sm:items-stretch",
+      )}
+    >
       <label htmlFor={inputId} className="sr-only">
         Email address
       </label>
@@ -88,7 +96,7 @@ export function NewsletterForm({
         type="submit"
         disabled={state === "busy"}
         className={cn(
-          "inline-flex h-12 shrink-0 items-center gap-2 rounded-xl px-5 text-sm max-sm:px-4 font-bold transition-transform motion-safe:active:scale-95 disabled:opacity-70",
+          "inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold transition-transform motion-safe:active:scale-95 disabled:opacity-70",
           light
             ? "bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             : "bg-gold text-gold-foreground hover:brightness-105",
@@ -98,7 +106,7 @@ export function NewsletterForm({
         {state === "busy" ? (
           <Loader2 className="size-4 animate-spin" />
         ) : (
-          <Send className={cn("size-4", light && "max-sm:hidden")} />
+          <Send className="size-4" />
         )}
       </button>
     </form>

@@ -64,26 +64,27 @@ const legalLinks = [
 // Mirrors the methods the checkout advertises for Razorpay — keep in sync.
 const paymentMethods = ["UPI", "Cards", "Net banking", "Wallets"];
 
+// Below md the links sit in accordions — `block py-2.5` gives each a ~40px tap row.
 const linkClass =
-  "rounded-sm text-[14px] text-surface-deep-foreground/70 transition-colors hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold/60";
+  "rounded-sm text-[14px] max-md:block max-md:py-2.5 text-surface-deep-foreground/70 transition-colors hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold/60";
 
 const socialClass =
-  "grid size-10 place-items-center rounded-full border border-surface-deep-foreground/20 text-surface-deep-foreground/80 transition-colors hover:border-gold/60 hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold/60";
+  "grid size-11 place-items-center md:size-10 rounded-full border border-surface-deep-foreground/20 text-surface-deep-foreground/80 transition-colors hover:border-gold/60 hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold/60";
 
 export async function SiteFooter() {
   const store = await getStoreSettings();
   return (
     <footer className="mt-12" data-heat="footer">
       {/* Newsletter card — overlaps the top edge of the green chrome by a fixed
-          4rem (the green block's -mt-16), so the seam lands mid-card on
-          desktop and near the bottom of the taller stacked card on phones. */}
+          4rem (the green block's -mt-16; 2.5rem on phones), so the seam lands
+          mid-card on desktop and under the stacked form on phones. */}
       <div className="shop-container relative z-10">
         <div className="grid items-center gap-5 rounded-2xl border border-border bg-oat px-5 py-6 shadow-elev-2 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-10 lg:px-10 lg:py-8">
           <div className="flex items-start gap-5">
             <Leaf
               aria-hidden
               strokeWidth={1.5}
-              className="mt-1 hidden size-10 shrink-0 text-primary sm:block"
+              className="mt-1 hidden size-10 shrink-0 text-primary lg:block"
             />
             <div>
               <h3 className="font-heading text-2xl leading-tight font-medium tracking-tight text-foreground sm:text-[1.75rem]">
@@ -103,10 +104,10 @@ export async function SiteFooter() {
 
       {/* Below md a fixed bar (tab bar, or the PDP/cart/checkout sticky bar) covers the
           bottom of the viewport; the padding keeps the last footer lines clear of it. */}
-      <div className="surface-rich -mt-16 pt-16 text-surface-deep-foreground max-md:pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
-        <div className="shop-container grid gap-x-10 pt-12 pb-4 md:grid-cols-4 md:gap-y-12 md:pb-12 lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,0.8fr))_minmax(0,1.1fr)] lg:pt-14">
+      <div className="surface-rich -mt-10 pt-10 sm:-mt-16 sm:pt-16 text-surface-deep-foreground max-md:pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
+        <div className="shop-container grid gap-x-10 pt-12 md:grid-cols-3 md:gap-y-12 md:pb-12 lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,0.8fr))_minmax(0,1.1fr)] lg:pt-14">
           {/* Brand */}
-          <div className="space-y-5 pb-8 md:col-span-4 md:pb-0 lg:col-span-1">
+          <div className="space-y-5 pb-8 md:col-span-3 md:pb-0 lg:col-span-1">
             <Logo
               logoUrl={store.logo}
               name={store.siteName}
@@ -148,7 +149,7 @@ export async function SiteFooter() {
                   : undefined
               }
             >
-              <ul className="space-y-2.5 max-md:space-y-3">
+              <ul className="space-y-2.5 max-md:-mt-1 max-md:space-y-0">
                 {col.links.map((link) => (
                   <li key={link.href}>
                     <Link href={link.href} className={linkClass}>
@@ -160,27 +161,33 @@ export async function SiteFooter() {
             </FooterSection>
           ))}
 
-          <FooterSection title="Our promise" className="lg:border-l lg:border-white/10 lg:pl-10">
-            <ul className="space-y-3.5">
+          {/* Trust promises stay visible on phones (a 2×2 badge grid rather than
+              a fourth accordion); at md they span the row under the link columns. */}
+          <div className="py-8 md:col-span-3 md:border-t md:border-white/10 md:pt-10 md:pb-0 lg:col-span-1 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-10">
+            <h3 className="text-[15px] font-semibold text-surface-deep-foreground">Our promise</h3>
+            <ul className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-6 lg:grid-cols-1 lg:gap-3.5">
               {trustItems.map((t) => (
-                <li key={t.label} className="flex items-center gap-3.5">
-                  <span className="grid size-10 shrink-0 place-items-center rounded-full border border-gold/45 text-gold">
-                    <t.icon className="size-[18px]" strokeWidth={1.6} aria-hidden />
+                <li
+                  key={t.label}
+                  className="flex items-center gap-2.5 max-md:rounded-xl max-md:border max-md:border-white/10 max-md:bg-white/[0.03] max-md:p-3 md:gap-3.5"
+                >
+                  <span className="grid size-9 shrink-0 place-items-center rounded-full border border-gold/45 text-gold md:size-10">
+                    <t.icon className="size-4 md:size-[18px]" strokeWidth={1.6} aria-hidden />
                   </span>
-                  <span className="text-[14px] font-medium">{t.label}</span>
+                  <span className="text-[13px] leading-snug font-medium md:text-[14px]">{t.label}</span>
                 </li>
               ))}
             </ul>
-          </FooterSection>
+          </div>
         </div>
 
         {/* Contact + accepted payments */}
         <div className="shop-container">
-          <div className="flex flex-col gap-5 border-t border-white/10 py-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-4 border-t border-white/10 py-6 md:flex-row md:items-center md:justify-between">
             {store.supportEmail && (
               <a
                 href={`mailto:${store.supportEmail}`}
-                className="inline-flex items-center gap-2.5 self-start rounded-sm text-[14px] text-surface-deep-foreground/80 transition-colors hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold/60"
+                className="inline-flex min-h-10 items-center gap-2.5 self-start rounded-sm text-[14px] text-surface-deep-foreground/80 transition-colors hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold/60"
               >
                 <Mail className="size-4 text-gold" strokeWidth={1.75} aria-hidden />
                 {store.supportEmail}
@@ -207,18 +214,18 @@ export async function SiteFooter() {
 
         {/* Bottom bar */}
         <div className="border-t border-white/10">
-          <div className="shop-container flex flex-col items-center gap-3 py-5 text-[13px] text-surface-deep-foreground/60 lg:flex-row lg:justify-between">
+          <div className="shop-container flex flex-col items-start gap-3 py-5 text-[13px] text-surface-deep-foreground/60 lg:flex-row lg:items-center lg:justify-between">
             <p>
               © {new Date().getFullYear()} {store.siteName}. All rights reserved.
             </p>
             <nav aria-label="Legal">
-              <ul className="grid grid-cols-2 gap-x-8 gap-y-2 text-center lg:flex lg:items-center lg:gap-0">
+              <ul className="grid grid-cols-2 gap-x-6 sm:flex sm:flex-wrap sm:items-center lg:gap-x-0">
                 {legalLinks.map((link) => (
                   <li
                     key={link.href}
                     className="lg:not-last:after:mx-3 lg:not-last:after:text-surface-deep-foreground/25 lg:not-last:after:content-['|']"
                   >
-                    <Link href={link.href} className="rounded-sm transition-colors hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold/60">
+                    <Link href={link.href} className="inline-flex min-h-10 items-center rounded-sm transition-colors lg:min-h-0 hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold/60">
                       {link.label}
                     </Link>
                   </li>
