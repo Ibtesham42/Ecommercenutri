@@ -3,6 +3,7 @@ import { Truck, ShieldCheck, Leaf, RotateCcw, Lock, Mail } from "lucide-react";
 import { Logo } from "@/components/storefront/logo";
 import { NewsletterForm } from "@/components/storefront/newsletter-form";
 import { FooterSection } from "@/components/storefront/footer-section";
+import { PaymentMarks } from "@/components/storefront/payment-marks";
 import {
   InstagramIcon,
   FacebookIcon,
@@ -61,9 +62,6 @@ const legalLinks = [
   { label: "Disclaimer", href: "/disclaimer" },
 ];
 
-// Mirrors the methods the checkout advertises for Razorpay — keep in sync.
-const paymentMethods = ["UPI", "Cards", "Net banking", "Wallets"];
-
 // Below md the links sit in accordions — `block py-2.5` gives each a ~40px tap row.
 const linkClass =
   "rounded-sm text-[14px] max-md:block max-md:py-2.5 text-surface-deep-foreground/70 transition-colors hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold/60";
@@ -74,10 +72,11 @@ const socialClass =
 export async function SiteFooter() {
   const store = await getStoreSettings();
   return (
-    <footer className="mt-12" data-heat="footer">
-      {/* Newsletter card — overlaps the top edge of the green chrome by a fixed
-          4rem (the green block's -mt-16; 2.5rem on phones), so the seam lands
-          mid-card on desktop and under the stacked form on phones. */}
+    <footer className="mt-12 max-sm:mt-10 max-sm:bg-surface-deep max-sm:pt-8" data-heat="footer">
+      {/* Newsletter card — from sm it overlaps the top edge of the green chrome
+          by a fixed 4rem (the green block's -mt-16) so the seam lands mid-card.
+          The stacked phone card is too tall for a clean seam, so there it sits
+          wholly inside the green (the footer itself takes the fill). */}
       <div className="shop-container relative z-10">
         <div className="grid items-center gap-5 rounded-2xl border border-border bg-oat px-5 py-6 shadow-elev-2 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-10 lg:px-10 lg:py-8">
           <div className="flex items-start gap-5">
@@ -104,7 +103,7 @@ export async function SiteFooter() {
 
       {/* Below md a fixed bar (tab bar, or the PDP/cart/checkout sticky bar) covers the
           bottom of the viewport; the padding keeps the last footer lines clear of it. */}
-      <div className="surface-rich -mt-10 pt-10 sm:-mt-16 sm:pt-16 text-surface-deep-foreground max-md:pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
+      <div className="surface-rich sm:-mt-16 sm:pt-16 text-surface-deep-foreground max-md:pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
         <div className="shop-container grid gap-x-10 pt-12 md:grid-cols-3 md:gap-y-12 md:pb-12 lg:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,0.8fr))_minmax(0,1.1fr)] lg:pt-14">
           {/* Brand */}
           <div className="space-y-5 pb-8 md:col-span-3 md:pb-0 lg:col-span-1">
@@ -193,21 +192,12 @@ export async function SiteFooter() {
                 {store.supportEmail}
               </a>
             )}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+            <div className="flex flex-col gap-3 md:items-end">
               <span className="inline-flex items-center gap-2 text-[13px] font-medium text-surface-deep-foreground/80">
                 <Lock className="size-4 text-gold" strokeWidth={1.75} aria-hidden />
                 Pay securely via Razorpay
               </span>
-              <ul
-                aria-label="Accepted payment methods"
-                className="flex items-center divide-x divide-surface-deep/15 rounded-lg bg-surface-deep-foreground px-1 py-1.5"
-              >
-                {paymentMethods.map((m) => (
-                  <li key={m} className="px-2.5 text-[12px] font-semibold text-surface-deep">
-                    {m}
-                  </li>
-                ))}
-              </ul>
+              <PaymentMarks />
             </div>
           </div>
         </div>
