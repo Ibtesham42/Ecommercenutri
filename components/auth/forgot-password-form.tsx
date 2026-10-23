@@ -1,40 +1,40 @@
 "use client";
 
-import { useActionState } from "react";
-import { Mail } from "lucide-react";
+import { useActionState, useState } from "react";
 import {
   requestPasswordResetAction,
   type AuthActionState,
 } from "@/lib/actions/auth";
-import { Label } from "@/components/ui/label";
-import { AuthInput, AuthAlert } from "@/components/auth/auth-input";
-import { SubmitButton } from "@/components/auth/submit-button";
+import { AuthAlert } from "@/components/auth/auth-input";
+import { AuthField, AuthSubmit } from "@/components/auth/auth-field";
 
 export function ForgotPasswordForm() {
   const [state, action] = useActionState<AuthActionState, FormData>(
     requestPasswordResetAction,
     undefined,
   );
+  // Controlled: React resets uncontrolled fields after a form action.
+  const [email, setEmail] = useState("");
 
   return (
-    <form action={action} className="space-y-4 max-sm:space-y-5">
+    <form action={action} className="space-y-5">
       {state?.error && <AuthAlert kind="error">{state.error}</AuthAlert>}
       {state?.success && <AuthAlert kind="success">{state.success}</AuthAlert>}
 
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <AuthInput
-          id="email"
-          name="email"
-          type="email"
-          icon={Mail}
-          autoComplete="email"
-          placeholder="you@example.com"
-          required
-        />
-      </div>
+      <AuthField
+        id="email"
+        name="email"
+        type="email"
+        label="Email"
+        autoComplete="email"
+        placeholder="you@example.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        invalid={Boolean(state?.error)}
+        required
+      />
 
-      <SubmitButton>Send reset link</SubmitButton>
+      <AuthSubmit pendingLabel="Sending link…">Send reset link</AuthSubmit>
     </form>
   );
 }

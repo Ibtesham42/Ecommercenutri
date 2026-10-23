@@ -42,8 +42,8 @@ export function AuthInput({
 }
 
 /**
- * Error/success message for the auth forms. Desktop keeps the existing plain
- * styling; mobile gets an icon, a softer card shape and a gentle entrance.
+ * Error/success message for the auth forms (also used by the quiz sign-up).
+ * Announced to screen readers: errors assertively, successes politely.
  */
 export function AuthAlert({
   kind,
@@ -55,13 +55,15 @@ export function AuthAlert({
   const Icon = kind === "error" ? AlertCircle : CheckCircle2;
   return (
     <p
+      role={kind === "error" ? "alert" : "status"}
       className={cn(
-        "rounded-md px-3 py-2 text-sm",
-        "max-sm:flex max-sm:animate-fade-up max-sm:items-start max-sm:gap-2 max-sm:rounded-xl max-sm:px-3.5 max-sm:py-3",
-        kind === "error" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary",
+        "flex animate-fade-up items-start gap-2.5 rounded-lg border px-3.5 py-3 text-sm leading-snug",
+        kind === "error"
+          ? "border-destructive/20 bg-destructive/[0.06] text-destructive"
+          : "border-primary/15 bg-sage text-sage-foreground",
       )}
     >
-      <Icon aria-hidden className="mt-0.5 size-4 shrink-0 sm:hidden" />
+      <Icon aria-hidden className="mt-px size-4 shrink-0" />
       <span>{children}</span>
     </p>
   );

@@ -1,29 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import Link from "next/link";
 import { toast } from "sonner";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Loader2,
-  Mail,
-  MessageSquareText,
-  ShieldCheck,
-} from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { ArrowLeft, Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoginForm } from "@/components/auth/login-form";
 import { GoogleButton } from "@/components/auth/google-button";
 import { OtpInput } from "@/components/auth/otp-input";
 import { AuthAlert } from "@/components/auth/auth-input";
+import {
+  AuthDivider,
+  AuthHeader,
+  AuthLegal,
+  AuthSwitch,
+  authLinkClass,
+  authPrimaryClass,
+  authSecondaryClass,
+} from "@/components/auth/auth-header";
 import { requestOtpAction, phoneOtpLoginAction } from "@/lib/actions/phone-auth";
 import { cn } from "@/lib/utils";
 
@@ -97,76 +90,71 @@ export function AuthShell({
     ? `+91 ${phone.slice(3, 8)} ${phone.slice(8)}`
     : "";
 
+  const registerHref =
+    callbackUrl === "/account" ? "/register" : `/register?callbackUrl=${encodeURIComponent(callbackUrl)}`;
+
   return (
-    <Card className="animate-fade-up overflow-hidden rounded-3xl shadow-elev-2 ring-foreground/5 max-sm:[--card-spacing:--spacing(6)]">
+    <div>
       {/* ---------------------------------------------------------- phone -- */}
       {view === "phone" && (
         <div key="phone" className="animate-fade-up">
-          <CardHeader className="text-center">
-            <CardTitle className="font-heading text-3xl tracking-tight">
-              Welcome to Nutriyet
-            </CardTitle>
-            <CardDescription className="text-[15px] leading-relaxed">
-              Log in or sign up in seconds — your healthy snacks are waiting.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <AuthHeader
+            title="Sign in or create an account"
+            description="Enter your mobile number and we'll text you a one-time code. No password to remember."
+          />
+          <div className="space-y-5">
             {error && <AuthAlert kind="error">{error}</AuthAlert>}
 
-            <div
-              className={cn(
-                "flex h-13 items-center overflow-hidden rounded-xl border bg-background shadow-elev-1 transition-all",
-                "focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/25",
-              )}
-            >
-              <label
-                htmlFor="login-phone"
-                className="grid h-full shrink-0 place-items-center border-r bg-secondary/50 px-3.5 text-[15px] font-semibold text-foreground/80"
-              >
-                +91
+            <div className="space-y-2">
+              <label htmlFor="login-phone" className="text-[13px] font-medium text-foreground/85">
+                Mobile number
               </label>
-              <input
-                ref={phoneInputRef}
-                id="login-phone"
-                type="tel"
-                inputMode="numeric"
-                autoComplete="tel-national"
-                placeholder="10-digit mobile number"
-                value={rawPhone}
-                onChange={(e) => setRawPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && rawPhone.length === 10) sendCode();
-                }}
-                className="h-full w-full min-w-0 flex-1 bg-transparent px-3.5 text-base font-medium tracking-wide outline-none placeholder:font-normal placeholder:text-muted-foreground/70"
-              />
+              <div
+                className={cn(
+                  "flex h-12 items-center overflow-hidden rounded-lg border border-input bg-card transition-[border-color,box-shadow]",
+                  "hover:border-foreground/25 focus-within:border-primary focus-within:ring-3 focus-within:ring-primary/15",
+                  error && "border-destructive focus-within:border-destructive focus-within:ring-destructive/15",
+                )}
+              >
+                <span
+                  aria-hidden
+                  className="grid h-full shrink-0 place-items-center border-r border-input bg-oat/60 px-3.5 text-[15px] font-medium text-foreground/75"
+                >
+                  +91
+                </span>
+                <input
+                  ref={phoneInputRef}
+                  id="login-phone"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  placeholder="10-digit number"
+                  aria-describedby="login-phone-hint"
+                  aria-invalid={error ? true : undefined}
+                  value={rawPhone}
+                  onChange={(e) => setRawPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && rawPhone.length === 10) sendCode();
+                  }}
+                  className="h-full w-full min-w-0 flex-1 bg-transparent px-3.5 text-[15px] tracking-wide outline-none placeholder:tracking-normal placeholder:text-muted-foreground/65"
+                />
+              </div>
+              <p id="login-phone-hint" className="text-[13px] text-muted-foreground">
+                Indian (+91) mobile numbers. New here? We&apos;ll set up your account.
+              </p>
             </div>
 
             <Button
               onClick={() => sendCode()}
               disabled={rawPhone.length !== 10 || pending}
-              className="btn-rich h-12 w-full gap-2 text-[15px] font-semibold shadow-elev-2"
+              aria-busy={pending}
+              className={authPrimaryClass}
             >
-              {pending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <MessageSquareText className="size-4" />
-              )}
-              Continue
+              {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
+              {pending ? "Sending code…" : "Continue"}
             </Button>
 
-            <p className="text-center text-xs text-balance text-muted-foreground">
-              <ShieldCheck className="mr-1.5 inline size-3.5 -translate-y-px text-primary" aria-hidden />
-              We&apos;ll text you a one-time code — no password needed.
-            </p>
-
-            <div className="relative py-1">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">or</span>
-              </div>
-            </div>
+            <AuthDivider />
 
             <Button
               onClick={() => {
@@ -174,52 +162,43 @@ export function AuthShell({
                 setView("email");
               }}
               variant="outline"
-              className="btn-rich h-12 w-full gap-2 rounded-xl bg-background text-[15px] font-medium shadow-elev-1"
+              className={authSecondaryClass}
             >
-              <Mail className="size-4" /> Continue with Email
+              <Mail className="size-[18px]" aria-hidden /> Continue with email
             </Button>
-          </CardContent>
-          <CardFooter>
-            <p className="w-full text-center text-xs leading-relaxed text-muted-foreground">
-              By continuing you agree to our{" "}
-              <Link href="/terms" className="underline underline-offset-2 hover:text-foreground">
-                Terms
-              </Link>{" "}
-              &amp;{" "}
-              <Link href="/privacy" className="underline underline-offset-2 hover:text-foreground">
-                Privacy Policy
-              </Link>
-              .
-            </p>
-          </CardFooter>
+          </div>
+          <div className="mt-8">
+            <AuthLegal />
+          </div>
         </div>
       )}
 
       {/* ------------------------------------------------------------ otp -- */}
       {view === "otp" && (
         <div key="otp" className="animate-fade-up">
-          <CardHeader>
-            <button
-              type="button"
-              onClick={() => {
-                setError(null);
-                setCode("");
-                setView("phone");
-                // Let the phone view mount, then put the caret back.
-                setTimeout(() => phoneInputRef.current?.focus(), 0);
-              }}
-              className="inline-flex items-center gap-1.5 self-start py-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <ArrowLeft className="size-4" /> Change number
-            </button>
-            <CardTitle className="mt-1 font-heading text-2xl tracking-tight">
-              Enter the code
-            </CardTitle>
-            <CardDescription className="text-[15px]">
-              Sent by SMS to <span className="font-semibold text-foreground">{prettyPhone}</span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <AuthHeader
+            back={
+              <BackButton
+                onClick={() => {
+                  setError(null);
+                  setCode("");
+                  setView("phone");
+                  // Let the phone view mount, then put the caret back.
+                  setTimeout(() => phoneInputRef.current?.focus(), 0);
+                }}
+              >
+                Change number
+              </BackButton>
+            }
+            title="Enter your code"
+            description={
+              <>
+                We sent a 6-digit code to{" "}
+                <span className="font-medium whitespace-nowrap text-foreground">{prettyPhone}</span>.
+              </>
+            }
+          />
+          <div className="space-y-5">
             {error && <AuthAlert kind="error">{error}</AuthAlert>}
 
             <OtpInput
@@ -233,85 +212,79 @@ export function AuthShell({
               error={Boolean(error)}
             />
 
-            {pending && (
-              <p className="flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground">
-                <Loader2 className="size-4 animate-spin text-primary" /> Verifying…
-              </p>
-            )}
-
-            <div className="text-center text-sm text-muted-foreground">
-              {seconds > 0 ? (
-                <>
+            <div className="flex min-h-9 items-center justify-center text-sm text-muted-foreground" aria-live="polite">
+              {pending ? (
+                <span className="flex items-center gap-2 font-medium">
+                  <Loader2 className="size-4 animate-spin text-primary" aria-hidden /> Verifying…
+                </span>
+              ) : seconds > 0 ? (
+                <span>
                   Resend code in{" "}
-                  <span className="font-semibold tabular-nums text-foreground">
+                  <span className="font-medium tabular-nums text-foreground">
                     0:{String(seconds).padStart(2, "0")}
                   </span>
-                </>
+                </span>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => sendCode(true)}
-                  disabled={pending}
-                  className="py-1.5 font-semibold text-primary transition-colors hover:text-primary/80"
-                >
-                  Resend code
-                </button>
+                <span>
+                  Didn&apos;t get it?{" "}
+                  <button
+                    type="button"
+                    onClick={() => sendCode(true)}
+                    disabled={pending}
+                    className={cn(authLinkClass, "py-1.5")}
+                  >
+                    Resend code
+                  </button>
+                </span>
               )}
             </div>
-          </CardContent>
+          </div>
         </div>
       )}
 
       {/* ---------------------------------------------------------- email -- */}
       {view === "email" && (
         <div key="email" className="animate-fade-up">
-          <CardHeader className="text-center">
-            {phoneEnabled && (
-              <button
-                type="button"
-                onClick={() => {
-                  setError(null);
-                  setView("phone");
-                }}
-                className="inline-flex items-center gap-1.5 self-start py-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <ArrowLeft className="size-4" /> Sign in with mobile number
-              </button>
-            )}
-            <CardTitle className={cn("font-heading text-3xl tracking-tight", phoneEnabled && "mt-1")}>
-              {phoneEnabled ? "Continue with email" : "Welcome back"}
-            </CardTitle>
-            <CardDescription className="text-[15px]">
-              Sign in to continue your healthy journey 🌿
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <AuthHeader
+            back={
+              phoneEnabled ? (
+                <BackButton
+                  onClick={() => {
+                    setError(null);
+                    setView("phone");
+                  }}
+                >
+                  Use mobile number
+                </BackButton>
+              ) : undefined
+            }
+            title="Welcome back"
+            description="Sign in to track orders, reorder favourites and check out faster."
+          />
+          <div className="space-y-5">
             {googleEnabled && (
               <>
-                <GoogleButton callbackUrl={callbackUrl} />
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">or</span>
-                  </div>
-                </div>
+                <GoogleButton callbackUrl={callbackUrl} className={authSecondaryClass} />
+                <AuthDivider label="or with email" />
               </>
             )}
             <LoginForm callbackUrl={callbackUrl} />
-          </CardContent>
-          <CardFooter className="flex-col gap-2.5 text-sm text-muted-foreground">
-            <span>Don&apos;t have an account?</span>
-            <Link
-              href={callbackUrl === "/account" ? "/register" : `/register?callbackUrl=${encodeURIComponent(callbackUrl)}`}
-              className="btn-rich btn-rich-gold inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-gold/40 bg-gold/10 text-base font-semibold text-gold-foreground shadow-elev-1 transition hover:bg-gold/20 focus-visible:bg-gold/20 dark:text-gold"
-            >
-              Sign Up <ArrowRight className="size-4" />
-            </Link>
-          </CardFooter>
+          </div>
+          <AuthSwitch prompt="New to Nutriyet?" href={registerHref} label="Create an account" />
         </div>
       )}
-    </Card>
+    </div>
+  );
+}
+
+function BackButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="-ml-1 inline-flex items-center gap-1.5 rounded-md px-1 py-1.5 text-sm text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+    >
+      <ArrowLeft className="size-4" aria-hidden /> {children}
+    </button>
   );
 }

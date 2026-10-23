@@ -31,7 +31,13 @@ function GoogleIcon() {
  * fingerprint via passkeys) slot in as sibling buttons in the same form area —
  * keep each provider its own component like this one.
  */
-export function GoogleButton({ callbackUrl }: { callbackUrl?: string }) {
+export function GoogleButton({
+  callbackUrl,
+  className,
+}: {
+  callbackUrl?: string;
+  className?: string;
+}) {
   return (
     <form action={googleSignInAction.bind(null, callbackUrl)}>
       <Button
@@ -39,7 +45,12 @@ export function GoogleButton({ callbackUrl }: { callbackUrl?: string }) {
         variant="outline"
         // Google-guideline surface: neutral background, subtle border, the
         // official "G", roomy tap target — matched to the premium auth CTAs.
-        className="btn-rich h-11 w-full gap-2.5 rounded-xl bg-background text-[15px] font-medium shadow-elev-1 max-sm:h-12 [&_svg]:size-5"
+        // `className` replaces (not merges) the default look: `.btn-rich`'s
+        // hover lift is unlayered CSS that no utility can switch off.
+        className={
+          className ??
+          "btn-rich h-11 w-full gap-2.5 rounded-xl bg-background text-[15px] font-medium shadow-elev-1 max-sm:h-12 [&_svg]:size-5"
+        }
       >
         <GoogleIcon />
         Continue with Google

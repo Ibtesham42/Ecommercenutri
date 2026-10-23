@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** 0–4: length, extra length, case mix, digits, symbols. */
@@ -17,54 +18,63 @@ export function scorePassword(pw: string): number {
 const LEVELS = [
   { label: "Too short", bar: "bg-destructive/70", text: "text-destructive" },
   { label: "Weak", bar: "bg-destructive", text: "text-destructive" },
-  { label: "Medium", bar: "bg-amber-500", text: "text-amber-600" },
-  { label: "Strong", bar: "bg-lime-500", text: "text-lime-600" },
+  { label: "Fair", bar: "bg-gold", text: "text-gold-foreground dark:text-gold" },
+  { label: "Strong", bar: "bg-sage-deep", text: "text-sage-deep" },
   { label: "Very strong", bar: "bg-primary", text: "text-primary" },
 ];
 
 /**
- * Animated password strength meter — MOBILE ONLY (`sm:hidden`) so the desktop
- * sign-up form stays visually unchanged. Pure presentation; submission rules
- * are untouched (server-side Zod remains authoritative).
+ * Segmented password strength meter. Advisory only — the 8-character minimum
+ * is enforced by the form and, authoritatively, by the server's Zod schema.
  */
 export function PasswordStrength({ password }: { password: string }) {
   if (!password) return null;
-  const score = scorePassword(password);
+  // Under 8 characters is always "Too short", whatever the character mix.
+  const score = password.length < 8 ? 0 : scorePassword(password);
   const level = LEVELS[score];
   return (
-    <div className="mt-2 sm:hidden" aria-live="polite">
-      <div className="flex items-center gap-2">
-        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-          <div
-            className={cn("h-full rounded-full transition-all duration-300 ease-out", level.bar)}
-            style={{ width: `${Math.max(8, (score / 4) * 100)}%` }}
+    <div className="flex items-center gap-3" aria-live="polite">
+      <div className="grid flex-1 grid-cols-4 gap-1" aria-hidden>
+        {[1, 2, 3, 4].map((i) => (
+          <span
+            key={i}
+            className={cn(
+              "h-1 rounded-full transition-colors duration-300",
+              i <= Math.max(1, score) ? level.bar : "bg-border",
+            )}
           />
-        </div>
-        <span className={cn("w-20 text-right text-xs font-medium", level.text)}>{level.label}</span>
+        ))}
       </div>
+      <span className={cn("min-w-20 text-right text-xs font-medium", level.text)}>
+        <span className="sr-only">Password strength: </span>
+        {level.label}
+      </span>
     </div>
   );
 }
 
-/** One live-validation row (✓ / ○), MOBILE ONLY via the parent's `sm:hidden`. */
+/** One requirement row in a live checklist (✓ when met). */
 export function LiveCheck({ ok, label }: { ok: boolean; label: string }) {
   return (
     <li
       className={cn(
-        "flex items-center gap-1.5 text-xs transition-colors",
-        ok ? "text-primary" : "text-muted-foreground/70",
+        "flex items-center gap-2 text-[13px] transition-colors",
+        ok ? "text-foreground/80" : "text-muted-foreground",
       )}
     >
       <span
         aria-hidden
         className={cn(
-          "grid size-3.5 place-items-center rounded-full border text-[9px] font-bold transition-colors",
-          ok ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40",
+          "grid size-4 place-items-center rounded-full border transition-colors",
+          ok ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card",
         )}
       >
-        {ok ? "✓" : ""}
+        {ok && <Check className="size-2.5" strokeWidth={3} />}
       </span>
-      {label}
+      <span>
+        <span className="sr-only">{ok ? "Done: " : "Not yet: "}</span>
+        {label}
+      </span>
     </li>
   );
 }

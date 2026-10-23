@@ -1,14 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { CheckCircle2, XCircle } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { AuthHeader, authPrimaryClass } from "@/components/auth/auth-header";
+import { buttonVariants } from "@/components/ui/button";
 import { verifyEmailToken } from "@/lib/actions/auth";
-import { safeRedirectPath } from "@/lib/utils";
+import { cn, safeRedirectPath } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Verify email" };
 
@@ -25,28 +21,28 @@ export default async function VerifyEmailPage({
   const result = token
     ? await verifyEmailToken(token)
     : { ok: false, message: "Missing verification token." };
+  const Icon = result.ok ? CheckCircle2 : XCircle;
 
   return (
-    <Card className="max-sm:animate-fade-up max-sm:rounded-3xl max-sm:shadow-elev-2 max-sm:ring-foreground/5 max-sm:[--card-spacing:--spacing(6)]">
-      <CardHeader className="items-center text-center">
-        {result.ok ? (
-          <CheckCircle2 className="size-12 text-primary" />
-        ) : (
-          <XCircle className="size-12 text-destructive" />
+    <div className="animate-fade-up">
+      <span
+        className={cn(
+          "mb-6 grid size-12 place-items-center rounded-full",
+          result.ok ? "bg-sage text-primary" : "bg-destructive/10 text-destructive",
         )}
-        <CardTitle className="text-2xl max-sm:font-heading max-sm:text-3xl max-sm:tracking-tight">
-          {result.ok ? "Email verified" : "Verification failed"}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4 text-center">
-        <p className="text-sm text-muted-foreground">{result.message}</p>
-        <Link
-          href={result.ok ? continueHref : "/register"}
-          className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 max-sm:h-12 max-sm:rounded-xl max-sm:text-base max-sm:font-semibold max-sm:shadow-elev-1 max-sm:transition-transform max-sm:active:scale-[0.98]"
-        >
-          {result.ok ? "Continue to sign in" : "Back to sign up"}
-        </Link>
-      </CardContent>
-    </Card>
+      >
+        <Icon className="size-6" strokeWidth={1.75} aria-hidden />
+      </span>
+      <AuthHeader
+        title={result.ok ? "Email verified" : "Verification failed"}
+        description={result.message}
+      />
+      <Link
+        href={result.ok ? continueHref : "/register"}
+        className={cn(buttonVariants(), authPrimaryClass)}
+      >
+        {result.ok ? "Continue to sign in" : "Back to sign up"}
+      </Link>
+    </div>
   );
 }
