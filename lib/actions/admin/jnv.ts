@@ -14,6 +14,7 @@ import {
   jnvResourceCreateSchema,
   jnvResourceUpdateSchema,
 } from "@/lib/validations/jnv";
+import { jnvSaveErrorMessage } from "@/lib/jnv/save-error";
 import type { AdminResult, BulkOutcome } from "@/lib/actions/admin/types";
 
 function revalidate() {
@@ -197,33 +198,40 @@ export async function createJnvResource(input: unknown): Promise<AdminResult<{ i
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid resource." };
   }
   const d = parsed.data;
+  // DB failures (e.g. a read-only database) must come back as a result, not a
+  // throw — otherwise the admin dialog never learns the save failed.
+  let resource: { id: string; classLevel: number };
+  try {
+    const folder = await prisma.jnvFolder.findUnique({
+      where: { id: d.folderId },
+      select: { classLevel: true },
+    });
+    if (!folder) return { ok: false, error: "Folder not found." };
 
-  const folder = await prisma.jnvFolder.findUnique({
-    where: { id: d.folderId },
-    select: { classLevel: true },
-  });
-  if (!folder) return { ok: false, error: "Folder not found." };
-
-  const resource = await prisma.jnvResource.create({
-    data: {
-      folderId: d.folderId,
-      classLevel: folder.classLevel,
-      subject: d.subject || null,
-      title: d.title,
-      description: d.description || null,
-      teacherName: d.teacherName || null,
-      fileUrl: d.fileUrl,
-      fileKind: d.fileKind,
-      mimeType: d.mimeType || null,
-      fileSize: d.fileSize,
-      thumbnailUrl: d.thumbnailUrl || null,
-      isAssignment: d.isAssignment,
-      dueAt: d.dueAt ?? null,
-      uploadedById: admin.id,
-    },
-    select: { id: true },
-  });
-  await invalidateJnvResource(resource.id, d.folderId, folder.classLevel);
+    resource = await prisma.jnvResource.create({
+      data: {
+        folderId: d.folderId,
+        classLevel: folder.classLevel,
+        subject: d.subject || null,
+        title: d.title,
+        description: d.description || null,
+        teacherName: d.teacherName || null,
+        fileUrl: d.fileUrl,
+        fileKind: d.fileKind,
+        mimeType: d.mimeType || null,
+        fileSize: d.fileSize,
+        thumbnailUrl: d.thumbnailUrl || null,
+        isAssignment: d.isAssignment,
+        dueAt: d.dueAt ?? null,
+        uploadedById: admin.id,
+      },
+      select: { id: true, classLevel: true },
+    });
+  } catch (err) {
+    console.error("[jnv] createJnvResource failed:", err);
+    return { ok: false, error: jnvSaveErrorMessage(err) };
+  }
+  await invalidateJnvResource(resource.id, d.folderId, resource.classLevel);
   revalidate();
   return { ok: true, data: { id: resource.id } };
 }
@@ -236,34 +244,41 @@ export async function updateJnvResource(input: unknown): Promise<AdminResult> {
   }
   const d = parsed.data;
 
-  const existing = await prisma.jnvResource.findUnique({
-    where: { id: d.id },
-    select: { folderId: true, classLevel: true },
-  });
-  if (!existing) return { ok: false, error: "Resource not found." };
-
+  let existing: { folderId: string; classLevel: number };
   let classLevel: number | undefined;
-  if (d.folderId) {
-    const folder = await prisma.jnvFolder.findUnique({
-      where: { id: d.folderId },
-      select: { classLevel: true },
+  try {
+    const found = await prisma.jnvResource.findUnique({
+      where: { id: d.id },
+      select: { folderId: true, classLevel: true },
     });
-    if (!folder) return { ok: false, error: "Folder not found." };
-    classLevel = folder.classLevel;
-  }
+    if (!found) return { ok: false, error: "Resource not found." };
+    existing = found;
 
-  await prisma.jnvResource.update({
-    where: { id: d.id },
-    data: {
-      ...(d.folderId ? { folderId: d.folderId, classLevel } : {}),
-      subject: d.subject || null,
-      title: d.title,
-      description: d.description || null,
-      teacherName: d.teacherName || null,
-      isAssignment: d.isAssignment,
-      dueAt: d.dueAt ?? null,
-    },
-  });
+    if (d.folderId) {
+      const folder = await prisma.jnvFolder.findUnique({
+        where: { id: d.folderId },
+        select: { classLevel: true },
+      });
+      if (!folder) return { ok: false, error: "Folder not found." };
+      classLevel = folder.classLevel;
+    }
+
+    await prisma.jnvResource.update({
+      where: { id: d.id },
+      data: {
+        ...(d.folderId ? { folderId: d.folderId, classLevel } : {}),
+        subject: d.subject || null,
+        title: d.title,
+        description: d.description || null,
+        teacherName: d.teacherName || null,
+        isAssignment: d.isAssignment,
+        dueAt: d.dueAt ?? null,
+      },
+    });
+  } catch (err) {
+    console.error("[jnv] updateJnvResource failed:", err);
+    return { ok: false, error: jnvSaveErrorMessage(err) };
+  }
   await invalidateJnvResource(d.id, existing.folderId, classLevel ?? existing.classLevel);
   if (d.folderId && d.folderId !== existing.folderId) {
     await invalidateJnvResource(d.id, d.folderId, classLevel ?? existing.classLevel);

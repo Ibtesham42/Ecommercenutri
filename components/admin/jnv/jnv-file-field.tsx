@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { uploadToCloudinary } from "@/components/admin/image-upload-field";
 import { JNV_ACCEPT, detectJnvFileKind, formatBytes, type JnvFileKind } from "@/lib/jnv/catalog";
+import { jnvUploadSizeError, type JnvUploadLimits } from "@/lib/jnv/upload-limits";
 
 export type JnvUploadResult = {
   url: string;
@@ -14,8 +15,6 @@ export type JnvUploadResult = {
   fileSize: number;
   filename: string;
 };
-
-const MAX_MB = 100;
 
 /**
  * Generic educational-file uploader for the JNV admin (PDF/PPT/DOC/XLS/image/
@@ -29,19 +28,22 @@ export function JnvFileField({
   onUploaded,
   cloudinaryReady,
   folder,
+  limits,
 }: {
   value?: JnvUploadResult | null;
   onUploaded: (result: JnvUploadResult) => void;
   cloudinaryReady: boolean;
   folder: string;
+  limits: JnvUploadLimits;
 }) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File) {
-    if (file.size > MAX_MB * 1024 * 1024) {
-      toast.error(`That file is too large (max ${MAX_MB} MB).`);
+    const sizeError = jnvUploadSizeError(file, limits);
+    if (sizeError) {
+      toast.error(sizeError);
       return;
     }
     setUploading(true);

@@ -7,6 +7,7 @@ import {
   searchJnvResources,
 } from "@/lib/queries/jnv";
 import { JNV_CLASS_LEVELS, JNV_FILE_KINDS, isJnvClassLevel, type JnvClassLevel } from "@/lib/jnv/catalog";
+import { resolveJnvUploadLimits } from "@/lib/jnv/upload-limits";
 import { JnvBrowseManager } from "@/components/admin/jnv/jnv-browse-manager";
 
 export const metadata: Metadata = { title: "JNV Smart Class — Classes & Resources", robots: { index: false } };
@@ -43,6 +44,7 @@ export default async function JnvBrowsePage({
         dueAt: r.dueAt ? r.dueAt.toISOString() : null,
       }))}
       cloudinaryReady={isConfigured.cloudinary()}
+      uploadLimits={resolveJnvUploadLimits()}
     />
   );
 }

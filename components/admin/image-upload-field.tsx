@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { isVideoUrl } from "@/lib/cld";
 import type { CloudinaryUploadInfo } from "@/lib/video";
+import { parseCloudinaryUploadResponse } from "@/lib/cloudinary-upload-response";
 
 /** Video containers accepted across the admin (validated beyond the file picker). */
 const VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
@@ -114,15 +115,9 @@ export async function uploadToCloudinary(
       if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
     };
     xhr.onload = () => {
-      let up: UploadInfo & { error?: { message?: string } };
-      try {
-        up = JSON.parse(xhr.responseText);
-      } catch {
-        reject(new Error("Cloudinary upload failed."));
-        return;
-      }
-      if (xhr.status >= 200 && xhr.status < 300 && up.secure_url) resolve(up);
-      else reject(new Error(up.error?.message ?? "Cloudinary upload failed."));
+      const result = parseCloudinaryUploadResponse<UploadInfo>(xhr.status, xhr.responseText);
+      if (result.ok) resolve(result.info);
+      else reject(new Error(result.error));
     };
     xhr.onerror = () => reject(new Error("Network error during upload."));
     xhr.send(form);

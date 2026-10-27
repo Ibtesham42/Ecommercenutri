@@ -42,6 +42,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { JnvFileField, type JnvUploadResult } from "@/components/admin/jnv/jnv-file-field";
+import type { JnvUploadLimits } from "@/lib/jnv/upload-limits";
 import {
   createJnvFolder,
   updateJnvFolder,
@@ -120,6 +121,7 @@ export function JnvBrowseManager({
   folders,
   resources,
   cloudinaryReady,
+  uploadLimits,
 }: {
   classLevel: number;
   folderId: string | null;
@@ -128,6 +130,7 @@ export function JnvBrowseManager({
   folders: FolderCard[];
   resources: ResourceCard[];
   cloudinaryReady: boolean;
+  uploadLimits: JnvUploadLimits;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -237,44 +240,51 @@ export function JnvBrowseManager({
       return;
     }
     setSavingResource(true);
+    // try/finally: the spinner must always stop, even if the server action
+    // throws (network drop, server error) instead of returning a result.
     let res;
-    if (resourceDialog?.mode === "edit" && resourceDialog.resource) {
-      res = await updateJnvResource({
-        id: resourceDialog.resource.id,
-        title,
-        subject: subject || null,
-        teacherName: teacherName || null,
-        description: description || null,
-        isAssignment,
-        dueAt: dueAt ? new Date(dueAt) : null,
-      });
-    } else {
-      if (!upload) {
-        setSavingResource(false);
-        toast.error("Upload a file first");
-        return;
+    try {
+      if (resourceDialog?.mode === "edit" && resourceDialog.resource) {
+        res = await updateJnvResource({
+          id: resourceDialog.resource.id,
+          title,
+          subject: subject || null,
+          teacherName: teacherName || null,
+          description: description || null,
+          isAssignment,
+          dueAt: dueAt ? new Date(dueAt) : null,
+        });
+      } else {
+        if (!upload) {
+          toast.error("Upload a file first");
+          return;
+        }
+        if (!folderId) {
+          toast.error("Open a folder first");
+          return;
+        }
+        res = await createJnvResource({
+          folderId,
+          classLevel,
+          title,
+          subject: subject || null,
+          teacherName: teacherName || null,
+          description: description || null,
+          fileUrl: upload.url,
+          fileKind: upload.fileKind,
+          mimeType: upload.mimeType,
+          fileSize: upload.fileSize,
+          isAssignment,
+          dueAt: dueAt ? new Date(dueAt) : null,
+        });
       }
-      if (!folderId) {
-        setSavingResource(false);
-        toast.error("Open a folder first");
-        return;
-      }
-      res = await createJnvResource({
-        folderId,
-        classLevel,
-        title,
-        subject: subject || null,
-        teacherName: teacherName || null,
-        description: description || null,
-        fileUrl: upload.url,
-        fileKind: upload.fileKind,
-        mimeType: upload.mimeType,
-        fileSize: upload.fileSize,
-        isAssignment,
-        dueAt: dueAt ? new Date(dueAt) : null,
-      });
+    } catch (err) {
+      console.error("[jnv] save resource failed:", err);
+      toast.error("Couldn't save the resource. Check your connection and try again.");
+      return;
+    } finally {
+      setSavingResource(false);
     }
-    setSavingResource(false);
     if (!res.ok) {
       toast.error(res.error);
       return;
@@ -533,6 +543,7 @@ export function JnvBrowseManager({
                   onUploaded={setUpload}
                   cloudinaryReady={cloudinaryReady}
                   folder={`jnv/class-${classLevel}`}
+                  limits={uploadLimits}
                 />
               </div>
             )}

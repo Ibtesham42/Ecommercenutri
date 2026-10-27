@@ -66,6 +66,14 @@ Jawahar Navodaya Vidyalaya Smart Classes, teaching Classes 6–10.
   `components/admin/jnv/jnv-file-field.tsx` wraps
   `uploadToCloudinary` from `image-upload-field.tsx` for arbitrary
   educational file types (not just images/video).
+- Upload size caps are env-configurable (`lib/jnv/upload-limits.ts`):
+  `JNV_MAX_MEDIA_UPLOAD_MB` (video/audio, default 100) and
+  `JNV_MAX_DOCUMENT_UPLOAD_MB` (everything else, defaults to the media cap).
+  Set them to the Cloudinary plan's per-type maximums so oversized files are
+  refused up front; Cloudinary's own rejection text is still surfaced.
+- `createJnvResource`/`updateJnvResource` never throw on DB failure — they
+  return `{ ok: false }` with a friendly message (`lib/jnv/save-error.ts`,
+  incl. read-only DB / Postgres `25006`), so the dialog's spinner always stops.
 
 ## Student portal routes
 
