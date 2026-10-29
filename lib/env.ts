@@ -8,7 +8,14 @@
  */
 
 export const env = {
-  appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+  // On Vercel, fall back to the project's production domain (system env var)
+  // rather than localhost — emailed verify/reset links once pointed at
+  // localhost because NEXT_PUBLIC_APP_URL was missing on the deployment.
+  appUrl:
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : "http://localhost:3000"),
 
   databaseUrl: process.env.DATABASE_URL ?? "",
 

@@ -7,7 +7,9 @@ async function load(env: Record<string, string | undefined>) {
   return import("./razorpay");
 }
 
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("keyless payment fallbacks", () => {
   const keyless = { RAZORPAY_KEY_ID: "", RAZORPAY_KEY_SECRET: "" };
