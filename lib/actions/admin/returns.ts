@@ -207,6 +207,9 @@ export async function processReturnRefund(input: unknown): Promise<AdminResult> 
         error: "No original online payment to refund — pick a manual method (UPI / Bank transfer).",
       };
     }
+    if (msg === "REFUND_IN_PROGRESS") {
+      return { ok: false, error: "A refund for this return is already being processed. Refresh in a moment." };
+    }
     console.error("[admin/returns] refund failed:", e);
     return { ok: false, error: "Refund failed. Please try again." };
   }

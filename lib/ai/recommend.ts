@@ -172,7 +172,7 @@ function scoreProduct(p: RecoProduct, ctx: ScoreContext): Scored {
 
   // Live promotion (real discount on any variant).
   const discounted = p.variants.some(
-    (v) => v.discountPrice != null && v.discountPrice < v.price,
+    (v) => effectivePrice(v.price, v.discountPrice) < v.price,
   );
   if (discounted) { score += 1; reasons.push("it's on offer right now"); }
 
@@ -198,9 +198,7 @@ function toCard(s: Scored, fallbackReason: string): AiRecoCard | null {
   const variant = inStock.find((v) => v.isDefault) ?? inStock[0];
   const price = effectivePrice(variant.price, variant.discountPrice);
   const discountPct =
-    variant.discountPrice != null && variant.discountPrice < variant.price
-      ? Math.round(((variant.price - variant.discountPrice) / variant.price) * 100)
-      : null;
+    price < variant.price ? Math.round(((variant.price - price) / variant.price) * 100) : null;
   const { state, left } = stockState(p);
 
   return {

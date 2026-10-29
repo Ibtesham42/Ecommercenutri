@@ -3,7 +3,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { razorpay, razorpayEnabled, verifyPaymentSignature } from "@/lib/razorpay";
+import { mockCheckoutAllowed, razorpay, razorpayEnabled, verifyPaymentSignature } from "@/lib/razorpay";
 import { siteConfig } from "@/config/site";
 import { env } from "@/lib/env";
 import { validateCoupon, type CouponLine } from "@/lib/coupons";
@@ -226,6 +226,14 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
     };
   }
   const { items, addressId, couponCode, notes, paymentMethod } = parsed.data;
+
+  if (paymentMethod !== "COD" && !razorpayEnabled && !mockCheckoutAllowed) {
+    console.error("[checkout] Razorpay keys are missing on this deployment — refusing the mock payment flow.");
+    return {
+      ok: false,
+      error: "Online payment is temporarily unavailable. Please choose Cash on Delivery or try again later.",
+    };
+  }
 
   // Re-price everything from the database.
   const priced = await priceCart(items);

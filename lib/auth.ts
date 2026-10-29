@@ -133,7 +133,38 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   ...authConfig,
   providers,
+  callbacks: {
+    ...authConfig.callbacks,
+    signIn: ({ user, account, profile }) =>
+      account?.provider === "google"
+        ? allowGoogleSignIn(user.email, (profile as { email_verified?: boolean } | undefined)?.email_verified)
+        : true,
+  },
 });
+
+/**
+ * Google is allowed to auto-link into an existing account (so returning
+ * shoppers aren't stranded) — but only when that account's owner has PROVEN
+ * the address. Anyone can register with, or switch their profile to, an
+ * unverified email; linking Google into such an account would hand the real
+ * owner's sign-in to an account whose password/phone the creator controls
+ * (pre-account-takeover). New users and already-linked accounts pass.
+ */
+async function allowGoogleSignIn(
+  rawEmail: string | null | undefined,
+  googleVerified: boolean | undefined,
+): Promise<boolean> {
+  if (googleVerified === false) return false;
+  // Exact match: the same lookup the adapter's getUserByEmail uses to link.
+  const email = rawEmail;
+  if (!email) return false;
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    select: { emailVerified: true, accounts: { where: { provider: "google" }, select: { id: true } } },
+  });
+  if (!existing) return true;
+  return existing.accounts.length > 0 || existing.emailVerified !== null;
+}
 
 /** Returns the current session user, or null. */
 export async function getCurrentUser() {

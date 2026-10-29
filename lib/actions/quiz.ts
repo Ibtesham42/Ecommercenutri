@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { AuthError } from "next-auth";
 import bcrypt from "bcryptjs";
 import { generateText } from "ai";
@@ -139,10 +139,20 @@ export async function completeQuiz(input: unknown): Promise<CompleteQuizResult> 
   }
 }
 
-/** Ensure the shared welcome coupon exists (idempotent) and return its code. */
-export async function ensureWelcomeCoupon(): Promise<string> {
+/** Is any surface that hands out the welcome coupon switched on? */
+function welcomeOfferLive(g: Awaited<ReturnType<typeof getGrowthSettings>>): boolean {
+  return g.quizEnabled || g.welcomePopupEnabled || g.stickyBarEnabled;
+}
+
+/** Ensure the shared welcome coupon exists (idempotent) and return its code.
+ *  Deliberately NOT exported: every export of a "use server" module is a public
+ *  endpoint, and this one writes an active coupon. It also never (re)creates the
+ *  coupon while every welcome surface is off, so an admin who disabled the offer
+ *  and deleted the coupon can't have it resurrected by a crafted request. */
+async function ensureWelcomeCoupon(): Promise<string> {
   const growth = await getGrowthSettings();
   const code = growth.couponCode;
+  if (!welcomeOfferLive(growth)) return code;
   try {
     await prisma.coupon.upsert({
       where: { code },
@@ -205,11 +215,15 @@ export async function claimQuizForCurrentUser(): Promise<void> {
  *  1) — the quiz/popup/sticky bar all surface it. */
 export async function revealWelcomeCoupon(): Promise<{ code: string; percent: number }> {
   const growth = await getGrowthSettings();
+  // Callers catch and fall back to /quiz, so throwing here degrades gracefully.
+  if (!welcomeOfferLive(growth)) throw new Error("Welcome offer is not available.");
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
+  const rl = await checkRateLimit(limiters.api, `welcome-coupon:${ip}`);
+  if (!rl.success) throw new Error("Too many requests.");
+  const anon = (await cookies()).get(ANON_COOKIE)?.value ?? null;
   const code = await ensureWelcomeCoupon();
   try {
     const user = await getCurrentUser();
-    const jar = await cookies();
-    const anon = jar.get(ANON_COOKIE)?.value ?? null;
     await trackEvent({
       type: "COUPON_CLAIM",
       userId: user?.id ?? null,

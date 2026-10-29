@@ -615,6 +615,10 @@ export const couponInputSchema = z
   .refine((c) => c.type !== "PERCENT" || (c.value >= 1 && c.value <= 100), {
     message: "Percentage must be between 1 and 100",
     path: ["value"],
+  })
+  .refine((c) => !c.startsAt || !c.expiresAt || c.expiresAt > c.startsAt, {
+    message: "Expiry must be after the start date",
+    path: ["expiresAt"],
   });
 
 // Stories --------------------------------------------------------------------

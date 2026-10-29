@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { revalidateTag } from "next/cache";
 import { MODEL_TAGS } from "@/lib/cache";
+import { normalizeDbUrl } from "@/lib/db-url";
 
 const WRITE_OPERATIONS = new Set([
   "create",
@@ -15,7 +16,9 @@ const WRITE_OPERATIONS = new Set([
 ]);
 
 function createClient() {
+  const datasourceUrl = normalizeDbUrl(process.env.DATABASE_URL);
   return new PrismaClient({
+    ...(datasourceUrl ? { datasourceUrl } : {}),
     log:
       process.env.NODE_ENV === "development"
         ? ["error", "warn"]

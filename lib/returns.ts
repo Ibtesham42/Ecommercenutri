@@ -229,18 +229,43 @@ export async function processRefund(
   if (ret.refundStatus === "COMPLETED") {
     return reloadReturn(returnId);
   }
+  if (opts.method === "ORIGINAL" && (order.paymentMethod !== "RAZORPAY" || !order.razorpayPaymentId)) {
+    throw new Error("NO_ORIGINAL_PAYMENT");
+  }
+
+  // Claim the refund atomically BEFORE any money moves. The read above is not
+  // serialized, so two concurrent calls (double-submit, bulk + single, two
+  // admins) would otherwise both reach Razorpay and refund — and restock — twice.
+  const claim = await prisma.returnRequest.updateMany({
+    where: { id: returnId, refundStatus: { in: ["PENDING", "FAILED"] } },
+    data: { refundStatus: "PROCESSING" },
+  });
+  if (claim.count === 0) {
+    const now = await prisma.returnRequest.findUnique({ where: { id: returnId }, select: { refundStatus: true } });
+    if (now?.refundStatus === "COMPLETED") return reloadReturn(returnId);
+    throw new Error("REFUND_IN_PROGRESS");
+  }
 
   // Money movement.
   let refundRef = opts.reference?.trim() || null;
   if (opts.method === "ORIGINAL") {
-    if (order.paymentMethod !== "RAZORPAY" || !order.razorpayPaymentId) {
-      throw new Error("NO_ORIGINAL_PAYMENT");
+    try {
+      const r = await refundPayment(order.razorpayPaymentId!, opts.amount);
+      refundRef = r.id;
+    } catch (err) {
+      // Nothing moved — release the claim so the admin can retry.
+      await prisma.returnRequest.update({ where: { id: returnId }, data: { refundStatus: "FAILED" } });
+      throw err;
     }
-    const r = await refundPayment(order.razorpayPaymentId, opts.amount);
-    refundRef = r.id;
+    // Money HAS moved: persist the reference now. If anything below fails the
+    // return stays PROCESSING (blocking a second refund) instead of PENDING.
+    await prisma.returnRequest.update({ where: { id: returnId }, data: { refundRef } });
   }
 
-  const fullOrder = await isFullOrderReturn(order.id);
+  const fullOrder = await isFullOrderReturn(order.id).catch(async (err) => {
+    await releaseClaimIfNoMoneyMoved(returnId, opts.method);
+    throw err;
+  });
 
   await prisma.$transaction(async (tx) => {
     await tx.returnRequest.update({
@@ -298,12 +323,28 @@ export async function processRefund(
         },
       });
     }
+  }).catch(async (err) => {
+    await releaseClaimIfNoMoneyMoved(returnId, opts.method);
+    throw err;
   });
 
   await ensureCreditNote(returnId);
   // Refunded units no longer earn the referring affiliate anything (best-effort).
   await syncCommissionWithRefunds(order.id);
   return reloadReturn(returnId);
+}
+
+/** A manual-method refund that failed to record can simply be retried. A failed
+ *  ORIGINAL refund stays PROCESSING: Razorpay already paid out, so it must be
+ *  reconciled by hand (refundRef is saved), never re-issued. */
+async function releaseClaimIfNoMoneyMoved(returnId: string, method: RefundMethod): Promise<void> {
+  if (method === "ORIGINAL") {
+    console.error(`[returns] refund for ${returnId} was paid out but not recorded — reconcile manually.`);
+    return;
+  }
+  await prisma.returnRequest
+    .update({ where: { id: returnId }, data: { refundStatus: "FAILED" } })
+    .catch((e) => console.error("[returns] could not release refund claim:", e));
 }
 
 function reloadReturn(returnId: string): Promise<TransitionedReturn> {

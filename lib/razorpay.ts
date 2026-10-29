@@ -4,6 +4,16 @@ import { env, isConfigured } from "@/lib/env";
 
 export const razorpayEnabled = isConfigured.razorpay();
 
+/**
+ * The keyless mock checkout marks orders PAID without taking money. That's the
+ * point locally, but on a Vercel deployment it would mean a missing/garbled
+ * RAZORPAY_* env var silently turns every prepaid order into a free "paid" one
+ * (stock deducted, confirmation sent). So on Vercel the mock flow is refused
+ * unless explicitly opted into (e.g. a demo preview with its own database).
+ */
+export const mockCheckoutAllowed =
+  !process.env.VERCEL || process.env.ALLOW_MOCK_CHECKOUT === "1";
+
 /** Razorpay client; `null` when not configured (checkout uses a mock flow). */
 export const razorpay = razorpayEnabled
   ? new Razorpay({
@@ -58,6 +68,10 @@ export async function refundPayment(
   amountPaise?: number,
 ): Promise<{ id: string; status: string }> {
   if (!razorpay) {
+    // Same guard as the mock checkout: on a deployment, a fake "processed"
+    // refund would tell the customer money was returned when none was.
+    // Callers treat a throw as "refund pending — process manually".
+    if (!mockCheckoutAllowed) throw new Error("Razorpay is not configured on this deployment.");
     return { id: `rfnd_mock_${Date.now()}`, status: "processed" };
   }
   const refund = await razorpay.payments.refund(paymentId, {

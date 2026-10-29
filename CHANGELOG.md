@@ -3,6 +3,33 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [Admin + site security audit] — 2026-10-29
+
+Audit of admin RBAC, payments/refunds, returns, auth and redirects. New tests:
+`lib/returns.test.ts`, `lib/returns.int.test.ts` (real-DB concurrency),
+`lib/razorpay.test.ts`, `lib/utils.test.ts`, `lib/db-url.test.ts`,
+`lib/marketing/click-destination.test.ts`. No schema change.
+
+### Fixed
+- **Refunds:** concurrent `processRefund` calls on one return (double-submit,
+  bulk + single, two admins) each refunded via Razorpay and restocked. The refund
+  is now claimed atomically (`refundStatus` → PROCESSING) before money moves.
+- **Payments:** with Razorpay keys missing on a Vercel deployment, checkout fell
+  back to the mock flow (orders marked PAID, no money) and refunds returned fake
+  ids. Both now refuse on Vercel unless `ALLOW_MOCK_CHECKOUT=1`.
+- **Auth:** Google sign-in could auto-link into an account whose email was never
+  verified (pre-account-takeover). Linking now requires a verified email or an
+  existing Google link; `/login?error=` now shows a message.
+- **Open redirects:** `/api/marketing/click/[id]?to=` accepted any URL; `/ref/[code]`
+  and `safeRedirectPath` could be bypassed with tab/newline characters.
+- **Returns:** customer proof URLs weren't restricted to our Cloudinary (any
+  `javascript:`/tracking URL was stored and rendered as a link in the admin).
+- Public `ensureWelcomeCoupon` endpoint could recreate a deleted welcome coupon;
+  `revealWelcomeCoupon` / `recordStoryView` were unthrottled.
+- `DATABASE_URL` is normalized (pasted quotes / prefix) before Prisma sees it.
+- Coupon expiry must follow its start date; AI recos no longer show "100% off"
+  for a ₹0 discount price.
+
 ## [Affiliate program audit] — 2026-10-19
 
 End-to-end audit of registration → attribution → commission → refunds →

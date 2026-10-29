@@ -14,6 +14,7 @@ import { returnDiscountShare } from "@/lib/return-refund";
 import { returnStatusEmail } from "@/lib/emails";
 import { sendEmail } from "@/lib/email";
 import { notify } from "@/lib/notifications";
+import { isTrustedCloudinaryUrl } from "@/lib/cloudinary";
 
 export type ReturnResult = { ok: true; returnNumber: string } | { ok: false; error: string };
 
@@ -33,7 +34,10 @@ export async function requestReturn(input: unknown): Promise<ReturnResult> {
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid request." };
   }
-  const { orderNumber, reason, description, media, items } = parsed.data;
+  const { orderNumber, reason, description, items } = parsed.data;
+  // Only keep our own Cloudinary uploads — a tampered request could otherwise
+  // plant javascript:/data:/tracking URLs that render as links in the admin.
+  const media = parsed.data.media.filter(isTrustedCloudinaryUrl);
 
   const order = await prisma.order.findFirst({
     where: { orderNumber, userId: user.id },
@@ -160,7 +164,7 @@ export async function submitReturnInfo(input: unknown): Promise<ReturnResult> {
     return { ok: false, error: "No additional information is being requested." };
   }
 
-  const media = [...ret.media, ...parsed.data.media].slice(0, 12);
+  const media = [...ret.media, ...parsed.data.media.filter(isTrustedCloudinaryUrl)].slice(0, 12);
   const updated = await transitionReturnStatus(ret.id, "UNDER_REVIEW", {
     actor: "customer",
     note: `Customer reply: ${parsed.data.message}`,

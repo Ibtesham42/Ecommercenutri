@@ -85,7 +85,7 @@
 
 - Verify payment + webhook signatures with HMAC and constant-time comparison
   (`lib/razorpay.ts`); webhook verifies over the **raw** body and is **idempotent**
-  (order confirmation is a no-op once `stockDeducted`). Keyless mock flow exists for dev.
+  (order confirmation is a no-op once `stockDeducted`). Keyless mock flow exists for dev; on Vercel it (and the mock refund) is refused unless `ALLOW_MOCK_CHECKOUT=1`, so a missing key can never mint free "paid" orders.
 
 ## Invoices
 

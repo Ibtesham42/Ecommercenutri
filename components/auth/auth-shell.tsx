@@ -34,16 +34,19 @@ export function AuthShell({
   callbackUrl,
   googleEnabled,
   phoneEnabled,
+  notice = null,
 }: {
   callbackUrl: string;
   googleEnabled: boolean;
   phoneEnabled: boolean;
+  /** Error carried back in the URL (e.g. a refused Google sign-in). */
+  notice?: string | null;
 }) {
   const [view, setView] = useState<View>(phoneEnabled ? "phone" : "email");
   const [rawPhone, setRawPhone] = useState("");
   const [phone, setPhone] = useState(""); // normalized +91… (from the server)
   const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(notice);
   const [seconds, setSeconds] = useState(0);
   const [pending, startTransition] = useTransition();
   const phoneInputRef = useRef<HTMLInputElement>(null);
@@ -262,6 +265,7 @@ export function AuthShell({
             description="Sign in to track orders, reorder favourites and check out faster."
           />
           <div className="space-y-5">
+            {error && <AuthAlert kind="error">{error}</AuthAlert>}
             {googleEnabled && (
               <>
                 <GoogleButton callbackUrl={callbackUrl} className={authSecondaryClass} />
