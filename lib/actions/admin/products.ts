@@ -273,7 +273,7 @@ export async function saveProduct(input: unknown): Promise<ProductSaveResult> {
           await tx.productImage.create({ data: { productId, ...imageData(img, i) } });
         }
       }
-    });
+    }, { maxWait: 10_000, timeout: 20_000 }); // one statement per variant/image — don't trip the 5s default
 
     revalidateCatalog(data.slug);
     return { ok: true, data: { id: productId } };
@@ -290,7 +290,9 @@ export async function saveProduct(input: unknown): Promise<ProductSaveResult> {
       return { ok: false, error: "A value that must be unique is already taken." };
     }
     console.error("[admin] saveProduct failed:", err);
-    return { ok: false, error: "Could not save the product. Please try again." };
+    // Admin-only: the Prisma error code makes a report actionable without logs.
+    const code = err instanceof Prisma.PrismaClientKnownRequestError ? ` (${err.code})` : "";
+    return { ok: false, error: `Could not save the product${code}. Please try again.` };
   }
 }
 

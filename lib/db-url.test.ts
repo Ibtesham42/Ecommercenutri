@@ -16,4 +16,13 @@ describe("normalizeDbUrl", () => {
     expect(normalizeDbUrl(undefined)).toBeUndefined();
     expect(normalizeDbUrl('  ""  ')).toBeUndefined();
   });
+  it("forces pgbouncer=true on the Supabase transaction pooler only", () => {
+    const pooler = "postgresql://u:p@aws-0-ap-northeast-2.pooler.supabase.com:6543/postgres";
+    expect(normalizeDbUrl(pooler)).toBe(`${pooler}?pgbouncer=true`);
+    expect(normalizeDbUrl(`${pooler}?connection_limit=1`)).toBe(`${pooler}?connection_limit=1&pgbouncer=true`);
+    expect(normalizeDbUrl(`${pooler}?pgbouncer=true`)).toBe(`${pooler}?pgbouncer=true`);
+    const session = "postgresql://u:p@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres";
+    expect(normalizeDbUrl(session)).toBe(session);
+    expect(normalizeDbUrl("postgresql://u:p@127.0.0.1:5436/db")).toBe("postgresql://u:p@127.0.0.1:5436/db");
+  });
 });
