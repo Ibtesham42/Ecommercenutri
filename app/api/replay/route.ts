@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { checkRateLimit, limiters } from "@/lib/rate-limit";
+import { checkAnalyticsRateLimit } from "@/lib/rate-limit";
 import { isBotUA, parseUA } from "@/lib/ua";
 
 export const runtime = "nodejs";
@@ -64,8 +64,9 @@ export async function POST(req: Request) {
     parsed.data.cid ??
     req.headers.get("cookie")?.match(/(?:^|;\s*)nut_anon=([^;]+)/)?.[1] ??
     null;
-  const rl = await checkRateLimit(limiters.api, `replay:${anonId ?? "anon"}`);
-  if (!rl.success) return NextResponse.json({ ok: false }, { status: 429 });
+  if (!(await checkAnalyticsRateLimit(req, "replay", anonId ?? "anon"))) {
+    return NextResponse.json({ ok: false }, { status: 429 });
+  }
 
   const user = await getCurrentUser().catch(() => null);
   const { device } = parseUA(req.headers.get("user-agent") ?? "");

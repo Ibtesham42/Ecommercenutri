@@ -10,6 +10,7 @@ import { checkRateLimit, limiters } from "@/lib/rate-limit";
 import {
   createPasswordResetToken,
   createVerificationToken,
+  hashToken,
 } from "@/lib/tokens";
 import { sendEmail } from "@/lib/email";
 import { verificationEmail, passwordResetEmail } from "@/lib/emails";
@@ -177,10 +178,16 @@ export async function resetPasswordAction(
   }
   const { token, password } = parsed.data;
 
+  const tokenHash = hashToken(token);
   const record = await prisma.passwordResetToken.findUnique({
-    where: { token },
+    where: { token: tokenHash },
   });
   if (!record || record.expires < new Date()) {
+    return { error: "This reset link is invalid or has expired." };
+  }
+  // Single use: claim the token atomically so a replayed/concurrent submit fails.
+  const claimed = await prisma.passwordResetToken.deleteMany({ where: { token: tokenHash } });
+  if (claimed.count === 0) {
     return { error: "This reset link is invalid or has expired." };
   }
 
@@ -201,7 +208,7 @@ export async function verifyEmailToken(
   token: string,
 ): Promise<{ ok: boolean; message: string }> {
   const record = await prisma.verificationToken.findUnique({
-    where: { token },
+    where: { token: hashToken(token) },
   });
   if (!record || record.expires < new Date()) {
     return {

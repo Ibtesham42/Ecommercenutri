@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { UserEventType } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { trackEvent } from "@/lib/recommendations/events";
-import { checkRateLimit, limiters } from "@/lib/rate-limit";
+import { checkAnalyticsRateLimit } from "@/lib/rate-limit";
 import { isBotUA, parseUA } from "@/lib/ua";
 import { requestGeo } from "@/lib/geo";
 import { env } from "@/lib/env";
@@ -95,8 +95,9 @@ export async function POST(req: Request) {
   }
 
   const id = user?.id ?? anonId ?? "anon";
-  const rl = await checkRateLimit(limiters.api, `track:${id}`);
-  if (!rl.success) return NextResponse.json({ ok: false }, { status: 429 });
+  if (!(await checkAnalyticsRateLimit(req, "track", id))) {
+    return NextResponse.json({ ok: false }, { status: 429 });
+  }
 
   const { device } = parseUA(req.headers.get("user-agent") ?? "");
   const geo = requestGeo(req.headers);

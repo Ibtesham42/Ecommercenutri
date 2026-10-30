@@ -39,6 +39,9 @@ export const limiters = {
   spinIp: makeLimiter(SPINS_PER_IP_PER_DAY, "1 d", "rl:spin-ip"),
   spinBrowser: makeLimiter(SPINS_PER_BROWSER_PER_DAY, "1 d", "rl:spin-browser"),
   spinClaim: makeLimiter(10, "10 m", "rl:spin-claim"),
+  // Per-IP ceiling for analytics beacons. Deliberately loose: Indian mobile
+  // carriers put many shoppers behind one CGNAT address.
+  analyticsIp: makeLimiter(600, "1 m", "rl:analytics-ip"),
 };
 
 export async function checkRateLimit(
@@ -54,4 +57,28 @@ export async function checkRateLimit(
     // Fail open: never block a real user because the limiter is down.
     return { success: true, limit: 0, remaining: 0, reset: 0 };
   }
+}
+
+/**
+ * Analytics beacons are keyed by a client-supplied id (nut_cid / nut_anon), which
+ * a script can rotate on every request. Also bound them by the client IP. The
+ * site is served directly by Vercel (no proxy in front), whose edge OVERWRITES
+ * `x-forwarded-for` with the connecting IP — a client-sent value never reaches
+ * us — so its first entry is server-controlled. (Same source every other
+ * limiter here uses.) Both limits must pass.
+ */
+export async function checkAnalyticsRateLimit(
+  req: Request,
+  scope: string,
+  clientKey: string,
+): Promise<boolean> {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip")?.trim() ||
+    "anon";
+  const [byIp, byClient] = await Promise.all([
+    checkRateLimit(limiters.analyticsIp, `${scope}:${ip}`),
+    checkRateLimit(limiters.api, `${scope}:${clientKey}`),
+  ]);
+  return byIp.success && byClient.success;
 }

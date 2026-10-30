@@ -37,6 +37,14 @@ const txMock = {
   orderEvent: {
     create: vi.fn(),
   },
+  // transitionOrderStatus re-reads the order under a row lock; by default it
+  // sees exactly the state the unlocked read returned (no concurrent change).
+  $queryRaw: vi.fn(async () => {
+    const o = (await prismaMock.order.findUnique.mock.results.at(-1)?.value) as
+      | { status: string; paymentStatus: string; stockDeducted: boolean }
+      | undefined;
+    return o ? [{ status: o.status, paymentStatus: o.paymentStatus, stockDeducted: o.stockDeducted }] : [];
+  }),
 };
 
 const prismaMock = {
@@ -194,7 +202,7 @@ describe("confirmOrder — normal successful flows (no regression)", () => {
   it("scenario 5: a normal COD checkout confirms cleanly", async () => {
     await expect(confirmOrder(BASE_ORDER_ID, { paymentStatus: "PENDING" })).resolves.toBeUndefined();
     expect(txMock.order.updateMany).toHaveBeenCalledWith({
-      where: { id: BASE_ORDER_ID, stockDeducted: false },
+      where: { id: BASE_ORDER_ID, stockDeducted: false, status: { notIn: ["CANCELLED", "REFUNDED", "RETURNED"] } },
       data: {
         stockDeducted: true,
         paymentStatus: "PENDING",
@@ -210,7 +218,7 @@ describe("confirmOrder — normal successful flows (no regression)", () => {
       markOrderPaid(BASE_ORDER_ID, { paymentId: "pay_999", signature: "sig_999" }),
     ).resolves.toBeUndefined();
     expect(txMock.order.updateMany).toHaveBeenCalledWith({
-      where: { id: BASE_ORDER_ID, stockDeducted: false },
+      where: { id: BASE_ORDER_ID, stockDeducted: false, status: { notIn: ["CANCELLED", "REFUNDED", "RETURNED"] } },
       data: {
         stockDeducted: true,
         paymentStatus: "PAID",
@@ -255,6 +263,17 @@ describe("transitionOrderStatus — refund on close of a prepaid order", () => {
     prismaMock.returnRequest.aggregate.mockResolvedValue({ _sum: { refundedAmount: 9900 } });
     await transitionOrderStatus(BASE_ORDER_ID, "CANCELLED", { actor: "admin" });
     expect(refundPaymentMock).toHaveBeenCalledWith("pay_test_1", 40000);
+  });
+
+  it("refuses to overwrite a state it didn't read (payment captured mid-cancel)", async () => {
+    const UNPAID = { ...PAID_ORDER, paymentStatus: "PENDING", stockDeducted: false };
+    prismaMock.order.findUnique.mockResolvedValue(UNPAID);
+    txMock.$queryRaw.mockResolvedValueOnce([{ status: "PENDING", paymentStatus: "PAID", stockDeducted: true }]);
+    await expect(transitionOrderStatus(BASE_ORDER_ID, "CANCELLED", { actor: "customer" })).rejects.toThrow(
+      "ORDER_STATE_CHANGED",
+    );
+    expect(txMock.order.update).not.toHaveBeenCalled();
+    expect(refundPaymentMock).not.toHaveBeenCalled();
   });
 
   it("losing the claim to a concurrent close never refunds twice and leaves paymentStatus alone", async () => {

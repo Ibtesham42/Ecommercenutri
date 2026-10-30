@@ -32,7 +32,10 @@ export async function updateOrderStatus(input: unknown): Promise<AdminResult> {
       reason: reason ?? (status === "CANCELLED" ? "Cancelled by store" : null),
       actor: "admin",
     });
-  } catch {
+  } catch (err) {
+    if ((err as Error)?.message === "ORDER_STATE_CHANGED") {
+      return { ok: false, error: "This order was just updated (e.g. a payment came in). Refresh and try again." };
+    }
     return { ok: false, error: "Order not found." };
   }
   if (!updated) return { ok: true }; // no-op (status unchanged)

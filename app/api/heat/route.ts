@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { checkRateLimit, limiters } from "@/lib/rate-limit";
+import { checkAnalyticsRateLimit } from "@/lib/rate-limit";
 import { isBotUA, parseUA } from "@/lib/ua";
 import { HEAT_SECTIONS, PAGE_SECTION, pageGroup } from "@/lib/heat-sections";
 
@@ -52,8 +52,9 @@ export async function POST(req: Request) {
 
   const anonId =
     req.headers.get("cookie")?.match(/(?:^|;\s*)nut_anon=([^;]+)/)?.[1] ?? "anon";
-  const rl = await checkRateLimit(limiters.api, `heat:${anonId}`);
-  if (!rl.success) return NextResponse.json({ ok: false }, { status: 429 });
+  if (!(await checkAnalyticsRateLimit(req, "heat", anonId))) {
+    return NextResponse.json({ ok: false }, { status: 429 });
+  }
 
   const { device } = parseUA(req.headers.get("user-agent") ?? "");
   const dev = device ?? "desktop";

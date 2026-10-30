@@ -335,10 +335,15 @@ export async function cancelOrder(input: unknown): Promise<CancelOrderResult> {
   }
 
   const reason = parsed.data.reason || "Cancelled by customer";
-  const updated = await transitionOrderStatus(order.id, "CANCELLED", {
-    reason,
-    actor: "customer",
-  });
+  let updated: Awaited<ReturnType<typeof transitionOrderStatus>>;
+  try {
+    updated = await transitionOrderStatus(order.id, "CANCELLED", { reason, actor: "customer" });
+  } catch (err) {
+    if ((err as Error)?.message === "ORDER_STATE_CHANGED") {
+      return { ok: false, error: "Your order was just updated — please refresh the page and try again." };
+    }
+    throw err;
+  }
 
   // Notify the customer (best-effort).
   if (updated?.user?.email) {

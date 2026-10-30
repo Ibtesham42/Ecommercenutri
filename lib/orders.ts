@@ -6,7 +6,7 @@ import { refundPayment } from "@/lib/razorpay";
 import { orderConfirmationEmail } from "@/lib/emails";
 import { sendEmail } from "@/lib/email";
 import { ensureInvoice, getInvoiceData } from "@/lib/invoices";
-import { isClosed } from "@/lib/order-status";
+import { CLOSED_STATUSES, isClosed } from "@/lib/order-status";
 import { trackEvent } from "@/lib/recommendations/events";
 import {
   createOrderCommission,
@@ -36,7 +36,7 @@ const orderId = customAlphabet("ACDEFGHJKLMNPQRSTUVWXYZ23456789", 6);
  */
 export class OrderFulfillmentError extends Error {
   constructor(
-    public readonly reason: "INSUFFICIENT_STOCK" | "COUPON_LIMIT_REACHED",
+    public readonly reason: "INSUFFICIENT_STOCK" | "COUPON_LIMIT_REACHED" | "ORDER_CLOSED",
     message: string,
   ) {
     super(message);
@@ -177,8 +177,11 @@ export async function confirmOrder(
       // check on `stockDeducted` passes in both under Read Committed, which would
       // double-decrement stock and double-count the coupon. A conditional update
       // makes the loser block on the row lock, re-evaluate, and match 0 rows.
+      // A closed (e.g. customer-cancelled) order is never confirmed: its Razorpay
+      // order stays payable, so a late capture must go to manual review instead
+      // of silently deducting stock on a cancelled order.
       const claim = await tx.order.updateMany({
-        where: { id, stockDeducted: false },
+        where: { id, stockDeducted: false, status: { notIn: [...CLOSED_STATUSES] } },
         data: {
           stockDeducted: true,
           paymentStatus: opts.paymentStatus,
@@ -186,7 +189,13 @@ export async function confirmOrder(
           razorpaySignature: opts.payment?.signature,
         },
       });
-      if (claim.count === 0) return null; // already confirmed by the other caller
+      if (claim.count === 0) {
+        const now = await tx.order.findUniqueOrThrow({ where: { id }, select: { status: true, stockDeducted: true } });
+        if (!now.stockDeducted && isClosed(now.status)) {
+          throw new OrderFulfillmentError("ORDER_CLOSED", "This order was cancelled before the payment completed.");
+        }
+        return null; // already confirmed by the other caller
+      }
 
       const items = await tx.orderItem.findMany({ where: { orderId: id } });
 
@@ -357,13 +366,28 @@ async function recordFulfillmentFailure(
       },
     });
     await prisma.orderEvent.create({
-      data: {
-        orderId,
-        status: "PENDING",
-        note: "We're finalising the details of your order. If anything needs your attention, our team will contact you shortly.",
-        actor: "system",
-      },
+      data:
+        err.reason === "ORDER_CLOSED"
+          ? {
+              orderId,
+              status: "CANCELLED",
+              note: "We received a payment after this order was cancelled. Our team will refund it in full and confirm by email.",
+              actor: "system",
+            }
+          : {
+              orderId,
+              status: "PENDING",
+              note: "We're finalising the details of your order. If anything needs your attention, our team will contact you shortly.",
+              actor: "system",
+            },
     });
+    return;
+  }
+
+  // Already closed and no money involved: nothing to record, and its existing
+  // status/payment/reason must not be overwritten below.
+  if (err.reason === "ORDER_CLOSED") {
+    console.error(`[orders] order ${orderId} is closed; confirmation skipped.`);
     return;
   }
 
@@ -491,9 +515,22 @@ export async function transitionOrderStatus(
     paymentStatus = "PAID";
   }
 
-  const wantsRestock = closing && !isClosed(order.status) && order.stockDeducted;
-
   const updated = await prisma.$transaction(async (tx) => {
+    // Everything above was read without a lock. A concurrent confirmation (the
+    // Razorpay webhook / success page) or another transition may have moved the
+    // order since: lock it and refuse to overwrite a state we didn't see — e.g.
+    // writing back a stale paymentStatus PENDING over a just-captured PAID.
+    const [cur] = await tx.$queryRaw<{ status: OrderStatus; paymentStatus: PaymentStatus; stockDeducted: boolean }[]>`
+      SELECT status, "paymentStatus", "stockDeducted" FROM "Order" WHERE id = ${orderId} FOR UPDATE`;
+    const moneyMoved = prepaidClose && refund?.ok;
+    if (
+      !moneyMoved &&
+      (cur.status !== order.status || (!prepaidClose && cur.paymentStatus !== order.paymentStatus))
+    ) {
+      throw new Error("ORDER_STATE_CHANGED");
+    }
+    const wantsRestock = closing && !isClosed(cur.status) && cur.stockDeducted;
+
     // Same race as confirmOrder in reverse: two concurrent closes (admin click
     // + customer cancel, or a double submit) would both see stockDeducted=true
     // and restock twice. Claim the flag conditionally and only restock if THIS

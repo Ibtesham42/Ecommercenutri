@@ -251,8 +251,14 @@ export async function quizSignup(_prev: QuizSignupState, formData: FormData): Pr
   const resultId = typeof formData.get("resultId") === "string" ? (formData.get("resultId") as string) : undefined;
 
   const anon = await anonId();
-  const rl = await checkRateLimit(limiters.auth, `quizsignup:${anon}`);
-  if (!rl.success) return { error: "Too many attempts. Please try again later." };
+  // The anon cookie is client-controlled (clear it → fresh limit), so also key by
+  // IP like registerAction: each signup creates an account + mails any address.
+  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
+  const [byAnon, byIp] = await Promise.all([
+    checkRateLimit(limiters.auth, `quizsignup:${anon}`),
+    checkRateLimit(limiters.auth, `quizsignup-ip:${ip}`),
+  ]);
+  if (!byAnon.success || !byIp.success) return { error: "Too many attempts. Please try again later." };
 
   try {
     const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
