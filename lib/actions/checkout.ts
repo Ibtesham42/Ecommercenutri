@@ -3,6 +3,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { checkRateLimit, limiters } from "@/lib/rate-limit";
 import { mockCheckoutAllowed, razorpay, razorpayEnabled, verifyPaymentSignature } from "@/lib/razorpay";
 import { siteConfig } from "@/config/site";
 import { env } from "@/lib/env";
@@ -72,6 +73,9 @@ export async function applyCoupon(input: unknown): Promise<CouponPreview> {
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid coupon." };
   }
+  // Throttle code guessing (public coupon codes are short, human-readable words).
+  const rl = await checkRateLimit(limiters.checkout, `coupon:${user.id}`);
+  if (!rl.success) return { ok: false, error: "Too many coupon attempts. Please wait a minute and try again." };
 
   const priced = await priceCart(parsed.data.items);
   if (!priced.ok) return { ok: false, error: priced.error };
@@ -226,6 +230,10 @@ export async function createOrder(input: unknown): Promise<CreateOrderResult> {
     };
   }
   const { items, addressId, couponCode, notes, paymentMethod } = parsed.data;
+
+  // Each call writes a PENDING order and opens a Razorpay order — throttle it.
+  const rl = await checkRateLimit(limiters.checkout, `order:${user.id}`);
+  if (!rl.success) return { ok: false, error: "Too many attempts. Please wait a minute and try again." };
 
   if (paymentMethod !== "COD" && !razorpayEnabled && !mockCheckoutAllowed) {
     console.error("[checkout] Razorpay keys are missing on this deployment — refusing the mock payment flow.");

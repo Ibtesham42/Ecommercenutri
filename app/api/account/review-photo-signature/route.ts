@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { cloudinaryEnabled, signUpload, safeFolder } from "@/lib/cloudinary";
+import { CUSTOMER_IMAGE_FORMATS, cloudinaryEnabled, signUpload, safeFolder } from "@/lib/cloudinary";
 import { checkRateLimit, limiters } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -22,7 +22,7 @@ export async function POST() {
   if (!cloudinaryEnabled) {
     return NextResponse.json({ error: "Photo uploads aren't available right now." }, { status: 400 });
   }
-  const signed = signUpload(safeFolder("reviews"));
+  const signed = signUpload(safeFolder("reviews"), { allowed_formats: CUSTOMER_IMAGE_FORMATS });
   if (!signed) {
     return NextResponse.json({ error: "Could not sign the upload." }, { status: 500 });
   }

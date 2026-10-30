@@ -1,5 +1,6 @@
 "use server";
 
+import type { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -51,8 +52,12 @@ export async function requestReturn(input: unknown): Promise<ReturnResult> {
   }
 
   // Re-validate the selected items + quantities server-side (never trust the client).
+  // A repeated orderItemId would pass the per-line returnableQty check twice.
+  if (new Set(items.map((i) => i.orderItemId)).size !== items.length) {
+    return { ok: false, error: "Each item can be selected only once." };
+  }
   const byId = new Map(elig.items.map((i) => [i.orderItemId, i]));
-  const lines = [];
+  const lines: Prisma.ReturnRequestItemCreateManyReturnRequestInput[] = [];
   let refundAmount = 0;
   for (const sel of items) {
     const e = byId.get(sel.orderItemId);
@@ -75,20 +80,43 @@ export async function requestReturn(input: unknown): Promise<ReturnResult> {
     });
   }
 
+  // The eligibility read above isn't serialized: concurrent requests (double
+  // submit, two tabs) would each see the full returnable quantity. Lock the
+  // order row and re-check what's already requested before inserting.
   const returnNumber = generateReturnNumber();
-  await prisma.returnRequest.create({
-    data: {
-      returnNumber,
-      orderId: order.id,
-      userId: user.id,
-      reason,
-      description: description || null,
-      media,
-      refundAmount,
-      items: { create: lines },
-      events: { create: { status: "REQUESTED", note: "Return requested", actor: "customer" } },
-    },
+  const created = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${order.id} FOR UPDATE`;
+    const active = await tx.returnRequestItem.groupBy({
+      by: ["orderItemId"],
+      where: {
+        orderItemId: { in: lines.map((l) => l.orderItemId) },
+        returnRequest: { status: { notIn: ["REJECTED", "CANCELLED"] } },
+      },
+      _sum: { quantity: true },
+    });
+    const already = new Map(active.map((a) => [a.orderItemId, a._sum.quantity ?? 0]));
+    for (const l of lines) {
+      const e = byId.get(l.orderItemId)!;
+      if ((already.get(l.orderItemId) ?? 0) + l.quantity > e.orderedQty) return false;
+    }
+    await tx.returnRequest.create({
+      data: {
+        returnNumber,
+        orderId: order.id,
+        userId: user.id,
+        reason,
+        description: description || null,
+        media,
+        refundAmount,
+        items: { create: lines },
+        events: { create: { status: "REQUESTED", note: "Return requested", actor: "customer" } },
+      },
+    });
+    return true;
   });
+  if (!created) {
+    return { ok: false, error: "A return for these items was already requested. Please refresh the page." };
+  }
 
   await notify(user.id, {
     type: "RETURN_UPDATE",

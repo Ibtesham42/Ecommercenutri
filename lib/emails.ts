@@ -155,7 +155,7 @@ export function verificationEmail(url: string, name?: string | null): Email {
   return {
     subject: `Verify your email — ${siteConfig.name}`,
     html: shell({
-      heading: `Welcome${name ? `, ${name}` : ""}! 🌿`,
+      heading: `Welcome${name ? `, ${esc(name)}` : ""}! 🌿`,
       intro:
         "Thanks for joining Nutriyet. Please confirm your email address to secure your account.",
       ctaLabel: "Verify email",
@@ -170,11 +170,25 @@ export function passwordResetEmail(url: string, name?: string | null): Email {
     subject: `Reset your password — ${siteConfig.name}`,
     html: shell({
       heading: "Reset your password",
-      intro: `Hi${name ? ` ${name}` : ""}, we received a request to reset your Nutriyet password. This link expires in 1 hour. If you didn't request it, you can safely ignore this email.`,
+      intro: `Hi${name ? ` ${esc(name)}` : ""}, we received a request to reset your Nutriyet password. This link expires in 1 hour. If you didn't request it, you can safely ignore this email.`,
       ctaLabel: "Reset password",
       ctaUrl: url,
     }),
     text: `Reset your Nutriyet password (expires in 1 hour): ${url}`,
+  };
+}
+
+/** Security notice to the PREVIOUS address after an account email change. */
+export function emailChangedNotice(newEmail: string, name?: string | null): Email {
+  return {
+    subject: `Your account email was changed — ${siteConfig.name}`,
+    html: shell({
+      heading: "Your account email was changed",
+      intro: `Hi${name ? ` ${esc(name)}` : ""}, the email on your Nutriyet account was just changed to <strong>${esc(newEmail)}</strong>. If you didn't make this change, contact us right away at ${siteConfig.contact.email}.`,
+      ctaLabel: "Review your account",
+      ctaUrl: `${siteConfig.url}/account`,
+    }),
+    text: `The email on your Nutriyet account was changed to ${newEmail}. If this wasn't you, contact ${siteConfig.contact.email}.`,
   };
 }
 
@@ -223,7 +237,7 @@ export function orderConfirmationEmail(order: OrderEmailData): Email {
   return {
     subject: `Order confirmed #${order.orderNumber} — ${siteConfig.name}`,
     html: shell({
-      heading: `Thanks for your order${order.user?.name ? `, ${order.user.name}` : ""}! 🌿`,
+      heading: `Thanks for your order${order.user?.name ? `, ${esc(order.user.name)}` : ""}! 🌿`,
       intro: `We've received your order <strong>#${order.orderNumber}</strong> and it's now being processed.${summary}${invoiceNote}`,
       ctaLabel: "View your order",
       ctaUrl: url,
@@ -297,7 +311,7 @@ export function orderStatusEmail(order: {
     subject: `Order #${order.orderNumber} — ${order.status.replace(/_/g, " ").toLowerCase()} · ${siteConfig.name}`,
     html: shell({
       heading: copy.heading,
-      intro: `Hi${order.name ? ` ${order.name}` : ""}, ${copy.intro} (Order <strong>#${order.orderNumber}</strong>.)${reasonLine}`,
+      intro: `Hi${order.name ? ` ${esc(order.name)}` : ""}, ${copy.intro} (Order <strong>#${order.orderNumber}</strong>.)${reasonLine}`,
       ctaLabel: "Track your order",
       ctaUrl: url,
     }),
@@ -329,7 +343,7 @@ export function returnStatusEmail(data: {
   pickupAt?: string | null; // ISO (PICKUP_SCHEDULED)
 }): Email | null {
   const url = `${siteConfig.url}/account/returns/${data.returnNumber}`;
-  const hi = `Hi${data.name ? ` ${data.name}` : ""},`;
+  const hi = `Hi${data.name ? ` ${esc(data.name)}` : ""},`;
   const ref = `return <strong>${data.returnNumber}</strong> (order #${data.orderNumber})`;
 
   const copy: Partial<Record<ReturnStatusName, { heading: string; intro: string }>> = {
@@ -343,7 +357,7 @@ export function returnStatusEmail(data: {
     },
     INFO_REQUESTED: {
       heading: "We need a little more information",
-      intro: `${hi} to proceed with your ${ref}, we need more info.${data.reason ? ` <em>${data.reason}</em>` : ""}`,
+      intro: `${hi} to proceed with your ${ref}, we need more info.${data.reason ? ` <em>${esc(data.reason)}</em>` : ""}`,
     },
     APPROVED: {
       heading: "Your return is approved ✅",
@@ -384,7 +398,7 @@ export function affiliateStatusEmail(data: {
   couponCode?: string | null;
   reason?: string | null;
 }): Email | null {
-  const hi = `Hi${data.name ? ` ${data.name}` : ""},`;
+  const hi = `Hi${data.name ? ` ${esc(data.name)}` : ""},`;
   const map: Record<string, { heading: string; intro: string }> = {
     APPROVED: {
       heading: "You're in — welcome to the Nutriyet Partner Program! 🎉",
@@ -420,7 +434,7 @@ export function commissionEmail(data: {
   amount: number;
   kind: "earned" | "approved";
 }): Email {
-  const hi = `Hi${data.name ? ` ${data.name}` : ""},`;
+  const hi = `Hi${data.name ? ` ${esc(data.name)}` : ""},`;
   const heading = data.kind === "earned" ? "You earned a commission! 💸" : "Commission approved ✅";
   const intro =
     data.kind === "earned"
@@ -435,7 +449,7 @@ export function commissionEmail(data: {
 
 /** Coupon used by a shopper. */
 export function couponUsedEmail(data: { name?: string | null; code: string }): Email {
-  const hi = `Hi${data.name ? ` ${data.name}` : ""},`;
+  const hi = `Hi${data.name ? ` ${esc(data.name)}` : ""},`;
   return {
     subject: `Your coupon ${data.code} was used · ${siteConfig.name}`,
     html: shell({
@@ -455,7 +469,7 @@ export function payoutUpdateEmail(data: {
   amount: number;
   reason?: string | null;
 }): Email {
-  const hi = `Hi${data.name ? ` ${data.name}` : ""},`;
+  const hi = `Hi${data.name ? ` ${esc(data.name)}` : ""},`;
   const approved = data.status === "APPROVED";
   return {
     subject: `Payout ${approved ? "approved" : "declined"} · ${siteConfig.name}`,
@@ -464,7 +478,7 @@ export function payoutUpdateEmail(data: {
       intro: approved
         ? `${hi} your payout request of <strong>${formatPrice(data.amount)}</strong> has been approved and is queued for processing. We'll notify you once it's paid.`
         : `${hi} your payout request of <strong>${formatPrice(data.amount)}</strong> couldn't be approved${
-            data.reason ? `: <em>${data.reason}</em>` : ""
+            data.reason ? `: <em>${esc(data.reason)}</em>` : ""
           }. The amount has been returned to your available balance — you can request it again.`,
       ctaLabel: "View payouts",
       ctaUrl: AFF_URL,
@@ -480,7 +494,7 @@ export function payoutEmail(data: {
   method?: string | null;
   reference?: string | null;
 }): Email {
-  const hi = `Hi${data.name ? ` ${data.name}` : ""},`;
+  const hi = `Hi${data.name ? ` ${esc(data.name)}` : ""},`;
   return {
     subject: `Payout processed · ${siteConfig.name}`,
     html: shell({

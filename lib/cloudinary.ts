@@ -78,6 +78,9 @@ export function signUpload<T extends Record<string, string> = Record<string, nev
   } as SignedUpload & T;
 }
 
+/** Signed into customer photo uploads so Cloudinary rejects non-image files. */
+export const CUSTOMER_IMAGE_FORMATS = "jpg,jpeg,png,webp,gif,heic,heif,avif";
+
 export async function deleteImage(publicId: string): Promise<void> {
   if (!cloudinaryEnabled) return;
   try {

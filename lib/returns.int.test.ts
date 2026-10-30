@@ -125,4 +125,60 @@ describe.skipIf(!ctx)("return refunds (integration)", () => {
     await ctx.returns.processRefund(ret.id, { amount: ret.refundAmount, method: "ORIGINAL" });
     expect(refundPayment).toHaveBeenCalledTimes(1);
   });
+
+  async function deliveredOrder(quantity: number) {
+    const res = await ctx!.checkout.createOrder({
+      items: [{ variantId: ids.v, quantity }],
+      addressId: ids.address,
+      paymentMethod: "RAZORPAY",
+    });
+    const orderNumber = (res as { orderNumber: string }).orderNumber;
+    const order = await prisma.order.update({
+      where: { orderNumber },
+      data: { status: "DELIVERED", razorpayPaymentId: "pay_int_test" },
+      include: { items: true },
+    });
+    await prisma.orderEvent.create({ data: { orderId: order.id, status: "DELIVERED", actor: "admin" } });
+    return order;
+  }
+
+  async function returnedQty(orderId: string) {
+    const agg = await prisma.returnRequestItem.aggregate({
+      where: { returnRequest: { orderId } },
+      _sum: { quantity: true },
+    });
+    const value = await prisma.returnRequest.aggregate({ where: { orderId }, _sum: { refundAmount: true } });
+    return { qty: agg._sum.quantity ?? 0, refund: value._sum.refundAmount ?? 0 };
+  }
+
+  it("a repeated line can't return more than was ordered", async () => {
+    const order = await deliveredOrder(1);
+    const line = order.items[0];
+    const res = await ctx.returnsAction.requestReturn({
+      orderNumber: order.orderNumber,
+      reason: "Damaged",
+      items: [
+        { orderItemId: line.id, quantity: 1 },
+        { orderItemId: line.id, quantity: 1 },
+      ],
+    });
+    expect(res).toMatchObject({ ok: false });
+    expect(await returnedQty(order.id)).toEqual({ qty: 0, refund: 0 });
+  });
+
+  it("concurrent return requests never exceed the ordered quantity", async () => {
+    const order = await deliveredOrder(2);
+    const line = order.items[0];
+    const results = await Promise.all(
+      Array.from({ length: 5 }, () =>
+        ctx.returnsAction.requestReturn({
+          orderNumber: order.orderNumber,
+          reason: "Damaged",
+          items: [{ orderItemId: line.id, quantity: 2 }],
+        }),
+      ),
+    );
+    expect(results.filter((r) => r.ok).length).toBe(1);
+    expect(await returnedQty(order.id)).toEqual({ qty: 2, refund: line.price * 2 });
+  });
 });

@@ -20,8 +20,9 @@ import { checkRateLimit, limiters } from "@/lib/rate-limit";
 import { createVerificationToken } from "@/lib/tokens";
 import { transitionOrderStatus } from "@/lib/orders";
 import { isCustomerCancellable } from "@/lib/order-status";
-import { orderStatusEmail, verificationEmail } from "@/lib/emails";
+import { emailChangedNotice, orderStatusEmail, verificationEmail } from "@/lib/emails";
 import { sendEmail } from "@/lib/email";
+import { isTrustedCloudinaryUrl } from "@/lib/cloudinary";
 
 export type AccountState = { error?: string; success?: string } | undefined;
 
@@ -67,6 +68,10 @@ export async function updateEmail(
   }
   const email = parsed.data.email.trim().toLowerCase();
 
+  // Each change mails a link to an arbitrary address — throttle it.
+  const rl = await checkRateLimit(limiters.auth, `email-change:${user.id}`);
+  if (!rl.success) return { error: "Too many attempts. Please wait a minute and try again." };
+
   const current = await prisma.user.findUnique({
     where: { id: user.id },
     select: { email: true },
@@ -89,6 +94,14 @@ export async function updateEmail(
     await sendEmail({ to: email, ...verificationEmail(url, user.name ?? null) });
   } catch (mailErr) {
     console.error("[account] verification email failed:", mailErr);
+  }
+  // Alert the previous address so a hijacked session can't silently re-home the account.
+  if (current.email) {
+    try {
+      await sendEmail({ to: current.email, ...emailChangedNotice(email, user.name ?? null) });
+    } catch (mailErr) {
+      console.error("[account] email-change notice failed:", mailErr);
+    }
   }
 
   revalidatePath("/account");
@@ -122,6 +135,9 @@ export async function changePassword(
     if (!parsed.data.currentPassword) {
       return { error: "Enter your current password." };
     }
+    // Bounds current-password guessing from a hijacked session.
+    const rl = await checkRateLimit(limiters.auth, `pw-change:${user.id}`);
+    if (!rl.success) return { error: "Too many attempts. Please wait a minute and try again." };
     const ok = await bcrypt.compare(parsed.data.currentPassword, record.passwordHash);
     if (!ok) return { error: "Your current password is incorrect." };
   }
@@ -140,6 +156,8 @@ export async function updateAvatar(url: unknown): Promise<AccountState> {
 
   const parsed = avatarSchema.safeParse(url);
   if (!parsed.success) return { error: "Invalid image." };
+  // Only our own Cloudinary account's assets (the schema alone admits any cloud).
+  if (parsed.data && !isTrustedCloudinaryUrl(parsed.data)) return { error: "Invalid image." };
 
   await prisma.user.update({
     where: { id: user.id },

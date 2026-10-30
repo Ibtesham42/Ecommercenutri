@@ -52,6 +52,7 @@ async function uploadReviewPhoto(blob: Blob, filename: string): Promise<string> 
     timestamp?: number;
     signature?: string;
     folder?: string;
+    allowed_formats?: string;
     error?: string;
   };
   if (!sigRes.ok || !sig.signature || !sig.cloudName) {
@@ -64,6 +65,7 @@ async function uploadReviewPhoto(blob: Blob, filename: string): Promise<string> 
   form.append("timestamp", String(sig.timestamp));
   form.append("signature", sig.signature);
   if (sig.folder) form.append("folder", sig.folder);
+  if (sig.allowed_formats) form.append("allowed_formats", sig.allowed_formats);
 
   const upRes = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, {
     method: "POST",
