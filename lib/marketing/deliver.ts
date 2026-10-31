@@ -121,13 +121,18 @@ export async function dispatchCampaign(
   // skip every other campaign due that tick (the same bug shape already
   // fixed in the social planner and the intelligence engine this cycle).
   try {
-    const c = await prisma.campaign.findUnique({ where: { id: campaignId } });
-    if (!c) return { ok: false, sent: 0, error: "Campaign not found." };
-    if (c.status === "SENT" || c.status === "SENDING") {
-      return { ok: false, sent: 0, error: "This campaign was already sent." };
+    // Atomic claim: of two concurrent dispatches (overlapping cron runs, a
+    // double-clicked "Send now"), only the one whose UPDATE flips the status
+    // to SENDING delivers. A read-then-write check let both through.
+    const claim = await prisma.campaign.updateMany({
+      where: { id: campaignId, status: { notIn: ["SENT", "SENDING"] } },
+      data: { status: "SENDING" },
+    });
+    if (claim.count === 0) {
+      const exists = await prisma.campaign.count({ where: { id: campaignId } });
+      return { ok: false, sent: 0, error: exists ? "This campaign was already sent." : "Campaign not found." };
     }
-
-    await prisma.campaign.update({ where: { id: campaignId }, data: { status: "SENDING" } });
+    const c = await prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } });
 
     const recipients = await resolveAudience(c.segmentType, (c.segmentConfig as SegmentConfig) ?? {});
     let sentCount = 0;
@@ -198,8 +203,17 @@ export async function dispatchDueCampaigns(now = new Date()): Promise<number> {
       continue;
     }
 
-    // Recurring series: send a child occurrence, then advance the parent.
+    // Recurring series: claim this occurrence by advancing the parent first —
+    // conditional on the scheduledFor we read, so a concurrent cron run that
+    // saw the same occurrence loses the claim and sends nothing. (If the send
+    // then fails, this occurrence is skipped rather than ever sent twice.)
     try {
+      const claim = await prisma.campaign.updateMany({
+        where: { id: c.id, status: "SCHEDULED", scheduledFor: c.scheduledFor },
+        data: { scheduledFor: nextRun(recurrence, c.scheduledFor ?? now, now), sentAt: new Date() },
+      });
+      if (claim.count === 0) continue;
+
       const stamp = (c.scheduledFor ?? now).toISOString().slice(0, 16).replace("T", " ");
       const child = await prisma.campaign.create({
         data: {
@@ -221,10 +235,6 @@ export async function dispatchDueCampaigns(now = new Date()): Promise<number> {
       });
       const res = await dispatchCampaign(child.id);
       if (res.ok) processed++;
-      await prisma.campaign.update({
-        where: { id: c.id },
-        data: { scheduledFor: nextRun(recurrence, c.scheduledFor ?? now, now), sentAt: new Date() },
-      });
     } catch (err) {
       console.error("[marketing] recurring dispatch failed:", c.id, err);
     }
