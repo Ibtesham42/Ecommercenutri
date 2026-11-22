@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cldUrl } from "@/lib/cld";
 import { processShowcaseImage } from "@/lib/showcase-image";
-import { uploadToCloudinary } from "@/components/admin/image-upload-field";
+import { isAbortError, uploadErrorMessage, uploadToCloudinary } from "@/lib/admin/direct-upload";
+import { trackUpload } from "@/lib/admin/upload-activity";
+import { checkMediaFile } from "@/lib/upload-rules";
 
 const CHECKER =
   "repeating-conic-gradient(#e5e7eb 0% 25%, #f8fafc 0% 50%) 0 0 / 16px 16px";
@@ -17,13 +19,17 @@ const CHECKER =
 /**
  * Uploads DIRECTLY to Cloudinary from the browser (signed, via the same
  * pattern as ImageUploadField) instead of through this app's serverless
- * function — a showcase original can be a multi-MB photo, which the old
- * server-buffered `/api/admin/upload` route silently failed on above
- * Vercel's ~4.5 MB request-body limit (rejected at the platform level,
- * before the route's own 10 MB check ever ran).
+ * function — a showcase original can be a multi-MB photo, which a
+ * server-buffered route would fail on above Vercel's ~4.5 MB body limit.
  */
-async function uploadBlob(blob: Blob, filename: string, folder: string): Promise<string> {
-  const info = await uploadToCloudinary(blob, filename, folder);
+async function uploadBlob(
+  blob: Blob,
+  filename: string,
+  folder: string,
+  signal: AbortSignal,
+  onProgress: (pct: number) => void,
+): Promise<string> {
+  const info = await uploadToCloudinary(blob, filename, { folder, kind: "image", signal, onProgress });
   return info.secure_url;
 }
 
@@ -54,6 +60,11 @@ export function ShowcaseImageField({
   const tokenRef = useRef(0);
 
   async function run(file: File, removeBackground: boolean) {
+    const problem = checkMediaFile(file, "image");
+    if (problem) {
+      toast.error(problem);
+      return;
+    }
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
@@ -61,6 +72,7 @@ export function ShowcaseImageField({
     fileRef.current = file;
     setStatus("processing");
     setProgress(0);
+    const release = trackUpload();
     try {
       const result = await processShowcaseImage(file, {
         removeBg: removeBackground,
@@ -71,23 +83,27 @@ export function ShowcaseImageField({
       });
       if (token !== tokenRef.current) return;
       setStatus("uploading");
-      // uploadToCloudinary (reused from ImageUploadField) doesn't take an
-      // AbortSignal — a cancel during upload still returns to idle
-      // immediately via the token check below; any already-in-flight
-      // request just finishes in the background and its result is discarded.
-      const imageUrl = await uploadBlob(result.originalBlob, "showcase-original.jpg", folder);
+      setProgress(0);
+      const onProgress = (pct: number) => {
+        if (token === tokenRef.current) setProgress(pct);
+      };
+      // Cancel/replace aborts the in-flight request via the same signal.
+      const imageUrl = await uploadBlob(result.originalBlob, "showcase-original.jpg", folder, ac.signal, onProgress);
       let pngUrl: string | null = null;
       if (result.cutoutBlob) {
-        pngUrl = await uploadBlob(result.cutoutBlob, "showcase-cutout.png", folder);
+        pngUrl = await uploadBlob(result.cutoutBlob, "showcase-cutout.png", folder, ac.signal, onProgress);
       }
       if (token !== tokenRef.current) return;
       onChange({ image: imageUrl, imagePng: pngUrl });
       if (result.warning) toast.warning(result.warning);
-      else toast.success(result.removed ? "Background removed & framed" : "Image ready");
+      else toast.success(result.removed ? "Image uploaded — background removed & framed." : "Image uploaded successfully.");
     } catch (err) {
-      if ((err as Error)?.name === "AbortError") return;
-      toast.error((err as Error)?.message || "Couldn't process the image");
+      if (isAbortError(err)) return;
+      console.error("[showcase-image] failed:", err);
+      const isUpload = (err as Error)?.name === "UploadError";
+      toast.error(isUpload ? uploadErrorMessage(err) : (err as Error)?.message || "Couldn't process the image. Please try again.");
     } finally {
+      release();
       if (token === tokenRef.current) {
         setStatus("idle");
         setProgress(0);
@@ -153,7 +169,7 @@ export function ShowcaseImageField({
                   <span>
                     {status === "processing"
                       ? `Removing background… ${progress}%`
-                      : "Uploading…"}
+                      : `Uploading… ${progress}%`}
                   </span>
                   <Button type="button" size="sm" variant="ghost" className="h-6 px-2" onClick={clearImage}>
                     <X className="size-3" /> Cancel

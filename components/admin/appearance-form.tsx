@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useForm, Controller, type Control } from "react-hook-form";
 import { Loader2, Palette, Megaphone, Phone, Share2, Search, Image as ImageIcon, Receipt } from "lucide-react";
 import { toast } from "sonner";
+import { useUploadsInFlight } from "@/lib/admin/upload-activity";
+import { runAdminAction, toastInvalid } from "@/lib/admin/safe-action";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -151,6 +153,7 @@ export function AppearanceForm({
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const uploading = useUploadsInFlight();
   const { register, handleSubmit, control } = useForm<AppearanceValues>({
     defaultValues: initial,
   });
@@ -158,7 +161,7 @@ export function AppearanceForm({
   async function onSubmit(v: AppearanceValues) {
     setSaving(true);
     const payload = { ...v, defaultGstRate: v.defaultGstRate ?? undefined };
-    const res = await updateStoreSettings(payload);
+    const res = await runAdminAction(() => updateStoreSettings(payload));
     setSaving(false);
     if (res.ok) {
       toast.success("Appearance saved");
@@ -193,7 +196,7 @@ export function AppearanceForm({
   );
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit, toastInvalid)} className="space-y-6">
       <Section title="Branding" icon={ImageIcon}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -370,8 +373,8 @@ export function AppearanceForm({
       </Section>
 
       <div className="sticky bottom-4 flex justify-end">
-        <Button type="submit" disabled={saving} size="lg" className="gap-2 shadow-lg">
-          {saving && <Loader2 className="size-4 animate-spin" />}
+        <Button type="submit" disabled={uploading || saving} size="lg" className="gap-2 shadow-lg">
+          {(saving || uploading) && <Loader2 className="size-4 animate-spin" />}
           Save appearance
         </Button>
       </div>

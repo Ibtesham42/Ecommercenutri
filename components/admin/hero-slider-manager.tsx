@@ -32,6 +32,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { useUploadsInFlight } from "@/lib/admin/upload-activity";
+import { runAdminAction, toastInvalid } from "@/lib/admin/safe-action";
 import { BulkBar, type BulkAction } from "@/components/admin/bulk/bulk-bar";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import { toastBulk } from "@/lib/admin/run-bulk";
@@ -167,6 +169,7 @@ export function HeroSliderManager({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<HeroSlideRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const uploading = useUploadsInFlight();
   const [preview, setPreview] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
 
@@ -292,7 +295,7 @@ export function HeroSliderManager({
 
   async function onSubmit(v: FormValues) {
     setSaving(true);
-    const res = await saveHeroSlide({
+    const res = await runAdminAction(() => saveHeroSlide({
       id: v.id,
       mediaType: v.mediaType,
       videoUrl: v.videoUrl || null,
@@ -314,7 +317,7 @@ export function HeroSliderManager({
       isActive: v.isActive,
       startsAt: v.startsAt || null,
       expiresAt: v.expiresAt || null,
-    });
+    }));
     setSaving(false);
     if (res.ok) {
       toast.success(v.id ? "Slide updated" : "Slide created");
@@ -501,7 +504,7 @@ export function HeroSliderManager({
           <DialogHeader>
             <DialogTitle>{editing ? "Edit slide" : "New slide"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <form onSubmit={handleSubmit(onSubmit, toastInvalid)} className="space-y-3">
             {/* Registered so the toggle's value is always submitted. */}
             <input type="hidden" {...register("mediaType")} />
             {/* Media type: Image (default) or Video */}
@@ -533,7 +536,7 @@ export function HeroSliderManager({
                   <Controller
                     control={control}
                     name="videoUrl"
-                    rules={{ required: true }}
+                    rules={{ required: "Add a slide video — upload one or paste a URL." }}
                     render={({ field }) => (
                       <ImageUploadField
                         value={field.value}
@@ -729,7 +732,7 @@ export function HeroSliderManager({
                 <Controller
                   control={control}
                   name="desktopImage"
-                  rules={{ required: true }}
+                  rules={{ required: "Add a desktop image — upload one or paste a URL." }}
                   render={({ field }) => (
                     <ImageUploadField value={field.value} onChange={field.onChange} cloudinaryReady={cloudinaryReady} folder="hero" />
                   )}
@@ -835,8 +838,8 @@ export function HeroSliderManager({
                 <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={saving} className="gap-2">
-                  {saving && <Loader2 className="size-4 animate-spin" />}
+                <Button type="submit" disabled={uploading || saving} className="gap-2">
+                  {(saving || uploading) && <Loader2 className="size-4 animate-spin" />}
                   {editing ? "Save changes" : "Create slide"}
                 </Button>
               </div>

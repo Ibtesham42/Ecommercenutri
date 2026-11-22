@@ -19,6 +19,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { useUploadsInFlight } from "@/lib/admin/upload-activity";
+import { runAdminAction, toastInvalid } from "@/lib/admin/safe-action";
 import { BulkBar, type BulkAction } from "@/components/admin/bulk/bulk-bar";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import { toastBulk } from "@/lib/admin/run-bulk";
@@ -83,6 +85,7 @@ export function StoryManager({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<StoryRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const uploading = useUploadsInFlight();
   const sel = useBulkSelection(stories.map((s) => s.id));
   const [bulkPending, startBulk] = useTransition();
 
@@ -129,13 +132,13 @@ export function StoryManager({
 
   async function onSubmit(v: FormValues) {
     setSaving(true);
-    const res = await saveStory({
+    const res = await runAdminAction(() => saveStory({
       ...v,
       productId: v.productId || null,
       ctaText: v.ctaText || null,
       sortOrder: Number(v.sortOrder) || 0,
       expiresAt: v.expiresAt || null,
-    });
+    }));
     setSaving(false);
     if (res.ok) {
       toast.success(v.id ? "Story updated" : "Story created");
@@ -253,17 +256,17 @@ export function StoryManager({
           <DialogHeader>
             <DialogTitle>{editing ? "Edit story" : "New story"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <form onSubmit={handleSubmit(onSubmit, toastInvalid)} className="space-y-3">
             <div className="space-y-1.5">
               <Label htmlFor="stitle">Title</Label>
-              <Input id="stitle" {...register("title", { required: true })} />
+              <Input id="stitle" {...register("title", { required: "Add a story title." })} />
             </div>
             <div className="space-y-1.5">
               <Label>Cover image</Label>
               <Controller
                 control={control}
                 name="coverImage"
-                rules={{ required: true }}
+                rules={{ required: "Add a cover image." }}
                 render={({ field }) => (
                   <ImageUploadField
                     value={field.value}
@@ -280,7 +283,7 @@ export function StoryManager({
                 <Controller
                   control={control}
                   name="mediaUrl"
-                  rules={{ required: true }}
+                  rules={{ required: "Add the story image or video." }}
                   render={({ field }) => (
                     <ImageUploadField
                       value={field.value}
@@ -349,8 +352,8 @@ export function StoryManager({
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving} className="gap-2">
-                {saving && <Loader2 className="size-4 animate-spin" />}
+              <Button type="submit" disabled={uploading || saving} className="gap-2">
+                {(saving || uploading) && <Loader2 className="size-4 animate-spin" />}
                 Save
               </Button>
             </div>

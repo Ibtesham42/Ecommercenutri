@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { Upload, Loader2, FileCheck2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { uploadToCloudinary } from "@/components/admin/image-upload-field";
+import { uploadErrorMessage, uploadToCloudinary } from "@/lib/admin/direct-upload";
 import { JNV_ACCEPT, detectJnvFileKind, formatBytes, type JnvFileKind } from "@/lib/jnv/catalog";
 import { jnvUploadSizeError, type JnvUploadLimits } from "@/lib/jnv/upload-limits";
 
@@ -49,7 +49,7 @@ export function JnvFileField({
     setUploading(true);
     setProgress(0);
     try {
-      const info = await uploadToCloudinary(file, file.name, folder, setProgress);
+      const info = await uploadToCloudinary(file, file.name, { folder, kind: "file", onProgress: setProgress });
       onUploaded({
         url: info.secure_url,
         fileKind: detectJnvFileKind(file.name, file.type),
@@ -57,10 +57,10 @@ export function JnvFileField({
         fileSize: info.bytes ?? file.size,
         filename: file.name,
       });
-      toast.success("Uploaded");
+      toast.success("File uploaded successfully.");
     } catch (err) {
       console.error("[jnv-file-field] upload failed:", err);
-      toast.error(err instanceof Error ? err.message : "Upload failed. Please try again.");
+      toast.error(uploadErrorMessage(err));
     } finally {
       setUploading(false);
       setProgress(0);

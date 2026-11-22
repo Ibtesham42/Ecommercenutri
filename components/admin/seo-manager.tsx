@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Save, RotateCcw, AlertTriangle, Globe, Share2, Search, Link2 } from "lucide-react";
 import { toast } from "sonner";
+import { useUploadsInFlight } from "@/lib/admin/upload-activity";
+import { runAdminAction } from "@/lib/admin/safe-action";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -53,6 +55,7 @@ export function SeoManager({
   const [form, setForm] = useState<SeoFormValues>(initial);
   const [saved, setSaved] = useState<SeoFormValues>(initial);
   const [saving, setSaving] = useState(false);
+  const uploading = useUploadsInFlight();
   const [tab, setTab] = useState<TabKey>("global");
   const [platform, setPlatform] = useState<PlatformKey>("google");
   const savedJson = useRef(JSON.stringify(initial));
@@ -76,7 +79,7 @@ export function SeoManager({
 
   async function save() {
     setSaving(true);
-    const res = await updateSeoSettings(form);
+    const res = await runAdminAction(() => updateSeoSettings(form));
     setSaving(false);
     if (res.ok) {
       setSaved(form);
@@ -426,7 +429,7 @@ export function SeoManager({
               Discard
             </Button>
           )}
-          <Button type="button" onClick={save} disabled={saving || !dirty} className="gap-2">
+          <Button type="button" onClick={save} disabled={uploading || saving || !dirty} className="gap-2">
             {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             Save changes
           </Button>

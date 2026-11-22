@@ -15,6 +15,8 @@ import {
   Box,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useUploadsInFlight } from "@/lib/admin/upload-activity";
+import { runAdminAction, toastInvalid } from "@/lib/admin/safe-action";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -109,6 +111,7 @@ export function ShowcaseManager({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ShowcaseRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const uploading = useUploadsInFlight();
   const [preview, setPreview] = useState(false);
 
   const [order, setOrder] = useState<ShowcaseRow[]>(items);
@@ -161,7 +164,7 @@ export function ShowcaseManager({
 
   async function onSubmit(v: FormValues) {
     setSaving(true);
-    const res = await saveShowcaseItem({
+    const res = await runAdminAction(() => saveShowcaseItem({
       id: v.id,
       title: v.title,
       tagline: v.tagline || null,
@@ -176,7 +179,7 @@ export function ShowcaseManager({
       floatIntensity: Number(v.floatIntensity),
       zoom: Number(v.zoom),
       isActive: v.isActive,
-    });
+    }));
     setSaving(false);
     if (res.ok) {
       toast.success(v.id ? "Showcase item updated" : "Showcase item created");
@@ -318,11 +321,11 @@ export function ShowcaseManager({
           <DialogHeader>
             <DialogTitle>{editing ? "Edit showcase item" : "New showcase item"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <form onSubmit={handleSubmit(onSubmit, toastInvalid)} className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="stitle">Title</Label>
-                <Input id="stitle" {...register("title", { required: true })} />
+                <Input id="stitle" {...register("title", { required: "Enter a title." })} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="stagline">Tagline</Label>
@@ -333,7 +336,7 @@ export function ShowcaseManager({
             <div className="space-y-1.5">
               <Label>Product image</Label>
               {/* RHF-registered values, driven by ShowcaseImageField via setValue. */}
-              <input type="hidden" {...register("image", { required: true })} />
+              <input type="hidden" {...register("image", { required: "Upload a product image." })} />
               <input type="hidden" {...register("imagePng")} />
               <ShowcaseImageField
                 image={watch("image") || ""}
@@ -422,8 +425,8 @@ export function ShowcaseManager({
                 <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={saving} className="gap-2">
-                  {saving && <Loader2 className="size-4 animate-spin" />}
+                <Button type="submit" disabled={uploading || saving} className="gap-2">
+                  {(saving || uploading) && <Loader2 className="size-4 animate-spin" />}
                   {editing ? "Save changes" : "Create item"}
                 </Button>
               </div>

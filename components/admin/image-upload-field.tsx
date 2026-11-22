@@ -1,221 +1,177 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Upload, Loader2, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Upload, Loader2, X, RotateCcw, AlertCircle, ImageOff } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { isVideoUrl } from "@/lib/cld";
 import type { CloudinaryUploadInfo } from "@/lib/video";
-import { parseCloudinaryUploadResponse } from "@/lib/cloudinary-upload-response";
+import { acceptFor, checkMediaFile, isVideoFile, kindFromAccept, mediaRequirements, type MediaKind } from "@/lib/upload-rules";
+import { isAbortError, uploadErrorMessage, uploadToCloudinary } from "@/lib/admin/direct-upload";
+import { prepareImage, preparedImageTooLarge } from "@/lib/admin/prepare-image";
+import { trackUpload } from "@/lib/admin/upload-activity";
 
-/** Video containers accepted across the admin (validated beyond the file picker). */
-const VIDEO_TYPES = new Set(["video/mp4", "video/webm", "video/quicktime"]);
-const VIDEO_EXT = /\.(mp4|webm|mov)$/i;
-
-// Raster types the browser can downscale/recompress before upload. Others
-// (svg, gif, video) are sent untouched so they're preserved.
-const COMPRESSIBLE = ["image/jpeg", "image/png", "image/webp"];
-const MAX_DIM = 1600;
-
-/**
- * Shrink a large raster image client-side (resize to a max edge + recompress)
- * and return a Blob to upload. PNGs are re-encoded as JPEG when downscaled
- * (lossless PNG photos stay huge otherwise) — except we keep PNG when it's
- * already small enough to be a logo/icon with possible transparency. Falls back
- * to the original file on any failure.
- */
-export async function prepareBlob(file: File): Promise<{ blob: Blob; filename: string }> {
-  const fallback = { blob: file, filename: file.name || "upload" };
-  if (!COMPRESSIBLE.includes(file.type) || typeof createImageBitmap !== "function") {
-    return fallback;
-  }
-  try {
-    const bitmap = await createImageBitmap(file);
-    let { width, height } = bitmap;
-    const longest = Math.max(width, height);
-    const needsResize = longest > MAX_DIM;
-    // Small PNGs/WebP (likely logos) stay as-is to preserve transparency.
-    if (!needsResize && file.type !== "image/jpeg" && file.size <= 1.5 * 1024 * 1024) {
-      bitmap.close();
-      return fallback;
-    }
-    if (needsResize) {
-      const scale = MAX_DIM / longest;
-      width = Math.round(width * scale);
-      height = Math.round(height * scale);
-    }
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      bitmap.close();
-      return fallback;
-    }
-    ctx.drawImage(bitmap, 0, 0, width, height);
-    bitmap.close();
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", 0.85),
-    );
-    if (!blob) return fallback;
-    const base = (file.name || "upload").replace(/\.[^.]+$/, "");
-    return { blob, filename: `${base}.jpg` };
-  } catch {
-    return fallback;
-  }
-}
-
-/**
- * Upload a blob DIRECTLY to Cloudinary from the browser. We first ask our
- * admin-gated endpoint for a signature, then POST the file straight to
- * Cloudinary's API (XMLHttpRequest so real upload progress is reported). This
- * bypasses the app's serverless function entirely, so large files (videos)
- * aren't capped by Vercel's ~4.5 MB request-body limit or the function
- * execution timeout. Resolves with Cloudinary's full response (URL + metadata:
- * dimensions, duration, bytes, format, codec, fps, bitrate).
- */
-export type UploadInfo = CloudinaryUploadInfo & { secure_url: string };
-
-export async function uploadToCloudinary(
-  blob: Blob,
-  filename: string,
-  folder?: string,
-  onProgress?: (pct: number) => void,
-): Promise<UploadInfo> {
-  const sigRes = await fetch("/api/admin/upload-signature", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ folder }),
-  });
-  const sig = (await sigRes.json().catch(() => ({}))) as {
-    cloudName?: string;
-    apiKey?: string;
-    timestamp?: number;
-    signature?: string;
-    folder?: string;
-    error?: string;
-  };
-  if (!sigRes.ok || !sig.signature || !sig.cloudName) {
-    throw new Error(sig.error ?? "Could not start the upload.");
-  }
-
-  const form = new FormData();
-  form.append("file", blob, filename);
-  form.append("api_key", sig.apiKey ?? "");
-  form.append("timestamp", String(sig.timestamp));
-  form.append("signature", sig.signature);
-  if (sig.folder) form.append("folder", sig.folder);
-
-  // `auto` lets Cloudinary detect image vs video from the bytes.
-  return new Promise<UploadInfo>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", `https://api.cloudinary.com/v1_1/${sig.cloudName}/auto/upload`);
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
-    };
-    xhr.onload = () => {
-      const result = parseCloudinaryUploadResponse<UploadInfo>(xhr.status, xhr.responseText);
-      if (result.ok) resolve(result.info);
-      else reject(new Error(result.error));
-    };
-    xhr.onerror = () => reject(new Error("Network error during upload."));
-    xhr.send(form);
-  });
-}
-
-/**
- * Image (or video) field that uploads to Cloudinary when configured and always
- * accepts a pasted URL as a fallback. Controlled via `value` / `onChange`.
- */
-/** Read a video file's duration (seconds) in the browser, best-effort. */
+/** Read a video file's duration (seconds) in the browser; 0 when unknown (never hangs). */
 function videoDuration(file: File): Promise<number> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const v = document.createElement("video");
+    let settled = false;
+    const finish = (d: number) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      URL.revokeObjectURL(url);
+      resolve(Number.isFinite(d) ? d : 0);
+    };
+    // Some codecs (e.g. HEVC .mov on Windows) never fire either event.
+    const timer = setTimeout(() => finish(0), 8000);
     v.preload = "metadata";
-    v.onloadedmetadata = () => {
-      URL.revokeObjectURL(url);
-      resolve(Number.isFinite(v.duration) ? v.duration : 0);
-    };
-    v.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(0);
-    };
+    v.muted = true;
+    v.onloadedmetadata = () => finish(v.duration);
+    v.onerror = () => finish(0);
     v.src = url;
   });
 }
 
+type Phase = "idle" | "checking" | "preparing" | "uploading" | "processing";
+
+/**
+ * Image (or video) field that uploads DIRECTLY to Cloudinary when configured
+ * and always accepts a pasted URL as a fallback. Controlled via `value` /
+ * `onChange` — `onChange` fires only after a successful upload, so a failed
+ * or cancelled upload never leaves a broken URL / misleading preview behind.
+ */
 export function ImageUploadField({
   value,
   onChange,
   cloudinaryReady,
   folder,
-  accept = "image/*",
+  accept,
+  kind: kindProp,
   placeholder = "https://… or upload",
   maxDurationSec,
   onUploadInfo,
+  successMessage,
 }: {
   value?: string;
   onChange: (url: string) => void;
   cloudinaryReady: boolean;
   folder?: string;
+  /** Legacy file-picker filter; used to infer `kind` when that isn't given. */
   accept?: string;
+  kind?: MediaKind;
   placeholder?: string;
   /** When set, reject video files longer than this (seconds) before upload. */
   maxDurationSec?: number;
   /** Called with Cloudinary's full response (dimensions, duration, codec, …). */
   onUploadInfo?: (info: CloudinaryUploadInfo) => void;
+  successMessage?: string;
 }) {
-  const [uploading, setUploading] = useState(false);
+  const kind = kindProp ?? kindFromAccept(accept);
+  const [phase, setPhase] = useState<Phase>("idle");
   const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<{ message: string; file: File | null } | null>(null);
+  const [localPreview, setLocalPreview] = useState<{ url: string; video: boolean } | null>(null);
+  const [previewBroken, setPreviewBroken] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const busyRef = useRef(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Closing the dialog mid-upload cancels the upload (and frees the Save lock).
+  useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => setPreviewBroken(false), [value]);
+  useEffect(() => () => {
+    if (localPreview) URL.revokeObjectURL(localPreview.url);
+  }, [localPreview]);
+
+  const busy = phase !== "idle";
 
   async function handleFile(file: File) {
-    const isVideo = file.type.startsWith("video/") || VIDEO_EXT.test(file.name);
-    // Only web-safe video containers (the file picker filter can be bypassed).
-    if (isVideo && !(VIDEO_TYPES.has(file.type) || VIDEO_EXT.test(file.name))) {
-      toast.error("Unsupported video format. Use MP4, WebM or MOV.");
+    if (busyRef.current) return; // one upload at a time per field
+    setError(null);
+    const problem = checkMediaFile(file, kind);
+    if (problem) {
+      toast.error(problem);
+      setError({ message: problem, file: null });
       return;
     }
-    // Generous raw guard (large originals are downscaled before upload below).
-    // Videos upload directly to Cloudinary, so they aren't bound by the app's
-    // serverless request limit — allow up to Cloudinary's free-plan video cap.
-    const maxMb = isVideo ? 100 : 25;
-    if (file.size > maxMb * 1024 * 1024) {
-      toast.error(
-        isVideo
-          ? "That video is too large (max 100 MB). Compress it, or paste a Cloudinary URL."
-          : "That file is very large (max 25 MB). Try a smaller image.",
-      );
-      return;
-    }
-    // Enforce a maximum video duration when requested (banner videos = 15s).
-    if (isVideo && maxDurationSec) {
-      const dur = await videoDuration(file);
-      if (dur && dur > maxDurationSec + 0.5) {
-        toast.error(`Video is too long (${Math.round(dur)}s). Max is ${maxDurationSec}s — trim it and retry.`);
-        return;
-      }
-    }
-    setUploading(true);
+
+    busyRef.current = true;
+    const release = trackUpload();
+    const ac = new AbortController();
+    abortRef.current = ac;
+    const isVideo = isVideoFile(file);
     setProgress(0);
+    setLocalPreview({ url: URL.createObjectURL(file), video: isVideo });
     try {
-      const { blob, filename } = await prepareBlob(file);
-      const info = await uploadToCloudinary(blob, filename, folder, setProgress);
+      if (isVideo && maxDurationSec) {
+        setPhase("checking");
+        const dur = await videoDuration(file);
+        if (dur && dur > maxDurationSec + 0.5) {
+          const msg = `Video is too long (${Math.round(dur)}s). Max is ${maxDurationSec}s — trim it and retry.`;
+          toast.error(msg);
+          setError({ message: msg, file: null });
+          return;
+        }
+      }
+      let blob: Blob = file;
+      let filename = file.name || "upload";
+      if (!isVideo) {
+        setPhase("preparing");
+        ({ blob, filename } = await prepareImage(file));
+        const tooLarge = preparedImageTooLarge(blob);
+        if (tooLarge) {
+          toast.error(tooLarge);
+          setError({ message: tooLarge, file: null });
+          return;
+        }
+      }
+      // Cancelled while checking/preparing → same feedback as a cancelled upload.
+      if (ac.signal.aborted) throw new DOMException("Upload cancelled.", "AbortError");
+      setPhase("uploading");
+      const info = await uploadToCloudinary(blob, filename, {
+        folder,
+        kind,
+        signal: ac.signal,
+        onProgress: (pct) => {
+          setProgress(pct);
+          if (pct >= 100) setPhase("processing");
+        },
+      });
       onChange(info.secure_url);
       onUploadInfo?.(info);
-      toast.success("Uploaded");
+      toast.success(successMessage ?? `${isVideo ? "Video" : "Image"} uploaded successfully.`);
     } catch (err) {
+      if (isAbortError(err)) {
+        toast.info("Upload cancelled.");
+        return;
+      }
       console.error("[image-upload] failed:", err);
-      toast.error(err instanceof Error ? err.message : "Upload failed. Please try again.");
+      const message = uploadErrorMessage(err);
+      toast.error(message);
+      setError({ message, file });
     } finally {
-      setUploading(false);
+      release();
+      busyRef.current = false;
+      abortRef.current = null;
+      setPhase("idle");
       setProgress(0);
+      setLocalPreview(null);
     }
   }
 
   const showVideo = value ? isVideoUrl(value) : false;
+  const what = kind === "video" ? "video" : kind === "media" ? "image or video" : "image";
+  const statusText =
+    phase === "checking"
+      ? "Checking video…"
+      : phase === "preparing"
+        ? "Preparing image…"
+        : phase === "processing"
+          ? "Processing on Cloudinary…"
+          : `Uploading… ${progress}%`;
 
   return (
     <div className="space-y-2">
@@ -224,18 +180,21 @@ export function ImageUploadField({
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
+          disabled={busy}
+          aria-label={`${what} URL`}
         />
         {cloudinaryReady && (
           <>
             <input
               ref={inputRef}
               type="file"
-              accept={accept}
+              accept={accept ?? acceptFor(kind)}
               className="hidden"
+              disabled={busy}
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) handleFile(f);
                 e.target.value = "";
+                if (f) void handleFile(f);
               }}
             />
             <Button
@@ -244,51 +203,106 @@ export function ImageUploadField({
               size="icon"
               className="shrink-0"
               onClick={() => inputRef.current?.click()}
-              disabled={uploading}
-              aria-label="Upload image"
+              disabled={busy}
+              aria-label={busy ? `Uploading ${what}` : `Upload ${what}`}
+              title={`Upload ${what}`}
             >
-              {uploading ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Upload className="size-4" />
-              )}
+              {busy ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
             </Button>
           </>
         )}
       </div>
 
-      {uploading && (
-        <div className="space-y-1">
+      {cloudinaryReady && !busy && !error && (
+        <p className="text-[11px] leading-snug text-muted-foreground">{mediaRequirements(kind, { maxDurationSec })}</p>
+      )}
+
+      {busy && (
+        <div className="space-y-1" role="status" aria-live="polite">
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-accent">
             <div
               className="h-full rounded-full bg-primary transition-[width] duration-200"
-              style={{ width: `${progress}%` }}
+              style={{ width: `${phase === "uploading" ? progress : phase === "processing" ? 100 : 4}%` }}
             />
           </div>
-          <p className="text-xs text-muted-foreground">
-            {progress < 100 ? `Uploading… ${progress}%` : "Processing…"}
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">{statusText}</p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 gap-1 px-2 text-xs"
+              onClick={() => abortRef.current?.abort()}
+            >
+              <X className="size-3" /> Cancel
+            </Button>
+          </div>
         </div>
       )}
 
-      {value && (
+      {error && !busy && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-2 text-xs text-destructive"
+        >
+          <AlertCircle className="mt-px size-3.5 shrink-0" />
+          <span className="min-w-0 flex-1">{error.message}</span>
+          {error.file && (
+            <button
+              type="button"
+              className="inline-flex shrink-0 items-center gap-1 font-medium underline-offset-2 hover:underline"
+              onClick={() => error.file && void handleFile(error.file)}
+            >
+              <RotateCcw className="size-3" /> Retry
+            </button>
+          )}
+          <button type="button" aria-label="Dismiss error" className="shrink-0" onClick={() => setError(null)}>
+            <X className="size-3.5" />
+          </button>
+        </div>
+      )}
+
+      {(localPreview || value) && (
         <div className="relative size-20 overflow-hidden rounded-lg border bg-accent/30">
-          {showVideo ? (
-            <div className="grid h-full place-items-center text-[10px] text-muted-foreground">
-              video
+          {localPreview ? (
+            localPreview.video ? (
+              <video src={localPreview.url} muted playsInline preload="metadata" className="size-full object-cover opacity-60" />
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={localPreview.url} alt="Uploading preview" className="size-full object-cover opacity-60" />
+            )
+          ) : previewBroken ? (
+            <div className="grid h-full place-items-center p-1 text-center text-[10px] text-muted-foreground">
+              <ImageOff className="mx-auto size-4" />
+              Preview unavailable
             </div>
+          ) : showVideo ? (
+            <video
+              src={value}
+              muted
+              playsInline
+              preload="metadata"
+              className="size-full object-cover"
+              onError={() => setPreviewBroken(true)}
+            />
           ) : (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={value} alt="preview" className="size-full object-cover" />
+            <img src={value} alt="Preview" className="size-full object-cover" onError={() => setPreviewBroken(true)} />
           )}
-          <button
-            type="button"
-            onClick={() => onChange("")}
-            className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-black/60 text-white"
-            aria-label="Clear"
-          >
-            <X className="size-3" />
-          </button>
+          {localPreview ? (
+            <div className="absolute inset-0 grid place-items-center">
+              <Loader2 className="size-5 animate-spin text-primary" />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-black/60 text-white"
+              aria-label="Remove"
+            >
+              <X className="size-3" />
+            </button>
+          )}
         </div>
       )}
     </div>

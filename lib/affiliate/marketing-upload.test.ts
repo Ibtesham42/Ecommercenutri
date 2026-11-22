@@ -28,7 +28,8 @@ vi.mock("@/lib/cloudinary", () => ({
   },
 }));
 const requirePermission = vi.fn();
-vi.mock("@/lib/auth", () => ({ requirePermission }));
+const auth = vi.fn();
+vi.mock("@/lib/auth", () => ({ requirePermission, auth }));
 
 const { POST } = await import("@/app/api/admin/affiliate-asset/route");
 const { verifyMarketingUpload } = await import("@/lib/affiliate/marketing-upload");
@@ -40,6 +41,7 @@ const sign = (body: unknown) =>
 beforeEach(() => {
   vi.clearAllMocks();
   requirePermission.mockResolvedValue({ email: "ops@local.test" });
+  auth.mockResolvedValue({ user: { id: "u1" } });
 });
 
 describe("file pre-flight rules", () => {
@@ -53,7 +55,13 @@ describe("file pre-flight rules", () => {
     expect(checkMarketingFile({ name: "x.svg", type: "image/svg+xml", size: 10 })).toMatch(/Use a JPG/);
     expect(checkMarketingFile({ name: "x.exe", type: "image/png", size: 10 })).toMatch(/Use a JPG/);
     expect(checkMarketingFile({ name: "x.png", type: "image/png", size: 0 })).toMatch(/empty/);
-    expect(checkMarketingFile({ name: "x.mp4", type: "video/mp4", size: MARKETING_UPLOAD_MAX_BYTES + 1 })).toMatch(/too large/);
+    expect(checkMarketingFile({ name: "x.mp4", type: "video/mp4", size: MARKETING_UPLOAD_MAX_BYTES + 1 })).toMatch(/exceeds the 100 MB limit/);
+  });
+  it("caps images/PDFs at Cloudinary's 10 MB image limit and videos at 100 MB", () => {
+    const MB = 1024 * 1024;
+    expect(checkMarketingFile({ name: "reel.mp4", type: "video/mp4", size: 90 * MB })).toBeNull();
+    expect(checkMarketingFile({ name: "poster.png", type: "image/png", size: 11 * MB })).toMatch(/exceeds the 10 MB limit/);
+    expect(checkMarketingFile({ name: "catalogue.pdf", type: "application/pdf", size: 11 * MB })).toMatch(/exceeds the 10 MB limit/);
   });
 });
 
@@ -61,6 +69,15 @@ describe("signing endpoint", () => {
   it("requires the affiliates permission", async () => {
     requirePermission.mockRejectedValue(new Error("FORBIDDEN"));
     expect((await sign({ name: "a.png", type: "image/png", size: 10 })).status).toBe(403);
+    expect(signUpload).not.toHaveBeenCalled();
+  });
+
+  it("reports an expired session as 401 (so the UI can say so)", async () => {
+    requirePermission.mockRejectedValue(new Error("FORBIDDEN"));
+    auth.mockResolvedValue(null);
+    const res = await sign({ name: "a.png", type: "image/png", size: 10 });
+    expect(res.status).toBe(401);
+    expect((await res.json()).error).toMatch(/session has expired/);
     expect(signUpload).not.toHaveBeenCalled();
   });
 
@@ -102,8 +119,13 @@ describe("post-upload verification", () => {
 
   it("deletes and rejects an oversized or wrong-format upload", async () => {
     resource.mockResolvedValue({ bytes: MARKETING_UPLOAD_MAX_BYTES + 1, format: "mp4" });
-    expect(await verifyMarketingUpload(url)).toMatch(/too large/);
+    expect(await verifyMarketingUpload(url)).toMatch(/exceeds the 100 MB limit/);
     expect(destroy).toHaveBeenCalledWith("nutriyet/marketing/reel", { resource_type: "video", invalidate: true });
+
+    destroy.mockClear();
+    resource.mockResolvedValue({ bytes: 11 * 1024 * 1024, format: "pdf" });
+    expect(await verifyMarketingUpload(url.replace("video", "image").replace(".mp4", ".pdf"))).toMatch(/exceeds the 10 MB limit/);
+    expect(destroy).toHaveBeenCalled();
 
     resource.mockResolvedValue({ bytes: 100, format: "svg" });
     expect(await verifyMarketingUpload(url.replace("video", "image").replace(".mp4", ".svg"))).toMatch(/isn't allowed/);

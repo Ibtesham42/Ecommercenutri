@@ -59,20 +59,37 @@ describe("parseCloudinaryUploadResponse", () => {
     expect(res).toEqual({ ok: true, info: { secure_url: "https://res.cloudinary.com/x/a.pdf", bytes: 5 } });
   });
 
-  it("surfaces Cloudinary's own error message (e.g. plan size limit)", () => {
-    const res = parseCloudinaryUploadResponse(
+  it("translates Cloudinary's plan size limit into the admin-facing limit", () => {
+    const img = parseCloudinaryUploadResponse(
       400,
       JSON.stringify({ error: { message: "File size too large. Got 15000000. Maximum is 10485760." } }),
     );
-    expect(res).toEqual({ ok: false, error: "Upload failed: File size too large. Got 15000000. Maximum is 10485760." });
+    expect(img).toEqual({ ok: false, error: "File size exceeds the 10 MB limit.", retryable: false });
+    const vid = parseCloudinaryUploadResponse(
+      400,
+      JSON.stringify({ error: { message: "File size too large. Got 150000000. Maximum is 104857600." } }),
+    );
+    expect(vid).toMatchObject({ ok: false, error: "Video size exceeds the 100 MB limit." });
   });
 
-  it("reports the HTTP status for a non-JSON error body", () => {
-    expect(parseCloudinaryUploadResponse(413, "<html>Request Entity Too Large</html>")).toEqual({
-      ok: false,
-      error: "Cloudinary upload failed (HTTP 413).",
+  it("maps format, signature, stale and rate-limit errors to clear messages", () => {
+    const err = (status: number, message: string) =>
+      parseCloudinaryUploadResponse(status, JSON.stringify({ error: { message } }));
+    expect(err(400, "Image file format bmp not allowed")).toMatchObject({ error: /Unsupported file format/ });
+    expect(err(400, "Invalid image file")).toMatchObject({ error: /Unsupported file format/ });
+    expect(err(401, "Invalid Signature 1234. String to sign - 'folder=x'.")).toMatchObject({
+      error: /contact support/,
+      retryable: false,
     });
-    expect(parseCloudinaryUploadResponse(0, "")).toEqual({ ok: false, error: "Cloudinary upload failed (HTTP no response)." });
+    expect(err(400, "Stale request - reported time is 2026-01-01")).toMatchObject({ error: /took too long/ });
+    expect(err(420, "Rate Limit Exceeded")).toMatchObject({ retryable: true });
+    expect(err(400, "Some new Cloudinary message")).toMatchObject({ error: "Upload failed: Some new Cloudinary message" });
+  });
+
+  it("treats gateway errors and dropped connections as retryable", () => {
+    expect(parseCloudinaryUploadResponse(502, "<html>Bad gateway</html>")).toMatchObject({ ok: false, retryable: true, error: /contact support/ });
+    expect(parseCloudinaryUploadResponse(0, "")).toMatchObject({ ok: false, retryable: true, error: /Network connection lost/ });
+    expect(parseCloudinaryUploadResponse(413, "<html>Request Entity Too Large</html>")).toMatchObject({ ok: false, error: /HTTP 413/ });
   });
 
   it("treats a 2xx without a secure_url as a failure", () => {

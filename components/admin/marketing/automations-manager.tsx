@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Pencil, Trash2, Loader2, Zap, Sparkles, Play, AlertTriangle, FlaskConical, History } from "lucide-react";
 import { toast } from "sonner";
+import { useUploadsInFlight } from "@/lib/admin/upload-activity";
+import { runAdminAction } from "@/lib/admin/safe-action";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -88,6 +90,7 @@ export function AutomationsManager({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<AutomationRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const uploading = useUploadsInFlight();
   const [running, setRunning] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
   const [report, setReport] = useState<AutomationRunReport | null>(null);
@@ -181,7 +184,7 @@ export function AutomationsManager({
     }
     setSaving(true);
     const delayHours = delayUnit === "days" ? delayValue * 24 : delayValue;
-    const res = await saveAutomationRule({
+    const res = await runAdminAction(() => saveAutomationRule({
       id: editing?.id,
       name,
       trigger,
@@ -194,7 +197,7 @@ export function AutomationsManager({
       ctaText,
       ctaUrl,
       couponId: couponId || null,
-    });
+    }));
     setSaving(false);
     if (res.ok) {
       toast.success(editing ? "Automation updated" : "Automation created");
@@ -572,8 +575,8 @@ export function AutomationsManager({
               <Button variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button onClick={onSave} disabled={saving} className="gap-2">
-                {saving && <Loader2 className="size-4 animate-spin" />}
+              <Button onClick={onSave} disabled={uploading || saving} className="gap-2">
+                {(saving || uploading) && <Loader2 className="size-4 animate-spin" />}
                 Save
               </Button>
             </div>

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { Plus, Pencil, Trash2, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import { useUploadsInFlight } from "@/lib/admin/upload-activity";
+import { runAdminAction, toastInvalid } from "@/lib/admin/safe-action";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,6 +75,7 @@ export function AdminManager({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<AdminRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const uploading = useUploadsInFlight();
 
   const { register, handleSubmit, control, reset, watch, setValue } =
     useForm<FormValues>({ defaultValues: { permissions: [] } });
@@ -117,7 +120,7 @@ export function AdminManager({
   async function onSubmit(v: FormValues) {
     setSaving(true);
     const res = editing
-      ? await updateAdmin({
+      ? await runAdminAction(() => updateAdmin({
           id: editing.id,
           name: v.name,
           password: v.password,
@@ -126,8 +129,8 @@ export function AdminManager({
           address: v.address,
           image: v.image,
           permissions: v.permissions,
-        })
-      : await createAdmin({
+        }))
+      : await runAdminAction(() => createAdmin({
           name: v.name,
           email: v.email,
           password: v.password,
@@ -136,7 +139,7 @@ export function AdminManager({
           address: v.address,
           image: v.image,
           permissions: v.permissions,
-        });
+        }));
     setSaving(false);
     if (res.ok) {
       toast.success(editing ? "Sub-admin updated" : "Sub-admin created");
@@ -251,11 +254,11 @@ export function AdminManager({
           <DialogHeader>
             <DialogTitle>{editing ? "Edit sub-admin" : "Add sub-admin"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <form onSubmit={handleSubmit(onSubmit, toastInvalid)} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="aname">Name</Label>
-                <Input id="aname" {...register("name", { required: true })} />
+                <Input id="aname" {...register("name", { required: "Enter a name." })} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="aphone">Phone</Label>
@@ -266,7 +269,7 @@ export function AdminManager({
                 <Input
                   id="aemail"
                   type="email"
-                  {...register("email", { required: !editing })}
+                  {...register("email", { required: !editing && "Enter an email address." })}
                   disabled={!!editing}
                 />
               </div>
@@ -282,7 +285,7 @@ export function AdminManager({
                   id="apassword"
                   type="password"
                   autoComplete="new-password"
-                  {...register("password", { required: !editing })}
+                  {...register("password", { required: !editing && "Set a password." })}
                 />
               </div>
               <div className="col-span-2 space-y-1.5">
@@ -334,8 +337,8 @@ export function AdminManager({
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving} className="gap-2">
-                {saving && <Loader2 className="size-4 animate-spin" />}
+              <Button type="submit" disabled={uploading || saving} className="gap-2">
+                {(saving || uploading) && <Loader2 className="size-4 animate-spin" />}
                 {editing ? "Save changes" : "Create sub-admin"}
               </Button>
             </div>

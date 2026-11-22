@@ -27,6 +27,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { useUploadsInFlight } from "@/lib/admin/upload-activity";
+import { runAdminAction, toastInvalid } from "@/lib/admin/safe-action";
 import { BulkBar, type BulkAction } from "@/components/admin/bulk/bulk-bar";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import { toastBulk } from "@/lib/admin/run-bulk";
@@ -94,6 +96,7 @@ export function CategoryManager({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<CategoryRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const uploading = useUploadsInFlight();
   const sel = useBulkSelection(categories.map((c) => c.id));
   const [bulkPending, startBulk] = useTransition();
 
@@ -136,12 +139,12 @@ export function CategoryManager({
 
   async function onSubmit(values: FormValues) {
     setSaving(true);
-    const res = await saveCategory({
+    const res = await runAdminAction(() => saveCategory({
       ...values,
       slug: values.slug || slugify(values.name),
       parentId: values.parentId || null,
       sortOrder: Number(values.sortOrder) || 0,
-    });
+    }));
     setSaving(false);
     if (res.ok) {
       toast.success(values.id ? "Category updated" : "Category created");
@@ -253,13 +256,13 @@ export function CategoryManager({
           <DialogHeader>
             <DialogTitle>{editing ? "Edit category" : "New category"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <form onSubmit={handleSubmit(onSubmit, toastInvalid)} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="cname">Name</Label>
                 <Input
                   id="cname"
-                  {...register("name", { required: true })}
+                  {...register("name", { required: "Enter a category name." })}
                   onBlur={(e) => {
                     if (!watch("slug")) setValue("slug", slugify(e.target.value));
                   }}
@@ -267,7 +270,7 @@ export function CategoryManager({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="cslug">Slug</Label>
-                <Input id="cslug" {...register("slug", { required: true })} />
+                <Input id="cslug" {...register("slug", { required: "Enter a URL slug." })} />
               </div>
             </div>
             <div className="space-y-1.5">
@@ -336,8 +339,8 @@ export function CategoryManager({
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving} className="gap-2">
-                {saving && <Loader2 className="size-4 animate-spin" />}
+              <Button type="submit" disabled={uploading || saving} className="gap-2">
+                {(saving || uploading) && <Loader2 className="size-4 animate-spin" />}
                 Save
               </Button>
             </div>

@@ -28,6 +28,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { useUploadsInFlight } from "@/lib/admin/upload-activity";
+import { runAdminAction, toastInvalid } from "@/lib/admin/safe-action";
 import { BulkBar, type BulkAction } from "@/components/admin/bulk/bulk-bar";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
 import { toastBulk } from "@/lib/admin/run-bulk";
@@ -88,6 +90,7 @@ export function BlogManager({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<BlogRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const uploading = useUploadsInFlight();
   const sel = useBulkSelection(posts.map((p) => p.id));
   const [bulkPending, startBulk] = useTransition();
 
@@ -137,7 +140,7 @@ export function BlogManager({
 
   async function onSubmit(v: FormValues) {
     setSaving(true);
-    const res = await saveBlogPost({
+    const res = await runAdminAction(() => saveBlogPost({
       ...v,
       slug: v.slug || slugify(v.title),
       excerpt: v.excerpt || null,
@@ -145,7 +148,7 @@ export function BlogManager({
       author: v.author || null,
       tag: v.tag || null,
       publishedAt: v.publishedAt ? new Date(v.publishedAt) : undefined,
-    });
+    }));
     setSaving(false);
     if (res.ok) {
       toast.success(v.id ? "Post updated" : "Post created");
@@ -263,13 +266,13 @@ export function BlogManager({
           <DialogHeader>
             <DialogTitle>{editing ? "Edit post" : "New post"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <form onSubmit={handleSubmit(onSubmit, toastInvalid)} className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="btitle">Title</Label>
                 <Input
                   id="btitle"
-                  {...register("title", { required: true })}
+                  {...register("title", { required: "Enter a post title." })}
                   onBlur={(e) => {
                     if (!watch("slug")) setValue("slug", slugify(e.target.value));
                   }}
@@ -277,7 +280,7 @@ export function BlogManager({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="bslug">Slug</Label>
-                <Input id="bslug" {...register("slug", { required: true })} />
+                <Input id="bslug" {...register("slug", { required: "Enter a URL slug." })} />
               </div>
             </div>
             <div className="space-y-1.5">
@@ -289,7 +292,7 @@ export function BlogManager({
               <Textarea
                 id="bcontent"
                 rows={10}
-                {...register("content", { required: true })}
+                {...register("content", { required: "Write the post content." })}
                 placeholder="<p>Write your article…</p>"
                 className="font-mono text-xs"
               />
@@ -336,8 +339,8 @@ export function BlogManager({
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving} className="gap-2">
-                {saving && <Loader2 className="size-4 animate-spin" />}
+              <Button type="submit" disabled={uploading || saving} className="gap-2">
+                {(saving || uploading) && <Loader2 className="size-4 animate-spin" />}
                 Save
               </Button>
             </div>

@@ -3,7 +3,8 @@ import { env } from "@/lib/env";
 import {
   MARKETING_UPLOAD_FOLDER,
   MARKETING_UPLOAD_FORMATS,
-  MARKETING_UPLOAD_MAX_BYTES,
+  marketingMaxBytes,
+  marketingTooLargeMessage,
 } from "@/lib/affiliate/marketing-upload-rules";
 
 /**
@@ -42,15 +43,14 @@ export async function verifyMarketingUpload(url: string): Promise<string | null>
     console.error("[marketing-kit] verify failed:", err);
     return "We couldn't verify that upload. Please try again.";
   }
-  const okFormat = (MARKETING_UPLOAD_FORMATS as readonly string[]).includes((res.format ?? "").toLowerCase());
-  const okSize = typeof res.bytes === "number" && res.bytes <= MARKETING_UPLOAD_MAX_BYTES;
+  const format = (res.format ?? "").toLowerCase();
+  const okFormat = (MARKETING_UPLOAD_FORMATS as readonly string[]).includes(format);
+  const okSize = typeof res.bytes === "number" && res.bytes <= marketingMaxBytes(format);
   if (okFormat && okSize) return null;
   try {
     await cloudinary.uploader.destroy(asset.publicId, { resource_type: asset.resourceType, invalidate: true });
   } catch (err) {
     console.error("[marketing-kit] destroy of rejected upload failed:", err);
   }
-  return okFormat
-    ? `File is too large (max ${Math.round(MARKETING_UPLOAD_MAX_BYTES / 1024 / 1024)} MB).`
-    : "That file type isn't allowed.";
+  return okFormat ? marketingTooLargeMessage(format) : "That file type isn't allowed.";
 }

@@ -32,6 +32,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ImageUploadField } from "@/components/admin/image-upload-field";
+import { useUploadsInFlight } from "@/lib/admin/upload-activity";
+import { runAdminAction, toastInvalid } from "@/lib/admin/safe-action";
 import { BannerCard, type BannerCardData } from "@/components/storefront/banner-card";
 import { BulkBar, type BulkAction } from "@/components/admin/bulk/bulk-bar";
 import { useBulkSelection } from "@/lib/admin/use-bulk-selection";
@@ -128,6 +130,7 @@ export function BannerManager({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<BannerRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const uploading = useUploadsInFlight();
 
   const sel = useBulkSelection(banners.map((b) => b.id));
   const [bulkPending, startBulk] = useTransition();
@@ -198,7 +201,7 @@ export function BannerManager({
 
   async function onSubmit(v: FormValues) {
     setSaving(true);
-    const res = await saveBanner({
+    const res = await runAdminAction(() => saveBanner({
       id: v.id,
       mediaType: v.mediaType,
       videoUrl: v.videoUrl || null,
@@ -218,7 +221,7 @@ export function BannerManager({
       isActive: v.isActive,
       startsAt: v.startsAt || null,
       expiresAt: v.expiresAt || null,
-    });
+    }));
     setSaving(false);
     if (res.ok) {
       toast.success(v.id ? "Banner updated" : "Banner created");
@@ -362,7 +365,7 @@ export function BannerManager({
           <DialogHeader>
             <DialogTitle>{editing ? "Edit banner" : "New banner"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <form onSubmit={handleSubmit(onSubmit, toastInvalid)} className="space-y-3">
             {/* Registered so the toggle's value is always submitted. */}
             <input type="hidden" {...register("mediaType")} />
             <BannerPreview values={values} />
@@ -395,7 +398,7 @@ export function BannerManager({
                 <Controller
                   control={control}
                   name="videoUrl"
-                  rules={{ required: true }}
+                  rules={{ required: "Add a banner video — upload one or paste a URL." }}
                   render={({ field }) => (
                     <ImageUploadField
                       value={field.value}
@@ -443,7 +446,7 @@ export function BannerManager({
                 <Controller
                   control={control}
                   name="desktopImage"
-                  rules={{ required: true }}
+                  rules={{ required: "Add a desktop banner image — upload one or paste a URL." }}
                   render={({ field }) => (
                     <ImageUploadField value={field.value} onChange={field.onChange} cloudinaryReady={cloudinaryReady} folder="banners" />
                   )}
@@ -553,8 +556,8 @@ export function BannerManager({
               <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving} className="gap-2">
-                {saving && <Loader2 className="size-4 animate-spin" />}
+              <Button type="submit" disabled={uploading || saving} className="gap-2">
+                {(saving || uploading) && <Loader2 className="size-4 animate-spin" />}
                 {editing ? "Save changes" : "Create banner"}
               </Button>
             </div>

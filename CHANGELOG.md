@@ -3,6 +3,39 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [Admin media uploads overhaul] — 2026-11-22
+
+Investigation of "upload does nothing / no message" across the admin. Details:
+`docs/seo-pwa.md` → Cloudinary media & uploads. New tests: `lib/upload-rules.test.ts`,
+`lib/admin/direct-upload.test.ts`, `lib/admin/upload-signature.test.ts` (+ updated
+marketing-kit / response-parser tests). No schema change.
+
+### Fixed
+- **Silent saves:** media forms (banners, hero, stories, categories, blog, showcase,
+  admins, appearance) blocked Save on an empty `required` image with no message, and a
+  thrown server action (expired session, revoked permission, dropped connection) left the
+  spinner running with no toast. Both now always explain what happened.
+- **Save during upload:** Save stayed clickable mid-upload; it's now locked until uploads
+  finish (`useUploadsInFlight`).
+- **Hangs:** the video-duration check could wait forever on codecs the browser can't read
+  (HEVC `.mov`); uploads had no stall timeout. Both are bounded now.
+- **Transparency:** large PNG/WebP were re-encoded as JPEG (transparent areas turned
+  black); they now become WebP.
+- **Marketing kit:** images/PDFs 10–25 MB passed the 25 MB check, then failed at
+  Cloudinary's 10 MB cap; videos were capped at 25 MB.
+- **Errors:** Cloudinary/session/network failures now show specific messages, not
+  "Upload failed" or raw HTTP codes.
+
+### Changed
+- Limits: images 15 MB (JPG/PNG/WebP, compressed in-browser to ≤2560px; was 25 MB raw /
+  1600px), as-is images (GIF/SVG/AVIF) 10 MB, videos 100 MB, marketing kit 10 MB
+  images/PDF + 100 MB video. Files >20 MB upload in resumable 6 MB chunks, with
+  auto-retry and Cancel; inline error + Retry; requirements hint under every field.
+- Signature endpoint re-checks the admin in the DB, returns 401 vs 403, and signs
+  `allowed_formats` per media kind (Cloudinary validates the bytes).
+- Removed the unused server-buffered `app/api/admin/upload` route (couldn't accept
+  >4.5 MB on Vercel).
+
 ## [Admin + site security audit] — 2026-10-29
 
 Audit of admin RBAC, payments/refunds, returns, auth and redirects. New tests:

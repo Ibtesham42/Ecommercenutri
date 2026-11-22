@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { useUploadsInFlight } from "@/lib/admin/upload-activity";
+import { UPLOAD_PENDING_MESSAGE, runAdminAction } from "@/lib/admin/safe-action";
 import { Play, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -34,14 +36,16 @@ export function HeroRevealCard({
   const [values, setValues] = useState<HeroRevealSettings>(initial);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const uploading = useUploadsInFlight();
 
   function set<K extends keyof HeroRevealSettings>(key: K, value: HeroRevealSettings[K]) {
     setValues((v) => ({ ...v, [key]: value }));
   }
 
   function save() {
+    if (uploading) return void toast.error(UPLOAD_PENDING_MESSAGE);
     startTransition(async () => {
-      const res = await updateHeroReveal(values);
+      const res = await runAdminAction(() => updateHeroReveal(values));
       if (res.ok) toast.success("Product Reveal settings saved.");
       else toast.error(res.error);
     });
@@ -160,7 +164,7 @@ export function HeroRevealCard({
         >
           <Play className="size-4" /> Preview
         </Button>
-        <Button onClick={save} disabled={pending} className="min-w-32">
+        <Button onClick={save} disabled={pending || uploading} className="min-w-32">
           {pending ? "Saving…" : "Save changes"}
         </Button>
       </div>

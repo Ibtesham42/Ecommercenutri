@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requirePermission } from "@/lib/auth";
+import { auth, requirePermission } from "@/lib/auth";
 import { cloudinaryEnabled } from "@/lib/cloudinary";
 import { signMarketingUpload } from "@/lib/affiliate/marketing-upload";
 import { checkMarketingFile } from "@/lib/affiliate/marketing-upload-rules";
@@ -24,7 +24,10 @@ export async function POST(request: Request) {
   try {
     await requirePermission("affiliates");
   } catch {
-    return NextResponse.json({ error: "Not authorized." }, { status: 403 });
+    const session = await auth().catch(() => null);
+    return session?.user
+      ? NextResponse.json({ error: "You don't have permission to upload marketing files." }, { status: 403 })
+      : NextResponse.json({ error: "Your session has expired. Please sign in again." }, { status: 401 });
   }
   if (!cloudinaryEnabled) {
     return NextResponse.json(

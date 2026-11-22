@@ -98,17 +98,37 @@ admin hasn't uploaded anything.
 
 ## Cloudinary media & uploads
 
-- **Uploads are signed + go DIRECT from the browser** (`ImageUploadField` →
-  `POST /api/admin/upload-signature` → `https://api.cloudinary.com/v1_1/<cloud>/auto/upload`).
-  The admin-gated signature route (`lib/cloudinary.ts#signUpload`, signs folder +
-  timestamp only) returns a short-lived signature; file bytes never pass through the
-  serverless function. Required because Vercel caps a function body at ~4.5 MB — routing
-  media (especially videos) through the app made real videos fail. Images are downscaled
-  client-side (`prepareBlob`) before upload; videos go untouched (client cap 100 MB =
-  Cloudinary free-plan limit). `ImageUploadField` always accepts a pasted URL (keyless
-  fallback).
-- The older server-buffered route (`app/api/admin/upload/route.ts` → `uploadImage`,
-  base64 data URI) is used only by `showcase-image-field.tsx` (small cutout images).
+- **Uploads are signed + go DIRECT from the browser** (`ImageUploadField` /
+  `MultiImageDrop` / `ShowcaseImageField` / `JnvFileField` / marketing kit →
+  `lib/admin/direct-upload.ts#uploadToCloudinary` → `POST /api/admin/upload-signature` →
+  `https://api.cloudinary.com/v1_1/<cloud>/auto/upload`). File bytes never pass through a
+  serverless function (Vercel caps a body at ~4.5 MB). There is no server-buffered admin
+  upload route any more.
+- **Rules + limits** live in `lib/upload-rules.ts` (client-safe, single source of truth),
+  matched to the Cloudinary **Free** plan (10 MB per stored image, 100 MB per video,
+  25 MP per image — confirmed via the Admin API `usage` endpoint, 2026-11-22). Admins may
+  pick JPG/PNG/WebP up to **15 MB** — `lib/admin/prepare-image.ts` downscales to a 2560px
+  edge and recompresses (JPEG→JPEG, PNG/WebP→WebP so transparency survives) before
+  upload; GIF/SVG/AVIF/HEIC/ICO are sent as-is (10 MB); videos MP4/WebM/MOV up to
+  **100 MB**. Raise the constants there if the plan is upgraded.
+- **Server-side enforcement:** the signature route re-checks the admin against the DB
+  (`getAdminUser`: active + admin role), returns 401 (session expired) vs 403 (no
+  permission), and signs `allowed_formats` for the requested `kind` (`image` | `video` |
+  `media`) so Cloudinary rejects other types by inspecting the bytes; per-file size is
+  capped by the Cloudinary plan. `kind: "file"` (JNV documents) needs the `jnv`
+  permission and isn't format-pinned. The marketing kit has its own signer
+  (`/api/admin/affiliate-asset`) + post-upload verification (`verifyMarketingUpload`).
+- **Transport reliability:** files > 20 MB upload in 6 MB chunks (`X-Unique-Upload-Id` +
+  `Content-Range`, CORS-allowed by Cloudinary), so a drop only resends one chunk;
+  transient failures (offline / 5xx / rate limit / 60s stall) retry with backoff, waiting
+  for `online`; uploads are cancellable (`AbortSignal`). Errors map to safe admin-facing
+  sentences in `lib/cloudinary-upload-response.ts`.
+- **Form safety:** `lib/admin/upload-activity.ts#useUploadsInFlight` keeps Save disabled
+  while any upload runs; `lib/admin/safe-action.ts` — `runAdminAction` (a thrown action
+  → toast, incl. "session expired") and `toastInvalid` (RHF `required` failures used to
+  block Save silently). `ImageUploadField` only calls `onChange` after a successful
+  upload, so failures never leave a broken URL/preview; it shows requirements, progress,
+  Cancel, and an inline error with Retry.
 - Delivery: `cldUrl()`/`cldVideo()` from `lib/cld.ts` (`f_auto,q_auto`; no-op for
   non-Cloudinary URLs). `cldUrl` supports `gravity` (`g_auto`) and `dpr` (`dpr_auto`) on
   top of `w,h,c_fill|fit` — used for responsive, non-stretching banner crops.

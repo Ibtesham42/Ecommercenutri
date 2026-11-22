@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useUploadsInFlight } from "@/lib/admin/upload-activity";
+import { UPLOAD_PENDING_MESSAGE, runAdminAction } from "@/lib/admin/safe-action";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,6 +72,7 @@ export function ProductForm({
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const uploading = useUploadsInFlight();
   // Suppresses the unsaved-changes prompt once we navigate away after a save.
   const savedRef = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -147,6 +150,7 @@ export function ProductForm({
   };
 
   async function onSubmit(values: ProductFormValues) {
+    if (uploading) return void toast.error(UPLOAD_PENDING_MESSAGE);
     setSaving(true);
     const payload = {
       id: values.id,
@@ -203,7 +207,7 @@ export function ProductForm({
     if (process.env.NODE_ENV !== "production") {
       console.debug("[product-form] submitting payload", payload);
     }
-    const res = await saveProduct(payload);
+    const res = await runAdminAction(() => saveProduct(payload));
     setSaving(false);
     if (res.ok) {
       toast.success(values.id ? "Product updated" : "Product created");
@@ -1023,8 +1027,8 @@ export function ProductForm({
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={saving} className="gap-2" title="Save (⌘/Ctrl+S)">
-          {saving && <Loader2 className="size-4 animate-spin" />}
+        <Button type="submit" disabled={uploading || saving} className="gap-2" title="Save (⌘/Ctrl+S)">
+          {(saving || uploading) && <Loader2 className="size-4 animate-spin" />}
           {initial?.id ? "Save changes" : "Create product"}
         </Button>
       </div>

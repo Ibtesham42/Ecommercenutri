@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Sparkles, Send, CalendarClock, Save, Users, Repeat, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
+import { useUploadsInFlight } from "@/lib/admin/upload-activity";
+import { UPLOAD_PENDING_MESSAGE, runAdminAction } from "@/lib/admin/safe-action";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -110,6 +112,7 @@ export function CampaignEditor({
     (campaign?.recurrence as Recurrence) ?? "NONE",
   );
   const [busy, setBusy] = useState(false);
+  const uploading = useUploadsInFlight();
   const [testing, setTesting] = useState(false);
   const recurring = recurrence !== "NONE";
 
@@ -186,6 +189,10 @@ export function CampaignEditor({
       toast.error("Name the campaign.");
       return null;
     }
+    if (uploading) {
+      toast.error(UPLOAD_PENDING_MESSAGE);
+      return null;
+    }
     if (!title.trim() || !body.trim()) {
       toast.error("Add a title and message.");
       return null;
@@ -194,7 +201,7 @@ export function CampaignEditor({
       toast.error("Pick at least one channel.");
       return null;
     }
-    const res = await saveCampaign({
+    const res = await runAdminAction(() => saveCampaign({
       id: campaign?.id,
       name,
       channels: [...channels],
@@ -208,7 +215,7 @@ export function CampaignEditor({
       productId: productId || null,
       couponId: couponId || null,
       recurrence,
-    });
+    }));
     if (!res.ok) {
       toast.error(res.error);
       return null;
@@ -228,6 +235,10 @@ export function CampaignEditor({
 
   /** Deliver the current (unsaved) compose state to the signed-in admin only. */
   async function onTestSend() {
+    if (uploading) {
+      toast.error(UPLOAD_PENDING_MESSAGE);
+      return;
+    }
     if (!title.trim() || !body.trim()) {
       toast.error("Add a title and message.");
       return;
