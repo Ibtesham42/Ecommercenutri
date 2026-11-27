@@ -65,7 +65,7 @@ export function ProductCard({
       </h3>
       <div
         className={cn(
-          "pcard-media relative order-1 aspect-square overflow-hidden rounded-xs bg-(--pcard-media)",
+          "pcard-media relative order-1 aspect-[4/5] overflow-hidden rounded-xs bg-(--pcard-media)",
           row && "max-sm:col-start-1 max-sm:row-span-2 max-sm:row-start-1 max-sm:self-start",
         )}
       >
@@ -77,7 +77,8 @@ export function ProductCard({
             sizes={row ? "(max-width: 640px) 120px, (max-width: 1024px) 33vw, 25vw" : "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"}
             priority={priority}
             className={cn(
-              "object-cover transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03]",
+              // Portrait packshots (~3:4) fill the 4:5 frame; contain never crops a label or lid.
+              "object-contain transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.03]",
               view.outOfStock && "opacity-60 grayscale-[35%]",
             )}
           />

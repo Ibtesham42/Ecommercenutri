@@ -142,7 +142,7 @@ export function ProductGallery({
                 setOpen(true);
               }}
               aria-label={`Open image ${i + 1} of ${count} full screen`}
-              className="relative aspect-square w-full shrink-0 snap-center cursor-zoom-in overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+              className="relative aspect-[4/5] w-full shrink-0 lg:aspect-auto lg:h-[min(46rem,calc(100svh-9rem))] snap-center cursor-zoom-in overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
             >
               <span className="absolute inset-0">
                 <BlurImage

@@ -192,7 +192,7 @@ export default async function HomePage() {
             {shopCategories.slice(0, content.categories.limit ?? 8).map((c) => (
               <li key={c.slug} className="w-[24vw] max-w-28 shrink-0 snap-start text-center sm:w-32 sm:max-w-none lg:w-[8.5rem]">
                 <Link href={`/categories/${c.slug}`} className="group block">
-                  <span className="relative mx-auto grid aspect-square place-items-center overflow-hidden rounded-full bg-oat ring-1 ring-border transition-shadow group-hover:ring-2 group-hover:ring-primary/35">
+                  <span className="relative mx-auto grid aspect-[4/5] place-items-center overflow-hidden rounded-t-full bg-oat ring-1 ring-border transition-shadow group-hover:ring-primary/40">
                     {c.image ? (
                       <BlurImage
                         src={c.image}
@@ -207,7 +207,7 @@ export default async function HomePage() {
                       </span>
                     )}
                   </span>
-                  <span className="mt-2 block text-sm font-medium leading-snug text-foreground transition-colors group-hover:text-primary sm:mt-2.5 sm:text-[15px]">
+                  <span className="mt-2.5 block font-heading text-[15px] leading-snug text-foreground transition-colors group-hover:text-primary sm:mt-3 sm:text-[17px]">
                     {c.name}
                   </span>
                 </Link>
@@ -247,7 +247,9 @@ export default async function HomePage() {
               ctaHref={content.bestSellers.ctaHref}
             />
             <Reveal>
-              <ProductRail
+              {/* An aligned grid (4 columns on desktop), not a scroll rail that
+                  leaves a clipped card at the edge. */}
+              <ProductGrid
                 products={bestSellers}
                 wishlistedIds={wishlistIds}
                 priorityCount={firstProductSectionKey === "bestSellers" ? 2 : 0}

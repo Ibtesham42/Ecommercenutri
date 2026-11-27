@@ -1,5 +1,6 @@
 import { valuePropIcon } from "@/components/storefront/home/value-prop-icons";
 import { SectionHeading } from "@/components/storefront/section-heading";
+import { KachniRule } from "@/components/storefront/mithila-fish";
 import type { WhyChooseUsContent } from "@/lib/validations/admin";
 
 /** Borderless icon + hairline-divider feature list — deliberately not a grid
@@ -11,6 +12,7 @@ export function HomeWhyChooseUs({ content }: { content: WhyChooseUsContent }) {
   return (
     <section className="bg-sage text-sage-foreground">
       <div className="shop-container shop-section">
+        <KachniRule align="start" className="mb-6 max-w-xs" />
         <SectionHeading title={content.title} subtitle={content.subtitle} />
         <ul className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-4 lg:gap-x-0 lg:divide-x lg:divide-sage-deep/20">
           {content.items.map((vp, i) => {

@@ -85,7 +85,7 @@ export default async function SearchPage({
   // (popular products + browsable categories) instead of a dead end.
   const [fallbackProducts, fallbackCategories] =
     term && total === 0
-      ? await Promise.all([getBestSellers(6), getCategories()])
+      ? await Promise.all([getBestSellers(6), getCategories().then((cs) => cs.filter((c) => c._count.products > 0))])
       : [[], []];
 
   if (!term) {

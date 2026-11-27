@@ -69,7 +69,7 @@ export default async function NewArrivalsPage({
         pathname="/new-arrivals"
         query={toCatalogQuery(sp)}
         supports={{ category: true, price: true }}
-        categories={categories}
+        categories={categories.filter((c) => c._count.products > 0 || c.slug === category)}
         breadcrumb={[{ name: "Home", href: "/" }, { name: "Shop", href: "/products" }, { name: "New arrivals" }]}
         header={
           <CatalogHeader

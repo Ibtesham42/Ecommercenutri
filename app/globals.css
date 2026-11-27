@@ -842,7 +842,7 @@
   --border: oklch(0.912 0.008 95); /* neutral warm hairline */
   --input: oklch(0.885 0.01 95);
   --ring: oklch(0.38 0.066 158);
-  --radius: 0.55rem; /* sm≈5px · lg≈9px · xl≈12px · 2xl≈16px */
+  --radius: 0.25rem; /* heritage editorial: sm≈2px · lg≈4px · xl≈6px · 2xl≈7px */
   /* Quiet, neutral elevation (shared by shadow-elev-* via var()). */
   --elev-1: 0 1px 2px oklch(0.25 0.02 155 / 0.06);
   --elev-2: 0 1px 2px oklch(0.25 0.02 155 / 0.05), 0 6px 16px oklch(0.25 0.02 155 / 0.07);
