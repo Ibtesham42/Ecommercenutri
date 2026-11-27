@@ -33,7 +33,7 @@ export function HomeAiBanner({ content }: { content: AiBannerContent }) {
           {content.ctaLabel && (
             <Link
               href={content.ctaHref || "/assistant"}
-              className="inline-flex h-12 shrink-0 items-center gap-2 self-start rounded-md border border-foreground/20 px-6 text-[15px] font-medium transition-colors hover:bg-oat md:self-auto"
+              className="inline-flex h-12 shrink-0 items-center gap-2 self-start rounded-xs border border-foreground/20 px-6 text-[15px] font-medium transition-colors hover:bg-oat md:self-auto"
             >
               {content.ctaLabel} <ArrowRight className="size-4" />
             </Link>

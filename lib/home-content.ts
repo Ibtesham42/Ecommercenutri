@@ -29,127 +29,141 @@ export type HomeContentMap = {
   testimonials: TestimonialsContent;
 };
 
+// Code defaults follow the brand's website-structure doc and its claim-safety
+// rules: no blanket purity/preservative claims, no health or treatment
+// promises, no invented stats or quotes. Admin edits (stored JSON) win.
 export const HOME_CONTENT_DEFAULTS: HomeContentMap = {
   hero: {
-    // Brand line + copy from the approved redesign brief. Used by the editorial
-    // hero (heroSlider) and the legacy hero block. No numeric stats by default:
-    // only show figures an admin can stand behind.
-    eyebrow: "Authentically Indian",
-    title: "Rooted in Tradition.",
-    highlight: "Made for Today.",
+    eyebrow: "From the heart of Mithila",
+    title: "Rooted in tradition.",
+    highlight: "Made for today.",
     description:
-      "Thoughtfully presented foods rooted in India's rich food heritage for modern everyday living.",
-    primaryLabel: "Shop Now",
+      "Authentic Indian foods made with carefully selected ingredients and thoughtful processing — prepared with care and delivered to your home.",
+    primaryLabel: "Shop now",
     primaryHref: "/products",
-    secondaryLabel: "Explore Our Story",
+    secondaryLabel: "Discover our story",
     secondaryHref: "/about",
     stats: [],
     bgColor: null,
     textColor: null,
   },
   aiBanner: {
-    eyebrow: "Powered by Groq AI",
-    title: "Not sure what to buy? Ask our AI nutrition expert.",
+    eyebrow: "Nutriyet assistant",
+    title: "Not sure where to start? Ask us anything about our food.",
     description:
-      "“What is makhana?” · “Best foods for weight loss?” · “Compare almonds and cashews” — get instant, science-backed answers grounded in our catalog.",
-    ctaLabel: "Start chatting",
+      "What is makhana? How do I use moringa powder? Which pack suits my kitchen? Get quick answers drawn from our own catalogue.",
+    ctaLabel: "Ask a question",
     ctaHref: "/assistant",
     bgColor: null,
     textColor: null,
   },
   categories: {
     title: "Shop by category",
-    subtitle: "Find exactly what your body craves.",
+    subtitle: "Makhana, desi spices and everyday staples.",
     ctaLabel: "View all",
     ctaHref: "/categories",
     limit: 6,
   },
   featured: {
-    title: "Featured products",
-    subtitle: "Handpicked favorites we think you'll love.",
-    ctaLabel: "View all",
+    title: "Nutriyet favourites",
+    subtitle: "",
+    ctaLabel: "Shop all products",
     ctaHref: "/products",
     limit: 8,
   },
   bestSellers: {
     title: "Best sellers",
-    subtitle: "What everyone's adding to cart.",
+    subtitle: "What our customers order most.",
     ctaLabel: "View all",
     ctaHref: "/products?sort=best-sellers",
     limit: 8,
   },
   deals: {
-    title: "Today's Nutriyet Deals",
-    subtitle: "Real discounts, right now — no fine print.",
+    title: "Current offers",
+    subtitle: "Genuine discounts on selected products.",
     ctaLabel: "View all offers",
     ctaHref: "/offers",
     limit: 8,
   },
   recommended: {
-    title: "Recommended for you",
-    subtitle: "Picked from your wishlist and past orders.",
+    title: "Picked for you",
+    subtitle: "Based on what you've viewed, saved and ordered.",
     ctaLabel: "",
     ctaHref: "",
     limit: 8,
   },
   trending: {
-    title: "Trending now",
-    subtitle: "What other shoppers are loving this week.",
+    title: "Popular this week",
+    subtitle: "",
     ctaLabel: "",
     ctaHref: "",
     limit: 8,
   },
   combos: {
-    title: "Shop by goal",
-    subtitle: "Smart combos curated for your wellness goals.",
+    title: "Shop by kitchen moment",
+    subtitle: "A few of our products, grouped by how they're used.",
     ctaLabel: "",
     ctaHref: "",
     limit: 4,
     items: [
       {
-        key: "breakfast",
-        title: "Healthy Breakfast Combo",
-        description: "Start the day right",
-        match: ["makhana", "seed", "oat", "dry", "nut", "granola", "muesli"],
+        key: "snacking",
+        title: "Tea-time snacking",
+        description: "Roasted and flavoured makhana",
+        match: ["makhana"],
       },
       {
-        key: "weight-loss",
-        title: "Weight Loss Combo",
-        description: "Light, filling & nutritious",
-        match: ["seed", "makhana", "flax", "chia"],
+        key: "spice-box",
+        title: "The everyday spice box",
+        description: "Desi spices and seasonings",
+        match: ["spice", "masala", "seasoning"],
       },
       {
-        key: "protein",
-        title: "High Protein Combo",
-        description: "Fuel your muscles",
-        match: ["protein", "seed", "peanut", "nut", "chana", "soy"],
+        key: "greens",
+        title: "Greens for the pantry",
+        description: "Moringa and green powders",
+        match: ["moringa", "green"],
       },
       {
-        key: "immunity",
-        title: "Immunity Combo",
-        description: "Stay strong year-round",
-        match: ["nut", "seed", "berry", "amla", "dry"],
+        key: "flours",
+        title: "Flours and atta",
+        description: "Multigrain and whole wheat",
+        match: ["atta", "flour", "sattu"],
       },
     ],
   },
   whyChooseUs: {
-    title: "Why choose Nutriyet",
-    subtitle: "We obsess over quality so you can focus on feeling your best.",
+    title: "Why Nutriyet",
+    subtitle: "Not just food. Food with a story.",
     items: [
-      { icon: "Leaf", title: "100% Natural", desc: "Clean-label products with no artificial preservatives." },
-      { icon: "ShieldCheck", title: "Lab Tested", desc: "Every batch quality-checked for purity and nutrition." },
-      { icon: "Truck", title: "Fast Delivery", desc: "Freshly packed and shipped with care across India." },
-      { icon: "HeartPulse", title: "AI Nutrition Expert", desc: "Personalized guidance for what your body needs." },
+      {
+        icon: "Leaf",
+        title: "Authentic ingredients",
+        desc: "We choose ingredients that keep their natural character, taste and aroma.",
+      },
+      {
+        icon: "Award",
+        title: "Thoughtful processing",
+        desc: "Each category needs a different approach, so we pick the right one for every product.",
+      },
+      {
+        icon: "PackageCheck",
+        title: "Honest information",
+        desc: "Clear labels and product details, so you know exactly what you're buying.",
+      },
+      {
+        icon: "Heart",
+        title: "Customer-first care",
+        desc: "We're here before, during and after your order.",
+      },
     ],
   },
   testimonials: {
-    title: "Loved by thousands",
-    subtitle: "Real words from the Nutriyet community.",
-    items: [
-      { name: "Aisha K.", text: "The makhana is unbelievably fresh and crunchy. My go-to evening snack now!", rating: 5 },
-      { name: "Rohan M.", text: "Loved the AI assistant — it suggested the perfect protein for my goals.", rating: 5 },
-      { name: "Sneha P.", text: "Premium quality dry fruits at fair prices. Fast delivery too.", rating: 5 },
-    ],
+    // The section shows genuine approved reviews only (HomeTestimonials);
+    // these items are legacy and never rendered.
+    title: "From our customers",
+    subtitle: "Reviews left by customers on nutriyet.in.",
+    items: [],
   },
 };
 

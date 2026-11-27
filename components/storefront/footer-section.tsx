@@ -24,7 +24,7 @@ export function FooterSection({
 
   return (
     <div className={cn("max-md:border-b max-md:border-white/10", className)}>
-      <h3 className="text-[15px] font-semibold text-surface-deep-foreground">
+      <h3 className="font-sans text-[15px] font-semibold text-surface-deep-foreground">
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
@@ -41,7 +41,7 @@ export function FooterSection({
             )}
           />
         </button>
-        <span className="max-md:hidden">{title}</span>
+        <span className="font-sans text-[11px] font-semibold uppercase tracking-[0.16em] text-surface-deep-foreground/60 max-md:hidden">{title}</span>
       </h3>
       <div id={panelId} className={cn("md:mt-4 md:block", open ? "pb-3" : "max-md:hidden")}>
         {children}

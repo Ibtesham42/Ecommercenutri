@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { BadgeCheck, MessageSquare } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { reviewerName } from "@/lib/reviewer-name";
 import { Button } from "@/components/ui/button";
 import { StarRating } from "@/components/storefront/star-rating";
 import { ReviewPhotoGallery } from "@/components/storefront/review-photo-gallery";
@@ -149,7 +150,7 @@ export function ReviewList({ reviews }: { reviews: ReviewVM[] }) {
               </Avatar>
               <div className="min-w-0">
                 <p className="flex items-center gap-1.5 text-sm font-medium">
-                  <span className="truncate">{r.userName ?? "Nutriyet customer"}</span>
+                  <span className="truncate">{reviewerName(r.userName)}</span>
                   {r.verifiedPurchase && (
                     <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-primary">
                       <BadgeCheck className="size-3.5" /> Verified Purchase
@@ -164,7 +165,7 @@ export function ReviewList({ reviews }: { reviews: ReviewVM[] }) {
             {r.comment && (
               <p className="mt-1 text-[15px] leading-relaxed text-muted-foreground">{r.comment}</p>
             )}
-            <ReviewPhotoGallery images={r.images} reviewerName={r.userName ?? "Nutriyet customer"} />
+            <ReviewPhotoGallery images={r.images} reviewerName={reviewerName(r.userName)} />
           </li>
         ))}
         </ul>

@@ -91,6 +91,21 @@ tiny semi-implicit Euler integrator → hold → fade → loop).
   **`trending`** and **`combos`** (Shop by Goal) sections are registry-driven too.
 - **Add a section:** add a key to `HOME_SECTIONS` + a content default + a keyed node in
   `app/(storefront)/page.tsx`.
+- **Hero Banner (`hero`)** is the type-led arch hero: copy from `content.hero` + a real
+  product photo ("spotlight") = the first in-stock best seller, then featured product,
+  with a photo; its caption shows the live price. No spotlight → copy spans the band
+  (the admin preview renders this way).
+- **Promotion order:** when a hero (`hero`/`heroSlider`) is shown, the `homeTop` banner
+  and the Spin & Win band render directly below it, never above the brand.
+- **Testimonials render genuine reviews only** (`getHomeReviews` in
+  `lib/queries/trust.ts`: approved, 4★+, comment ≥20 chars, verified purchases first,
+  up to 6). Fewer than `MIN_HOME_REVIEWS` (3) → the section renders nothing. Stored
+  `content.items` are legacy and never shown; the admin editor sets title/subtitle
+  only. Reviewer names are first name + last initial (`lib/reviewer-name.ts`).
+- **Copy defaults follow the brand claim rules** (`lib/home-content.ts`): no blanket
+  purity/preservative claims, no health promises, no invented stats or quotes.
+- Categories with no active products are hidden on the homepage, `/categories` and in
+  the header menus (`getCategories` / the nav tree count active products only).
 
 ## 3D Showcase
 

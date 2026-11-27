@@ -23,7 +23,7 @@ import { previewOrderPricing } from "@/lib/actions/checkout";
 type PublicCoupon = { code: string; type: "PERCENT" | "FIXED"; value: number };
 
 const stepBtn =
-  "grid size-11 place-items-center rounded-lg text-foreground/80 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:text-muted-foreground/40";
+  "grid size-11 place-items-center rounded-xs text-foreground/80 outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:text-muted-foreground/40";
 
 export function CartView({
   settings = PRICING_DEFAULTS,
@@ -96,8 +96,8 @@ export function CartView({
       <div className="min-w-0">
         {/* Free-delivery progress nudge */}
         {freeShippingProgress !== null && (
-          <div className="mb-4 flex gap-3 rounded-xl bg-oat px-4 py-3.5 text-sm text-oat-foreground">
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-card text-sage-deep">
+          <div className="flex gap-3 border-t border-foreground py-4 text-sm">
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-sage text-sage-deep">
               <Truck aria-hidden className="size-4" strokeWidth={1.75} />
             </span>
             <div className="min-w-0 flex-1 self-center">
@@ -132,15 +132,15 @@ export function CartView({
         )}
 
         <h2 className="sr-only">Items in your cart</h2>
-        <ul className="space-y-3">
+        <ul className="divide-y divide-border border-y border-border">
           {items.map((item) => (
             <li
               key={item.variantId}
-              className="flex gap-3.5 rounded-xl border border-border bg-card p-2.5 sm:gap-5 sm:p-3.5"
+              className="flex gap-3.5 py-4 sm:gap-5 sm:py-5"
             >
               <Link
                 href={`/products/${item.slug}`}
-                className="relative size-24 shrink-0 overflow-hidden rounded-lg bg-muted sm:size-28"
+                className="relative size-24 shrink-0 overflow-hidden rounded-xs bg-oat sm:size-28"
                 tabIndex={-1}
                 aria-hidden
               >
@@ -174,7 +174,7 @@ export function CartView({
                 </div>
 
                 <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-                  <div className="flex items-center rounded-lg border border-border bg-background">
+                  <div className="flex items-center rounded-xs border border-input bg-background">
                     <button
                       type="button"
                       className={stepBtn}
@@ -219,7 +219,7 @@ export function CartView({
         </Button>
       </div>
 
-      <aside className="h-fit rounded-xl border border-border bg-card p-5 sm:p-6 lg:sticky lg:top-28">
+      <aside className="h-fit rounded-xs bg-oat p-5 sm:p-6 lg:sticky lg:top-28">
         <h2 className="font-heading text-subheading">Order summary</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {itemCount} {itemCount === 1 ? "item" : "items"}
@@ -229,7 +229,7 @@ export function CartView({
           <OrderTotals breakdown={breakdown} />
         </div>
 
-        <Button asChild className="mt-6 h-12 w-full gap-2 rounded-lg text-[15px]">
+        <Button asChild className="mt-6 h-12 w-full gap-2 rounded-xs text-[15px] font-semibold">
           <Link href="/checkout" ref={ctaRef}>
             Proceed to checkout
             <ArrowRight className="size-4 transition-transform duration-200 group-hover/button:translate-x-0.5" />
@@ -247,7 +247,7 @@ export function CartView({
             <ul className="mt-2.5 space-y-1.5">
               {publicCoupons.map((c) => (
                 <li key={c.code} className="flex items-center justify-between gap-2">
-                  <span className="rounded-md border border-dashed border-border px-2 py-0.5 font-mono text-xs font-semibold tracking-wide">
+                  <span className="rounded-xs border border-dashed border-foreground/30 bg-background px-2 py-0.5 font-mono text-xs font-semibold tracking-wide">
                     {c.code}
                   </span>
                   <span className="text-muted-foreground">
@@ -267,7 +267,7 @@ export function CartView({
       </aside>
 
       <StickyTotalBar show={showSticky} total={total}>
-        <Button asChild className="h-12 w-full gap-1.5 rounded-lg text-[15px]">
+        <Button asChild className="h-12 w-full gap-1.5 rounded-xs text-[15px] font-semibold">
           <Link href="/checkout">
             Checkout
             <ArrowRight className="size-4" />

@@ -67,7 +67,7 @@ export async function StoryBand() {
             feel familiar — sourced and prepared with care, labelled honestly, and shipped straight
             to your door.
           </p>
-          <Button asChild className="mt-7 h-11 gap-2 rounded-md px-5 text-sm font-semibold">
+          <Button asChild className="mt-7 h-11 gap-2 rounded-xs px-5 text-sm font-semibold">
             <Link href="/about">
               Read our story <ArrowRight className="size-4" />
             </Link>

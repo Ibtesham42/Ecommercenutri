@@ -38,7 +38,7 @@ export function MobileFilters({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline" className="h-11 gap-2 rounded-lg px-3.5 font-medium lg:hidden">
+        <Button variant="outline" className="h-11 gap-2 rounded-xs px-3.5 font-medium lg:hidden">
           <SlidersHorizontal className="size-4" />
           Filters
           {activeCount > 0 && (
@@ -80,7 +80,7 @@ export function MobileFilters({
         </SheetHeader>
         <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5">{children}</div>
         <div className="border-t border-border bg-background p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <Button className="h-12 w-full rounded-lg text-[15px]" onClick={() => setOpen(false)} aria-live="polite">
+          <Button className="h-12 w-full rounded-xs font-semibold text-[15px]" onClick={() => setOpen(false)} aria-live="polite">
             {isPending ? "Updating…" : `Show ${total} ${total === 1 ? "product" : "products"}`}
           </Button>
         </div>

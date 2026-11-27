@@ -207,7 +207,7 @@ export function SpinGame({
   // result. Desktop: header + result on the left, the stage on the right; the
   // 1fr spacer rows centre the left column against the stage.
   return (
-    <div className="grid gap-y-6 sm:gap-y-9 lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)] lg:grid-rows-[1fr_auto_auto_1fr] lg:gap-x-16 lg:gap-y-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,29rem)] xl:gap-x-24">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-y-6 sm:gap-y-9 lg:grid-cols-[minmax(0,1fr)_minmax(0,27rem)] lg:grid-rows-[1fr_auto_auto_1fr] lg:gap-x-16 lg:gap-y-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,29rem)] xl:gap-x-24">
       {header && <div className="lg:col-start-1 lg:row-start-2">{header}</div>}
 
       <div className="flex flex-col items-center lg:col-start-2 lg:row-span-4 lg:row-start-1 lg:self-center">

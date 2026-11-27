@@ -13,6 +13,7 @@ import { getPwaSettings } from "@/lib/pwa-settings";
 import { getCurrentUser } from "@/lib/auth";
 import { getNotifications, getUnreadCount } from "@/lib/queries/notifications";
 import type { BellNotification } from "@/components/account/notification-bell";
+import type { CategoryNavNode } from "@/components/storefront/category-mega-menu";
 
 /** Everything the shop chrome needs, fetched once per layout render. */
 export async function getChromeData() {
@@ -40,7 +41,21 @@ export async function getChromeData() {
     unreadCount = unread;
   }
 
-  return { settings, growth, categoryTree, user, notifications, unreadCount, pwa };
+  return { settings, growth, categoryTree: toNavTree(categoryTree), user, notifications, unreadCount, pwa };
+}
+
+/** Nav shape with live counts. Categories (and subcategories) with no active
+ *  products are left out of the menus until products are added. */
+function toNavTree(tree: Awaited<ReturnType<typeof getCategoryTree>>): CategoryNavNode[] {
+  return tree
+    .map((c) => {
+      const children = c.children
+        .filter((child) => child._count.products > 0)
+        .map((child) => ({ id: child.id, name: child.name, slug: child.slug, productCount: child._count.products }));
+      const productCount = c._count.products + children.reduce((sum, child) => sum + child.productCount, 0);
+      return { id: c.id, name: c.name, slug: c.slug, image: c.image, productCount, children };
+    })
+    .filter((c) => c.productCount > 0);
 }
 
 export type ChromeData = Awaited<ReturnType<typeof getChromeData>>;
@@ -88,13 +103,15 @@ export function StorefrontChrome({
         freeShippingThreshold={settings.freeShippingThreshold}
         freeShippingEnabled={settings.freeShippingEnabled}
         installCopy={{ title: pwa.title, description: pwa.description }}
+        whatsapp={settings.whatsapp}
       />
       {/* Bottom padding on mobile clears the fixed bottom tab bar (its 4rem
           height + the iPhone safe-area inset). Removed on md+ (no bottom bar). */}
       <main className="flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
       <SiteFooter />
-      {/* WhatsApp floats on desktop only; mobile uses the bottom tab bar. */}
-      <div className="hidden md:block">
+      {/* WhatsApp floats from lg only (quiet); phones/tablets reach it from the
+          menu drawer and the footer. */}
+      <div className="hidden lg:block">
         <WhatsAppButton number={settings.whatsapp} />
       </div>
       <MobileBottomNav isLoggedIn={!!user} />

@@ -21,7 +21,7 @@ export function SectionHeading({
     <div className="mb-8 flex items-end justify-between gap-6 md:mb-10">
       <div className="min-w-0">
         {eyebrow && <p className="eyebrow mb-3">{eyebrow}</p>}
-        <h2 className="font-heading text-heading font-medium text-foreground">{title}</h2>
+        <h2 className="font-heading text-heading font-normal text-foreground">{title}</h2>
         {subtitle && (
           <p className="mt-2 max-w-prose text-[15px] leading-relaxed text-muted-foreground">{subtitle}</p>
         )}

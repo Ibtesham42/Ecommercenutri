@@ -1,13 +1,25 @@
 # Nutriyet — Progress Tracker
 
-_Last updated: 2026-10-07 · Auto-maintained. Update at the end of every milestone._
+_Last updated: 2026-11-27 · Auto-maintained. Update at the end of every milestone._
 
-## Latest: Storefront de-templating pass (2026-10-05 → 2026-10-07, complete)
+## Latest: Storefront redesign — heritage/editorial (2026-11-26 → 2026-11-27, complete)
+
+Header/nav/footer, homepage, product page, catalog and cart redesigned to the approved
+heritage/editorial direction (detail: `CHANGELOG.md`). Verified: 314-load sweep
+(34 routes × 9 widths + dark), interaction smoke, typecheck/lint/build, shared JS 103 kB.
+Open: intermittent React #418 (seen on `/login`, once at 320px elsewhere — not
+reproduced); `/products` filter sidebar still lists categories with 0 products;
+delivery/returns wording ("Pan-India delivery", "Easy returns") awaits final policy per
+the brand FAQ. Admin to-dos: enable Hero Banner (top), update Categories subtitle and
+Testimonials title, fix banner typos, add units to "250" sizes, review product claims.
+
+## Previous: Storefront de-templating pass (2026-10-05 → 2026-10-07, complete)
 
 Presentational-only design pass across nav, typography, decoration, elevation
 and a branded 404, plus three real fixes (dead elevation variants, missing
 focus rings, rail-arrow overrun). Full detail + commits: `CHANGELOG.md`.
-Open, pre-existing: "N products" label wraps at 320px on category pages.
+_Resolved: the "N products" label wrap at 320px on category pages was fixed by
+the catalog shell redesign (`bda1bf5`); re-verified 2026-10-24 at 320–1280px._
 
 ## Previous: JNV Code Studio (2026-07-24, in progress — /loop build)
 

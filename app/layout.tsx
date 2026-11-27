@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Hanken_Grotesk, Geist_Mono, Fraunces } from "next/font/google";
+import { Hanken_Grotesk, Geist_Mono, Fraunces, Newsreader } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { organizationSchema, websiteSchema, jsonLd } from "@/lib/seo";
@@ -21,12 +21,21 @@ const fontSans = Hanken_Grotesk({
   weight: ["400", "500", "600", "700"],
 });
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
-// Headings — Fraunces, an editorial optical-sized serif for the premium voice.
-// Loaded as a variable font (full weight range) with the optical-size axis.
+// Admin/JNV headings — Fraunces. Not preloaded: the customer surfaces use the
+// editorial serif below, so storefront pages never download it.
 const fontHeading = Fraunces({
   subsets: ["latin"],
   variable: "--font-heading",
   axes: ["opsz"],
+  preload: false,
+});
+// Customer-surface headings — Newsreader, an optical-sized editorial serif.
+// [data-surface="shop"] maps --font-heading onto it (app/globals.css).
+const fontEditorial = Newsreader({
+  subsets: ["latin"],
+  variable: "--font-editorial",
+  axes: ["opsz"],
+  style: ["normal", "italic"],
 });
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -144,6 +153,7 @@ export default function RootLayout({
       <body
         className={cn(
           fontSans.variable,
+          fontEditorial.variable,
           fontMono.variable,
           fontHeading.variable,
           "min-h-dvh bg-background font-sans antialiased",

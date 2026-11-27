@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { cached } from "@/lib/redis";
+import { reviewerName } from "@/lib/reviewer-name";
 
 /**
  * Real, database-backed trust stats for the storefront trust section. Each stat
@@ -55,5 +56,54 @@ export async function getTrustStats(): Promise<TrustStats> {
   } catch (err) {
     console.error("[trust] getTrustStats failed:", err);
     return { ordersDelivered: null, reviewCount: null, avgRating: null, returningCustomers: null };
+  }
+}
+
+export type HomeReview = {
+  id: string;
+  rating: number;
+  text: string;
+  author: string;
+  verifiedPurchase: boolean;
+  product: { name: string; slug: string };
+};
+
+/** Fewer genuine quotes than this and the homepage hides the section. */
+export const MIN_HOME_REVIEWS = 3;
+
+/**
+ * Homepage testimonials: approved 4★+ customer reviews with a written comment,
+ * newest first. Real records only. The section renders nothing when fewer
+ * than MIN_HOME_REVIEWS qualify (no placeholder or invented quotes).
+ */
+export async function getHomeReviews(limit = 6): Promise<HomeReview[]> {
+  try {
+    const rows = await prisma.review.findMany({
+      where: { isApproved: true, rating: { gte: 4 }, comment: { not: null }, product: { isActive: true } },
+      orderBy: [{ verifiedPurchase: "desc" }, { createdAt: "desc" }],
+      take: limit * 3,
+      select: {
+        id: true,
+        rating: true,
+        comment: true,
+        verifiedPurchase: true,
+        user: { select: { name: true } },
+        product: { select: { name: true, slug: true } },
+      },
+    });
+    return rows
+      .filter((r) => (r.comment?.trim().length ?? 0) >= 20)
+      .slice(0, limit)
+      .map((r) => ({
+        id: r.id,
+        rating: r.rating,
+        text: r.comment!.trim(),
+        author: reviewerName(r.user.name),
+        verifiedPurchase: r.verifiedPurchase,
+        product: r.product,
+      }));
+  } catch (err) {
+    console.error("[home] reviews failed", err);
+    return [];
   }
 }

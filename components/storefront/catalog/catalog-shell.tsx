@@ -147,7 +147,7 @@ export function CatalogShell({
                 ) : (
                   <EmptyPanel title={empty.title} description={empty.description}>
                     {empty.action && (
-                      <Button asChild className="mt-6 h-11 rounded-lg px-6">
+                      <Button asChild className="mt-6 h-11 rounded-xs px-6">
                         <Link href={empty.action.href}>{empty.action.label}</Link>
                       </Button>
                     )}
@@ -174,7 +174,7 @@ function EmptyPanel({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl bg-oat px-6 py-12 text-center sm:py-16">
+    <div className="rounded-xs bg-oat px-6 py-12 text-center sm:py-16">
       <h2 className="font-heading text-subheading text-foreground">{title}</h2>
       <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground sm:text-[15px]">{description}</p>
       {children}

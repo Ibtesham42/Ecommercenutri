@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRef, useState } from "react";
-import { ShoppingCart, Check } from "lucide-react";
+import { ShoppingCart, Check, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +30,7 @@ export function AddToCartButton({
   size = "lg",
   iconClassName = "size-5",
   srContext,
+  icon = "cart",
 }: {
   onAdd: () => void;
   disabled?: boolean;
@@ -41,8 +42,11 @@ export function AddToCartButton({
   iconClassName?: string;
   /** Visually hidden suffix for the accessible name, e.g. the product name on a card. */
   srContext?: string;
+  /** Leading glyph: the cart (buy boxes), a plain plus (compact card "Add") or none. */
+  icon?: "cart" | "plus" | "none";
 }) {
   const [added, setAdded] = useState(false);
+  const Glyph = icon === "plus" ? Plus : ShoppingCart;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function spawnRipple(e: React.PointerEvent<HTMLButtonElement>) {
@@ -86,8 +90,8 @@ export function AddToCartButton({
       <span className="relative z-10 inline-flex items-center gap-2">
         {added ? (
           <Check className={cn(iconClassName, "animate-pop")} />
-        ) : (
-          <ShoppingCart
+        ) : icon === "none" ? null : (
+          <Glyph
             className={cn(
               iconClassName,
               "transition-transform duration-200 group-hover/button:-translate-y-px",

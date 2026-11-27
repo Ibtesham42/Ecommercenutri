@@ -53,19 +53,20 @@ export function QuickAddButton({
     <AddToCartButton
       onAdd={add}
       disabled={outOfStock}
-      label={outOfStock ? "Sold out" : "Add to cart"}
+      label={outOfStock ? "Sold out" : "Add"}
       addedLabel="Added"
       srContext={product.name}
-      variant={outOfStock ? "outline" : "default"}
+      icon={outOfStock ? "none" : "plus"}
+      variant="outline"
       size="sm"
-      iconClassName="size-4 max-[359px]:hidden"
+      iconClassName="size-3.5 max-[359px]:hidden"
       className={cn(
-        // 44px on touch, 40px where there's a precise pointer. Solid brand
-        // green; the card's border keeps it from outweighing the photo.
-        "h-11 w-full gap-1.5 rounded-lg text-[13px] font-semibold sm:text-sm [@media(hover:hover)_and_(pointer:fine)]:h-10",
+        // Quiet outline so the photo leads; fills forest on hover. 44px tall on
+        // touch, 36px where there's a precise pointer.
+        "h-11 w-full gap-1.5 rounded-xs px-3.5 text-[13px] font-semibold sm:w-auto [@media(hover:hover)_and_(pointer:fine)]:h-9",
         outOfStock
-          ? "border border-border bg-transparent text-muted-foreground disabled:opacity-100"
-          : "bg-primary text-primary-foreground hover:bg-primary/90",
+          ? "border-border bg-transparent text-muted-foreground disabled:opacity-100"
+          : "border-foreground bg-transparent text-foreground hover:border-primary hover:bg-primary hover:text-primary-foreground",
         className,
       )}
     />

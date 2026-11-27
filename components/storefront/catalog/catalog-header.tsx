@@ -41,7 +41,7 @@ export function CatalogHeader({
       // Mobile keeps the split too, with a small square tile, so products start early.
       <header className="grid grid-cols-[minmax(0,1fr)_5.5rem] items-start gap-4 sm:grid-cols-[minmax(0,1fr)_8rem] md:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] md:items-center md:gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:gap-16">
         {text}
-        <div className="relative aspect-square overflow-hidden rounded-lg bg-oat md:aspect-[4/3] md:rounded-xl">
+        <div className="relative aspect-square overflow-hidden rounded-xs bg-oat md:aspect-[4/3]">
           <BlurImage
             src={image.src}
             alt={image.alt}
@@ -55,5 +55,5 @@ export function CatalogHeader({
     );
   }
 
-  return <header className={cn(panel && "rounded-xl bg-oat px-5 py-7 sm:px-8 sm:py-9 lg:px-10")}>{text}</header>;
+  return <header className={cn(panel && "rounded-xs bg-oat px-5 py-7 sm:px-8 sm:py-9 lg:px-10")}>{text}</header>;
 }

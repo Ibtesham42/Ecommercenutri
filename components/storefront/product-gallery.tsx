@@ -121,16 +121,16 @@ export function ProductGallery({
 
   return (
     // Pinned beside the buy box on md+ so the column never runs empty.
-    <div className="md:sticky md:top-24">
+    <div className={cn("relative md:sticky md:top-24", count > 1 && "lg:grid lg:grid-cols-[4.5rem_minmax(0,1fr)] lg:items-start lg:gap-5")}>
       <div
-        className="relative"
+        className="relative lg:col-start-2 lg:row-start-1"
         onMouseMove={hoverZoom.onMouseMove}
         onMouseLeave={hoverZoom.onMouseLeave}
       >
         <div
           ref={trackRef}
           onScroll={onTrackScroll}
-          className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-xl border border-border bg-card [scrollbar-width:none] md:overflow-hidden [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain rounded-xs bg-oat [scrollbar-width:none] max-sm:-mx-4 max-sm:rounded-none min-[480px]:max-sm:-mx-5 md:overflow-hidden [&::-webkit-scrollbar]:hidden"
         >
           {shots.map((img, i) => (
             <button
@@ -142,14 +142,14 @@ export function ProductGallery({
                 setOpen(true);
               }}
               aria-label={`Open image ${i + 1} of ${count} full screen`}
-              className="relative aspect-square w-full shrink-0 snap-center cursor-zoom-in overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset md:aspect-[4/5] lg:aspect-auto lg:h-[min(44rem,calc(100svh-17rem))] lg:min-h-[28rem]"
+              className="relative aspect-square w-full shrink-0 snap-center cursor-zoom-in overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
             >
-              <span className="absolute inset-3 sm:inset-5">
+              <span className="absolute inset-0">
                 <BlurImage
                   src={img.url}
                   alt={altFor(img, i)}
                   fill
-                  sizes="(max-width: 768px) 100vw, 50vw"
+                  sizes="(max-width: 768px) 100vw, 45vw"
                   priority={i === 0}
                   className={cn(
                     "object-contain transition-transform duration-200 ease-out",
@@ -172,20 +172,16 @@ export function ProductGallery({
 
       {count > 1 && (
         <>
-          {/* Mobile: position dots (swipe is the control; each image opens the lightbox). */}
-          <div aria-hidden className="mt-3 flex justify-center gap-1.5 md:hidden">
-            {shots.map((_, i) => (
-              <span
-                key={i}
-                className={cn(
-                  "h-1.5 rounded-full transition-all duration-200",
-                  i === active ? "w-5 bg-foreground/70" : "w-1.5 bg-foreground/20",
-                )}
-              />
-            ))}
-          </div>
+          {/* Phones: a quiet position counter (swipe is the control). */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute bottom-3 right-0 bg-background/90 px-2.5 py-1 text-xs font-medium tabular-nums md:hidden"
+          >
+            {active + 1} / {count}
+          </span>
           {/* md+: thumbnails drive the track. */}
-          <div className="mt-3 hidden gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] md:flex [&::-webkit-scrollbar]:hidden">
+          {/* md: a row under the image · lg: a column beside it. */}
+          <div className="mt-3 hidden gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] md:flex lg:col-start-1 lg:row-start-1 lg:mt-0 lg:max-h-[calc(100svh-8rem)] lg:flex-col lg:overflow-y-auto lg:overflow-x-visible lg:p-0.5 [&::-webkit-scrollbar]:hidden">
             {shots.map((img, i) => (
               <button
                 key={`${setKey}-t${i}`}
@@ -194,8 +190,8 @@ export function ProductGallery({
                 aria-label={`View image ${i + 1}`}
                 aria-current={i === active ? "true" : undefined}
                 className={cn(
-                  "relative size-[4.5rem] shrink-0 overflow-hidden rounded-lg border bg-card transition outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  i === active ? "border-primary ring-1 ring-primary" : "border-border opacity-75 hover:opacity-100",
+                  "relative size-[4.5rem] shrink-0 overflow-hidden rounded-xs bg-oat transition outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  i === active ? "ring-1 ring-foreground ring-offset-2 ring-offset-background" : "opacity-70 hover:opacity-100",
                 )}
               >
                 <BlurImage src={img.url} alt="" fill sizes="72px" className="object-contain" />

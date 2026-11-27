@@ -3,21 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Heart, Menu, User, ArrowRight, Download } from "lucide-react";
+import { Heart, Menu, User, ArrowRight, Download, Package, LifeBuoy, MessageCircle, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
   CategoryMegaMenu,
   CategoryThumb,
@@ -25,6 +13,7 @@ import {
   type CategoryNavNode,
 } from "@/components/storefront/category-mega-menu";
 import { Logo } from "@/components/storefront/logo";
+import { MithilaFish } from "@/components/storefront/mithila-fish";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CartIcon } from "@/components/storefront/cart-icon";
 import { SearchBox } from "@/components/storefront/search-box";
@@ -34,16 +23,15 @@ import { NotificationBell, type BellNotification } from "@/components/account/no
 import { SigninSpotlight } from "@/components/storefront/onboarding/signin-spotlight";
 import { useInstallApp, type InstallCopy } from "@/components/storefront/install-app";
 import { PWA_DEFAULTS } from "@/lib/pwa-config";
+import { siteConfig } from "@/config/site";
 
-/** The single primary row — five destinations, all existing routes. Best
- *  sellers / New arrivals / Offers live in the Categories flyout + drawer;
- *  Contact under Help; the AI assistant in search, the drawer and the footer. */
+/** Inline nav after "Shop" (tablet + desktop). Collections join from xl. */
 const PRIMARY_NAV = [
-  { title: "Shop", href: "/products" },
-  { title: "Categories", href: "/categories" },
+  { title: "Best sellers", href: "/products?sort=best-sellers", from: "xl" },
+  { title: "New arrivals", href: "/new-arrivals", from: "xl" },
   { title: "Our Story", href: "/about" },
   { title: "Journal", href: "/blog" },
-  { title: "Bulk / B2B", href: "/b2b" },
+  { title: "Bulk & B2B", href: "/b2b" },
 ] as const;
 
 const DRAWER_COLLECTIONS = [
@@ -52,15 +40,15 @@ const DRAWER_COLLECTIONS = [
   { title: "Offers", href: "/offers" },
 ] as const;
 
-const DRAWER_HELP = [
-  { title: "Track order", href: "/track" },
-  { title: "Help & support", href: "/support" },
-  { title: "Contact us", href: "/contact" },
+const DRAWER_DISCOVER = [
+  { title: "Our Story", href: "/about" },
+  { title: "Journal", href: "/blog" },
+  { title: "Bulk & B2B enquiries", href: "/b2b" },
 ] as const;
 
-/** Quiet icon button used across the header (44px tall touch target). */
+/** Quiet 44px icon button used across the header. */
 const iconBtn =
-  "relative grid h-11 w-9 shrink-0 place-items-center rounded-md text-foreground/80 transition-colors hover:text-foreground min-[400px]:w-10 lg:size-10 [&_svg]:size-[21px] lg:[&_svg]:size-5";
+  "relative grid size-11 shrink-0 place-items-center text-foreground/85 transition-colors hover:text-foreground [&_svg]:size-[21px]";
 
 export function SiteHeader({
   logoUrl,
@@ -75,6 +63,7 @@ export function SiteHeader({
   freeShippingThreshold,
   freeShippingEnabled = true,
   installCopy = PWA_DEFAULTS,
+  whatsapp,
 }: {
   logoUrl?: string | null;
   siteName?: string;
@@ -90,9 +79,10 @@ export function SiteHeader({
   freeShippingEnabled?: boolean;
   /** Heading + intro of the Install App instructions (admin-editable). */
   installCopy?: InstallCopy;
+  /** Store WhatsApp number — drawer support link. */
+  whatsapp?: string | null;
 }) {
   const [open, setOpen] = useState(false);
-  // Menu → Install App (user-initiated only). Hidden inside the installed app.
   const install = useInstallApp(installCopy);
   const showInstall = !install.state.standalone;
   const pathname = usePathname();
@@ -102,147 +92,128 @@ export function SiteHeader({
     if (href.includes("?")) return false;
     return pathname === href || pathname.startsWith(href + "/");
   };
-  const logoSize = {
-    height: logoHeight,
-    mobileHeight: logoHeightMobile,
-    maxWidth: logoMaxWidth,
-  };
+  const shopActive = pathname.startsWith("/products") || pathname.startsWith("/categories");
+  const logoSize = { height: logoHeight, mobileHeight: logoHeightMobile, maxWidth: logoMaxWidth };
   const close = () => setOpen(false);
   const accountHref = isLoggedIn ? "/account" : "/login";
+  const waDigits = whatsapp?.replace(/[^\d]/g, "");
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background">
-      {/* ---------------------------------------------------------- mobile -- */}
-      {/* Equal flexible side columns keep the wordmark truly centred. */}
-      <div className="grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-2 min-[375px]:px-3 lg:hidden">
+      {/* ----------------------------------------------------------- phone -- */}
+      {/* Menu · centred logo · cart. Search lives in the bottom tab bar. */}
+      <div className="grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-1.5 min-[375px]:px-2 md:hidden">
         <div className="flex items-center">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <button type="button" className={cn(iconBtn, "-ml-1")} aria-label="Open menu">
-                <Menu strokeWidth={1.6} />
+              <button type="button" className={iconBtn} aria-label="Open menu">
+                <Menu strokeWidth={1.5} />
               </button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[min(86vw,22rem)] gap-0 p-0">
-              <SheetHeader className="border-b border-border px-5 py-4 pr-14">
+            <SheetContent side="left" className="w-[min(88vw,24rem)] gap-0 border-r-0 bg-popover p-0">
+              <SheetHeader className="h-14 justify-center border-b border-border px-4 py-0 pr-14">
                 <SheetTitle asChild>
                   <Logo
                     logoUrl={logoUrl}
                     name={siteName}
-                    className="min-w-0 text-xl font-semibold"
+                    className="min-w-0 gap-2 text-xl font-medium [&_img]:max-h-8"
                     {...logoSize}
                   />
                 </SheetTitle>
               </SheetHeader>
 
-              <nav aria-label="Primary" className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-                <ul className="px-5 pt-2">
-                  {PRIMARY_NAV.map((item) => {
-                    const active = isActiveNav(item.href);
-                    if (item.href === "/categories" && categories.length > 0) {
-                      return (
-                        <li key={item.href} className="border-b border-border/70">
-                          <Accordion type="single" collapsible>
-                            <AccordionItem value="categories" className="border-b-0">
-                              <AccordionTrigger
+              <nav aria-label="Menu" className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                {categories.length > 0 && (
+                  <div className="px-4 pt-5">
+                    <p className="eyebrow flex items-center gap-2.5">
+                      <MithilaFish />
+                      Shop
+                    </p>
+                    <ul className="mt-2">
+                      {categories.map((category) => {
+                        const active = isActiveNav(`/categories/${category.slug}`);
+                        return (
+                          <li key={category.id} className="border-b border-border">
+                            <Link
+                              href={`/categories/${category.slug}`}
+                              onClick={close}
+                              aria-current={active ? "page" : undefined}
+                              className="flex min-h-14 items-center gap-3.5 py-1.5"
+                            >
+                              <CategoryThumb name={category.name} image={category.image} />
+                              <span
                                 className={cn(
-                                  "py-3.5 font-heading text-xl font-normal leading-tight hover:no-underline",
+                                  "min-w-0 flex-1 font-heading text-[1.0625rem] leading-snug",
                                   active ? "text-primary" : "text-foreground",
                                 )}
                               >
-                                {item.title}
-                              </AccordionTrigger>
-                              <AccordionContent className="pb-4">
-                                <ul className="space-y-3">
-                                  {categories.map((category) => (
-                                    <li key={category.id}>
-                                      <Link
-                                        href={`/categories/${category.slug}`}
-                                        onClick={close}
-                                        className="flex items-center gap-3 text-[15px] text-foreground !no-underline hover:text-primary"
-                                      >
-                                        <CategoryThumb
-                                          name={category.name}
-                                          image={category.image}
-                                          className="size-10"
-                                        />
-                                        {category.name}
-                                      </Link>
-                                      {category.children.length > 0 && (
-                                        <ul className="mt-2 space-y-1.5 pl-[3.25rem]">
-                                          {category.children.map((child) => (
-                                            <li key={child.id}>
-                                              <Link
-                                                href={`/categories/${child.slug}`}
-                                                onClick={close}
-                                                className="text-sm text-muted-foreground !no-underline hover:text-foreground"
-                                              >
-                                                {child.name}
-                                              </Link>
-                                            </li>
-                                          ))}
-                                        </ul>
-                                      )}
-                                    </li>
-                                  ))}
-                                  <li>
+                                {category.name}
+                              </span>
+                              <span className="text-xs tabular-nums text-muted-foreground">
+                                {category.productCount}
+                              </span>
+                            </Link>
+                            {category.children.length > 0 && (
+                              <ul className="-mt-1 space-y-1 pb-3 pl-[3.6rem]">
+                                {category.children.map((child) => (
+                                  <li key={child.id}>
                                     <Link
-                                      href="/categories"
+                                      href={`/categories/${child.slug}`}
                                       onClick={close}
-                                      className="inline-flex items-center gap-1 text-sm font-medium text-primary !no-underline"
+                                      className="block py-1 text-sm text-muted-foreground hover:text-foreground"
                                     >
-                                      View all categories <ArrowRight className="size-3.5" />
+                                      {child.name}
                                     </Link>
                                   </li>
-                                </ul>
-                              </AccordionContent>
-                            </AccordionItem>
-                          </Accordion>
-                        </li>
-                      );
-                    }
-                    return (
-                      <li key={item.href} className="border-b border-border/70">
+                                ))}
+                              </ul>
+                            )}
+                          </li>
+                        );
+                      })}
+                      <li>
                         <Link
-                          href={item.href}
+                          href="/products"
                           onClick={close}
-                          aria-current={active ? "page" : undefined}
-                          className={cn(
-                            "block py-3.5 font-heading text-xl leading-tight transition-colors",
-                            active ? "text-primary" : "text-foreground hover:text-primary",
-                          )}
+                          className="flex min-h-12 items-center justify-between text-[15px] font-semibold text-foreground"
                         >
-                          {item.title}
+                          All products <ArrowRight className="size-4" aria-hidden />
                         </Link>
                       </li>
-                    );
-                  })}
-                </ul>
+                    </ul>
+                  </div>
+                )}
 
-                <DrawerGroup label="Collections" items={DRAWER_COLLECTIONS} onNavigate={close} />
-                <DrawerGroup label="Help" items={DRAWER_HELP} onNavigate={close} />
+                <DrawerGroup label="Collections" items={DRAWER_COLLECTIONS} onNavigate={close} isActive={isActiveNav} />
+                <DrawerGroup label="Discover" items={DRAWER_DISCOVER} onNavigate={close} isActive={isActiveNav} />
 
-                <div className="mt-auto space-y-4 border-t border-border bg-muted/70 px-5 py-5">
-                  <DeliverTo
-                    className="px-0 py-0 text-sm hover:bg-transparent"
-                    freeShippingThreshold={freeShippingThreshold}
-                    freeShippingEnabled={freeShippingEnabled}
-                  />
-                  <Link
-                    href={accountHref}
-                    onClick={close}
-                    className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary"
-                  >
-                    <User className="size-4" strokeWidth={1.75} />
+                <div className="mt-auto grid gap-0.5 border-t border-border px-4 pb-6 pt-3">
+                  <DrawerAction href={accountHref} onClick={close} icon={User}>
                     {isLoggedIn ? "My account" : "Sign in or create account"}
-                  </Link>
-                  <Link
-                    href="/account/wishlist"
-                    onClick={close}
-                    className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary"
-                  >
-                    <Heart className="size-4" strokeWidth={1.75} />
+                  </DrawerAction>
+                  <DrawerAction href="/account/wishlist" onClick={close} icon={Heart}>
                     Wishlist
-                  </Link>
+                  </DrawerAction>
+                  <DrawerAction href="/track" onClick={close} icon={Package}>
+                    Track an order
+                  </DrawerAction>
+                  <DrawerAction href="/support" onClick={close} icon={LifeBuoy}>
+                    Help &amp; support
+                  </DrawerAction>
+                  {waDigits && (
+                    <a
+                      href={`https://wa.me/${waDigits}?text=${encodeURIComponent(`Hi ${siteConfig.name}, I have a question.`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={drawerActionClass}
+                    >
+                      <MessageCircle aria-hidden strokeWidth={1.6} />
+                      WhatsApp support
+                    </a>
+                  )}
+                  <DrawerAction href="/assistant" onClick={close} icon={Sparkles}>
+                    Ask Nutriyet AI
+                  </DrawerAction>
                   {showInstall && (
                     <button
                       type="button"
@@ -250,20 +221,18 @@ export function SiteHeader({
                         close();
                         void install.start();
                       }}
-                      className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary"
+                      className={drawerActionClass}
                     >
-                      <Download className="size-4" strokeWidth={1.75} />
-                      Install App
+                      <Download aria-hidden strokeWidth={1.6} />
+                      Install the app
                     </button>
                   )}
-                  <div className="flex items-center justify-between">
-                    <Link
-                      href="/assistant"
-                      onClick={close}
-                      className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                    >
-                      Ask Nutriyet AI
-                    </Link>
+                  <div className="mt-2 flex items-center justify-between border-t border-border pt-3">
+                    <DeliverTo
+                      className="px-0 py-0 text-sm hover:bg-transparent"
+                      freeShippingThreshold={freeShippingThreshold}
+                      freeShippingEnabled={freeShippingEnabled}
+                    />
                     <ThemeToggle />
                   </div>
                 </div>
@@ -275,44 +244,48 @@ export function SiteHeader({
         <Logo
           logoUrl={logoUrl}
           name={siteName}
-          // Cap the admin logo height inside the 56px row so the mark +
-          // wordmark always fit between the side columns (desktop is uncapped).
-          className="min-h-11 min-w-0 justify-self-center gap-1.5 text-lg font-semibold min-[400px]:text-xl [&_img]:max-h-9"
-          wordmarkClassName="hidden min-[360px]:inline"
+          // Cap the admin logo height inside the 56px row so mark + wordmark
+          // always fit between the side columns.
+          className="min-h-11 min-w-0 justify-self-center gap-2 text-[1.3125rem] font-medium [&_img]:max-h-[34px]"
+          wordmarkClassName="hidden min-[340px]:inline"
           {...logoSize}
         />
 
-        <div className="flex items-center justify-end" data-heat="search-bar">
-          {/* Wishlist lives in the bottom tab bar (and the drawer on pages
-              without it), so the row stays three calm controls. */}
-          <MobileSearchTrigger variant="icon" className={iconBtn} />
-          <Link href="/cart" className={cn(iconBtn, "-mr-1")} aria-label="Cart">
+        <div className="flex items-center justify-end">
+          <Link href="/cart" className={iconBtn} aria-label="Cart">
             <CartIcon />
           </Link>
         </div>
       </div>
 
-      {/* --------------------------------------------------------- desktop -- */}
-      <div className="shop-container hidden h-[4.5rem] items-center gap-5 lg:flex xl:gap-10">
+      {/* ------------------------------------------------ tablet + desktop -- */}
+      <div className="shop-container hidden h-16 items-center gap-6 md:flex lg:h-[4.75rem] lg:gap-8 xl:gap-10">
         <Logo
           logoUrl={logoUrl}
           name={siteName}
-          className="shrink-0 text-2xl font-semibold"
+          className="shrink-0 gap-2.5 text-[1.375rem] font-medium lg:text-[1.625rem] [&_img]:max-h-[38px] lg:[&_img]:max-h-[42px]"
           {...logoSize}
         />
 
-        <nav aria-label="Primary" data-heat="header-nav" className="flex items-center gap-3 xl:gap-7 2xl:gap-9">
+        <nav
+          aria-label="Primary"
+          data-heat="header-nav"
+          className="flex min-w-0 items-center gap-5 lg:flex-1 lg:justify-center lg:gap-7 xl:gap-8"
+        >
+          <CategoryMegaMenu categories={categories} active={shopActive} />
+          {categories.length === 0 && (
+            <Link href="/products" className={navLinkClass(shopActive)}>
+              Shop
+            </Link>
+          )}
           {PRIMARY_NAV.map((item) => {
             const active = isActiveNav(item.href);
-            if (item.href === "/categories" && categories.length > 0) {
-              return <CategoryMegaMenu key={item.href} categories={categories} active={active} />;
-            }
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={cn(navLinkClass(active), "whitespace-nowrap")}
+                className={cn(navLinkClass(active), "from" in item && "hidden xl:inline-flex")}
               >
                 {item.title}
               </Link>
@@ -320,39 +293,32 @@ export function SiteHeader({
           })}
         </nav>
 
-        <div className="ml-auto flex items-center gap-1">
-          <div className="w-48 xl:mr-3 xl:w-72 2xl:w-80" data-heat="search-bar">
-            <SearchBox placeholder="Search products…" inputClassName="h-10 border-border bg-card pl-10 pr-9 text-sm shadow-none placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:shadow-none focus-visible:ring-2 focus-visible:ring-primary/12" />
+        <div className="ml-auto flex items-center lg:ml-0">
+          <div className="mr-2 hidden w-52 lg:block xl:w-64 2xl:w-72" data-heat="search-bar">
+            <SearchBox
+              placeholder="Search products"
+              inputClassName="h-10 rounded-[2px] border-[color:var(--input)] bg-transparent pl-10 pr-9 text-sm shadow-none placeholder:text-muted-foreground focus-visible:border-foreground focus-visible:shadow-none focus-visible:ring-0"
+            />
           </div>
-          {showInstall && (
-            <button
-              type="button"
-              onClick={() => void install.start()}
-              title="Install the Nutriyet app"
-              className={cn(navLinkClass(false), "mr-1 min-w-10 justify-center gap-1.5 whitespace-nowrap px-1")}
-            >
-              <Download className="size-[18px]" strokeWidth={1.6} aria-hidden />
-              <span className="max-[1119px]:sr-only">Install App</span>
-            </button>
-          )}
+          <div className="lg:hidden" data-heat="search-bar">
+            <MobileSearchTrigger variant="icon" className={iconBtn} />
+          </div>
           {isLoggedIn ? (
             <Link href="/account" className={iconBtn} aria-label="Account">
-              <User strokeWidth={1.6} />
+              <User strokeWidth={1.5} />
             </Link>
           ) : (
             <SigninSpotlight>
               <Link href="/login" className={iconBtn} aria-label="Sign in">
-                <User strokeWidth={1.6} />
+                <User strokeWidth={1.5} />
               </Link>
             </SigninSpotlight>
           )}
           <Link href="/account/wishlist" className={iconBtn} aria-label="Wishlist">
-            <Heart strokeWidth={1.6} />
+            <Heart strokeWidth={1.5} />
           </Link>
-          {notifications && (
-            <NotificationBell initialUnread={unreadCount} items={notifications} />
-          )}
-          <Link href="/cart" className={cn(iconBtn, "-mr-2")} aria-label="Cart">
+          {notifications && <NotificationBell initialUnread={unreadCount} items={notifications} />}
+          <Link href="/cart" className={cn(iconBtn, "-mr-2.5")} aria-label="Cart">
             <CartIcon />
           </Link>
         </div>
@@ -363,30 +329,61 @@ export function SiteHeader({
   );
 }
 
+const drawerActionClass =
+  "flex min-h-11 items-center gap-3 text-[15px] text-foreground transition-colors hover:text-primary [&_svg]:size-[18px] [&_svg]:text-sage-deep";
+
+function DrawerAction({
+  href,
+  onClick,
+  icon: Icon,
+  children,
+}: {
+  href: string;
+  onClick: () => void;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number; "aria-hidden"?: boolean }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link href={href} onClick={onClick} className={drawerActionClass}>
+      <Icon aria-hidden strokeWidth={1.6} />
+      {children}
+    </Link>
+  );
+}
+
 function DrawerGroup({
   label,
   items,
   onNavigate,
+  isActive,
 }: {
   label: string;
   items: readonly { title: string; href: string }[];
   onNavigate: () => void;
+  isActive: (href: string) => boolean;
 }) {
   return (
-    <div className="px-5 pt-6">
+    <div className="px-4 pt-6">
       <p className="eyebrow">{label}</p>
-      <ul className="mt-3 space-y-2.5 pb-1">
-        {items.map((item) => (
-          <li key={item.href}>
-            <Link
-              href={item.href}
-              onClick={onNavigate}
-              className="text-[15px] text-foreground/85 transition-colors hover:text-primary"
-            >
-              {item.title}
-            </Link>
-          </li>
-        ))}
+      <ul className="mt-1.5">
+        {items.map((item) => {
+          const active = isActive(item.href);
+          return (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                onClick={onNavigate}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex min-h-11 items-center text-[15px] transition-colors hover:text-primary",
+                  active ? "font-semibold text-primary" : "text-foreground",
+                )}
+              >
+                {item.title}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

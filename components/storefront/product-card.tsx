@@ -14,8 +14,8 @@ import type { ProductCardData } from "@/lib/queries/products";
 const BADGE_LABEL = { soldOut: "Sold out", bestSeller: "Bestseller" } as const;
 
 /**
- * The storefront product card: a quiet bordered card — photo on top, one
- * badge at most, then name → size → rating → price → a solid Add to cart.
+ * The storefront product card: no box — photo on top, one badge at most, then
+ * name → size · rating → price beside a quiet outline "Add" (stacked on phones).
  * The name link is stretched over the whole card (one tab stop to the PDP);
  * wishlist, quick view and add-to-cart sit above it on their own layer.
  */
@@ -42,9 +42,9 @@ export function ProductCard({
   return (
     <article
       className={cn(
-        "pcard group relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card has-[.pcard-link:focus-visible]:outline-2 has-[.pcard-link:focus-visible]:outline-offset-4 has-[.pcard-link:focus-visible]:outline-ring",
+        "pcard group relative flex h-full flex-col has-[.pcard-link:focus-visible]:outline-2 has-[.pcard-link:focus-visible]:outline-offset-4 has-[.pcard-link:focus-visible]:outline-ring",
         row &&
-          "max-sm:grid max-sm:grid-cols-[7.5rem_minmax(0,1fr)] max-sm:grid-rows-[auto_1fr] max-sm:gap-x-3.5 max-sm:p-2.5",
+          "max-sm:grid max-sm:grid-cols-[7.5rem_minmax(0,1fr)] max-sm:grid-rows-[auto_1fr] max-sm:gap-x-4 max-sm:border-b max-sm:border-border max-sm:pb-3",
       )}
       data-heat="product-card"
     >
@@ -52,8 +52,8 @@ export function ProductCard({
           readers meet the product name before the image's controls. */}
       <h3
         className={cn(
-          "order-2 px-3 pt-3 font-sans text-sm font-semibold leading-snug text-foreground sm:px-3.5 sm:pt-3.5 sm:text-[15px]",
-          row && "max-sm:col-start-2 max-sm:row-start-1 max-sm:px-0 max-sm:pt-1 max-sm:pr-9",
+          "order-2 pt-3 font-sans text-sm font-medium leading-snug text-foreground sm:text-[15px]",
+          row && "max-sm:col-start-2 max-sm:row-start-1 max-sm:pt-1 max-sm:pr-9",
         )}
       >
         <Link
@@ -65,8 +65,8 @@ export function ProductCard({
       </h3>
       <div
         className={cn(
-          "pcard-media relative order-1 aspect-square overflow-hidden bg-(--pcard-media)",
-          row && "max-sm:col-start-1 max-sm:row-span-2 max-sm:row-start-1 max-sm:self-start max-sm:rounded-lg",
+          "pcard-media relative order-1 aspect-square overflow-hidden rounded-xs bg-(--pcard-media)",
+          row && "max-sm:col-start-1 max-sm:row-span-2 max-sm:row-start-1 max-sm:self-start",
         )}
       >
         {image ? (
@@ -85,7 +85,7 @@ export function ProductCard({
         {view.badge && (
           <span
             className={cn(
-              "pointer-events-none absolute left-2.5 top-2.5 z-10 rounded-md bg-background/92 px-2 py-1 text-xs font-medium leading-none tracking-[0.03em]",
+              "pointer-events-none absolute left-0 top-2.5 z-10 bg-background px-2.5 py-1.5 text-[10px] font-semibold uppercase leading-none tracking-[0.14em]",
               view.badge === "bestSeller" ? "text-primary" : "text-muted-foreground",
             )}
           >
@@ -104,38 +104,41 @@ export function ProductCard({
 
       <div
         className={cn(
-          "order-3 flex flex-1 flex-col px-3 pb-3 sm:px-3.5 sm:pb-3.5",
-          row && "max-sm:col-start-2 max-sm:row-start-2 max-sm:px-0 max-sm:pb-0",
+          "order-3 flex flex-1 flex-col",
+          row && "max-sm:col-start-2 max-sm:row-start-2",
         )}
       >
-        {(view.sizeLabel || view.lowStock) && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            {view.sizeLabel}
-            {view.sizeLabel && view.lowStock ? " · " : null}
-            {view.lowStock ? `Only ${view.lowStock} left` : null}
+        {(view.sizeLabel || view.lowStock || product.ratingCount > 0) && (
+          <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground sm:text-[13px]">
+            {view.sizeLabel && <span>{view.sizeLabel}</span>}
+            {product.ratingCount > 0 && (
+              <span className="inline-flex items-center gap-1">
+                {view.sizeLabel && <span aria-hidden>·</span>}
+                <Star aria-hidden className="size-3 fill-gold text-gold" />
+                <span aria-hidden>
+                  {product.ratingAvg.toFixed(1)} ({product.ratingCount})
+                </span>
+                <span className="sr-only">
+                  Rated {product.ratingAvg.toFixed(1)} out of 5 from {product.ratingCount}{" "}
+                  {product.ratingCount === 1 ? "review" : "reviews"}
+                </span>
+              </span>
+            )}
+            {view.lowStock ? (
+              <span className="basis-full font-medium text-foreground/80">Only {view.lowStock} left</span>
+            ) : null}
           </p>
         )}
-        {product.ratingCount > 0 && (
-          <p className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
-            <Star aria-hidden className="size-3.5 fill-gold text-gold" />
-            <span aria-hidden>
-              <span className="font-medium text-foreground">{product.ratingAvg.toFixed(1)}</span> ({product.ratingCount})
-            </span>
-            <span className="sr-only">
-              Rated {product.ratingAvg.toFixed(1)} out of 5 from {product.ratingCount}{" "}
-              {product.ratingCount === 1 ? "review" : "reviews"}
-            </span>
-          </p>
-        )}
-        <ProductPrice
-          className="mt-auto pt-2"
-          price={view.price}
-          mrp={view.mrp}
-          off={view.off}
-          fromPrice={view.fromPrice}
-        />
-        <div className={cn("relative z-20 pt-3", row && "max-sm:flex max-sm:justify-end max-sm:pt-2")}>
-          <QuickAddButton product={product} className={row ? "max-sm:w-auto max-sm:px-4" : undefined} />
+        <div
+          className={cn(
+            "mt-auto flex flex-col gap-2.5 pt-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2",
+            row && "max-sm:flex-row max-sm:items-end max-sm:justify-between",
+          )}
+        >
+          <ProductPrice price={view.price} mrp={view.mrp} off={view.off} fromPrice={view.fromPrice} />
+          <div className="relative z-20 shrink-0">
+            <QuickAddButton product={product} className={row ? "max-sm:w-auto" : undefined} />
+          </div>
         </div>
       </div>
     </article>

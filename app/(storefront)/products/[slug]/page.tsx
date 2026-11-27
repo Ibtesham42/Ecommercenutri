@@ -172,7 +172,7 @@ export default async function ProductPage({
           (product.variants.find((v) => v.stock > 0) ?? product.variants[0])?.id ?? null
         }
       >
-      <div className="mt-5 sm:mt-7 md:grid md:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)] md:items-start md:gap-8 lg:gap-14 xl:gap-20">
+      <div className="mt-5 sm:mt-7 md:grid md:grid-cols-[minmax(0,1.08fr)_minmax(0,1fr)] md:items-start md:gap-8 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:gap-14 xl:gap-20">
         <ProductGallery
           images={product.images.map((i) => ({ url: i.url, alt: i.alt }))}
           name={product.name}
@@ -224,7 +224,35 @@ export default async function ProductPage({
             settings={pricingSettings}
           />
 
-          <div className="mt-8">
+          <ProductDetails
+            description={
+              <VariantDescription
+                fallback={product.description}
+                variants={product.variants.map((v) => ({
+                  id: v.id,
+                  description: v.description,
+                }))}
+              />
+            }
+            benefits={product.benefits}
+            ingredients={product.ingredients}
+            nutrition={
+              hasNutrition ? (
+                <>
+                  {facts.length > 0 && <NutritionFacts facts={facts} />}
+                  <VariantNutritionImage
+                    variants={product.variants.map((v) => ({
+                      id: v.id,
+                      nutritionImageUrl: v.nutritionImageUrl,
+                    }))}
+                    name={product.name}
+                  />
+                </>
+              ) : null
+            }
+          />
+
+          <div className="mt-6">
             <ProductAiAssistant productId={product.id} productName={product.name} />
           </div>
 
@@ -239,34 +267,6 @@ export default async function ProductPage({
         </div>
       </div>
 
-      <ProductDetails
-        name={product.name}
-        description={
-          <VariantDescription
-            fallback={product.description}
-            variants={product.variants.map((v) => ({
-              id: v.id,
-              description: v.description,
-            }))}
-          />
-        }
-        benefits={product.benefits}
-        ingredients={product.ingredients}
-        nutrition={
-          hasNutrition ? (
-            <>
-              {facts.length > 0 && <NutritionFacts facts={facts} />}
-              <VariantNutritionImage
-                variants={product.variants.map((v) => ({
-                  id: v.id,
-                  nutritionImageUrl: v.nutritionImageUrl,
-                }))}
-                name={product.name}
-              />
-            </>
-          ) : null
-        }
-      />
       </VariantSelectionProvider>
 
       {/* Reviews */}

@@ -13,7 +13,7 @@ import { Showcase3D } from "@/components/storefront/showcase-3d";
 import { BannerStrip } from "@/components/storefront/banner-strip";
 import { RecommendedProducts } from "@/components/storefront/recommended-products";
 import { RecoClickArea } from "@/components/storefront/reco-click-area";
-import { HomeHero } from "@/components/storefront/home/home-hero";
+import { HomeHero, type HeroSpotlight } from "@/components/storefront/home/home-hero";
 import { HomeAiBanner } from "@/components/storefront/home/home-ai-banner";
 import { HomeWhyChooseUs } from "@/components/storefront/home/home-why-choose-us";
 import { HomeTestimonials } from "@/components/storefront/home/home-testimonials";
@@ -38,6 +38,7 @@ import {
 } from "@/lib/queries/home";
 import { getWishlistProductIds } from "@/lib/queries/wishlist";
 import type { HomeSectionKey } from "@/lib/home-sections";
+import { productCardView } from "@/lib/product-card";
 
 // Personalized + catalog-driven, so render at request time. This also keeps the
 // database out of the build step (it's only needed at runtime).
@@ -91,6 +92,29 @@ export default async function HomePage() {
   // Trending excludes what's already shown in featured/best-sellers above.
   const shownIds = new Set([...featured, ...bestSellers].map((p) => p.id));
   const trendingFresh = trendingProducts.filter((p) => !shownIds.has(p.id));
+
+  // Hero arch photo: the first in-stock best seller (then featured) product
+  // with a photo — always a real catalogue item, so the caption's price is live.
+  const spotlightProduct = [...bestSellers, ...featured].find(
+    (p) => p.images[0] && !productCardView(p).outOfStock,
+  );
+  const spotlight: HeroSpotlight | null = spotlightProduct
+    ? (() => {
+        const v = productCardView(spotlightProduct);
+        return {
+          slug: spotlightProduct.slug,
+          name: spotlightProduct.name,
+          image: spotlightProduct.images[0].url,
+          imageAlt: spotlightProduct.images[0].alt ?? null,
+          sizeLabel: v.sizeLabel,
+          price: v.price,
+          fromPrice: v.fromPrice,
+        };
+      })()
+    : null;
+
+  // Categories with nothing to buy yet would open an empty page — leave them out.
+  const shopCategories = categories.filter((c) => c._count.products > 0);
 
   // Optional "Product Reveal" packet animation overlaid on the hero slider.
   // Fully additive: when disabled (or with no packet image / no slides), the
@@ -149,7 +173,7 @@ export default async function HomePage() {
       );
     })(),
 
-    hero: <HomeHero content={content.hero} />,
+    hero: <HomeHero content={content.hero} spotlight={spotlight} />,
 
     categories: (
       <section className="shop-container shop-section" data-plain data-heat="categories">
@@ -165,7 +189,7 @@ export default async function HomePage() {
               stays balanced). Built from utilities, not `.scroll-rail` — that
               class is unlayered and would beat the sm: overrides. */}
           <ul className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto overscroll-x-contain px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:justify-center sm:gap-x-6 sm:gap-y-8 sm:overflow-visible sm:px-0 lg:justify-between lg:gap-x-4">
-            {categories.slice(0, content.categories.limit ?? 8).map((c) => (
+            {shopCategories.slice(0, content.categories.limit ?? 8).map((c) => (
               <li key={c.slug} className="w-[24vw] max-w-28 shrink-0 snap-start text-center sm:w-32 sm:max-w-none lg:w-[8.5rem]">
                 <Link href={`/categories/${c.slug}`} className="group block">
                   <span className="relative mx-auto grid aspect-square place-items-center overflow-hidden rounded-full bg-oat ring-1 ring-border transition-shadow group-hover:ring-2 group-hover:ring-primary/35">
@@ -331,6 +355,9 @@ export default async function HomePage() {
   // its place at the top.
   const heroKey = visible.find((s) => s.key === "hero" || s.key === "heroSlider")?.key;
   const spinBand = <SpinEntryBand source="home" className="py-4 sm:py-6" />;
+  // The homeTop banner follows the same rule: under the brand hero when one is
+  // shown, so the first screen is the brand, not a promotion.
+  const bannerNode = <BannerStrip position="homeTop" fullBleed className="py-6" />;
 
   const showcaseNode = showcase.enabled ? (
     <Showcase3D items={showcase.items} />
@@ -346,12 +373,12 @@ export default async function HomePage() {
 
   return (
     <>
-      {needsFallbackH1 && <h1 className="sr-only">Nutriyet — Eat clean. Live strong.</h1>}
+      {needsFallbackH1 && <h1 className="sr-only">Nutriyet — Authentic Indian foods, rooted in tradition</h1>}
       {/* When stories are hidden, the showcase + banner sit at the top. */}
       {!hasStories && (
         <>
           {showcaseNode}
-          <BannerStrip position="homeTop" fullBleed className="py-6" />
+          {!heroKey && bannerNode}
           {!heroKey && spinBand}
         </>
       )}
@@ -360,9 +387,10 @@ export default async function HomePage() {
           {sections[s.key]}
           {/* Stories stay on top; the 3D showcase sits right below them. */}
           {s.key === "stories" && showcaseNode}
-          {s.key === "stories" && <BannerStrip position="homeTop" fullBleed className="py-6" />}
+          {s.key === "stories" && !heroKey && bannerNode}
           {s.key === "stories" && !heroKey && spinBand}
           {s.key === trustAfterKey && <TrustSection />}
+          {s.key === heroKey && bannerNode}
           {s.key === heroKey && spinBand}
         </Fragment>
       ))}

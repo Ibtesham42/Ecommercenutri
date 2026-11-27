@@ -106,18 +106,18 @@ function getSpeechRecognition(): (new () => SpeechRecognitionLike) | null {
 const CLOSE_MS = 170;
 
 const SECTION_TITLE =
-  "mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground";
+  "eyebrow mb-3 flex items-center gap-1.5 [&_svg]:hidden";
 const CHIP =
-  "shrink-0 touch-manipulation select-none rounded-full border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary motion-safe:transition-transform motion-safe:active:scale-95";
+  "inline-flex min-h-10 shrink-0 touch-manipulation select-none items-center rounded-[2px] border border-[color:var(--input)] bg-transparent px-3.5 text-sm text-foreground transition-colors hover:border-foreground";
 const ROW =
-  "flex w-full touch-manipulation items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-accent/60 active:bg-accent";
+  "flex w-full touch-manipulation items-center gap-3.5 px-2 py-2 text-left transition-colors hover:bg-accent/60 active:bg-accent";
 
 function ProductRow({ p, onTap }: { p: Suggestion | OverlayData["popular"][number]; onTap: () => void }) {
   const rating = "rating" in p ? p.rating : undefined;
   const ratingCount = "ratingCount" in p ? p.ratingCount : undefined;
   return (
     <button type="button" onClick={onTap} className={ROW}>
-      <span className="relative size-14 shrink-0 overflow-hidden rounded-xl border border-border/50 bg-accent/40">
+      <span className="relative size-14 shrink-0 overflow-hidden bg-oat">
         {p.image && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -134,7 +134,7 @@ function ProductRow({ p, onTap }: { p: Suggestion | OverlayData["popular"][numbe
           {"category" in p && p.category ? <span className="truncate">{p.category}</span> : null}
           {typeof rating === "number" && (ratingCount ?? 0) > 0 && (
             <span className="flex shrink-0 items-center gap-0.5">
-              <Star className="size-3 fill-amber-400 text-amber-400" />
+              <Star className="size-3 fill-gold text-gold" />
               {rating.toFixed(1)} ({ratingCount})
             </span>
           )}
@@ -404,7 +404,7 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
           type="button"
           onClick={close}
           aria-label="Close search"
-          className="grid size-11 shrink-0 touch-manipulation place-items-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="grid size-11 shrink-0 touch-manipulation place-items-center text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="size-5" />
         </button>
@@ -423,8 +423,8 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search makhana, spices, sattu…"
             className={cn(
-              "h-12 w-full rounded-full border border-input bg-background pl-11 text-base text-foreground outline-none transition-[box-shadow,border-color] placeholder:text-muted-foreground/80",
-              "focus-visible:border-primary/40 focus-visible:shadow-elev-2 focus-visible:ring-4 focus-visible:ring-primary/15",
+              "h-12 w-full rounded-[2px] border border-[color:var(--input)] bg-transparent pl-11 text-base text-foreground outline-none transition-colors placeholder:text-muted-foreground/80",
+              "focus-visible:border-foreground",
               q ? "pr-[5.75rem]" : "pr-14",
             )}
             // Mounted synchronously from the tap gesture, so autoFocus opens
@@ -484,9 +484,9 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
             <button
               type="button"
               onClick={() => navigate("/assistant")}
-              className="flex w-full touch-manipulation items-center gap-2.5 rounded-xl py-1 text-left transition-colors hover:text-primary"
+              className="flex min-h-11 w-full touch-manipulation items-center gap-2.5 py-1 text-left transition-colors hover:text-primary"
             >
-              <Sparkles className="size-4 shrink-0 text-primary" />
+              <Sparkles className="size-4 shrink-0 text-sage-deep" />
               <span className="text-sm font-medium text-foreground">
                 Ask Nutriyet AI to help me choose
               </span>
@@ -512,7 +512,7 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
                       <button
                         type="button"
                         onClick={() => goSearch(t)}
-                        className="flex min-w-0 flex-1 touch-manipulation items-center gap-3 rounded-xl px-2 py-3 text-left text-[15px] text-foreground transition-colors hover:bg-accent/60 active:bg-accent"
+                        className="flex min-w-0 flex-1 touch-manipulation items-center gap-3 px-2 py-3 text-left text-[15px] text-foreground transition-colors hover:bg-accent/60 active:bg-accent"
                       >
                         <Clock className="size-4 shrink-0 text-muted-foreground/60" />
                         <span className="truncate">{t}</span>
@@ -534,7 +534,7 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
             {data && data.trending.length > 0 && (
               <section className="animate-fade-up" style={{ animationDelay: "50ms" }}>
                 <h2 className={SECTION_TITLE}>
-                  <TrendingUp className="size-3.5 text-primary" /> Trending searches
+                  <TrendingUp className="size-3.5" /> Popular searches
                 </h2>
                 <div className="flex flex-wrap gap-2">
                   {data.trending.map((t) => (
@@ -549,7 +549,7 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
             {data && data.categories.length > 0 && (
               <section className="animate-fade-up" style={{ animationDelay: "100ms" }}>
                 <h2 className={SECTION_TITLE}>
-                  <Tag className="size-3.5 text-primary" /> Shop by category
+                  <Tag className="size-3.5" /> Shop by category
                 </h2>
                 <div className="-mx-4 flex gap-2 overflow-x-auto px-4 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {data.categories.map((c) => (
@@ -557,7 +557,7 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
                       key={c.slug}
                       type="button"
                       onClick={() => goCategory(c.slug)}
-                      className={cn(CHIP, "bg-accent/40")}
+                      className={CHIP}
                     >
                       {c.name}
                     </button>
@@ -569,7 +569,7 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
             {data && data.popular.length > 0 && (
               <section className="animate-fade-up" style={{ animationDelay: "150ms" }}>
                 <h2 className={SECTION_TITLE}>
-                  <Sparkles className="size-3.5 text-amber-500" /> Popular products
+                  <Sparkles className="size-3.5" /> Best sellers
                 </h2>
                 <ul className="-mx-2 space-y-0.5">
                   {data.popular.map((p) => (
@@ -585,7 +585,7 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
             {!data && recents.length === 0 && (
               <div className="space-y-3 pt-1" aria-hidden>
                 {[0, 1, 2].map((i) => (
-                  <div key={i} className="shimmer h-10 rounded-xl bg-accent/40" />
+                  <div key={i} className="shimmer h-10 bg-accent/40" />
                 ))}
               </div>
             )}
@@ -596,7 +596,7 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
           <ul className="space-y-2 pt-1" aria-hidden>
             {[0, 1, 2, 3].map((i) => (
               <li key={i} className="flex items-center gap-3 px-2 py-2">
-                <span className="shimmer size-14 rounded-xl bg-accent/50" />
+                <span className="shimmer size-14 bg-accent/50" />
                 <span className="flex-1 space-y-2">
                   <span className="shimmer block h-3.5 w-3/4 rounded bg-accent/50" />
                   <span className="shimmer block h-3 w-1/3 rounded bg-accent/40" />
@@ -613,7 +613,7 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
                 key={k}
                 type="button"
                 onClick={() => goSearch(k)}
-                className="flex w-full touch-manipulation items-center gap-3 rounded-xl px-2 py-2.5 text-left text-[15px] text-foreground transition-colors hover:bg-accent/60 active:bg-accent"
+                className="flex w-full touch-manipulation items-center gap-3 px-2 py-2.5 text-left text-[15px] text-foreground transition-colors hover:bg-accent/60 active:bg-accent"
               >
                 <Search className="size-4 shrink-0 text-muted-foreground/60" />
                 <span className="truncate">{k}</span>
@@ -624,7 +624,7 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
                 key={c.slug}
                 type="button"
                 onClick={() => goCategory(c.slug)}
-                className="flex w-full touch-manipulation items-center gap-3 rounded-xl px-2 py-2.5 text-left text-[15px] text-foreground transition-colors hover:bg-accent/60 active:bg-accent"
+                className="flex w-full touch-manipulation items-center gap-3 px-2 py-2.5 text-left text-[15px] text-foreground transition-colors hover:bg-accent/60 active:bg-accent"
               >
                 <Tag className="size-4 shrink-0 text-primary/70" />
                 <span className="truncate">
@@ -642,7 +642,7 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
             <button
               type="button"
               onClick={() => goSearch(term)}
-              className="mt-1 flex w-full touch-manipulation items-center gap-2 rounded-xl border-t px-2 py-3.5 text-left text-[15px] font-medium text-primary transition-colors hover:bg-accent/60"
+              className="mt-1 flex w-full touch-manipulation items-center gap-2 border-t px-2 py-3.5 text-left text-[15px] font-medium text-primary transition-colors hover:bg-accent/60"
             >
               <TrendingUp className="size-4" />
               See all results for “{term}”
@@ -687,7 +687,7 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
             {data && data.trending.length > 0 && (
               <section>
                 <h2 className={SECTION_TITLE}>
-                  <TrendingUp className="size-3.5 text-primary" /> Trending searches
+                  <TrendingUp className="size-3.5" /> Popular searches
                 </h2>
                 <div className="flex flex-wrap gap-2">
                   {data.trending.map((t) => (
@@ -725,7 +725,7 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
                       key={c.slug}
                       type="button"
                       onClick={() => goCategory(c.slug)}
-                      className={cn(CHIP, "bg-accent/40")}
+                      className={CHIP}
                     >
                       {c.name}
                     </button>

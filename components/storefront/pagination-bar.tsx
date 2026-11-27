@@ -6,7 +6,7 @@ import { CatalogLink } from "@/components/storefront/catalog/catalog-transition"
 import { cn } from "@/lib/utils";
 
 const cell =
-  "grid size-11 place-items-center rounded-lg text-sm tabular-nums outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring";
+  "grid size-11 place-items-center rounded-xs text-sm tabular-nums outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring";
 
 export function PaginationBar({
   page,

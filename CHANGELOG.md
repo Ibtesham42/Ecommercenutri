@@ -3,6 +3,43 @@
 All notable changes to Nutriyet, grouped by milestone. Dates are when the work
 landed in this workspace. This project is pre-1.0; versions track milestones.
 
+## [Storefront redesign — heritage/editorial] — 2026-11-27
+
+Fifth storefront redesign, phased with screenshot approval per step: Mithila heritage
+positioning from the brand docs, Newsreader serif, unboxed product surfaces, 2px corners.
+Presentational except where noted. No schema change, no migration, no checkout,
+payment, auth, stock or order logic touched. Details: `docs/cms.md` → Homepage Section
+editor.
+
+### Changed
+- **Chrome:** Newsreader editorial serif on customer surfaces (Fraunces stays for
+  admin/JNV, no longer preloaded on the storefront); full-width Shop mega-menu and drawer
+  with live product counts; flat phone tab bar; quiet WhatsApp button (lg+); restyled
+  search overlay; redesigned footer with the Mithila "kachni" ornament.
+- **Homepage:** type-led arch hero with a real catalogue product photo (spotlight);
+  `homeTop` banner + Spin & Win now sit below the hero; default section copy rewritten
+  from the brand docs.
+- **Product card:** borderless, outline "+ Add", size and rating on one line; phone
+  catalog listings keep one product per row.
+- **Product page:** frameless gallery (vertical thumbnails on desktop, counter on
+  phones); unboxed buy box; details moved under the buy box as accordions; quieter
+  assistant row; reviewer names shown as first name + initial.
+- **Catalog and cart:** hairline cart rows + oat summary; `/categories` balanced grid.
+- **Search overlay:** trending terms limited to ones matching catalogue vocabulary.
+- **Admin:** the Testimonials editor sets the heading only (see below).
+
+### Removed / claim safety
+- Testimonials show genuine approved reviews only (4★+, hidden below 3); the stored
+  sample quotes are no longer rendered.
+- Unsupported default claims removed: "Lab Tested", "100% Natural", "No Artificial
+  Preservatives" (trust strip → "Thoughtfully Processed"), "100% Authentic" (product
+  page), health-goal combos.
+- Categories with no active products are hidden from the homepage, `/categories` and
+  menus (category counts are now active-products only).
+
+### Fixed
+- `/spin` overflowed by 24px at 320px (implicit grid track grew to the wheel SVG).
+
 ## [Admin media uploads overhaul] — 2026-11-22
 
 Investigation of "upload does nothing / no message" across the admin. Details:

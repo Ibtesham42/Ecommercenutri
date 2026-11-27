@@ -18,9 +18,11 @@ export function NewsletterForm({
   tone = "dark",
 }: {
   source?: string;
-  tone?: "dark" | "light";
+  /** "footer" = the editorial deep-forest footer: square hairline field, ivory button. */
+  tone?: "dark" | "light" | "footer";
 }) {
   const light = tone === "light";
+  const footer = tone === "footer";
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "busy" | "done">("idle");
 
@@ -41,7 +43,8 @@ export function NewsletterForm({
     return (
       <div
         className={cn(
-          "flex min-h-12 w-full max-w-md items-center gap-2.5 rounded-xl border px-4 py-3 text-sm font-medium motion-safe:animate-fade-in",
+          "flex min-h-12 w-full max-w-md items-center gap-2.5 border px-4 py-3 text-sm font-medium motion-safe:animate-fade-in",
+          footer ? "rounded-[2px]" : "rounded-xl",
           light
             ? "border-primary/20 bg-sage text-sage-foreground"
             : "border-gold/40 bg-gold/10 text-surface-deep-foreground",
@@ -64,7 +67,7 @@ export function NewsletterForm({
       // input never gets squeezed to a clipped placeholder.
       className={cn(
         "flex w-full max-w-md items-center gap-2",
-        light && "max-sm:max-w-none max-sm:flex-col max-sm:items-stretch",
+        (light || footer) && "max-sm:max-w-none max-sm:flex-col max-sm:items-stretch",
       )}
     >
       <label htmlFor={inputId} className="sr-only">
@@ -85,10 +88,12 @@ export function NewsletterForm({
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Your email address"
           className={cn(
-            "h-12 w-full rounded-xl border px-4 text-sm outline-none transition",
-            light
-              ? "border-input bg-card pl-11 text-foreground placeholder:text-muted-foreground/75 focus:border-primary focus:ring-3 focus:ring-primary/15"
-              : "border-white/15 bg-white/5 text-surface-deep-foreground placeholder:text-surface-deep-foreground/50 focus:border-gold/60 focus:ring-2 focus:ring-gold/30",
+            "h-12 w-full border px-4 text-base outline-none transition sm:text-sm",
+            footer
+              ? "rounded-[2px] border-white/25 bg-transparent text-surface-deep-foreground placeholder:text-surface-deep-foreground/55 focus:border-surface-deep-foreground"
+              : light
+                ? "rounded-xl border-input bg-card pl-11 text-foreground placeholder:text-muted-foreground/75 focus:border-primary focus:ring-3 focus:ring-primary/15"
+                : "rounded-xl border-white/15 bg-white/5 text-surface-deep-foreground placeholder:text-surface-deep-foreground/50 focus:border-gold/60 focus:ring-2 focus:ring-gold/30",
           )}
         />
       </div>
@@ -96,16 +101,18 @@ export function NewsletterForm({
         type="submit"
         disabled={state === "busy"}
         className={cn(
-          "inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold transition-transform motion-safe:active:scale-95 disabled:opacity-70",
-          light
-            ? "bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            : "bg-gold text-gold-foreground hover:brightness-105",
+          "inline-flex h-12 shrink-0 items-center justify-center gap-2 px-5 text-sm transition-transform motion-safe:active:scale-95 disabled:opacity-70",
+          footer
+            ? "rounded-[2px] bg-surface-deep-foreground font-semibold text-surface-deep hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+            : light
+            ? "rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            : "rounded-xl font-bold bg-gold text-gold-foreground hover:brightness-105",
         )}
       >
         Subscribe
         {state === "busy" ? (
           <Loader2 className="size-4 animate-spin" />
-        ) : (
+        ) : footer ? null : (
           <Send className="size-4" />
         )}
       </button>

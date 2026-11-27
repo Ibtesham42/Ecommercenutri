@@ -15,7 +15,8 @@ export async function getCategories() {
   return prisma.category.findMany({
     where: { isActive: true },
     orderBy: { sortOrder: "asc" },
-    include: { _count: { select: { products: true } } },
+    // Active products only: storefront counts and "hide empty category" checks.
+    include: { _count: { select: { products: { where: { isActive: true } } } } },
   });
 }
 
@@ -34,10 +35,17 @@ function readCategoryTree() {
       name: true,
       slug: true,
       image: true, // mega-menu thumbnails (read-only; nav shows a monogram when null)
+      // Live product counts: the nav shows them and hides empty categories.
+      _count: { select: { products: { where: { isActive: true } } } },
       children: {
         where: { isActive: true },
         orderBy: { sortOrder: "asc" },
-        select: { id: true, name: true, slug: true },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          _count: { select: { products: { where: { isActive: true } } } },
+        },
       },
     },
   });

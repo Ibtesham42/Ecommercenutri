@@ -153,9 +153,9 @@ export function SearchBox({
       </form>
 
       {showPopular && (
-        <div className="absolute z-50 mt-2.5 w-full overflow-hidden rounded-2xl border bg-popover p-4 shadow-elev-3">
-          <p className="mb-3 flex items-center gap-1.5 px-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <TrendingUp className="size-3.5 text-primary" /> Popular searches
+        <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-[2px] border bg-popover p-4 shadow-elev-2">
+          <p className="eyebrow mb-3 px-0.5">
+            Popular searches
           </p>
           <div className="flex flex-wrap gap-2">
             {POPULAR_SEARCHES.map((term) => (
@@ -164,7 +164,7 @@ export function SearchBox({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => goSearch(term)}
-                className="rounded-full border bg-background px-3.5 py-2 text-xs font-medium transition-colors hover:border-primary/40 hover:bg-accent/60 hover:text-primary"
+                className="rounded-[2px] border border-[color:var(--input)] bg-transparent px-3 py-1.5 text-[13px] transition-colors hover:border-foreground"
               >
                 {term}
               </button>
@@ -177,7 +177,7 @@ export function SearchBox({
         <div
           id="search-suggestions"
           role="listbox"
-          className="absolute z-50 mt-2.5 w-full overflow-hidden rounded-2xl border bg-popover shadow-elev-3"
+          className="absolute z-50 mt-1 w-full overflow-hidden rounded-[2px] border bg-popover shadow-elev-2"
         >
           {items.length > 0 ? (
             <ul className="max-h-[70vh] overflow-y-auto p-2">
@@ -188,7 +188,7 @@ export function SearchBox({
                     onClick={() => goProduct(s)}
                     onMouseEnter={() => setHighlight(i)}
                     className={cn(
-                      "flex w-full items-center gap-3.5 rounded-xl px-3 py-2.5 text-left transition-colors",
+                      "flex w-full items-center gap-3.5 px-3 py-2.5 text-left transition-colors",
                       i === highlight ? "bg-accent" : "hover:bg-accent/60",
                     )}
                   >
@@ -222,7 +222,7 @@ export function SearchBox({
                 <button
                   type="button"
                   onClick={() => goSearch(q.trim())}
-                  className="flex w-full items-center gap-2 rounded-xl px-3 py-3 text-left text-sm font-medium text-primary transition-colors hover:bg-accent/60"
+                  className="flex w-full items-center gap-2 px-3 py-3 text-left text-sm font-medium text-primary transition-colors hover:bg-accent/60"
                 >
                   <TrendingUp className="size-4" />
                   See all results for “{q.trim()}”

@@ -5,6 +5,7 @@ import { getCategories } from "@/lib/queries/catalog";
 import { minVariantPrice } from "@/lib/queries/products";
 import { formatPrice } from "@/lib/format";
 import { POPULAR_SEARCHES } from "@/lib/search-defaults";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +20,23 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   try {
-    const [topSearches, popularProducts, categories] = await Promise.all([
-      getTopSearches(14, 8).catch(() => []),
+    const [topSearches, popularProducts, categories, catalogNames] = await Promise.all([
+      getTopSearches(14, 16).catch(() => []),
       bestSellers(6).catch(() => []),
       getCategories().catch(() => []),
+      prisma.product
+        .findMany({ where: { isActive: true }, select: { name: true } })
+        .catch(() => [] as { name: string }[]),
     ]);
 
-    const trending = topSearches.length > 0 ? topSearches.map((t) => t.query) : POPULAR_SEARCHES;
+    // Only surface shopper queries that match something we sell — raw analytics
+    // also contain typos, test strings and unrelated terms.
+    const vocabulary = [...catalogNames.map((p) => p.name), ...categories.map((c) => c.name)].join(" ").toLowerCase();
+    const matching = topSearches
+      .map((t) => t.query.trim())
+      .filter((q) => q.length >= 3 && q.toLowerCase().split(/\s+/).some((w) => w.length >= 3 && vocabulary.includes(w)))
+      .slice(0, 8);
+    const trending = matching.length >= 3 ? matching : POPULAR_SEARCHES;
 
     const popular = popularProducts.map((p) => ({
       id: p.id,

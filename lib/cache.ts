@@ -25,7 +25,8 @@ export const MODEL_TAGS: Partial<Record<string, readonly Tag[]>> = {
   StoreSetting: [CACHE_TAGS.storeSettings],
   // Hero slides link by category/product slug, so slug edits refresh "home" too.
   Category: [CACHE_TAGS.categories, CACHE_TAGS.home],
-  Product: [CACHE_TAGS.home],
+  // Product writes also refresh the nav tree (it carries live product counts).
+  Product: [CACHE_TAGS.home, CACHE_TAGS.categories],
   HeroSlide: [CACHE_TAGS.home],
   HomeSection: [CACHE_TAGS.home],
   SpinCampaign: [CACHE_TAGS.spin],

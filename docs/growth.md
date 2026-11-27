@@ -33,7 +33,8 @@ popup/sticky copy. Migration `growth_conversion`.
 - **Trust Section** (`trust-section.tsx` + `lib/queries/trust.ts`): static
   product-promise badges + **real** DB stats (orders delivered / verified reviews + avg
   rating / returning customers) shown ONLY above a credibility threshold — **never
-  fabricated**. Injected below the hero on the homepage.
+  fabricated**. Injected below the hero on the homepage. Badges are service/process
+  facts only — preservative claims are made per product, never site-wide.
 - **Welcome coupon** is a shared public `Coupon` (PERCENT, perUserLimit 1) kept in sync
   on admin save + `ensureWelcomeCoupon`; `revealWelcomeCoupon` surfaces + copies it and
   records the claim.

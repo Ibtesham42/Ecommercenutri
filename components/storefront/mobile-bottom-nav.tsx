@@ -21,8 +21,8 @@ function prewarm() {
 
 /**
  * Sticky bottom tab bar — mobile only (`md:hidden`). Home/Shop/[Search]/
- * Wishlist/Account (Cart lives in the header): thin line icons with labels,
- * and search as a raised brand-green circle in the centre (per the mockup).
+ * Wishlist/Account (Cart lives in the header): five equal, flat tabs — thin
+ * line icons with labels, search as an ordinary tab (no raised button).
  * AI stays reachable (search overlay's "Ask Nutriyet AI" row, header nav,
  * drawer "Discover" group) without visually dominating primary navigation.
  *
@@ -61,40 +61,41 @@ export function MobileBottomNav({ isLoggedIn = false }: { isLoggedIn?: boolean }
         // element makes it scroll with the page instead of staying pinned. Solid
         // background (no backdrop-blur) avoids scroll repaint jitter; safe-area
         // padding fills the iPhone home-indicator gap so there's no white gap.
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background md:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-popover md:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         data-heat="bottom-nav"
       >
-        <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center px-2">
+        <div className="mx-auto grid h-14 max-w-md grid-cols-5 items-stretch">
           <Tab href="/" label="Home" active={isActive("/", true)}>
-            <Home className="size-[22px]" strokeWidth={1.6} />
+            <Home className="size-[22px]" strokeWidth={1.5} />
           </Tab>
           <Tab href="/products" label="Shop" active={isActive("/products") || isActive("/categories")}>
-            <ShoppingBag className="size-[22px]" strokeWidth={1.6} />
+            <ShoppingBag className="size-[22px]" strokeWidth={1.5} />
           </Tab>
 
-          <div className="flex justify-center">
-            <button
-              ref={searchTriggerRef}
-              type="button"
-              onClick={() => setSearchOpen(true)}
-              onPointerDown={prewarm}
-              aria-label="Open search"
-              className="-mt-7 grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-elev-2 ring-4 ring-background transition-colors hover:bg-primary/90"
-            >
-              <Search className="size-6" strokeWidth={1.8} />
-            </button>
-          </div>
+          <button
+            ref={searchTriggerRef}
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            onPointerDown={prewarm}
+            aria-label="Open search"
+            aria-haspopup="dialog"
+            className={tabChrome(searchOpen).link}
+          >
+            <span className={tabChrome(searchOpen).indicator} />
+            <Search className="size-[22px]" strokeWidth={1.5} />
+            <span>Search</span>
+          </button>
 
           <Tab href="/account/wishlist" label="Wishlist" active={isActive("/account/wishlist")}>
-            <Heart className="size-[22px]" strokeWidth={1.6} />
+            <Heart className="size-[22px]" strokeWidth={1.5} />
           </Tab>
           <Tab
             href={isLoggedIn ? "/account" : "/login"}
             label="Account"
             active={(isActive("/account") && !isActive("/account/wishlist")) || isActive("/login")}
           >
-            <User className="size-[22px]" strokeWidth={1.6} />
+            <User className="size-[22px]" strokeWidth={1.5} />
           </Tab>
         </div>
       </nav>
@@ -117,11 +118,11 @@ export function MobileBottomNav({ isLoggedIn = false }: { isLoggedIn?: boolean }
 function tabChrome(active: boolean) {
   return {
     link: cn(
-      "flex min-h-11 flex-col items-center justify-center gap-1 pt-2 text-[11px] font-medium tracking-[0.01em] transition-colors",
-      active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+      "relative flex min-h-14 flex-col items-center justify-center gap-1 text-[11px] tracking-[0.01em] transition-colors",
+      active ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground",
     ),
     indicator: cn(
-      "h-0.5 w-5 rounded-full transition-colors",
+      "absolute inset-x-[30%] top-0 h-0.5 transition-colors",
       active ? "bg-primary" : "bg-transparent",
     ),
   };
@@ -141,10 +142,9 @@ function Tab({
   const chrome = tabChrome(active);
   return (
     <Link href={href} aria-current={active ? "page" : undefined} className={chrome.link}>
-      {children}
-      <span className={cn(active && "font-semibold")}>{label}</span>
       <span className={chrome.indicator} />
+      {children}
+      <span>{label}</span>
     </Link>
   );
 }
-

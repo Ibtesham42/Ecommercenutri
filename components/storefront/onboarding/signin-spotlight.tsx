@@ -12,7 +12,7 @@ const SCROLL_DISMISS_PX = 60;
 /**
  * First-visit onboarding spotlight. Wraps the header's Sign in button (rendered
  * only for logged-out visitors) and, once ever, draws a soft brand green→gold
- * breathing ring around it plus a small premium "Join Free – Get 20% OFF" hint.
+ * breathing ring around it plus a small quiet "Join free · 20% off your first order" hint.
  *
  * It never blocks interaction (pointer-events: none, zero layout shift), appears
  * after ~1.2s, lingers ~6.5s, and disappears the moment the shopper scrolls,
@@ -77,17 +77,17 @@ export function SigninSpotlight({ children }: { children: React.ReactNode }) {
       {children}
       {active && (
         <>
-          <span aria-hidden className="onboard-glow pointer-events-none absolute inset-0 rounded-lg" />
+          <span aria-hidden className="onboard-glow pointer-events-none absolute inset-0 rounded-full" />
           {/* The hint chip is desktop-only: on mobile it would float over the
               search row (and the announcement bar + coupon strip already carry
               the offer), so the breathing ring alone spotlights the button. */}
           <span
             role="status"
-            className="pointer-events-none absolute right-0 top-full z-50 mt-2 hidden items-center gap-1.5 whitespace-nowrap rounded-full bg-surface-deep px-3 py-1.5 text-xs font-semibold text-surface-deep-foreground shadow-elev-2 motion-safe:animate-fade-up lg:flex"
+            className="pointer-events-none absolute right-0 top-full z-50 mt-1.5 hidden items-center gap-1.5 whitespace-nowrap rounded-[2px] border border-border bg-popover px-3 py-1.5 text-xs font-medium text-foreground shadow-elev-1 motion-safe:animate-fade-up lg:flex"
           >
-            <Sparkles className="size-3.5 text-gold" aria-hidden />
-            Join Free – Get 20% OFF
-            <span aria-hidden className="absolute -top-1 right-5 size-2 rotate-45 rounded-[1px] bg-surface-deep" />
+            <Sparkles className="size-3.5 text-sage-deep" aria-hidden />
+            Join free · 20% off your first order
+            <span aria-hidden className="absolute -top-[5px] right-5 size-2 rotate-45 border-l border-t border-border bg-popover" />
           </span>
         </>
       )}

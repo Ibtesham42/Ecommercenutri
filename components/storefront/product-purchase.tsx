@@ -3,14 +3,7 @@
 import { useId, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { addDays, format } from "date-fns";
-import {
-  Minus,
-  Plus,
-  ShieldCheck,
-  Truck,
-  RotateCcw,
-  BadgeCheck,
-} from "lucide-react";
+import { Minus, Plus, Package, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
@@ -45,12 +38,8 @@ type Variant = {
 
 type Highlight = { label: string; value: string };
 
-const trustBadges = [
-  { icon: BadgeCheck, label: "100% Authentic" },
-  { icon: ShieldCheck, label: "Secure payments" },
-  { icon: Truck, label: "Pan-India delivery" },
-  { icon: RotateCcw, label: "Easy returns" },
-];
+/** Service facts only (no product-quality claims — those live per product). */
+const trustPoints = ["Secure payments via Razorpay", "Pan-India delivery", "Easy returns"];
 
 const noSubscribe = () => () => {};
 const deliveryWindow = () =>
@@ -65,7 +54,7 @@ function useDeliveryWindow() {
 }
 
 const stepBtn =
-  "grid h-12 w-11 place-items-center text-foreground/80 transition-colors hover:text-foreground disabled:text-muted-foreground/40 outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg";
+  "grid h-12 w-11 place-items-center text-foreground/80 transition-colors hover:text-foreground disabled:text-muted-foreground/40 outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xs";
 
 /**
  * The buy box below the title: price, size, quantity + Add to cart (the
@@ -162,15 +151,14 @@ export function ProductPurchase({
   // Solid forest primary. Explicit text colour: AddToCartButton's "added"
   // state would otherwise tint the label primary — invisible on a primary fill.
   const addClass =
-    "h-12 gap-2 rounded-lg border-transparent text-[15px] font-medium text-primary-foreground";
+    "h-12 gap-2 rounded-xs border-transparent text-[15px] font-semibold text-primary-foreground";
   const buyClass =
-    "h-12 rounded-lg border-foreground/20 bg-background text-[15px] font-medium text-foreground hover:bg-oat";
+    "h-12 rounded-xs border-foreground bg-transparent text-[15px] font-medium text-foreground hover:bg-foreground hover:text-background";
 
   return (
     <div>
-      {/* Buy box: price, size and actions share one bordered card (the same
-          surface as the product cards). */}
-      <div className="mt-6 rounded-xl border border-border bg-card p-4 sm:p-5">
+      {/* Buy box: unboxed, set off from the intro by a hairline. */}
+      <div className="mt-5 border-t border-border pt-5">
       {/* Price */}
       <div>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -178,7 +166,7 @@ export function ProductPurchase({
           {variant?.badge && (
             <span
               key={variant.id}
-              className="rounded-md bg-oat px-2 py-1 text-xs font-medium text-oat-foreground motion-safe:animate-fade-in"
+              className="rounded-xs bg-oat px-2 py-1 text-xs font-medium text-oat-foreground motion-safe:animate-fade-in"
             >
               {variant.badge}
             </span>
@@ -218,9 +206,9 @@ export function ProductPurchase({
                 }}
                 aria-pressed={isActive}
                 className={cn(
-                  "flex min-h-12 min-w-[6.5rem] flex-col items-start justify-center rounded-lg border px-4 py-2 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "flex min-h-12 min-w-[6.5rem] flex-col items-start justify-center rounded-xs border px-4 py-2 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   isActive
-                    ? "border-primary bg-primary/[0.06] ring-1 ring-primary"
+                    ? "border-foreground ring-1 ring-foreground"
                     : "border-border bg-background hover:border-foreground/40",
                   disabled && "cursor-not-allowed opacity-50",
                 )}
@@ -238,7 +226,7 @@ export function ProductPurchase({
       {/* Quantity + actions */}
       <div ref={actionsRef} className="mt-6 space-y-2.5">
         <div className="flex gap-2.5">
-          <div role="group" aria-label="Quantity" className="flex shrink-0 items-center rounded-lg border border-border bg-background">
+          <div role="group" aria-label="Quantity" className="flex shrink-0 items-center rounded-xs border border-input bg-background">
             <button
               type="button"
               className={stepBtn}
@@ -270,24 +258,22 @@ export function ProductPurchase({
             iconClassName="size-4 max-[359px]:hidden"
             className={cn(addClass, "flex-1")}
           />
-        </div>
-        <div className="flex gap-2.5">
-          <Button variant="outline" className={cn(buyClass, "flex-1")} onClick={buyNow} disabled={outOfStock}>
-            Buy now
-          </Button>
           <WishlistButton
             productId={productId}
             initial={wishlisted}
-            className="size-12 shrink-0 rounded-lg border border-border bg-background hover:bg-oat"
+            className="size-12 shrink-0 rounded-xs border border-input bg-background hover:bg-oat"
           />
         </div>
+        <Button variant="outline" className={cn(buyClass, "w-full")} onClick={buyNow} disabled={outOfStock}>
+          Buy now
+        </Button>
         {lowStock && <p className="text-sm text-muted-foreground">Only {lowStock} left</p>}
       </div>
       </div>
 
       {/* Delivery */}
-      <ul className="mt-4 space-y-3 rounded-xl bg-oat px-4 py-4 text-sm text-oat-foreground sm:px-5">
-        <li className="flex items-start gap-3">
+      <ul className="mt-6 divide-y divide-border border-y border-border text-sm">
+        <li className="flex items-start gap-3 py-3.5">
           <Truck aria-hidden className="mt-0.5 size-4 shrink-0 text-sage-deep" strokeWidth={1.75} />
           <p>
             <span className="font-medium">{delivery ? `Get it ${delivery}` : "Delivery in 3–5 business days"}</span>
@@ -296,8 +282,8 @@ export function ProductPurchase({
             </span>
           </p>
         </li>
-        <li className="flex items-start gap-3">
-          <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-sage-deep" strokeWidth={1.75} />
+        <li className="flex items-start gap-3 py-3.5">
+          <Package aria-hidden className="mt-0.5 size-4 shrink-0 text-sage-deep" strokeWidth={1.75} />
           <p>
             {freeShipping || effectiveDelivery === 0 ? (
               <>
@@ -320,7 +306,7 @@ export function ProductPurchase({
                 </span>
                 <span className="block text-xs text-muted-foreground">
                   Add {formatPrice(settings.freeShippingThreshold - lineTotal)} more to
-                  qualify for Free Delivery.
+                  qualify for free delivery.
                 </span>
               </>
             ) : (
@@ -332,9 +318,9 @@ export function ProductPurchase({
 
       {/* Nutrition highlights — read as a spec line, not badges. */}
       {highlights.length > 0 && (
-        <dl className="mt-4 grid grid-cols-3 gap-2">
+        <dl className="grid grid-cols-3 divide-x divide-border border-b border-border">
           {highlights.map((h) => (
-            <div key={h.label} className="min-w-0 rounded-lg border border-border bg-card px-3 py-2.5">
+            <div key={h.label} className="min-w-0 px-3 py-3 first:pl-0">
               <dt className="truncate text-[11px] uppercase tracking-[0.12em] text-muted-foreground">{h.label}</dt>
               <dd className="mt-0.5 truncate text-sm font-medium">{h.value}</dd>
             </div>
@@ -342,13 +328,11 @@ export function ProductPurchase({
         </dl>
       )}
 
-      <ul className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4 sm:gap-x-2">
-        {trustBadges.map((b) => (
-          <li key={b.label} className="flex items-center gap-2 text-xs text-foreground/80 sm:flex-col sm:gap-1.5 sm:text-center">
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-sage text-sage-deep">
-              <b.icon className="size-4" strokeWidth={1.75} aria-hidden />
-            </span>
-            {b.label}
+      <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-foreground/75">
+        {trustPoints.map((t) => (
+          <li key={t} className="flex items-center gap-2">
+            <span aria-hidden className="size-1 rounded-full bg-gold" />
+            {t}
           </li>
         ))}
       </ul>
@@ -379,11 +363,11 @@ export function ProductPurchase({
             label={outOfStock ? "Sold out" : "Add"}
             variant="default"
             iconClassName="size-4"
-            className="h-11 gap-1.5 rounded-lg border-transparent px-4 text-sm font-medium text-primary-foreground"
+            className="h-11 gap-1.5 rounded-xs border-transparent px-4 text-sm font-semibold text-primary-foreground"
           />
           <Button
             variant="outline"
-            className="h-11 rounded-lg border-foreground/70 bg-transparent px-4 text-sm font-medium hover:bg-foreground hover:text-background"
+            className="h-11 rounded-xs border-foreground/70 bg-transparent px-4 text-sm font-medium hover:bg-foreground hover:text-background"
             onClick={buyNow}
             disabled={outOfStock}
           >

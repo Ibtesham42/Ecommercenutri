@@ -12,8 +12,9 @@ const BADGES = [
   { icon: ShieldCheck, label: "Premium Quality" },
   { icon: Package, label: "Secure Payments" },
   { icon: Leaf, label: "Freshly Packed" },
-  { icon: Sprout, label: "No Artificial Preservatives" },
-  { icon: Truck, label: "Fast Shipping" },
+  // Brand rule: preservative claims are made per product, never site-wide.
+  { icon: Sprout, label: "Thoughtfully Processed" },
+  { icon: Truck, label: "Shipping Across India" },
   { icon: MapPin, label: "Made in India" },
 ];
 

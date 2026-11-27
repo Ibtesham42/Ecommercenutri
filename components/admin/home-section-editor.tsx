@@ -18,7 +18,6 @@ import {
 import { HomeHero } from "@/components/storefront/home/home-hero";
 import { HomeAiBanner } from "@/components/storefront/home/home-ai-banner";
 import { HomeWhyChooseUs } from "@/components/storefront/home/home-why-choose-us";
-import { HomeTestimonials } from "@/components/storefront/home/home-testimonials";
 import { VALUE_PROP_ICON_NAMES } from "@/lib/home-content";
 import {
   saveHomeSectionContent,
@@ -405,45 +404,18 @@ function TestimonialsForm({
 }) {
   const [d, setD] = useState<TestimonialsContent>(initial);
   const set = (patch: Partial<TestimonialsContent>) => setD((p) => ({ ...p, ...patch }));
-  const setItem = (i: number, patch: Partial<TestimonialsContent["items"][number]>) =>
-    setD((p) => ({ ...p, items: p.items.map((it, j) => (j === i ? { ...it, ...patch } : it)) }));
 
+  // The storefront shows genuine approved customer reviews here (4★+, with a
+  // comment), never hand-typed quotes; stored `items` are kept but not shown.
   return (
     <div className="space-y-4">
-      <PreviewBox>
-        <HomeTestimonials content={d} />
-      </PreviewBox>
       <Field label="Title"><Input value={d.title} onChange={(e) => set({ title: e.target.value })} /></Field>
       <Field label="Subtitle"><Input value={d.subtitle} onChange={(e) => set({ subtitle: e.target.value })} /></Field>
-      <div className="space-y-3">
-        <Label>Testimonials</Label>
-        {d.items.map((it, i) => (
-          <div key={i} className="space-y-2 rounded-lg border p-3">
-            <div className="flex gap-2">
-              <Input value={it.name} placeholder="Name" onChange={(e) => setItem(i, { name: e.target.value })} />
-              <select
-                value={it.rating}
-                onChange={(e) => setItem(i, { rating: Number(e.target.value) })}
-                className="h-9 rounded-md border bg-transparent px-2 text-sm"
-                aria-label="Rating"
-              >
-                {[5, 4, 3, 2, 1].map((r) => (
-                  <option key={r} value={r}>{r}★</option>
-                ))}
-              </select>
-              <Button type="button" variant="ghost" size="icon" onClick={() => setD((p) => ({ ...p, items: p.items.filter((_, j) => j !== i) }))} aria-label="Remove testimonial">
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
-            <Textarea rows={2} value={it.text} placeholder="Quote" onChange={(e) => setItem(i, { text: e.target.value })} />
-          </div>
-        ))}
-        {d.items.length < 12 && (
-          <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => setD((p) => ({ ...p, items: [...p.items, { name: "", text: "", rating: 5 }] }))}>
-            <Plus className="size-4" /> Add testimonial
-          </Button>
-        )}
-      </div>
+      <p className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
+        This section shows real customer reviews: approved, rated 4★ or higher, with a written comment
+        (newest verified purchases first, up to 6). It stays hidden until at least 3 such reviews exist.
+        Approve reviews under Reviews to feature them here.
+      </p>
       <SaveBar saving={saving} onSave={() => onSave(d)} footer={footer} />
     </div>
   );
